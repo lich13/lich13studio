@@ -143,6 +143,19 @@ class FileManager {
     return this.isDangerFile(file) ? getFileDirectory(file.path) : file.path
   }
 
+  static isMemoryFile(file: Pick<FileMetadata, 'path'>) {
+    return file.path.startsWith('memory://')
+  }
+
+  static async resolvePreviewUrl(file: FileMetadata): Promise<string> {
+    if (this.isMemoryFile(file)) {
+      const imageData = await window.api.file.base64Image(file.id + file.ext)
+      return imageData.data
+    }
+
+    return 'file://' + this.getSafePath(file)
+  }
+
   static getFileUrl(file: FileMetadata) {
     const filesPath = store.getState().runtime.filesPath
     return 'file://' + filesPath + '/' + file.name

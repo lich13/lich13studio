@@ -21,7 +21,7 @@ import { formatFileSize } from '@renderer/utils'
 import { Flex, Image, Tooltip } from 'antd'
 import { isEmpty } from 'lodash'
 import type { FC, MouseEvent } from 'react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
@@ -88,9 +88,35 @@ export const getFileIcon = (type?: string) => {
 export const FileNameRender: FC<{ file: FileMetadata }> = ({ file }) => {
   const { preview } = useAttachment()
   const [visible, setVisible] = useState<boolean>(false)
+  const [imageSrc, setImageSrc] = useState<string>('')
   const isImage = (ext: string) => {
     return ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'].includes(ext.toLocaleLowerCase())
   }
+
+  useEffect(() => {
+    let cancelled = false
+
+    if (!isImage(file.ext)) {
+      setImageSrc('')
+      return
+    }
+
+    void FileManager.resolvePreviewUrl(file)
+      .then((src) => {
+        if (!cancelled) {
+          setImageSrc(src)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setImageSrc('')
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [file, file.ext])
 
   const fullName = FileManager.formatFileName(file)
   const displayName = truncateFileName(fullName)
@@ -105,13 +131,13 @@ export const FileNameRender: FC<{ file: FileMetadata }> = ({ file }) => {
       fresh
       title={
         <Flex vertical gap={2} align="center">
-          {isImage(file.ext) && (
+          {isImage(file.ext) && imageSrc && (
             <Image
               style={{ width: 80, maxHeight: 200 }}
-              src={'file://' + FileManager.getSafePath(file)}
+              src={imageSrc}
               preview={{
                 visible: visible,
-                src: 'file://' + FileManager.getSafePath(file),
+                src: imageSrc,
                 onVisibleChange: setVisible
               }}
             />

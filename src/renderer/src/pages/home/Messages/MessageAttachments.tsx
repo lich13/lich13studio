@@ -5,6 +5,7 @@ import { parseFileTypes } from '@renderer/utils'
 import { Upload } from 'antd'
 import { t } from 'i18next'
 import type { FC } from 'react'
+import { useEffect, useState } from 'react'
 import styled from 'styled-components'
 
 interface Props {
@@ -24,6 +25,33 @@ const StyledUpload = styled(Upload)`
 
 const MessageAttachments: FC<Props> = ({ block }) => {
   const { preview } = useAttachment()
+  const [previewUrl, setPreviewUrl] = useState<string>('')
+
+  useEffect(() => {
+    let cancelled = false
+
+    if (!block.file) {
+      setPreviewUrl('')
+      return
+    }
+
+    void FileManager.resolvePreviewUrl(block.file)
+      .then((src) => {
+        if (!cancelled) {
+          setPreviewUrl(src)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setPreviewUrl('')
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [block.file])
+
   if (!block.file) {
     return null
   }
@@ -36,7 +64,7 @@ const MessageAttachments: FC<Props> = ({ block }) => {
         fileList={[
           {
             uid: block.file.id,
-            url: 'file://' + FileManager.getSafePath(block.file),
+            url: previewUrl,
             status: 'done' as const,
             name: FileManager.formatFileName(block.file),
             type: block.file.type,

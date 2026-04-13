@@ -2,7 +2,7 @@ import ImageViewer from '@renderer/components/ImageViewer'
 import FileManager from '@renderer/services/FileManager'
 import { type ImageMessageBlock, MessageBlockStatus } from '@renderer/types/newMessage'
 import { Skeleton } from 'antd'
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import styled from 'styled-components'
 
 interface Props {
@@ -11,6 +11,33 @@ interface Props {
 }
 
 const ImageBlock: React.FC<Props> = ({ block, isSingle = false }) => {
+  const [memoryImageSrc, setMemoryImageSrc] = useState<string>('')
+
+  useEffect(() => {
+    let cancelled = false
+
+    if (!block.file || !FileManager.isMemoryFile(block.file)) {
+      setMemoryImageSrc('')
+      return
+    }
+
+    void FileManager.resolvePreviewUrl(block.file)
+      .then((src) => {
+        if (!cancelled) {
+          setMemoryImageSrc(src)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setMemoryImageSrc('')
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [block.file])
+
   if (block.status === MessageBlockStatus.PENDING) {
     return <Skeleton.Image active style={{ width: 200, height: 200 }} />
   }
@@ -19,14 +46,14 @@ const ImageBlock: React.FC<Props> = ({ block, isSingle = false }) => {
     const images = block.metadata?.generateImageResponse?.images?.length
       ? block.metadata?.generateImageResponse?.images
       : block?.file
-        ? [`file://${FileManager.getFilePath(block?.file)}`]
+        ? [FileManager.isMemoryFile(block.file) ? memoryImageSrc : `file://${FileManager.getFilePath(block.file)}`]
         : block?.url
           ? [block.url]
           : []
 
     return (
       <Container>
-        {images.map((src, index) => (
+        {images.filter(Boolean).map((src, index) => (
           <ImageViewer
             src={src}
             key={`image-${index}`}

@@ -9,9 +9,11 @@ import {
   ZoomOutOutlined
 } from '@ant-design/icons'
 import { loggerService } from '@logger'
+import FileManager from '@renderer/services/FileManager'
 import type { ImageMessageBlock } from '@renderer/types/newMessage'
 import { Image as AntdImage, Space } from 'antd'
 import type { FC } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
@@ -23,6 +25,32 @@ const logger = loggerService.withContext('MessageImage')
 
 const MessageImage: FC<Props> = ({ block }) => {
   const { t } = useTranslation()
+  const [memoryImageSrc, setMemoryImageSrc] = useState<string>('')
+
+  useEffect(() => {
+    let cancelled = false
+
+    if (!block.file || !FileManager.isMemoryFile(block.file)) {
+      setMemoryImageSrc('')
+      return
+    }
+
+    void FileManager.resolvePreviewUrl(block.file)
+      .then((src) => {
+        if (!cancelled) {
+          setMemoryImageSrc(src)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setMemoryImageSrc('')
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [block.file])
 
   const onDownload = (imageBase64: string, index: number) => {
     try {
@@ -119,12 +147,12 @@ const MessageImage: FC<Props> = ({ block }) => {
   const images = block.metadata?.generateImageResponse?.images?.length
     ? block.metadata?.generateImageResponse?.images
     : block?.file?.path
-      ? [`file://${block?.file?.path}`]
+      ? [FileManager.isMemoryFile(block.file) ? memoryImageSrc : `file://${block.file.path}`]
       : []
 
   return (
     <Container style={{ marginBottom: 8 }}>
-      {images.map((image, index) => (
+      {images.filter(Boolean).map((image, index) => (
         <Image
           src={image}
           key={`image-${index}`}
