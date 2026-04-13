@@ -5,17 +5,13 @@ import IcImageUp from '@renderer/assets/images/paintings/ic_ImageUp.svg'
 import { Navbar, NavbarCenter, NavbarRight } from '@renderer/components/app/Navbar'
 import { HStack } from '@renderer/components/Layout'
 import Scrollbar from '@renderer/components/Scrollbar'
-import TranslateButton from '@renderer/components/TranslateButton'
 import { isMac } from '@renderer/config/constant'
 import { getProviderLogo } from '@renderer/config/providers'
-import { LanguagesEnum } from '@renderer/config/translate'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import { usePaintings } from '@renderer/hooks/usePaintings'
 import { useAllProviders } from '@renderer/hooks/useProvider'
 import { useRuntime } from '@renderer/hooks/useRuntime'
-import { useSettings } from '@renderer/hooks/useSettings'
 import FileManager from '@renderer/services/FileManager'
-import { translateText } from '@renderer/services/TranslateService'
 import { useAppDispatch } from '@renderer/store'
 import { setGenerating } from '@renderer/store/runtime'
 import type { FileMetadata } from '@renderer/types'
@@ -69,8 +65,6 @@ const AihubmixPage: FC<{ Options: string[] }> = ({ Options }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
   const [abortController, setAbortController] = useState<AbortController | null>(null)
-  const [spaceClickCount, setSpaceClickCount] = useState(0)
-  const [isTranslating, setIsTranslating] = useState(false)
   const [fileMap, setFileMap] = useState<{ [key: string]: FileMetadata }>({})
 
   const { t } = useTranslation()
@@ -80,8 +74,6 @@ const AihubmixPage: FC<{ Options: string[] }> = ({ Options }) => {
   const { generating } = useRuntime()
   const navigate = useNavigate()
   const location = useLocation()
-  const { autoTranslateWithSpace } = useSettings()
-  const spaceClickTimer = useRef<NodeJS.Timeout>(null)
   const aihubmixProvider = providers.find((p) => p.id === 'aihubmix')!
 
   const modeOptions = [
@@ -628,45 +620,7 @@ const AihubmixPage: FC<{ Options: string[] }> = ({ Options }) => {
     void removePainting(mode, paintingToDelete)
   }
 
-  const translate = async () => {
-    if (isTranslating) {
-      return
-    }
-
-    if (!painting.prompt) {
-      return
-    }
-
-    try {
-      setIsTranslating(true)
-      const translatedText = await translateText(painting.prompt, LanguagesEnum.enUS)
-      updatePaintingState({ prompt: translatedText })
-    } catch (error) {
-      logger.error('Translation failed:', error as Error)
-    } finally {
-      setIsTranslating(false)
-    }
-  }
-
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (autoTranslateWithSpace && event.key === ' ') {
-      setSpaceClickCount((prev) => prev + 1)
-
-      if (spaceClickTimer.current) {
-        clearTimeout(spaceClickTimer.current)
-      }
-
-      spaceClickTimer.current = setTimeout(() => {
-        setSpaceClickCount(0)
-      }, 200)
-
-      if (spaceClickCount === 2) {
-        setSpaceClickCount(0)
-        setIsTranslating(true)
-        void translate()
-      }
-    }
-  }
+  const handleKeyDown = (_event: React.KeyboardEvent<HTMLTextAreaElement>) => {}
 
   const handleProviderChange = (providerId: string) => {
     const routeName = location.pathname.split('/').pop()
@@ -936,23 +890,14 @@ const AihubmixPage: FC<{ Options: string[] }> = ({ Options }) => {
               spellCheck={false}
               onChange={(e) => updatePaintingState({ prompt: e.target.value })}
               placeholder={
-                isTranslating
-                  ? t('paintings.translating')
-                  : painting.model?.startsWith('imagen-') || painting.model?.startsWith('FLUX')
-                    ? t('paintings.prompt_placeholder_en')
-                    : t('paintings.prompt_placeholder_edit')
+                painting.model?.startsWith('imagen-') || painting.model?.startsWith('FLUX')
+                  ? t('paintings.prompt_placeholder_en')
+                  : t('paintings.prompt_placeholder_edit')
               }
               onKeyDown={handleKeyDown}
             />
             <Toolbar>
               <ToolbarMenu>
-                <TranslateButton
-                  text={textareaRef.current?.resizableTextArea?.textArea?.value}
-                  onTranslated={(translatedText) => updatePaintingState({ prompt: translatedText })}
-                  disabled={isLoading || isTranslating}
-                  isLoading={isTranslating}
-                  style={{ marginRight: 6, borderRadius: '50%' }}
-                />
                 <SendMessageButton sendMessage={onGenerate} disabled={isLoading} />
               </ToolbarMenu>
             </Toolbar>
