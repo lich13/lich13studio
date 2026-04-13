@@ -4,7 +4,6 @@ import { isLocalAi } from '@renderer/config/env'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import db from '@renderer/databases'
 import i18n, { setDayjsLocale } from '@renderer/i18n'
-import KnowledgeQueue from '@renderer/queue/KnowledgeQueue'
 import { handleSaveData, useAppDispatch } from '@renderer/store'
 import { setAvatar, setFilesPath, setResourcesPath, setUpdateState } from '@renderer/store/runtime'
 import {
@@ -47,7 +46,6 @@ export function useAppInit() {
   const { setDefaultModel, setQuickModel, setTranslateModel } = useDefaultModel()
   const avatar = useLiveQuery(() => db.settings.get('image://avatar'))
   const { theme } = useTheme()
-  const isTauriShim = Boolean((window as any).__LICH13_TAURI_SHIM__)
 
   useEffect(() => {
     document.getElementById('spinner')?.remove()
@@ -149,12 +147,6 @@ export function useAppInit() {
       dispatch(setResourcesPath(info.resourcesPath))
     })
   }, [dispatch])
-
-  useEffect(() => {
-    if (!isTauriShim) {
-      void KnowledgeQueue.checkAllBases()
-    }
-  }, [isTauriShim])
 
   useEffect(() => {
     let customCssElement = document.getElementById('user-defined-custom-css') as HTMLStyleElement
