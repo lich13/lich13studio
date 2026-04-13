@@ -1,0 +1,28 @@
+[package]
+name = "lich13studio"
+version = "1.9.1"
+description = "lich13studio Tauri Lite runtime"
+authors = ["lich13studio"]
+edition = "2021"
+rust-version = "1.77.2"
+
+[lib]
+name = "lich13studio_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+dirs = "6"
+futures-util = "0.3"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
+rfd = "0.15"
+roxmltree = "0.20"
+rusty-s3 = "0.8"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri = { version = "2", features = [] }
+tokio = { version = "1", features = ["process", "time"] }
+url = "2"
+uuid = { version = "1", features = ["v4"] }

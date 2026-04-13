@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.27.0
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --version '^2' --locked
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck web
+        run: pnpm exec tsc -p tsconfig.web.json --noEmit
+
+      - name: Typecheck node
+        run: pnpm exec tsc -p tsconfig.node.json --noEmit
+
+      - name: Run focused tests
+        run: pnpm exec vitest run src/renderer/src/aiCore/services/__tests__/listModels.test.ts
+
+      - name: Build renderer bundle
+        run: pnpm build:tauri:web
