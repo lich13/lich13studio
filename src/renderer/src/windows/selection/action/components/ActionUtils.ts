@@ -76,7 +76,6 @@ export const processMessages = async (
     // 显式关闭这些功能
     newAssistant.webSearchProviderId = undefined
     newAssistant.mcpServers = undefined
-    newAssistant.knowledge_bases = undefined
     const { modelMessages, uiMessages } = await ConversationService.prepareMessagesForModel([userMessage], newAssistant)
 
     await fetchChatCompletion({

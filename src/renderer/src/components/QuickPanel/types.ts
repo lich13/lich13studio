@@ -3,7 +3,6 @@ import React from 'react'
 export enum QuickPanelReservedSymbol {
   Root = '/',
   File = 'file',
-  KnowledgeBase = '#',
   MentionModels = '@',
   QuickPhrases = 'quick-phrases',
   Thinking = 'thinking',

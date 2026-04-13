@@ -12,7 +12,7 @@ import * as z from 'zod'
 import type { StreamTextParams } from './aiCoreTypes'
 import type { Chunk } from './chunk'
 import type { FileMetadata } from './file'
-import type { KnowledgeBase, KnowledgeReference } from './knowledge'
+import type { KnowledgeReference } from './knowledge'
 import type { MCPConfigSample, MCPServerInstallSource, McpServerType } from './mcp'
 import type { Message } from './newMessage'
 import type { BaseTool, MCPTool } from './tool'
@@ -35,7 +35,6 @@ export type Assistant = {
   id: string
   name: string
   prompt: string
-  knowledge_bases?: KnowledgeBase[]
   topics: Topic[]
   type: string
   emoji?: string
@@ -54,7 +53,6 @@ export type Assistant = {
   /** MCP mode: 'disabled' (no MCP), 'auto' (hub server only), 'manual' (user selects servers) */
   mcpMode?: McpMode
   mcpServers?: MCPServer[]
-  knowledgeRecognition?: 'off' | 'on'
   regularPhrases?: QuickPhrase[] // Added for regular phrase
   tags?: string[] // 助手标签
   enableMemory?: boolean

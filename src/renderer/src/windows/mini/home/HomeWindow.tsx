@@ -276,7 +276,6 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
         // 显式关闭这些功能
         newAssistant.webSearchProviderId = undefined
         newAssistant.mcpServers = undefined
-        newAssistant.knowledge_bases = undefined
         // replace prompt vars
         newAssistant.prompt = await replacePromptVariables(currentAssistant.prompt, currentAssistant?.model.name)
         // logger.debug('newAssistant', newAssistant)
