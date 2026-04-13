@@ -86,6 +86,7 @@ const WindowCaptureButton: FC<Props> = ({ quickPanel, setFiles, couldAddImageFil
 
     quickPanelController.open({
       title: t('chat.input.capture.pick_window'),
+      defaultIndex: 0,
       list: windows.map((windowInfo) => ({
         label: windowInfo.title,
         description: `${windowInfo.appName} · ${windowInfo.width}×${windowInfo.height}`,

@@ -18,6 +18,13 @@ use url::Url;
 use uuid::Uuid;
 use xcap::Window as CaptureWindow;
 
+#[cfg(target_os = "macos")]
+#[link(name = "CoreGraphics", kind = "framework")]
+unsafe extern "C" {
+  fn CGPreflightScreenCaptureAccess() -> bool;
+  fn CGRequestScreenCaptureAccess() -> bool;
+}
+
 const APP_NAME: &str = "lich13studio";
 const BUNDLE_ID: &str = "com.lich13.studio";
 const DEFAULT_STATE_FILE: &str = "state.json";
@@ -949,6 +956,28 @@ fn capture_windows() -> Result<Vec<CaptureWindowInfo>, String> {
   Ok(windows)
 }
 
+fn ensure_screen_capture_access() -> Result<(), String> {
+  #[cfg(target_os = "macos")]
+  unsafe {
+    if CGPreflightScreenCaptureAccess() {
+      return Ok(());
+    }
+
+    if CGRequestScreenCaptureAccess() {
+      return Ok(());
+    }
+
+    return Err(String::from(
+      "Screen capture permission is required. Enable Screen Recording for lich13studio in System Settings and relaunch the app.",
+    ));
+  }
+
+  #[cfg(not(target_os = "macos"))]
+  {
+    Ok(())
+  }
+}
+
 #[tauri::command]
 fn app_info() -> Result<AppInfo, String> {
   let data_dir = app_data_dir()?;
@@ -1044,11 +1073,13 @@ async fn open_path(path: String) -> Result<bool, String> {
 
 #[tauri::command]
 fn list_capture_windows() -> Result<Vec<CaptureWindowInfo>, String> {
+  ensure_screen_capture_access()?;
   capture_windows()
 }
 
 #[tauri::command]
 fn capture_window(window_id: u32) -> Result<Vec<u8>, String> {
+  ensure_screen_capture_access()?;
   let window = CaptureWindow::all()
     .map_err(|error| error.to_string())?
     .into_iter()
