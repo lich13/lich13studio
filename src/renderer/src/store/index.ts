@@ -48,7 +48,6 @@ import settings from './settings'
 import shortcuts from './shortcuts'
 import tabs from './tabs'
 import toolPermissions from './toolPermissions'
-import translate from './translate'
 import websearch from './websearch'
 
 const logger = loggerService.withContext('Store')
@@ -76,7 +75,6 @@ const rootReducer = combineReducers({
   messages: newMessagesReducer,
   messageBlocks: messageBlocksReducer,
   inputTools: inputToolsReducer,
-  translate,
   ocr,
   note,
   toolPermissions

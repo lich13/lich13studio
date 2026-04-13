@@ -39,10 +39,8 @@ import {
 } from './AssistantService'
 import { ConversationService } from './ConversationService'
 import FileManager from './FileManager'
-import { injectUserMessageWithKnowledgeSearchPrompt } from './KnowledgeService'
 import type { BlockManager } from './messageStreaming'
 import type { StreamProcessorCallbacks } from './StreamProcessingService'
-// import { processKnowledgeSearch } from './KnowledgeService'
 // import {
 //   filterContextMessages,
 //   filterEmptyMessages,
@@ -174,16 +172,6 @@ export async function transformMessagesAndFetch(
       })
       return
     }
-
-    // inject knowledge search prompt into model messages
-    await injectUserMessageWithKnowledgeSearchPrompt({
-      modelMessages,
-      assistant,
-      assistantMsgId: request.assistantMsgId,
-      topicId: request.topicId,
-      blockManager: request.blockManager,
-      setCitationBlockId: request.callbacks.setCitationBlockId!
-    })
 
     await fetchChatCompletion({
       messages: modelMessages,

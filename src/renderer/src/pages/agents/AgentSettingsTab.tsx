@@ -2,17 +2,13 @@ import EditableNumber from '@renderer/components/EditableNumber'
 import Scrollbar from '@renderer/components/Scrollbar'
 import Selector from '@renderer/components/Selector'
 import { HelpTooltip } from '@renderer/components/TooltipIcons'
-import { UNKNOWN } from '@renderer/config/translate'
 import { useCodeStyle } from '@renderer/context/CodeStyleProvider'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import { useSettings } from '@renderer/hooks/useSettings'
-import useTranslate from '@renderer/hooks/useTranslate'
 import { SettingDivider, SettingRow, SettingRowTitle } from '@renderer/pages/settings'
 import { CollapsibleSettingGroup } from '@renderer/pages/settings/SettingGroup'
 import { useAppDispatch } from '@renderer/store'
-import type { SendMessageShortcut } from '@renderer/store/settings'
 import {
-  setAutoTranslateWithSpace,
   setCodeCollapsible,
   setCodeEditor,
   setCodeExecution,
@@ -33,24 +29,21 @@ import {
   setPasteLongTextAsFile,
   setPasteLongTextThreshold,
   setRenderInputMessageAsMarkdown,
-  setShowTranslateConfirm,
   setThoughtAutoCollapse
 } from '@renderer/store/settings'
 import type { CodeStyleVarious, MathEngine } from '@renderer/types'
 import { ThemeMode } from '@renderer/types'
-import { getSendMessageShortcutLabel } from '@renderer/utils/input'
 import { Col, Row, Slider, Switch } from 'antd'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
 const AgentSettingsTab = () => {
-  const { messageStyle, fontSize, language } = useSettings()
+  const { messageStyle, fontSize } = useSettings()
   const { theme } = useTheme()
   const { themeNames } = useCodeStyle()
 
   const [fontSizeValue, setFontSizeValue] = useState(fontSize)
-  const { translateLanguages } = useTranslate()
 
   const { t } = useTranslation()
 
@@ -58,10 +51,6 @@ const AgentSettingsTab = () => {
 
   const {
     messageFont,
-    sendMessageShortcut,
-    setSendMessageShortcut,
-    targetLanguage,
-    setTargetLanguage,
     pasteLongTextAsFile,
     renderInputMessageAsMarkdown,
     codeShowLineNumbers,
@@ -74,12 +63,10 @@ const AgentSettingsTab = () => {
     codeFancyBlock,
     mathEngine,
     mathEnableSingleDollar,
-    autoTranslateWithSpace,
     pasteLongTextThreshold,
     thoughtAutoCollapse,
     messageNavigation,
     enableQuickPanelTriggers,
-    showTranslateConfirm,
     confirmDeleteMessage,
     confirmRegenerateMessage
   } = useSettings()
@@ -393,28 +380,6 @@ const AgentSettingsTab = () => {
             />
           </SettingRow>
           <SettingDivider />
-          {!language.startsWith('en') && (
-            <>
-              <SettingRow>
-                <SettingRowTitleSmall>{t('settings.input.auto_translate_with_space')}</SettingRowTitleSmall>
-                <Switch
-                  size="small"
-                  checked={autoTranslateWithSpace}
-                  onChange={(checked) => dispatch(setAutoTranslateWithSpace(checked))}
-                />
-              </SettingRow>
-              <SettingDivider />
-            </>
-          )}
-          <SettingRow>
-            <SettingRowTitleSmall>{t('settings.input.show_translate_confirm')}</SettingRowTitleSmall>
-            <Switch
-              size="small"
-              checked={showTranslateConfirm}
-              onChange={(checked) => dispatch(setShowTranslateConfirm(checked))}
-            />
-          </SettingRow>
-          <SettingDivider />
           <SettingRow>
             <SettingRowTitleSmall>{t('settings.messages.input.enable_quick_triggers')}</SettingRowTitleSmall>
             <Switch
@@ -439,33 +404,6 @@ const AgentSettingsTab = () => {
               size="small"
               checked={confirmRegenerateMessage}
               onChange={(checked) => dispatch(setConfirmRegenerateMessage(checked))}
-            />
-          </SettingRow>
-          <SettingDivider />
-          <SettingRow>
-            <SettingRowTitleSmall>{t('settings.input.target_language.label')}</SettingRowTitleSmall>
-            <Selector
-              value={targetLanguage}
-              onChange={(value) => setTargetLanguage(value)}
-              placeholder={UNKNOWN.emoji + ' ' + UNKNOWN.label()}
-              options={translateLanguages.map((item) => {
-                return { value: item.langCode, label: item.emoji + ' ' + item.label() }
-              })}
-            />
-          </SettingRow>
-          <SettingDivider />
-          <SettingRow>
-            <SettingRowTitleSmall>{t('settings.messages.input.send_shortcuts')}</SettingRowTitleSmall>
-            <Selector
-              value={sendMessageShortcut}
-              onChange={(value) => setSendMessageShortcut(value as SendMessageShortcut)}
-              options={[
-                { value: 'Enter', label: getSendMessageShortcutLabel('Enter') },
-                { value: 'Ctrl+Enter', label: getSendMessageShortcutLabel('Ctrl+Enter') },
-                { value: 'Alt+Enter', label: getSendMessageShortcutLabel('Alt+Enter') },
-                { value: 'Command+Enter', label: getSendMessageShortcutLabel('Command+Enter') },
-                { value: 'Shift+Enter', label: getSendMessageShortcutLabel('Shift+Enter') }
-              ]}
             />
           </SettingRow>
         </SettingGroup>

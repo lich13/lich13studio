@@ -5,15 +5,13 @@ import { selectMemoryConfig } from '@renderer/store/memory'
 import type {
   AddMemoryOptions,
   AssistantMessage,
-  KnowledgeBase,
   MemoryHistoryItem,
   MemoryListOptions,
   MemorySearchOptions,
   MemorySearchResult
 } from '@types'
-import { now } from 'lodash'
 
-import { getKnowledgeBaseParams } from './KnowledgeService'
+import { getEmbeddingApiClient } from './EmbeddingApiClientService'
 
 const logger = loggerService.withContext('MemoryService')
 
@@ -210,17 +208,7 @@ class MemoryService {
       const memoryConfig = selectMemoryConfig(store.getState())
       const embeddingModel = memoryConfig.embeddingModel
 
-      // Get knowledge base params for memory
-      const { embedApiClient: embeddingApiClient } = getKnowledgeBaseParams({
-        id: 'memory',
-        name: 'Memory',
-        model: getModel(embeddingModel?.id, embeddingModel?.provider),
-        dimensions: memoryConfig.embeddingDimensions,
-        items: [],
-        created_at: now(),
-        updated_at: now(),
-        version: 1
-      } as KnowledgeBase)
+      const embeddingApiClient = getEmbeddingApiClient(getModel(embeddingModel?.id, embeddingModel?.provider))
 
       return window.api.memory.setConfig({
         ...memoryConfig,

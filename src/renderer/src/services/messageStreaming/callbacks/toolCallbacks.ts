@@ -169,17 +169,6 @@ export const createToolCallbacks = (deps: ToolCallbacksDependencies) => {
           citationBlockId = citationBlock.id
           void blockManager.handleBlockTransition(citationBlock, MessageBlockType.CITATION)
         }
-        if (toolResponse.tool.name === 'builtin_knowledge_search' && toolResponse.response) {
-          const citationBlock = createCitationBlock(
-            assistantMsgId,
-            { knowledge: toolResponse.response },
-            {
-              status: MessageBlockStatus.SUCCESS
-            }
-          )
-          citationBlockId = citationBlock.id
-          void blockManager.handleBlockTransition(citationBlock, MessageBlockType.CITATION)
-        }
       } else {
         logger.warn(
           `[onToolCallComplete] Received unhandled tool status: ${toolResponse.status} for ID: ${toolResponse.id}`

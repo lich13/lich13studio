@@ -85,8 +85,6 @@ const MCPSettings: FC = () => {
                 </ContentWrapper>
               }
             />
-            <Route path="marketplaces" element={<Navigate to="/settings/mcp/servers" replace />} />
-            <Route path="npx-search" element={<Navigate to="/settings/mcp/servers" replace />} />
             <Route path="*" element={<Navigate to="/settings/mcp/servers" replace />} />
           </Routes>
         </RightContainer>
