@@ -1,4 +1,6 @@
 use futures_util::StreamExt;
+use image::codecs::png::PngEncoder;
+use image::{ColorType, ImageEncoder};
 use reqwest::header::{AUTHORIZATION, CONTENT_TYPE};
 use reqwest::Client;
 use roxmltree::Document;
@@ -7,12 +9,14 @@ use rusty_s3::{Bucket, Credentials, S3Action, UrlStyle};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::fs;
+use std::io::Cursor;
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tauri::{Emitter, Window};
 use tokio::process::Command;
 use url::Url;
 use uuid::Uuid;
+use xcap::Window as CaptureWindow;
 
 const APP_NAME: &str = "lich13studio";
 const BUNDLE_ID: &str = "com.lich13.studio";
@@ -132,6 +136,17 @@ struct RemoteBackupFileInfo {
   file_name: String,
   modified_time: String,
   size: u64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CaptureWindowInfo {
+  id: u32,
+  app_name: String,
+  title: String,
+  width: u32,
+  height: u32,
+  is_focused: bool,
 }
 
 fn app_data_dir() -> Result<PathBuf, String> {
@@ -868,6 +883,72 @@ fn resources_dir() -> Result<PathBuf, String> {
   Ok(install_dir()?.join("Contents").join("Resources"))
 }
 
+fn encode_png(image: image::RgbaImage) -> Result<Vec<u8>, String> {
+  let (width, height) = image.dimensions();
+  let rgba = image.into_raw();
+  let mut cursor = Cursor::new(Vec::new());
+  let encoder = PngEncoder::new(&mut cursor);
+
+  encoder
+    .write_image(&rgba, width, height, ColorType::Rgba8.into())
+    .map_err(|error| error.to_string())?;
+
+  Ok(cursor.into_inner())
+}
+
+fn capture_windows() -> Result<Vec<CaptureWindowInfo>, String> {
+  let current_pid = std::process::id();
+  let mut windows = Vec::new();
+
+  for window in CaptureWindow::all().map_err(|error| error.to_string())? {
+    let title = window.title().map_err(|error| error.to_string())?;
+    let title = title.trim().to_string();
+    if title.is_empty() {
+      continue;
+    }
+
+    let app_name = window.app_name().map_err(|error| error.to_string())?;
+    if app_name.eq_ignore_ascii_case(APP_NAME) {
+      continue;
+    }
+
+    let pid = window.pid().map_err(|error| error.to_string())?;
+    if pid == current_pid {
+      continue;
+    }
+
+    let width = window.width().map_err(|error| error.to_string())?;
+    let height = window.height().map_err(|error| error.to_string())?;
+    if width == 0 || height == 0 {
+      continue;
+    }
+
+    let is_minimized = window.is_minimized().map_err(|error| error.to_string())?;
+    if is_minimized {
+      continue;
+    }
+
+    windows.push(CaptureWindowInfo {
+      id: window.id().map_err(|error| error.to_string())?,
+      app_name,
+      title,
+      width,
+      height,
+      is_focused: window.is_focused().map_err(|error| error.to_string())?,
+    });
+  }
+
+  windows.sort_by(|left, right| {
+    right
+      .is_focused
+      .cmp(&left.is_focused)
+      .then_with(|| left.app_name.to_lowercase().cmp(&right.app_name.to_lowercase()))
+      .then_with(|| left.title.to_lowercase().cmp(&right.title.to_lowercase()))
+  });
+
+  Ok(windows)
+}
+
 #[tauri::command]
 fn app_info() -> Result<AppInfo, String> {
   let data_dir = app_data_dir()?;
@@ -959,6 +1040,23 @@ async fn open_path(path: String) -> Result<bool, String> {
   .map_err(|error| error.to_string())?;
 
   Ok(status.success())
+}
+
+#[tauri::command]
+fn list_capture_windows() -> Result<Vec<CaptureWindowInfo>, String> {
+  capture_windows()
+}
+
+#[tauri::command]
+fn capture_window(window_id: u32) -> Result<Vec<u8>, String> {
+  let window = CaptureWindow::all()
+    .map_err(|error| error.to_string())?
+    .into_iter()
+    .find(|window| window.id().ok() == Some(window_id))
+    .ok_or_else(|| String::from("Target window not found"))?;
+
+  let image = window.capture_image().map_err(|error| error.to_string())?;
+  encode_png(image)
 }
 
 #[tauri::command]
@@ -1212,6 +1310,8 @@ pub fn run() {
       export_backup,
       pick_folder,
       open_path,
+      list_capture_windows,
+      capture_window,
       backup_to_local_dir,
       restore_from_local_backup,
       list_local_backup_files,

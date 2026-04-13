@@ -1162,11 +1162,13 @@
       "translating": "翻译中...",
       "capture": {
         "cancelled": "已取消窗口截屏",
+        "current": "当前窗口",
         "failed": "窗口截屏失败",
         "image_required": "当前模型不支持图片分析，请先切换到支持图片的模型",
         "label": "截屏其他应用窗口",
         "pick_window": "请选择要分析的应用窗口",
         "success": "窗口截图已加入输入框",
+        "unavailable": "未找到可截取的应用窗口",
         "unsupported": "当前运行环境不支持窗口截屏"
       },
       "upload": {

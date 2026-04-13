@@ -1,66 +1,61 @@
 import { ActionIconButton } from '@renderer/components/Buttons'
+import { QuickPanelReservedSymbol, useQuickPanel } from '@renderer/components/QuickPanel'
+import type { ToolQuickPanelApi } from '@renderer/pages/home/Inputbar/types'
 import type { FileMetadata } from '@renderer/types'
 import { Tooltip } from 'antd'
-import { Camera } from 'lucide-react'
+import { Camera, Monitor } from 'lucide-react'
 import type { Dispatch, FC, SetStateAction } from 'react'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+type CaptureWindowInfo = {
+  id: number
+  appName: string
+  title: string
+  width: number
+  height: number
+  isFocused: boolean
+}
+
 interface Props {
+  quickPanel: ToolQuickPanelApi
   setFiles: Dispatch<SetStateAction<FileMetadata[]>>
   couldAddImageFile: boolean
 }
 
-const isCaptureCancelled = (error: unknown) => {
-  if (!(error instanceof Error)) return false
-  return ['AbortError', 'NotAllowedError'].includes(error.name)
-}
-
-const captureSingleFrame = async (stream: MediaStream): Promise<Blob> => {
-  const video = document.createElement('video')
-  video.srcObject = stream
-  video.muted = true
-  video.playsInline = true
-
-  await new Promise<void>((resolve, reject) => {
-    video.onloadedmetadata = () => resolve()
-    video.onerror = () => reject(new Error('Failed to load capture stream'))
-  })
-
-  await video.play()
-  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
-
-  const width = video.videoWidth || 1920
-  const height = video.videoHeight || 1080
-  const canvas = document.createElement('canvas')
-  canvas.width = width
-  canvas.height = height
-
-  const context = canvas.getContext('2d')
-  if (!context) {
-    throw new Error('Failed to create screenshot canvas')
-  }
-
-  context.drawImage(video, 0, 0, width, height)
-  video.pause()
-  video.srcObject = null
-
-  const blob = await new Promise<Blob | null>((resolve) => {
-    canvas.toBlob(resolve, 'image/png')
-  })
-
-  if (!blob) {
-    throw new Error('Failed to encode captured screenshot')
-  }
-
-  return blob
-}
-
-const WindowCaptureButton: FC<Props> = ({ setFiles, couldAddImageFile }) => {
+const WindowCaptureButton: FC<Props> = ({ quickPanel, setFiles, couldAddImageFile }) => {
   const { t } = useTranslation()
+  const quickPanelController = useQuickPanel()
   const [capturing, setCapturing] = useState(false)
 
-  const handleCapture = useCallback(async () => {
+  const captureWindow = useCallback(
+    async (target: CaptureWindowInfo) => {
+      if (capturing) {
+        return
+      }
+
+      setCapturing(true)
+
+      try {
+        const result = await window.api.system.captureWindow(target.id)
+        const bytes = result instanceof Uint8Array ? result : new Uint8Array(result)
+        const file = await window.api.file.savePastedImage(bytes, 'png')
+
+        if (file) {
+          setFiles((previousFiles) => [...previousFiles, file])
+          window.toast.success(t('chat.input.capture.success'))
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : t('chat.input.capture.failed')
+        window.toast.error(`${t('chat.input.capture.failed')}: ${message}`)
+      } finally {
+        setCapturing(false)
+      }
+    },
+    [capturing, setFiles, t]
+  )
+
+  const openWindowPicker = useCallback(async () => {
     if (capturing) {
       return
     }
@@ -70,46 +65,67 @@ const WindowCaptureButton: FC<Props> = ({ setFiles, couldAddImageFile }) => {
       return
     }
 
-    if (!navigator.mediaDevices?.getDisplayMedia) {
-      window.toast.error(t('chat.input.capture.unsupported'))
+    let windows: CaptureWindowInfo[] = []
+    try {
+      windows = await window.api.system.listCaptureWindows()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : t('chat.input.capture.failed')
+      window.toast.error(`${t('chat.input.capture.failed')}: ${message}`)
       return
     }
 
-    let stream: MediaStream | null = null
-    setCapturing(true)
-    window.toast.info(t('chat.input.capture.pick_window'))
-
-    try {
-      stream = await navigator.mediaDevices.getDisplayMedia({
-        video: true,
-        audio: false
-      })
-
-      const blob = await captureSingleFrame(stream)
-      const bytes = new Uint8Array(await blob.arrayBuffer())
-      const file = await window.api.file.savePastedImage(bytes, 'png')
-
-      if (file) {
-        setFiles((previousFiles) => [...previousFiles, file])
-        window.toast.success(t('chat.input.capture.success'))
-      }
-    } catch (error) {
-      if (isCaptureCancelled(error)) {
-        window.toast.info(t('chat.input.capture.cancelled'))
-      } else {
-        const message = error instanceof Error ? error.message : t('chat.input.capture.failed')
-        window.toast.error(`${t('chat.input.capture.failed')}: ${message}`)
-      }
-    } finally {
-      stream?.getTracks().forEach((track) => track.stop())
-      setCapturing(false)
+    if (!windows.length) {
+      window.toast.error(t('chat.input.capture.unavailable'))
+      return
     }
-  }, [capturing, couldAddImageFile, setFiles, t])
+
+    if (windows.length === 1) {
+      await captureWindow(windows[0])
+      return
+    }
+
+    quickPanelController.open({
+      title: t('chat.input.capture.pick_window'),
+      list: windows.map((windowInfo) => ({
+        label: windowInfo.title,
+        description: `${windowInfo.appName} · ${windowInfo.width}×${windowInfo.height}`,
+        filterText: `${windowInfo.appName} ${windowInfo.title}`,
+        icon: <Monitor />,
+        action: () => {
+          void captureWindow(windowInfo)
+        },
+        suffix: windowInfo.isFocused ? t('chat.input.capture.current') : undefined
+      })),
+      symbol: QuickPanelReservedSymbol.File
+    })
+  }, [captureWindow, capturing, couldAddImageFile, quickPanelController, t])
+
+  const rootMenuItems = useMemo(
+    () => [
+      {
+        label: t('chat.input.capture.label'),
+        description: '',
+        icon: <Camera />,
+        isMenu: true,
+        action: () => {
+          void openWindowPicker()
+        }
+      }
+    ],
+    [openWindowPicker, t]
+  )
+
+  useEffect(() => {
+    const disposeRootMenu = quickPanel.registerRootMenu(rootMenuItems)
+    return () => {
+      disposeRootMenu()
+    }
+  }, [quickPanel, rootMenuItems])
 
   return (
     <Tooltip placement="top" title={t('chat.input.capture.label')} mouseLeaveDelay={0} arrow>
       <ActionIconButton
-        onClick={handleCapture}
+        onClick={() => void openWindowPicker()}
         disabled={capturing}
         aria-label={t('chat.input.capture.label')}>
         <Camera size={18} />

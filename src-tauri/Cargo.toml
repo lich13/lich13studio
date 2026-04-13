@@ -16,6 +16,7 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 dirs = "6"
 futures-util = "0.3"
+image = { version = "0.25", default-features = false, features = ["png"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
 rfd = "0.15"
 roxmltree = "0.20"
@@ -26,3 +27,4 @@ tauri = { version = "2", features = [] }
 tokio = { version = "1", features = ["process", "time"] }
 url = "2"
 uuid = { version = "1", features = ["v4"] }
+xcap = "0.7"

@@ -177,7 +177,11 @@ const api = {
     getGitBashPath: (): Promise<string | null> => ipcRenderer.invoke(IpcChannel.System_GetGitBashPath),
     getGitBashPathInfo: (): Promise<GitBashPathInfo> => ipcRenderer.invoke(IpcChannel.System_GetGitBashPathInfo),
     setGitBashPath: (newPath: string | null): Promise<boolean> =>
-      ipcRenderer.invoke(IpcChannel.System_SetGitBashPath, newPath)
+      ipcRenderer.invoke(IpcChannel.System_SetGitBashPath, newPath),
+    listCaptureWindows: (): Promise<
+      Array<{ id: number; appName: string; title: string; width: number; height: number; isFocused: boolean }>
+    > => removedFeatureError('Window capture'),
+    captureWindow: (_windowId: number): Promise<number[]> => removedFeatureError('Window capture')
   },
   devTools: {
     toggle: () => ipcRenderer.invoke(IpcChannel.System_ToggleDevTools)

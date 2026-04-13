@@ -1162,11 +1162,13 @@
       "translating": "Translating...",
       "capture": {
         "cancelled": "Window capture cancelled",
+        "current": "Current Window",
         "failed": "Window capture failed",
         "image_required": "The current model does not support image analysis. Switch to a vision-capable model first.",
         "label": "Capture other app window",
         "pick_window": "Choose the app window you want to analyze",
         "success": "Window screenshot added to the input",
+        "unavailable": "No capturable app windows were found",
         "unsupported": "This runtime does not support window capture"
       },
       "upload": {

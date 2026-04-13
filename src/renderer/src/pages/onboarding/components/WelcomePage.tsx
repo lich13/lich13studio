@@ -1,5 +1,5 @@
 import { loggerService } from '@logger'
-import CherryStudioLogo from '@renderer/assets/images/logo.png'
+import AppLogo from '@renderer/assets/images/logo.png'
 import { useAppStore } from '@renderer/store'
 import { Button, Divider } from 'antd'
 import type { FC } from 'react'
@@ -37,7 +37,7 @@ const WelcomePage: FC<WelcomePageProps> = ({ setStep, setProviderConfigured }) =
   return (
     <div className="flex h-full w-full flex-col items-center justify-center">
       <div className="flex flex-col items-center gap-6">
-        <img src={CherryStudioLogo} alt="lich13studio" className="h-16 w-16 rounded-xl" />
+        <img src={AppLogo} alt="lich13studio" className="h-16 w-16 rounded-xl" />
 
         <div className="flex flex-col items-center gap-2">
           <h1 className="m-0 font-semibold text-(--color-text) text-2xl">{t('onboarding.welcome.title')}</h1>

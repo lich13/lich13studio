@@ -364,7 +364,17 @@ const api = {
     checkGitBash: async () => false,
     getGitBashPath: async () => null,
     getGitBashPathInfo: async () => ({ path: null, source: 'tauri', exists: false }),
-    setGitBashPath: async () => false
+    setGitBashPath: async () => false,
+    listCaptureWindows: async () => {
+      if (!invoke) return []
+      return invoke('list_capture_windows')
+    },
+    captureWindow: async (windowId: number) => {
+      if (!invoke) {
+        throw new Error('Window capture is unavailable in preview mode')
+      }
+      return invoke('capture_window', { windowId })
+    }
   },
   devTools: {
     toggle: async () => undefined

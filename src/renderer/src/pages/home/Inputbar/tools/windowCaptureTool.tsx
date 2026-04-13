@@ -9,8 +9,12 @@ const windowCaptureTool = defineTool({
     state: ['couldAddImageFile'] as const,
     actions: ['setFiles'] as const
   },
-  render: ({ state, actions }) => (
-    <WindowCaptureButton couldAddImageFile={state.couldAddImageFile} setFiles={actions.setFiles} />
+  render: ({ state, actions, quickPanel }) => (
+    <WindowCaptureButton
+      couldAddImageFile={state.couldAddImageFile}
+      quickPanel={quickPanel}
+      setFiles={actions.setFiles}
+    />
   )
 })
 
