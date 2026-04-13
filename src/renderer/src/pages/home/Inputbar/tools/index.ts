@@ -2,6 +2,7 @@
 // Import all tool definitions to register them
 
 import './attachmentTool'
+import './windowCaptureTool'
 import './mentionModelsTool'
 import './newTopicTool'
 import './quickPhrasesTool'
@@ -9,10 +10,6 @@ import './thinkingTool'
 import './webSearchTool'
 import './urlContextTool'
 import './mcpToolsTool'
-import './generateImageTool'
-import './clearTopicTool'
-import './toggleExpandTool'
-import './newContextTool'
 // Agent Session tools
 import './createSessionTool'
 import './slashCommandsTool'

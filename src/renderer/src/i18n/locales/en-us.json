@@ -1160,6 +1160,15 @@
       "topics": " Topics ",
       "translate": "Translate to {{target_language}}",
       "translating": "Translating...",
+      "capture": {
+        "cancelled": "Window capture cancelled",
+        "failed": "Window capture failed",
+        "image_required": "The current model does not support image analysis. Switch to a vision-capable model first.",
+        "label": "Capture other app window",
+        "pick_window": "Choose the app window you want to analyze",
+        "success": "Window screenshot added to the input",
+        "unsupported": "This runtime does not support window capture"
+      },
       "upload": {
         "attachment": "Upload attachment",
         "document": "Upload document file (model does not support images)",

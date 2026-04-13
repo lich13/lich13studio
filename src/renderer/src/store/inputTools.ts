@@ -29,14 +29,14 @@ export const DEFAULT_TOOL_ORDER: ToolOrder = {
   visible: [
     'new_topic',
     'attachment',
+    'window_capture',
+    'quick_phrases',
     'thinking',
     'web_search',
     'url_context',
-    'mcp_tools',
-    'generate_image',
-    'mention_models'
+    'mcp_tools'
   ],
-  hidden: ['quick_phrases', 'clear_topic', 'toggle_expand', 'new_context']
+  hidden: []
 }
 
 // Default tool order per scope
@@ -45,11 +45,11 @@ export const DEFAULT_TOOL_ORDER: ToolOrder = {
 export const DEFAULT_TOOL_ORDER_BY_SCOPE: Record<InputbarScope, ToolOrder> = {
   [TopicType.Chat]: DEFAULT_TOOL_ORDER,
   [TopicType.Session]: {
-    visible: ['create_session', 'permission_mode', 'slash_commands', 'attachment'],
+    visible: ['create_session', 'permission_mode', 'slash_commands', 'attachment', 'window_capture'],
     hidden: []
   },
   'mini-window': {
-    visible: ['attachment', 'mention_models', 'quick_phrases'],
+    visible: ['attachment', 'window_capture', 'quick_phrases'],
     hidden: []
   }
 }

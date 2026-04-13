@@ -354,7 +354,8 @@ const api = {
     openExternal: async (url: string) => window.open(url, '_blank', 'noopener,noreferrer')
   },
   notification: {
-    send: async () => true
+    send: async () => true,
+    onClick: () => createCleanup()
   },
   system: {
     getDeviceType: async () => 'desktop',
@@ -377,6 +378,7 @@ const api = {
   },
   storeSync: {
     onUpdate: noOpAsync,
+    onBroadcast: () => createCleanup(),
     subscribe: noOpAsync,
     unsubscribe: noOpAsync
   },
@@ -437,7 +439,10 @@ const api = {
     renameDir: async () => true,
     read: async (fileId: string) => {
       const cached = await getCachedFile(fileId)
-      if (!cached) return ''
+      if (!cached) {
+        const stored = localStorage.getItem(`file:${fileId}`)
+        return stored ?? (fileId === 'custom-minapps.json' ? '[]' : '')
+      }
       cached.text = cached.text ?? (await readBlobAsText(cached.blob))
       return cached.text
     },
@@ -736,6 +741,8 @@ const api = {
     listResources: async () => [],
     getServerVersion: async () => 'tauri-runtime',
     getServerLogs: async () => [],
+    onServersChanged: () => createCleanup(),
+    onServerAdded: () => createCleanup(),
     onServerLog: () => createCleanup(),
     restartServer: async () => true,
     removeServer: async () => true,
@@ -774,6 +781,9 @@ if (isTauriRuntime) {
 
   globalWindow.api = new Proxy(api, {
     get(target, prop: string) {
+      if (typeof prop === 'string' && prop.startsWith('on') && !(prop in target)) {
+        return () => createCleanup()
+      }
       if (prop in target) {
         return target[prop]
       }

@@ -39,6 +39,28 @@
     </div>
     <script>
       console.time('init')
+      const createCleanup = () => () => {}
+      const createCallableProxy = (path = 'api') =>
+        new Proxy(
+          function () {
+            return Promise.resolve(undefined)
+          },
+          {
+            get(_target, prop) {
+              if (prop === 'then') return undefined
+              if (prop === 'toJSON') {
+                return () => path
+              }
+              if (typeof prop === 'string' && prop.startsWith('on')) {
+                return () => createCleanup()
+              }
+              return createCallableProxy(`${path}.${String(prop)}`)
+            },
+            apply() {
+              return Promise.resolve(undefined)
+            }
+          }
+        )
       window.electron =
         window.electron ||
         ({
@@ -52,24 +74,13 @@
           }
         })
       window.api =
-        window.api ||
-        ({
-          file: {
-            read: async (id) => localStorage.getItem(`file:${id}`) || '[]',
-            writeWithId: async (id, content) => {
-              localStorage.setItem(`file:${id}`, content)
-              return true
-            }
-          },
-          backup: {},
-          mcp: {},
-          config: {},
-          trace: {},
-          windowControls: {},
-          window: {},
-          system: {},
-          searchService: {}
-        })
+        window.api || createCallableProxy('api')
+      window.api.file = window.api.file || createCallableProxy('api.file')
+      window.api.file.read = async (id) => localStorage.getItem(`file:${id}`) || '[]'
+      window.api.file.writeWithId = async (id, content) => {
+        localStorage.setItem(`file:${id}`, content)
+        return true
+      }
     </script>
     <script type="module" src="/src/tauri-shim.ts"></script>
     <script type="module" src="/src/init.ts"></script>
