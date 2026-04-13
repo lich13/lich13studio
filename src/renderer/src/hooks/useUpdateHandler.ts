@@ -3,7 +3,6 @@ import { NotificationService } from '@renderer/services/NotificationService'
 import { useAppDispatch } from '@renderer/store'
 import { setUpdateState } from '@renderer/store/runtime'
 import { uuid } from '@renderer/utils'
-import { IpcChannel } from '@shared/IpcChannel'
 import type { ProgressInfo, UpdateInfo } from 'builder-util-runtime'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -23,18 +22,14 @@ export default function useUpdateHandler() {
   }, [update.manualCheck])
 
   useEffect(() => {
-    if (!window.electron) return
-
-    const ipcRenderer = window.electron.ipcRenderer
-
     const removers = [
-      ipcRenderer.on(IpcChannel.UpdateNotAvailable, () => {
+      window.api.update.onNotAvailable(() => {
         dispatch(setUpdateState({ checking: false, manualCheck: false }))
         if (manualCheckRef.current) {
           window.toast.success(t('settings.about.updateNotAvailable'))
         }
       }),
-      ipcRenderer.on(IpcChannel.UpdateAvailable, (_, releaseInfo: UpdateInfo) => {
+      window.api.update.onAvailable((releaseInfo: UpdateInfo) => {
         void notificationService.send({
           id: uuid(),
           type: 'info',
@@ -53,7 +48,7 @@ export default function useUpdateHandler() {
           })
         )
       }),
-      ipcRenderer.on(IpcChannel.DownloadUpdate, () => {
+      window.api.update.onDownloadStart(() => {
         dispatch(
           setUpdateState({
             checking: false,
@@ -61,7 +56,7 @@ export default function useUpdateHandler() {
           })
         )
       }),
-      ipcRenderer.on(IpcChannel.DownloadProgress, (_, progress: ProgressInfo) => {
+      window.api.update.onDownloadProgress((progress: ProgressInfo) => {
         dispatch(
           setUpdateState({
             downloading: progress.percent < 100,
@@ -69,7 +64,7 @@ export default function useUpdateHandler() {
           })
         )
       }),
-      ipcRenderer.on(IpcChannel.UpdateDownloaded, (_, releaseInfo: UpdateInfo) => {
+      window.api.update.onDownloaded((releaseInfo: UpdateInfo) => {
         dispatch(
           setUpdateState({
             downloading: false,
@@ -82,7 +77,7 @@ export default function useUpdateHandler() {
           void UpdateDialogPopup.show({ releaseInfo })
         }
       }),
-      ipcRenderer.on(IpcChannel.UpdateError, (_, error) => {
+      window.api.update.onError((error) => {
         dispatch(
           setUpdateState({
             checking: false,

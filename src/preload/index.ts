@@ -47,6 +47,7 @@ import type {
   ThemeMode,
   WebDavConfig
 } from '@types'
+import type { ProgressInfo, UpdateInfo } from 'builder-util-runtime'
 import type { OpenDialogOptions } from 'electron'
 import { contextBridge, ipcRenderer, shell, webUtils } from 'electron'
 import type { CreateDirectoryOptions } from 'webdav'
@@ -165,7 +166,8 @@ const api = {
     requestProcessTrust: (): Promise<boolean> => ipcRenderer.invoke(IpcChannel.App_MacRequestProcessTrust)
   },
   notification: {
-    send: (notification: Notification) => ipcRenderer.invoke(IpcChannel.Notification_Send, notification)
+    send: (notification: Notification) => ipcRenderer.invoke(IpcChannel.Notification_Send, notification),
+    onClick: (callback: (notification: Notification) => void) => addIpcListener('notification-click', callback)
   },
   system: {
     getDeviceType: () => ipcRenderer.invoke(IpcChannel.System_GetDeviceType),
@@ -219,7 +221,11 @@ const api = {
     createLanTransferBackup: (data: string, destinationPath?: string): Promise<string> =>
       ipcRenderer.invoke(IpcChannel.Backup_CreateLanTransferBackup, data, destinationPath),
     deleteLanTransferBackup: (filePath: string): Promise<boolean> =>
-      ipcRenderer.invoke(IpcChannel.Backup_DeleteLanTransferBackup, filePath)
+      ipcRenderer.invoke(IpcChannel.Backup_DeleteLanTransferBackup, filePath),
+    onProgress: (callback: (data: { stage: string; progress: number; total: number }) => void) =>
+      addIpcListener(IpcChannel.BackupProgress, callback),
+    onRestoreProgress: (callback: (data: { stage: string; progress: number; total: number }) => void) =>
+      addIpcListener(IpcChannel.RestoreProgress, callback)
   },
   file: {
     select: (options?: OpenDialogOptions): Promise<FileMetadata[] | null> =>
@@ -386,7 +392,8 @@ const api = {
     hide: () => ipcRenderer.invoke(IpcChannel.MiniWindow_Hide),
     close: () => ipcRenderer.invoke(IpcChannel.MiniWindow_Close),
     toggle: () => ipcRenderer.invoke(IpcChannel.MiniWindow_Toggle),
-    setPin: (isPinned: boolean) => ipcRenderer.invoke(IpcChannel.MiniWindow_SetPin, isPinned)
+    setPin: (isPinned: boolean) => ipcRenderer.invoke(IpcChannel.MiniWindow_SetPin, isPinned),
+    onShow: (callback: () => void) => addIpcListener(IpcChannel.ShowMiniWindow, callback)
   },
   aes: {
     encrypt: (text: string, secretKey: string, iv: string) =>
@@ -555,7 +562,11 @@ const api = {
       updatedInput?: Record<string, unknown>
       message?: string
       updatedPermissions?: PermissionUpdate[]
-    }) => ipcRenderer.invoke(IpcChannel.AgentToolPermission_Response, payload)
+    }) => ipcRenderer.invoke(IpcChannel.AgentToolPermission_Response, payload),
+    onPermissionRequest: (callback: (payload: any) => void) =>
+      addIpcListener(IpcChannel.AgentToolPermission_Request, callback),
+    onPermissionResult: (callback: (payload: any) => void) =>
+      addIpcListener(IpcChannel.AgentToolPermission_Result, callback)
   },
   agentSessionStream: {
     subscribe: (sessionId: string) => ipcRenderer.invoke(IpcChannel.AgentSessionStream_Subscribe, { sessionId }),
@@ -684,6 +695,7 @@ const api = {
       ipcRenderer.invoke(IpcChannel.Channel_GetStatuses)
   },
   quoteToMainWindow: (text: string) => ipcRenderer.invoke(IpcChannel.App_QuoteToMain, text),
+  onQuoteToMainWindow: (callback: (text: string) => void) => addIpcListener(IpcChannel.App_QuoteToMain, callback),
   setDisableHardwareAcceleration: (isDisable: boolean) =>
     ipcRenderer.invoke(IpcChannel.App_SetDisableHardwareAcceleration, isDisable),
   setUseSystemTitleBar: (isActive: boolean) => ipcRenderer.invoke(IpcChannel.App_SetUseSystemTitleBar, isActive),
@@ -706,7 +718,23 @@ const api = {
       ipcRenderer.invoke(IpcChannel.TRACE_ADD_END_MESSAGE, spanId, modelName, context),
     cleanLocalData: () => ipcRenderer.invoke(IpcChannel.TRACE_CLEAN_LOCAL_DATA),
     addStreamMessage: (spanId: string, modelName: string, context: string, message: any) =>
-      ipcRenderer.invoke(IpcChannel.TRACE_ADD_STREAM_MESSAGE, spanId, modelName, context, message)
+      ipcRenderer.invoke(IpcChannel.TRACE_ADD_STREAM_MESSAGE, spanId, modelName, context, message),
+    onceSetTrace: (callback: (data: any) => void) => {
+      ipcRenderer.once('set-trace', (_event, data) => callback(data))
+    },
+    onceSetLanguage: (callback: (data: any) => void) => {
+      ipcRenderer.once('set-language', (_event, data) => callback(data))
+    }
+  },
+  update: {
+    onNotAvailable: (callback: () => void) => addIpcListener(IpcChannel.UpdateNotAvailable, callback),
+    onAvailable: (callback: (releaseInfo: UpdateInfo) => void) => addIpcListener(IpcChannel.UpdateAvailable, callback),
+    onDownloadStart: (callback: () => void) => addIpcListener(IpcChannel.DownloadUpdate, callback),
+    onDownloadProgress: (callback: (progress: ProgressInfo) => void) =>
+      addIpcListener(IpcChannel.DownloadProgress, callback),
+    onDownloaded: (callback: (releaseInfo: UpdateInfo) => void) =>
+      addIpcListener(IpcChannel.UpdateDownloaded, callback),
+    onError: (callback: (error: any) => void) => addIpcListener(IpcChannel.UpdateError, callback)
   },
   anthropic_oauth: {
     startOAuthFlow: () => ipcRenderer.invoke(IpcChannel.Anthropic_StartOAuthFlow),

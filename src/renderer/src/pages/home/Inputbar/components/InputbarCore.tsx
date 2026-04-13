@@ -13,7 +13,6 @@ import type { FileMetadata } from '@renderer/types'
 import { classNames } from '@renderer/utils'
 import { formatQuotedText } from '@renderer/utils/formats'
 import { isSendMessageKeyPressed } from '@renderer/utils/input'
-import { IpcChannel } from '@shared/IpcChannel'
 import { Tooltip } from 'antd'
 import TextArea from 'antd/es/input/TextArea'
 import type { TextAreaRef } from 'antd/lib/input/TextArea'
@@ -493,12 +492,7 @@ export const InputbarCore: FC<InputbarCoreProps> = ({
   )
 
   useEffect(() => {
-    const quoteListener = window.electron?.ipcRenderer.on(IpcChannel.App_QuoteToMain, (_, selectedText: string) =>
-      onQuote(selectedText)
-    )
-    return () => {
-      quoteListener?.()
-    }
+    return window.api.onQuoteToMainWindow((selectedText: string) => onQuote(selectedText))
   }, [onQuote])
 
   useEffect(() => {

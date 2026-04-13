@@ -2,7 +2,6 @@ import { loggerService } from '@logger'
 import { getBackupProgressLabel } from '@renderer/i18n/label'
 import { backup, backupToLanTransfer } from '@renderer/services/BackupService'
 import store from '@renderer/store'
-import { IpcChannel } from '@shared/IpcChannel'
 import { Modal, Progress } from 'antd'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -16,10 +15,8 @@ interface Props {
   backupType?: 'direct' | 'lan-transfer'
 }
 
-type ProgressStageType = 'preparing' | 'copying_database' | 'copying_files' | 'compressing' | 'completed'
-
 interface ProgressData {
-  stage: ProgressStageType
+  stage: string
   progress: number
   total: number
 }
@@ -31,13 +28,11 @@ const PopupContainer: React.FC<Props> = ({ resolve, backupType = 'direct' }) => 
   const skipBackupFile = store.getState().settings.skipBackupFile
 
   useEffect(() => {
-    const removeListener = window.electron.ipcRenderer.on(IpcChannel.BackupProgress, (_, data: ProgressData) => {
+    const removeListener = window.api.backup.onProgress((data: ProgressData) => {
       setProgressData(data)
     })
 
-    return () => {
-      removeListener()
-    }
+    return removeListener
   }, [])
 
   const onOk = async () => {

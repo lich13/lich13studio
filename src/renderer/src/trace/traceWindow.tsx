@@ -13,7 +13,7 @@ const App = () => {
   const [title, setTitle] = useState('Call Chain Window')
 
   useEffect(() => {
-    const setTraceHandler = (_, data) => {
+    const setTraceHandler = (data) => {
       if (data?.traceId && data?.topicId) {
         setTraceId(data.traceId)
         setTopicId(data.topicId)
@@ -22,7 +22,7 @@ const App = () => {
       }
     }
 
-    const setLangHandler = (_, data) => {
+    const setLangHandler = (data) => {
       void i18n.changeLanguage(data.lang)
       const newTitle = i18n.t('trace.traceWindow')
       if (newTitle !== title) {
@@ -31,13 +31,10 @@ const App = () => {
       }
     }
 
-    const removeTraceHandler = window.electron.ipcRenderer.once('set-trace', setTraceHandler)
-    const removeLanguageHandler = window.electron.ipcRenderer.once('set-language', setLangHandler)
+    window.api.trace.onceSetTrace(setTraceHandler)
+    window.api.trace.onceSetLanguage(setLangHandler)
 
-    return () => {
-      removeTraceHandler()
-      removeLanguageHandler()
-    }
+    return undefined
   }, [title, reload, modelName, traceId, topicId])
 
   const handleFooterClick = () => {

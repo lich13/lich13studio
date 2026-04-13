@@ -1,6 +1,5 @@
 import { getRestoreProgressLabel } from '@renderer/i18n/label'
 import { restore } from '@renderer/services/BackupService'
-import { IpcChannel } from '@shared/IpcChannel'
 import { Modal, Progress } from 'antd'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -23,13 +22,11 @@ const PopupContainer: React.FC<Props> = ({ resolve }) => {
   const { t } = useTranslation()
 
   useEffect(() => {
-    const removeListener = window.electron.ipcRenderer.on(IpcChannel.RestoreProgress, (_, data: ProgressData) => {
+    const removeListener = window.api.backup.onRestoreProgress((data: ProgressData) => {
       setProgressData(data)
     })
 
-    return () => {
-      removeListener()
-    }
+    return removeListener
   }, [])
 
   const onOk = async () => {

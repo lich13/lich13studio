@@ -15,7 +15,6 @@ import { delay, runAsyncFunction } from '@renderer/utils'
 import { checkDataLimit } from '@renderer/utils'
 import { sendToolApprovalNotification } from '@renderer/utils/userConfirmation'
 import { defaultLanguage } from '@shared/config/constant'
-import { IpcChannel } from '@shared/IpcChannel'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -62,7 +61,7 @@ export function useAppInit() {
   }, [])
 
   useEffect(() => {
-    window.electron.ipcRenderer.on(IpcChannel.App_SaveData, async () => {
+    return window.api.onSaveData(async () => {
       await handleSaveData()
     })
   }, [])
@@ -163,9 +162,7 @@ export function useAppInit() {
   }, [customCss])
 
   useEffect(() => {
-    if (!window.electron?.ipcRenderer) return
-
-    const requestListener = async (_event: Electron.IpcRendererEvent, payload: ToolPermissionRequestPayload) => {
+    const requestListener = async (payload: ToolPermissionRequestPayload) => {
       logger.debug('Renderer received tool permission request', {
         requestId: payload.requestId,
         toolName: payload.toolName,
@@ -209,7 +206,7 @@ export function useAppInit() {
       sendToolApprovalNotification(payload.toolName)
     }
 
-    const resultListener = (_event: Electron.IpcRendererEvent, payload: ToolPermissionResultPayload) => {
+    const resultListener = (payload: ToolPermissionResultPayload) => {
       logger.debug('Renderer received tool permission result', {
         requestId: payload.requestId,
         behavior: payload.behavior,
@@ -246,8 +243,8 @@ export function useAppInit() {
     }
 
     const removeListeners = [
-      window.electron.ipcRenderer.on(IpcChannel.AgentToolPermission_Request, requestListener),
-      window.electron.ipcRenderer.on(IpcChannel.AgentToolPermission_Result, resultListener)
+      window.api.agentTools.onPermissionRequest(requestListener),
+      window.api.agentTools.onPermissionResult(resultListener)
     ]
 
     return () => removeListeners.forEach((removeListener) => removeListener())
