@@ -4,15 +4,11 @@ import IcImageUp from '@renderer/assets/images/paintings/ic_ImageUp.svg'
 import { Navbar, NavbarCenter, NavbarRight } from '@renderer/components/app/Navbar'
 import { HStack } from '@renderer/components/Layout'
 import Scrollbar from '@renderer/components/Scrollbar'
-import TranslateButton from '@renderer/components/TranslateButton'
 import { isMac } from '@renderer/config/constant'
-import { LanguagesEnum } from '@renderer/config/translate'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import { usePaintings } from '@renderer/hooks/usePaintings'
 import { useAllProviders } from '@renderer/hooks/useProvider'
-import { useSettings } from '@renderer/hooks/useSettings'
 import FileManager from '@renderer/services/FileManager'
-import { translateText } from '@renderer/services/TranslateService'
 import { useAppDispatch } from '@renderer/store'
 import { setGenerating } from '@renderer/store/runtime'
 import type { FileMetadata, PaintingsState, PpioPainting } from '@renderer/types'
@@ -80,13 +76,9 @@ const PpioPage: FC<{ Options: string[] }> = ({ Options }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
   const [abortController, setAbortController] = useState<AbortController | null>(null)
-  const [spaceClickCount, setSpaceClickCount] = useState(0)
-  const [isTranslating, setIsTranslating] = useState(false)
 
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
-  const { autoTranslateWithSpace } = useSettings()
-  const spaceClickTimer = useRef<NodeJS.Timeout>(null)
   const textareaRef = useRef<any>(null)
 
   // 模式选项
@@ -317,42 +309,10 @@ const PpioPage: FC<{ Options: string[] }> = ({ Options }) => {
     }
   }
 
-  const handleTranslate = async () => {
-    if (!painting.prompt?.trim() || isTranslating) return
-
-    setIsTranslating(true)
-    try {
-      const translatedText = await translateText(painting.prompt, LanguagesEnum.enUS)
-      if (translatedText) {
-        updatePaintingState({ prompt: translatedText })
-      }
-    } finally {
-      setIsTranslating(false)
-    }
-  }
-
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       void onGenerate()
-    }
-
-    if (e.key === ' ' && autoTranslateWithSpace && !painting.prompt?.trim()) {
-      setSpaceClickCount((prev) => prev + 1)
-
-      if (spaceClickTimer.current) {
-        clearTimeout(spaceClickTimer.current)
-      }
-
-      spaceClickTimer.current = setTimeout(() => {
-        setSpaceClickCount(0)
-      }, 500)
-
-      if (spaceClickCount >= 2) {
-        e.preventDefault()
-        void handleTranslate()
-        setSpaceClickCount(0)
-      }
     }
   }
 
@@ -540,18 +500,11 @@ const PpioPage: FC<{ Options: string[] }> = ({ Options }) => {
               value={painting.prompt}
               spellCheck={false}
               onChange={(e) => updatePaintingState({ prompt: e.target.value })}
-              placeholder={isTranslating ? t('paintings.translating') : t('paintings.prompt_placeholder')}
+              placeholder={t('paintings.prompt_placeholder')}
               onKeyDown={handleKeyDown}
             />
             <Toolbar>
               <ToolbarMenu>
-                <TranslateButton
-                  text={textareaRef.current?.resizableTextArea?.textArea?.value}
-                  onTranslated={(translatedText) => updatePaintingState({ prompt: translatedText })}
-                  disabled={isLoading || isTranslating}
-                  isLoading={isTranslating}
-                  style={{ marginRight: 6, borderRadius: '50%' }}
-                />
                 <SendMessageButton sendMessage={onGenerate} disabled={isLoading} />
               </ToolbarMenu>
             </Toolbar>

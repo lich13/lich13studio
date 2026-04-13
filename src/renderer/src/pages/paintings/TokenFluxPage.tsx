@@ -2,16 +2,12 @@ import { PlusOutlined } from '@ant-design/icons'
 import { loggerService } from '@logger'
 import { Navbar, NavbarCenter, NavbarRight } from '@renderer/components/app/Navbar'
 import Scrollbar from '@renderer/components/Scrollbar'
-import TranslateButton from '@renderer/components/TranslateButton'
 import { isMac } from '@renderer/config/constant'
 import { getProviderLogo } from '@renderer/config/providers'
-import { LanguagesEnum } from '@renderer/config/translate'
 import { usePaintings } from '@renderer/hooks/usePaintings'
 import { useAllProviders } from '@renderer/hooks/useProvider'
 import { useRuntime } from '@renderer/hooks/useRuntime'
-import { useSettings } from '@renderer/hooks/useSettings'
 import FileManager from '@renderer/services/FileManager'
-import { translateText } from '@renderer/services/TranslateService'
 import { useAppDispatch } from '@renderer/store'
 import { setGenerating } from '@renderer/store/runtime'
 import type { TokenFluxPainting } from '@renderer/types'
@@ -44,8 +40,6 @@ const TokenFluxPage: FC<{ Options: string[] }> = ({ Options }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
   const [abortController, setAbortController] = useState<AbortController | null>(null)
-  const [spaceClickCount, setSpaceClickCount] = useState(0)
-  const [isTranslating, setIsTranslating] = useState(false)
 
   const { t, i18n } = useTranslation()
   const providers = useAllProviders()
@@ -59,8 +53,6 @@ const TokenFluxPage: FC<{ Options: string[] }> = ({ Options }) => {
   const { generating } = useRuntime()
   const navigate = useNavigate()
   const location = useLocation()
-  const { autoTranslateWithSpace } = useSettings()
-  const spaceClickTimer = useRef<NodeJS.Timeout>(null)
   const tokenfluxProvider = providers.find((p) => p.id === 'tokenflux')!
   const textareaRef = useRef<any>(null)
   const tokenFluxService = useMemo(
@@ -228,45 +220,7 @@ const TokenFluxPage: FC<{ Options: string[] }> = ({ Options }) => {
     void removePainting('tokenflux_paintings', paintingToDelete)
   }
 
-  const translate = async () => {
-    if (isTranslating) {
-      return
-    }
-
-    if (!painting.prompt) {
-      return
-    }
-
-    try {
-      setIsTranslating(true)
-      const translatedText = await translateText(painting.prompt, LanguagesEnum.enUS)
-      updatePaintingState({ prompt: translatedText })
-    } catch (error) {
-      logger.error('Translation failed:', error as Error)
-    } finally {
-      setIsTranslating(false)
-    }
-  }
-
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (autoTranslateWithSpace && event.key === ' ') {
-      setSpaceClickCount((prev) => prev + 1)
-
-      if (spaceClickTimer.current) {
-        clearTimeout(spaceClickTimer.current)
-      }
-
-      spaceClickTimer.current = setTimeout(() => {
-        setSpaceClickCount(0)
-      }, 200)
-
-      if (spaceClickCount === 2) {
-        setSpaceClickCount(0)
-        setIsTranslating(true)
-        void translate()
-      }
-    }
-  }
+  const handleKeyDown = (_event: React.KeyboardEvent<HTMLTextAreaElement>) => {}
 
   const handleProviderChange = (providerId: string) => {
     const routeName = location.pathname.split('/').pop()
@@ -514,18 +468,11 @@ const TokenFluxPage: FC<{ Options: string[] }> = ({ Options }) => {
               value={painting.prompt || ''}
               spellCheck={false}
               onChange={(e) => updatePaintingState({ prompt: e.target.value })}
-              placeholder={isTranslating ? t('paintings.translating') : t('paintings.prompt_placeholder')}
+              placeholder={t('paintings.prompt_placeholder')}
               onKeyDown={handleKeyDown}
             />
             <Toolbar>
               <ToolbarMenu>
-                <TranslateButton
-                  text={textareaRef.current?.resizableTextArea?.textArea?.value}
-                  onTranslated={(translatedText) => updatePaintingState({ prompt: translatedText })}
-                  disabled={isLoading || isTranslating}
-                  isLoading={isTranslating}
-                  style={{ marginRight: 6, borderRadius: '50%' }}
-                />
                 <SendMessageButton sendMessage={onGenerate} disabled={isLoading} />
               </ToolbarMenu>
             </Toolbar>
