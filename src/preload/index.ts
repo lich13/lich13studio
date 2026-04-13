@@ -96,7 +96,16 @@ export function tracedInvoke(channel: string, spanContext: SpanContext | undefin
   return ipcRenderer.invoke(channel, ...args)
 }
 
-const removedFeatureError = (feature: string) => Promise.reject(new Error(`${feature} has been removed in lich13studio`))
+const removedFeatureError = (feature: string) =>
+  Promise.reject(new Error(`${feature} has been removed in lich13studio`))
+
+const addIpcListener = <T extends any[]>(channel: string, callback: (...args: T) => void) => {
+  const listener = (_event: Electron.IpcRendererEvent, ...args: T) => callback(...args)
+  ipcRenderer.on(channel, listener)
+  return () => {
+    ipcRenderer.off(channel, listener)
+  }
+}
 
 // Custom APIs for renderer
 const api = {
@@ -146,6 +155,11 @@ const api = {
   getSystemFonts: (): Promise<string[]> => ipcRenderer.invoke(IpcChannel.App_GetSystemFonts),
   getIpCountry: (): Promise<string> => ipcRenderer.invoke(IpcChannel.App_GetIpCountry),
   mockCrashRenderProcess: () => ipcRenderer.invoke(IpcChannel.APP_CrashRenderProcess),
+  notifyReduxStoreReady: () => ipcRenderer.invoke(IpcChannel.ReduxStoreReady),
+  onSaveData: (callback: () => void) => addIpcListener(IpcChannel.App_SaveData, callback),
+  onThemeUpdated: (callback: (theme: ThemeMode) => void) => addIpcListener(IpcChannel.ThemeUpdated, callback),
+  onFullScreenStatusChanged: (callback: (isFullscreen: boolean) => void) =>
+    addIpcListener(IpcChannel.FullscreenStatusChanged, callback),
   mac: {
     isProcessTrusted: (): Promise<boolean> => ipcRenderer.invoke(IpcChannel.App_MacIsProcessTrusted),
     requestProcessTrust: (): Promise<boolean> => ipcRenderer.invoke(IpcChannel.App_MacRequestProcessTrust)
@@ -300,12 +314,8 @@ const api = {
     create: (_base: KnowledgeBaseParams, _context?: SpanContext) => removedFeatureError('Knowledge base'),
     reset: (_base: KnowledgeBaseParams) => removedFeatureError('Knowledge base'),
     delete: (_id: string) => removedFeatureError('Knowledge base'),
-    add: (_params: {
-      base: KnowledgeBaseParams
-      item: KnowledgeItem
-      userId?: string
-      forceReload?: boolean
-    }) => removedFeatureError('Knowledge base'),
+    add: (_params: { base: KnowledgeBaseParams; item: KnowledgeItem; userId?: string; forceReload?: boolean }) =>
+      removedFeatureError('Knowledge base'),
     remove: (_params: { uniqueId: string; uniqueIds: string[]; base: KnowledgeBaseParams }) =>
       removedFeatureError('Knowledge base'),
     search: (_params: { search: string; base: KnowledgeBaseParams }, _context?: SpanContext) =>
@@ -332,7 +342,8 @@ const api = {
     setMinimumSize: (width: number, height: number) =>
       ipcRenderer.invoke(IpcChannel.Windows_SetMinimumSize, width, height),
     resetMinimumSize: () => ipcRenderer.invoke(IpcChannel.Windows_ResetMinimumSize),
-    getSize: (): Promise<[number, number]> => ipcRenderer.invoke(IpcChannel.Windows_GetSize)
+    getSize: (): Promise<[number, number]> => ipcRenderer.invoke(IpcChannel.Windows_GetSize),
+    onResize: (callback: (size: [number, number]) => void) => addIpcListener(IpcChannel.Windows_Resize, callback)
   },
   fileService: {
     upload: (provider: Provider, file: FileMetadata): Promise<FileUploadResponse> =>
@@ -411,6 +422,9 @@ const api = {
       ipcRenderer.invoke(IpcChannel.Mcp_GetServerVersion, server),
     getServerLogs: (server: MCPServer): Promise<MCPServerLogEntry[]> =>
       ipcRenderer.invoke(IpcChannel.Mcp_GetServerLogs, server),
+    onServersChanged: (callback: (servers: MCPServer[]) => void) =>
+      addIpcListener(IpcChannel.Mcp_ServersChanged, callback),
+    onServerAdded: (callback: (server: MCPServer) => void) => addIpcListener(IpcChannel.Mcp_AddServer, callback),
     onServerLog: (callback: (log: MCPServerLogEntry & { serverId?: string }) => void) => {
       const listener = (_event: Electron.IpcRendererEvent, log: MCPServerLogEntry & { serverId?: string }) => {
         callback(log)
@@ -749,7 +763,9 @@ const api = {
     start: (): Promise<StartApiServerStatusResult> => removedFeatureError('API server'),
     restart: (): Promise<RestartApiServerStatusResult> => removedFeatureError('API server'),
     stop: (): Promise<StopApiServerStatusResult> => removedFeatureError('API server'),
-    onReady: (_callback: () => void): (() => void) => () => {}
+    onReady:
+      (_callback: () => void): (() => void) =>
+      () => {}
   },
   skill: {
     list: (): Promise<SkillResult<InstalledSkill[]>> => ipcRenderer.invoke(IpcChannel.Skill_List),

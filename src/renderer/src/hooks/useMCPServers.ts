@@ -4,14 +4,13 @@ import type { RootState } from '@renderer/store'
 import store, { useAppDispatch, useAppSelector } from '@renderer/store'
 import { addMCPServer, deleteMCPServer, setMCPServers, updateMCPServer } from '@renderer/store/mcp'
 import type { MCPServer } from '@renderer/types'
-import { IpcChannel } from '@shared/IpcChannel'
 
 // Listen for server changes from main process
-window.electron.ipcRenderer.on(IpcChannel.Mcp_ServersChanged, (_event, servers) => {
+window.api.mcp.onServersChanged((servers) => {
   store.dispatch(setMCPServers(servers))
 })
 
-window.electron.ipcRenderer.on(IpcChannel.Mcp_AddServer, (_event, server: MCPServer) => {
+window.api.mcp.onServerAdded((server: MCPServer) => {
   store.dispatch(addMCPServer(server))
   NavigationService.navigate?.('/settings/mcp')
   NavigationService.navigate?.(`/settings/mcp/settings/${encodeURIComponent(server.id)}`)

@@ -1,13 +1,12 @@
 import { useWebSearchSettings } from '@renderer/hooks/useWebSearchProviders'
 import { SettingDivider, SettingGroup, SettingRow, SettingRowTitle, SettingTitle } from '@renderer/pages/settings'
 import { Select } from 'antd'
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import CutoffSettings from './CutoffSettings'
-import RagSettings from './RagSettings'
 
 const INPUT_BOX_WIDTH_CUTOFF = '200px'
-const INPUT_BOX_WIDTH_RAG = 'min(350px, 60%)'
 
 const CompressionSettings = () => {
   const { t } = useTranslation()
@@ -15,11 +14,16 @@ const CompressionSettings = () => {
 
   const compressionMethodOptions = [
     { value: 'none', label: t('settings.tool.websearch.compression.method.none') },
-    { value: 'cutoff', label: t('settings.tool.websearch.compression.method.cutoff') },
-    { value: 'rag', label: t('settings.tool.websearch.compression.method.rag') }
+    { value: 'cutoff', label: t('settings.tool.websearch.compression.method.cutoff') }
   ]
 
-  const handleCompressionMethodChange = (method: 'none' | 'cutoff' | 'rag') => {
+  useEffect(() => {
+    if (compressionConfig?.method === 'rag') {
+      updateCompressionConfig({ method: 'cutoff' })
+    }
+  }, [compressionConfig?.method, updateCompressionConfig])
+
+  const handleCompressionMethodChange = (method: 'none' | 'cutoff') => {
     updateCompressionConfig({ method })
   }
 
@@ -31,8 +35,8 @@ const CompressionSettings = () => {
       <SettingRow>
         <SettingRowTitle>{t('settings.tool.websearch.compression.method.label')}</SettingRowTitle>
         <Select
-          value={compressionConfig?.method || 'none'}
-          style={{ width: compressionConfig?.method === 'rag' ? INPUT_BOX_WIDTH_RAG : INPUT_BOX_WIDTH_CUTOFF }}
+          value={compressionConfig?.method === 'rag' ? 'cutoff' : (compressionConfig?.method ?? 'none')}
+          style={{ width: INPUT_BOX_WIDTH_CUTOFF }}
           onChange={handleCompressionMethodChange}
           options={compressionMethodOptions}
         />
@@ -40,7 +44,6 @@ const CompressionSettings = () => {
       <SettingDivider />
 
       {compressionConfig?.method === 'cutoff' && <CutoffSettings />}
-      {compressionConfig?.method === 'rag' && <RagSettings />}
     </SettingGroup>
   )
 }

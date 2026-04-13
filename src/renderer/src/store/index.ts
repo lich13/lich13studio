@@ -16,7 +16,6 @@
  */
 import { loggerService } from '@logger'
 import { combineReducers, configureStore } from '@reduxjs/toolkit'
-import { IpcChannel } from '@shared/IpcChannel'
 import { useDispatch, useSelector, useStore } from 'react-redux'
 import { FLUSH, PAUSE, PERSIST, persistReducer, persistStore, PURGE, REGISTER, REHYDRATE } from 'redux-persist'
 import storage from 'redux-persist/lib/storage'
@@ -139,7 +138,7 @@ export const persistor = persistStore(store, undefined, () => {
   }
 
   // Notify main process that Redux store is ready
-  void window.electron?.ipcRenderer?.invoke(IpcChannel.ReduxStoreReady)
+  void window.api.notifyReduxStoreReady()
   logger.info('Redux store ready, notified main process')
 })
 

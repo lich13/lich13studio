@@ -341,7 +341,6 @@ const builtInMcpDescriptionKeyMap: Record<BuiltinMCPServerName, string> = {
   [BuiltinMCPServerNames.braveSearch]: 'settings.mcp.builtinServersDescriptions.brave_search',
   [BuiltinMCPServerNames.fetch]: 'settings.mcp.builtinServersDescriptions.fetch',
   [BuiltinMCPServerNames.filesystem]: 'settings.mcp.builtinServersDescriptions.filesystem',
-  [BuiltinMCPServerNames.difyKnowledge]: 'settings.mcp.builtinServersDescriptions.dify_knowledge',
   [BuiltinMCPServerNames.python]: 'settings.mcp.builtinServersDescriptions.python',
   [BuiltinMCPServerNames.didiMCP]: 'settings.mcp.builtinServersDescriptions.didi_mcp',
   [BuiltinMCPServerNames.browser]: 'settings.mcp.builtinServersDescriptions.browser',

@@ -179,19 +179,6 @@ export const builtinMCPServers: BuiltinMCPServer[] = [
   },
   {
     id: nanoid(),
-    name: BuiltinMCPServerNames.difyKnowledge,
-    type: 'inMemory',
-    isActive: false,
-    env: {
-      DIFY_KEY: 'YOUR_DIFY_KEY'
-    },
-    shouldConfig: true,
-    provider: 'CherryAI',
-    installSource: 'builtin',
-    isTrusted: true
-  },
-  {
-    id: nanoid(),
     name: BuiltinMCPServerNames.python,
     type: 'inMemory',
     isActive: false,

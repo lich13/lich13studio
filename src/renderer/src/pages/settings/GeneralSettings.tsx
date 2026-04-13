@@ -308,11 +308,6 @@ const GeneralSettings: FC = () => {
           <SettingRowTitle>{t('settings.notification.backup')}</SettingRowTitle>
           <Switch checked={notificationSettings.backup} onChange={(v) => handleNotificationChange('backup', v)} />
         </SettingRow>
-        <SettingDivider />
-        <SettingRow>
-          <SettingRowTitle>{t('settings.notification.knowledge_embed')}</SettingRowTitle>
-          <Switch checked={notificationSettings.knowledge} onChange={(v) => handleNotificationChange('knowledge', v)} />
-        </SettingRow>
       </SettingGroup>
       <SettingGroup theme={theme}>
         <SettingTitle>{t('settings.launch.title')}</SettingTitle>

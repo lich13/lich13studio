@@ -1,4 +1,3 @@
-import { IpcChannel } from '@shared/IpcChannel'
 import { useEffect, useState } from 'react'
 
 export function useFullscreen() {
@@ -10,13 +9,11 @@ export function useFullscreen() {
       setIsFullscreen(value)
     })
 
-    const cleanup = window.electron.ipcRenderer.on(IpcChannel.FullscreenStatusChanged, (_, fullscreen) => {
+    const cleanup = window.api.onFullScreenStatusChanged((fullscreen) => {
       setIsFullscreen(fullscreen)
     })
 
-    return () => {
-      cleanup()
-    }
+    return cleanup
   }, [])
 
   return isFullscreen

@@ -856,7 +856,6 @@ export const BuiltinMCPServerNames = {
   braveSearch: '@cherry/brave-search',
   fetch: '@cherry/fetch',
   filesystem: '@cherry/filesystem',
-  difyKnowledge: '@cherry/dify-knowledge',
   python: '@cherry/python',
   didiMCP: '@cherry/didi-mcp',
   browser: '@cherry/browser',

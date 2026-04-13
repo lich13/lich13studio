@@ -1,6 +1,5 @@
 import { loggerService } from '@logger'
 import { MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH } from '@shared/config/constant'
-import { IpcChannel } from '@shared/IpcChannel'
 import { debounce } from 'lodash'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
@@ -42,12 +41,7 @@ export const useWindowSize = () => {
   )
 
   useEffect(() => {
-    // 设置监听器
-    const cleanup = window.electron.ipcRenderer.on(IpcChannel.Windows_Resize, callback)
-
-    return () => {
-      cleanup()
-    }
+    return window.api.window.onResize((size) => callback(undefined, size))
   }, [callback])
 
   // 手动触发一次
