@@ -268,8 +268,7 @@ export async function fetchChatCompletion({
     enableUrlContext: capabilities.enableUrlContext,
     mcpMode,
     mcpTools,
-    uiMessages,
-    knowledgeRecognition: assistant.knowledgeRecognition
+    uiMessages
   }
 
   // Wrap onChunkReceived to automatically track token usage on completion

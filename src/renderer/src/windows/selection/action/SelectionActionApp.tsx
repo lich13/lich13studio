@@ -4,7 +4,6 @@ import { useSettings } from '@renderer/hooks/useSettings'
 import i18n from '@renderer/i18n'
 import type { ActionItem } from '@renderer/types/selectionTypes'
 import { defaultLanguage } from '@shared/config/constant'
-import { IpcChannel } from '@shared/IpcChannel'
 import { Button, Slider, Tooltip } from 'antd'
 import { Droplet, Minus, Pin, X } from 'lucide-react'
 import { DynamicIcon } from 'lucide-react/dynamic'
@@ -39,13 +38,10 @@ const SelectionActionApp: FC = () => {
   const lastScrollHeight = useRef(0)
 
   useEffect(() => {
-    const actionListenRemover = window.electron?.ipcRenderer.on(
-      IpcChannel.Selection_UpdateActionData,
-      (_, actionItem: ActionItem) => {
-        setAction(actionItem)
-        isActionLoaded.current = true
-      }
-    )
+    const actionListenRemover = window.api.selection.onUpdateActionData((actionItem: ActionItem) => {
+      setAction(actionItem)
+      isActionLoaded.current = true
+    })
 
     window.addEventListener('focus', handleWindowFocus)
     window.addEventListener('blur', handleWindowBlur)

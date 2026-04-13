@@ -1,6 +1,5 @@
 import { loggerService } from '@logger'
 import type { Middleware } from '@reduxjs/toolkit'
-import { IpcChannel } from '@shared/IpcChannel'
 import type { StoreSyncAction } from '@types'
 
 const logger = loggerService.withContext('StoreSyncService')
@@ -96,19 +95,16 @@ export class StoreSyncService {
       return
     }
 
-    this.broadcastSyncRemover = window.electron.ipcRenderer.on(
-      IpcChannel.StoreSync_BroadcastSync,
-      (_, action: StoreSyncAction) => {
-        try {
-          // Dispatch to the store
-          if (window.store) {
-            window.store.dispatch(action)
-          }
-        } catch (error) {
-          logger.error('Error dispatching synced action:', error as Error)
+    this.broadcastSyncRemover = window.api.storeSync.onBroadcast((action: StoreSyncAction) => {
+      try {
+        // Dispatch to the store
+        if (window.store) {
+          window.store.dispatch(action)
         }
+      } catch (error) {
+        logger.error('Error dispatching synced action:', error as Error)
       }
-    )
+    })
 
     void window.api.storeSync.subscribe()
 

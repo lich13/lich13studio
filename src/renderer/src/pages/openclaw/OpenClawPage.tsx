@@ -13,7 +13,6 @@ import {
   setLastHealthCheck,
   setSelectedModelUniqId
 } from '@renderer/store/openclaw'
-import { IpcChannel } from '@shared/IpcChannel'
 import { Alert, Avatar, Button, Result, Space, Spin } from 'antd'
 import { Download, ExternalLink, Play, Square } from 'lucide-react'
 import type { FC } from 'react'
@@ -220,12 +219,9 @@ const OpenClawPage: FC = () => {
 
   // Listen for install progress events
   useEffect(() => {
-    const cleanup = window.electron.ipcRenderer.on(
-      IpcChannel.OpenClaw_InstallProgress,
-      (_, data: { message: string; type: 'info' | 'warn' | 'error' }) => {
-        setInstallLogs((prev) => [...prev, data])
-      }
-    )
+    const cleanup = window.api.openclaw.onInstallProgress((data) => {
+      setInstallLogs((prev) => [...prev, data])
+    })
     return cleanup
   }, [])
 

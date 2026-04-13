@@ -8,7 +8,6 @@ import type { MCPToolResponse } from '@renderer/types'
 import type { ToolMessageBlock } from '@renderer/types/newMessage'
 import { isToolAutoApproved } from '@renderer/utils/mcp-tools'
 import type { MCPProgressEvent } from '@shared/config/types'
-import { IpcChannel } from '@shared/IpcChannel'
 import { Collapse, ConfigProvider, Flex, Progress, Tooltip } from 'antd'
 import { message } from 'antd'
 import { Check, ChevronRight, ShieldCheck } from 'lucide-react'
@@ -63,15 +62,12 @@ const MessageMcpTool: FC<Props> = ({ block }) => {
   const isStreaming = status === 'streaming'
 
   useEffect(() => {
-    const removeListener = window.electron.ipcRenderer.on(
-      IpcChannel.Mcp_Progress,
-      (_event: Electron.IpcRendererEvent, data: MCPProgressEvent) => {
-        // Only update progress if this event is for our specific tool call
-        if (data.callId === id) {
-          setProgress(data.progress)
-        }
+    const removeListener = window.api.mcp.onProgress((data: MCPProgressEvent) => {
+      // Only update progress if this event is for our specific tool call
+      if (data.callId === id) {
+        setProgress(data.progress)
       }
-    )
+    })
     return () => {
       setProgress(0)
       removeListener()

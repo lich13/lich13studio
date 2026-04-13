@@ -120,7 +120,10 @@ function normalizeLiteLlmState(state: RootState) {
     if (assistant.model && !state.llm.providers.some((provider) => provider.id === assistant.model?.provider)) {
       assistant.model = getLiteFallbackModel(state)
     }
-    if (assistant.defaultModel && !state.llm.providers.some((provider) => provider.id === assistant.defaultModel?.provider)) {
+    if (
+      assistant.defaultModel &&
+      !state.llm.providers.some((provider) => provider.id === assistant.defaultModel?.provider)
+    ) {
       assistant.defaultModel = getLiteFallbackModel(state)
     }
   })
@@ -2139,7 +2142,8 @@ const migrateConfig = {
   },
   '126': (state: RootState) => {
     try {
-      state.knowledge.bases.forEach((base) => {
+      const knowledgeBases = (state as any).knowledge?.bases ?? []
+      knowledgeBases.forEach((base) => {
         // @ts-ignore eslint-disable-next-line
         if (base.preprocessOrOcrProvider) {
           // @ts-ignore eslint-disable-next-line
@@ -2518,7 +2522,8 @@ const migrateConfig = {
   },
   '147': (state: RootState) => {
     try {
-      state.knowledge.bases.forEach((base) => {
+      const knowledgeBases = (state as any).knowledge?.bases ?? []
+      knowledgeBases.forEach((base) => {
         if ((base as any).framework) {
           delete (base as any).framework
         }
@@ -2540,7 +2545,8 @@ const migrateConfig = {
   },
   '149': (state: RootState) => {
     try {
-      state.knowledge.bases.forEach((base) => {
+      const knowledgeBases = (state as any).knowledge?.bases ?? []
+      knowledgeBases.forEach((base) => {
         if ((base as any).framework) {
           delete (base as any).framework
         }
@@ -2609,7 +2615,8 @@ const migrateConfig = {
   },
   '155': (state: RootState) => {
     try {
-      state.knowledge.bases.forEach((base) => {
+      const knowledgeBases = (state as any).knowledge?.bases ?? []
+      knowledgeBases.forEach((base) => {
         if ((base as any).framework) {
           delete (base as any).framework
         }

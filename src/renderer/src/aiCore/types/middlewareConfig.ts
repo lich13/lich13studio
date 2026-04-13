@@ -24,6 +24,5 @@ export interface AiSdkMiddlewareConfig {
   uiMessages?: Message[]
   webSearchPluginConfig?: WebSearchPluginConfig
   urlContextConfig?: Record<string, any>
-  knowledgeRecognition?: 'off' | 'on'
   mcpMode?: string
 }

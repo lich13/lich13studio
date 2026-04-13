@@ -11,12 +11,15 @@ export const DEFAULT_STREAM_OPTIONS_INCLUDE_USAGE = true
 export const MIN_TOOL_CALLS = 1
 export const MAX_TOOL_CALLS = 100
 
-export const platform = window.electron?.process?.platform
-export const isMac = platform === 'darwin'
-export const isWin = platform === 'win32' || platform === 'win64'
-export const isLinux = platform === 'linux'
-export const isDev = window.electron?.process?.env?.NODE_ENV === 'development'
-export const isProd = window.electron?.process?.env?.NODE_ENV === 'production'
+const userAgent = typeof navigator === 'undefined' ? '' : navigator.userAgent.toLowerCase()
+
+export const isAndroid = userAgent.includes('android')
+export const isMac = userAgent.includes('mac os') || userAgent.includes('macintosh')
+export const isWin = userAgent.includes('windows')
+export const isLinux = userAgent.includes('linux') && !isAndroid
+export const platform = isMac ? 'darwin' : isWin ? 'win32' : isLinux ? 'linux' : undefined
+export const isDev = import.meta.env.DEV
+export const isProd = import.meta.env.PROD
 
 export const SILICON_CLIENT_ID = 'SFaJLLq0y6CAMoyDm81aMu'
 export const PPIO_CLIENT_ID = '37d0828c96b34936a600b62c'

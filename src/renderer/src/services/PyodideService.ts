@@ -281,7 +281,7 @@ class PyodideService {
 export const pyodideService = PyodideService.getInstance()
 
 // Set up IPC handler for main process requests
-if (typeof window !== 'undefined' && window.electron?.ipcRenderer) {
+if (typeof window !== 'undefined' && window.api?.python) {
   interface PythonExecutionRequest {
     id: string
     script: string
@@ -295,20 +295,20 @@ if (typeof window !== 'undefined' && window.electron?.ipcRenderer) {
     error?: string
   }
 
-  window.electron.ipcRenderer.on('python-execution-request', async (_, request: PythonExecutionRequest) => {
+  window.api.python.onExecutionRequest(async (request: PythonExecutionRequest) => {
     try {
       const { text } = await pyodideService.runScript(request.script, request.context, request.timeout)
       const response: PythonExecutionResponse = {
         id: request.id,
         result: text
       }
-      window.electron.ipcRenderer.send('python-execution-response', response)
+      window.api.python.sendExecutionResponse(response)
     } catch (error: unknown) {
       const response: PythonExecutionResponse = {
         id: request.id,
         error: error instanceof Error ? error.message : String(error)
       }
-      window.electron.ipcRenderer.send('python-execution-response', response)
+      window.api.python.sendExecutionResponse(response)
     }
   })
 }

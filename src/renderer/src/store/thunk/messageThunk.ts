@@ -58,7 +58,6 @@ import {
 } from '@renderer/utils/messageUtils/create'
 import { getMainTextContent } from '@renderer/utils/messageUtils/find'
 import { getTopicQueue, waitForTopicQueue } from '@renderer/utils/queue'
-import { IpcChannel } from '@shared/IpcChannel'
 import { defaultAppHeaders } from '@shared/utils'
 import type { TextStreamPart } from 'ai'
 import { t } from 'i18next'
@@ -1068,9 +1067,7 @@ export const loadAgentSessionMessagesThunk =
       dispatch(newMessagesActions.setTopicLoading({ topicId, loading: true }))
 
       // Fetch from agent backend
-      const historicalMessages = await window.electron?.ipcRenderer.invoke(IpcChannel.AgentMessage_GetHistory, {
-        sessionId
-      })
+      const historicalMessages = await window.api.agentMessages.getHistory(sessionId)
 
       if (historicalMessages && Array.isArray(historicalMessages)) {
         const messages: Message[] = []

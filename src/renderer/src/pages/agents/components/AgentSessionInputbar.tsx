@@ -102,7 +102,6 @@ const AgentSessionInputbar = ({ agentId, sessionId }: Props) => {
   const initialState = useMemo(
     () => ({
       mentionedModels: [],
-      selectedKnowledgeBases: [],
       files: [] as FileMetadata[],
       isExpanded: false
     }),

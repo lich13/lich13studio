@@ -3,7 +3,7 @@ import { convertMessagesToSdkMessages } from '@renderer/aiCore/prepareParams'
 import type { Assistant, Message } from '@renderer/types'
 import { filterAdjacentUserMessaegs, filterLastAssistantMessage } from '@renderer/utils/messageUtils/filters'
 import type { ModelMessage } from 'ai'
-import { findLast, isEmpty, takeRight } from 'lodash'
+import { findLast, takeRight } from 'lodash'
 
 import { getAssistantSettings, getDefaultModel } from './AssistantService'
 import {
@@ -67,9 +67,5 @@ export class ConversationService {
 
   static needsWebSearch(assistant: Assistant): boolean {
     return !!assistant.webSearchProviderId
-  }
-
-  static needsKnowledgeSearch(assistant: Assistant): boolean {
-    return !isEmpty(assistant.knowledge_bases)
   }
 }

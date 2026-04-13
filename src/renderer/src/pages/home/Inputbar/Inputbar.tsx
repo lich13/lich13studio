@@ -32,13 +32,7 @@ import { estimateTextTokens as estimateTxtTokens, estimateUserPromptUsage } from
 import WebSearchService from '@renderer/services/WebSearchService'
 import { useAppDispatch, useAppSelector } from '@renderer/store'
 import { sendMessage as _sendMessage } from '@renderer/store/thunk/messageThunk'
-import {
-  type Assistant,
-  type FileMetadata,
-  type Model,
-  type Topic,
-  TopicType
-} from '@renderer/types'
+import { type Assistant, type FileMetadata, type Model, type Topic, TopicType } from '@renderer/types'
 import type { MessageInputBaseParams } from '@renderer/types/newMessage'
 import { delay } from '@renderer/utils'
 import { getSendMessageShortcutLabel } from '@renderer/utils/input'
@@ -102,12 +96,11 @@ const Inputbar: FC<Props> = ({ assistant: initialAssistant, setActiveTopic, topi
     () => ({
       files: [] as FileMetadata[],
       mentionedModels: initialMentionedModels,
-      selectedKnowledgeBases: initialAssistant.knowledge_bases ?? [],
       isExpanded: false,
       couldAddImageFile: false,
       extensions: [] as string[]
     }),
-    [initialMentionedModels, initialAssistant.knowledge_bases]
+    [initialMentionedModels]
   )
 
   return (
@@ -136,7 +129,7 @@ const InputbarInner: FC<InputbarInnerProps> = ({ assistant: initialAssistant, se
   const config = getInputbarConfig(scope)
 
   const { files, mentionedModels } = useInputbarToolsState()
-  const { setFiles, setMentionedModels, setSelectedKnowledgeBases } = useInputbarToolsDispatch()
+  const { setFiles, setMentionedModels } = useInputbarToolsDispatch()
   const { setCouldAddImageFile } = useInputbarToolsInternalDispatch()
 
   const { text, setText } = useInputText({
@@ -410,17 +403,11 @@ const InputbarInner: FC<InputbarInnerProps> = ({ assistant: initialAssistant, se
   }, [
     topic.id,
     assistant.mcpServers,
-    assistant.knowledge_bases,
     assistant.enableWebSearch,
     assistant.webSearchProviderId,
     mentionedModels,
     focusTextarea
   ])
-
-  // TODO: Just use assistant.knowledge_bases as selectedKnowledgeBases. context state is overdesigned.
-  useEffect(() => {
-    setSelectedKnowledgeBases(assistant.knowledge_bases ?? [])
-  }, [assistant.knowledge_bases, setSelectedKnowledgeBases])
 
   useEffect(() => {
     // Disable web search if model doesn't support it

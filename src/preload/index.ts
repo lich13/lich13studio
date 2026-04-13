@@ -429,6 +429,7 @@ const api = {
       ipcRenderer.invoke(IpcChannel.Mcp_GetServerVersion, server),
     getServerLogs: (server: MCPServer): Promise<MCPServerLogEntry[]> =>
       ipcRenderer.invoke(IpcChannel.Mcp_GetServerLogs, server),
+    onProgress: (callback: (data: any) => void) => addIpcListener(IpcChannel.Mcp_Progress, callback),
     onServersChanged: (callback: (servers: MCPServer[]) => void) =>
       addIpcListener(IpcChannel.Mcp_ServersChanged, callback),
     onServerAdded: (callback: (server: MCPServer) => void) => addIpcListener(IpcChannel.Mcp_AddServer, callback),
@@ -442,7 +443,9 @@ const api = {
   },
   python: {
     execute: (script: string, context?: Record<string, any>, timeout?: number) =>
-      ipcRenderer.invoke(IpcChannel.Python_Execute, script, context, timeout)
+      ipcRenderer.invoke(IpcChannel.Python_Execute, script, context, timeout),
+    onExecutionRequest: (callback: (request: any) => void) => addIpcListener('python-execution-request', callback),
+    sendExecutionResponse: (response: any) => ipcRenderer.send('python-execution-response', response)
   },
   shell: {
     openExternal: (url: string, options?: Electron.OpenExternalOptions) => {
@@ -530,7 +533,8 @@ const api = {
   storeSync: {
     subscribe: () => ipcRenderer.invoke(IpcChannel.StoreSync_Subscribe),
     unsubscribe: () => ipcRenderer.invoke(IpcChannel.StoreSync_Unsubscribe),
-    onUpdate: (action: any) => ipcRenderer.invoke(IpcChannel.StoreSync_OnUpdate, action)
+    onUpdate: (action: any) => ipcRenderer.invoke(IpcChannel.StoreSync_OnUpdate, action),
+    onBroadcast: (callback: (action: any) => void) => addIpcListener(IpcChannel.StoreSync_BroadcastSync, callback)
   },
   selection: {
     hideToolbar: () => ipcRenderer.invoke(IpcChannel.Selection_ToolbarHide),
@@ -553,7 +557,12 @@ const api = {
     // [Windows only] Electron bug workaround - can be removed once https://github.com/electron/electron/issues/48554 is fixed
     resizeActionWindow: (deltaX: number, deltaY: number, direction: string) =>
       ipcRenderer.invoke(IpcChannel.Selection_ActionWindowResize, deltaX, deltaY, direction),
-    getLinuxEnvInfo: () => ipcRenderer.invoke(IpcChannel.Selection_GetLinuxEnvInfo)
+    getLinuxEnvInfo: () => ipcRenderer.invoke(IpcChannel.Selection_GetLinuxEnvInfo),
+    onTextSelected: (callback: (data: any) => void) => addIpcListener(IpcChannel.Selection_TextSelected, callback),
+    onToolbarVisibilityChange: (callback: (visible: boolean) => void) =>
+      addIpcListener(IpcChannel.Selection_ToolbarVisibilityChange, callback),
+    onUpdateActionData: (callback: (actionItem: ActionItem) => void) =>
+      addIpcListener(IpcChannel.Selection_UpdateActionData, callback)
   },
   agentTools: {
     respondToPermission: (payload: {
@@ -567,6 +576,10 @@ const api = {
       addIpcListener(IpcChannel.AgentToolPermission_Request, callback),
     onPermissionResult: (callback: (payload: any) => void) =>
       addIpcListener(IpcChannel.AgentToolPermission_Result, callback)
+  },
+  agentMessages: {
+    getHistory: (sessionId: string) => ipcRenderer.invoke(IpcChannel.AgentMessage_GetHistory, { sessionId }),
+    persistExchange: (payload: any) => ipcRenderer.invoke(IpcChannel.AgentMessage_PersistExchange, payload)
   },
   agentSessionStream: {
     subscribe: (sessionId: string) => ipcRenderer.invoke(IpcChannel.AgentSessionStream_Subscribe, { sessionId }),
@@ -861,7 +874,9 @@ const api = {
       latestVersion: string | null
       message?: string
     }> => ipcRenderer.invoke(IpcChannel.OpenClaw_CheckUpdate),
-    performUpdate: (): Promise<OperationResult> => ipcRenderer.invoke(IpcChannel.OpenClaw_PerformUpdate)
+    performUpdate: (): Promise<OperationResult> => ipcRenderer.invoke(IpcChannel.OpenClaw_PerformUpdate),
+    onInstallProgress: (callback: (data: { message: string; type: 'info' | 'warn' | 'error' }) => void) =>
+      addIpcListener(IpcChannel.OpenClaw_InstallProgress, callback)
   },
   analytics: {
     trackTokenUsage: (data: TokenUsageData) => ipcRenderer.invoke(IpcChannel.Analytics_TrackTokenUsage, data)

@@ -1,13 +1,12 @@
 /* eslint-disable no-restricted-syntax */
 import type { LogContextData, LogLevel, LogSourceWithContext } from '@shared/config/logger'
 import { LEVEL, LEVEL_MAP } from '@shared/config/logger'
-import { IpcChannel } from '@shared/IpcChannel'
 
 // check if the current process is a worker
 const IS_WORKER = typeof window === 'undefined'
 // check if we are in the dev env
 // DO NOT use `constants.ts` here, because the files contains other dependencies that will fail in worker process
-const IS_DEV = IS_WORKER ? false : window.electron?.process?.env?.NODE_ENV === 'development'
+const IS_DEV = IS_WORKER ? false : import.meta.env.DEV
 
 const DEFAULT_LEVEL = IS_DEV ? LEVEL.SILLY : LEVEL.INFO
 const MAIN_LOG_LEVEL = LEVEL.WARN
@@ -35,31 +34,8 @@ class LoggerService {
 
   private constructor() {
     if (IS_DEV) {
-      if (
-        window.electron?.process?.env?.CSLOGGER_RENDERER_LEVEL &&
-        Object.values(LEVEL).includes(window.electron?.process?.env?.CSLOGGER_RENDERER_LEVEL as LogLevel)
-      ) {
-        this.envLevel = window.electron?.process?.env?.CSLOGGER_RENDERER_LEVEL as LogLevel
-
-        console.log(
-          `%c[LoggerService] env CSLOGGER_RENDERER_LEVEL loaded: ${this.envLevel}`,
-          'color: blue; font-weight: bold'
-        )
-      }
-
-      if (window.electron?.process?.env?.CSLOGGER_RENDERER_SHOW_MODULES) {
-        const showModules = window.electron?.process?.env?.CSLOGGER_RENDERER_SHOW_MODULES.split(',')
-          .map((module) => module.trim())
-          .filter((module) => module !== '')
-        if (showModules.length > 0) {
-          this.envShowModules = showModules
-
-          console.log(
-            `%c[LoggerService] env CSLOGGER_RENDERER_SHOW_MODULES loaded: ${this.envShowModules.join(' ')}`,
-            'color: blue; font-weight: bold'
-          )
-        }
-      }
+      this.envLevel = LEVEL.NONE
+      this.envShowModules = []
     }
   }
 
@@ -185,7 +161,7 @@ class LoggerService {
 
       // In renderer process, use window.api.logToMain to send log to main process
       if (!IS_WORKER) {
-        void window.electron.ipcRenderer.invoke(IpcChannel.App_LogToMain, source, level, message, data)
+        void window.api.logToMain(source, level, message, data)
       } else {
         //TODO support worker to send log to main process
       }

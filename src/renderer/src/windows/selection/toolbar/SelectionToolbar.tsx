@@ -8,7 +8,6 @@ import { useTimer } from '@renderer/hooks/useTimer'
 import i18n from '@renderer/i18n'
 import type { ActionItem } from '@renderer/types/selectionTypes'
 import { defaultLanguage } from '@shared/config/constant'
-import { IpcChannel } from '@shared/IpcChannel'
 import { Avatar } from 'antd'
 import { ClipboardCheck, ClipboardCopy, ClipboardX, MessageSquareHeart } from 'lucide-react'
 import { DynamicIcon } from 'lucide-react/dynamic'
@@ -140,27 +139,23 @@ const SelectionToolbar: FC<{ demo?: boolean }> = ({ demo = false }) => {
   useEffect(() => {
     const cleanups: (() => void)[] = []
     // TextSelection
-    const textSelectionListenRemover = window.electron?.ipcRenderer.on(
-      IpcChannel.Selection_TextSelected,
-      (_, selectionData: TextSelectionData) => {
-        selectedText.current = selectionData.text
-        isFullScreen.current = selectionData.isFullscreen ?? false
-        const cleanup = setTimeoutTimer(
-          'textSelection',
-          () => {
-            //make sure the animation is active
-            setAnimateKey((prev) => prev + 1)
-          },
-          400
-        )
-        cleanups.push(cleanup)
-      }
-    )
+    const textSelectionListenRemover = window.api.selection.onTextSelected((selectionData: TextSelectionData) => {
+      selectedText.current = selectionData.text
+      isFullScreen.current = selectionData.isFullscreen ?? false
+      const cleanup = setTimeoutTimer(
+        'textSelection',
+        () => {
+          //make sure the animation is active
+          setAnimateKey((prev) => prev + 1)
+        },
+        400
+      )
+      cleanups.push(cleanup)
+    })
 
     // ToolbarVisibilityChange
-    const toolbarVisibilityChangeListenRemover = window.electron?.ipcRenderer.on(
-      IpcChannel.Selection_ToolbarVisibilityChange,
-      (_, isVisible: boolean) => {
+    const toolbarVisibilityChangeListenRemover = window.api.selection.onToolbarVisibilityChange(
+      (isVisible: boolean) => {
         if (!isVisible) {
           if (!demo) updateWindowSize()
           onHideCleanUp()

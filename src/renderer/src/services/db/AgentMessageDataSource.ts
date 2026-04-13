@@ -19,7 +19,6 @@ import store from '@renderer/store'
 import type { AgentPersistedMessage } from '@renderer/types/agent'
 import type { Message, MessageBlock } from '@renderer/types/newMessage'
 import { MessageBlockType } from '@renderer/types/newMessage'
-import { IpcChannel } from '@shared/IpcChannel'
 import { throttle } from 'lodash'
 import { LRUCache } from 'lru-cache'
 
@@ -62,6 +61,19 @@ const messagePersistThrottlers = new LRUCache<string, ReturnType<typeof throttle
  * Handles agent session messages through backend communication
  */
 export class AgentMessageDataSource implements MessageDataSource {
+  private async getHistory(sessionId: string): Promise<AgentPersistedMessage[]> {
+    return window.api.agentMessages.getHistory(sessionId)
+  }
+
+  private async persistExchange(payload: {
+    sessionId: string
+    agentSessionId: string
+    user?: { payload: AgentPersistedMessage }
+    assistant?: { payload: AgentPersistedMessage }
+  }): Promise<void> {
+    await window.api.agentMessages.persistExchange(payload)
+  }
+
   // ============ Helper Methods ============
 
   /**
@@ -78,7 +90,7 @@ export class AgentMessageDataSource implements MessageDataSource {
 
         try {
           // Persist to backend
-          await window.electron.ipcRenderer.invoke(IpcChannel.AgentMessage_PersistExchange, {
+          await this.persistExchange({
             sessionId,
             agentSessionId: sessionPointer,
             ...(message.role === 'user'
@@ -168,16 +180,8 @@ export class AgentMessageDataSource implements MessageDataSource {
     try {
       const sessionId = extractSessionId(topicId)
 
-      if (!window.electron?.ipcRenderer) {
-        logger.warn('IPC renderer not available')
-        return { messages: [], blocks: [] }
-      }
-
       // Fetch from agent backend
-      const historicalMessages: AgentPersistedMessage[] = await window.electron.ipcRenderer.invoke(
-        IpcChannel.AgentMessage_GetHistory,
-        { sessionId }
-      )
+      const historicalMessages = await this.getHistory(sessionId)
 
       if (!historicalMessages || !Array.isArray(historicalMessages)) {
         return { messages: [], blocks: [] }
@@ -245,7 +249,7 @@ export class AgentMessageDataSource implements MessageDataSource {
         blocks
       }
 
-      await window.electron.ipcRenderer.invoke(IpcChannel.AgentMessage_PersistExchange, {
+      await this.persistExchange({
         sessionId,
         agentSessionId,
         ...(message.role === 'user' ? { user: { payload } } : { assistant: { payload } })
@@ -290,10 +294,7 @@ export class AgentMessageDataSource implements MessageDataSource {
 
     try {
       // Fetch current message from backend to merge updates
-      const historicalMessages: AgentPersistedMessage[] = await window.electron.ipcRenderer.invoke(
-        IpcChannel.AgentMessage_GetHistory,
-        { sessionId }
-      )
+      const historicalMessages = await this.getHistory(sessionId)
 
       const existingMessage = historicalMessages?.find((pm) => pm.message?.id === messageId)
       if (!existingMessage?.message) {
@@ -306,7 +307,7 @@ export class AgentMessageDataSource implements MessageDataSource {
       const agentSessionId = updatedMessage.agentSessionId ?? existingMessage.message.agentSessionId ?? ''
 
       // Save updated message back to backend
-      await window.electron.ipcRenderer.invoke(IpcChannel.AgentMessage_PersistExchange, {
+      await this.persistExchange({
         sessionId,
         agentSessionId,
         ...(updatedMessage.role === 'user'
@@ -357,10 +358,7 @@ export class AgentMessageDataSource implements MessageDataSource {
           currentBlocks = this.mergeBlockUpdates(cached.blocks ?? [], blocksToUpdate)
         } else {
           // First streaming update - fetch from backend or create new
-          const historicalMessages: AgentPersistedMessage[] = await window.electron.ipcRenderer.invoke(
-            IpcChannel.AgentMessage_GetHistory,
-            { sessionId }
-          )
+          const historicalMessages = await this.getHistory(sessionId)
 
           const existingMessage = historicalMessages?.find((pm) => pm.message?.id === messageUpdates.id)
 
@@ -408,10 +406,7 @@ export class AgentMessageDataSource implements MessageDataSource {
           finalBlocks = this.mergeBlockUpdates(cached.blocks ?? [], blocksToUpdate)
         } else {
           // Fetch from backend if no cache
-          const historicalMessages: AgentPersistedMessage[] = await window.electron.ipcRenderer.invoke(
-            IpcChannel.AgentMessage_GetHistory,
-            { sessionId }
-          )
+          const historicalMessages = await this.getHistory(sessionId)
 
           const existingMessage = historicalMessages?.find((pm) => pm.message?.id === messageUpdates.id)
 
@@ -442,7 +437,7 @@ export class AgentMessageDataSource implements MessageDataSource {
         }
 
         // Persist to backend
-        await window.electron.ipcRenderer.invoke(IpcChannel.AgentMessage_PersistExchange, {
+        await this.persistExchange({
           sessionId,
           agentSessionId,
           ...(finalMessage.role === 'user'
@@ -498,11 +493,6 @@ export class AgentMessageDataSource implements MessageDataSource {
     }
 
     try {
-      if (!window.electron?.ipcRenderer) {
-        logger.warn('IPC renderer not available for agent block update')
-        return
-      }
-
       const state = store.getState()
 
       const sessionMessageMap = new Map<
@@ -563,10 +553,7 @@ export class AgentMessageDataSource implements MessageDataSource {
 
           if (!baseBlocks) {
             if (!historyMap) {
-              const historicalMessages: AgentPersistedMessage[] = await window.electron.ipcRenderer.invoke(
-                IpcChannel.AgentMessage_GetHistory,
-                { sessionId }
-              )
+              const historicalMessages = await this.getHistory(sessionId)
               historyMap = new Map(
                 (historicalMessages || [])
                   .filter((persisted) => persisted?.message?.id)
@@ -600,7 +587,7 @@ export class AgentMessageDataSource implements MessageDataSource {
             })
           }
 
-          await window.electron.ipcRenderer.invoke(IpcChannel.AgentMessage_PersistExchange, {
+          await this.persistExchange({
             sessionId,
             agentSessionId,
             ...(message.role === 'user'
@@ -630,11 +617,6 @@ export class AgentMessageDataSource implements MessageDataSource {
   async clearMessages(topicId: string): Promise<void> {
     const sessionId = extractSessionId(topicId)
 
-    if (!window.electron?.ipcRenderer) {
-      logger.warn('IPC renderer not available for clear messages')
-      return
-    }
-
     // In a full implementation, you would call a backend endpoint to clear session
     // For now, we'll just log the attempt
     logger.info(`Clear messages requested for agent session ${sessionId}`)
@@ -649,10 +631,6 @@ export class AgentMessageDataSource implements MessageDataSource {
   async topicExists(topicId: string): Promise<boolean> {
     try {
       const sessionId = extractSessionId(topicId)
-
-      if (!window.electron?.ipcRenderer) {
-        return false
-      }
       return sessionId != null
     } catch (error) {
       return false

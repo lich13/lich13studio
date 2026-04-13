@@ -26,7 +26,6 @@ import backup from './backup'
 import codeTools from './codeTools'
 import copilot from './copilot'
 import inputToolsReducer from './inputTools'
-import knowledge from './knowledge'
 import llm from './llm'
 import mcp from './mcp'
 import memory from './memory'
@@ -61,7 +60,6 @@ const rootReducer = combineReducers({
   settings,
   runtime,
   shortcuts,
-  knowledge,
   minapps,
   websearch,
   mcp,
