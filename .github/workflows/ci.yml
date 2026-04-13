@@ -35,10 +35,10 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Typecheck web
-        run: pnpm exec tsc -p tsconfig.web.json --noEmit
+        run: pnpm typecheck:web
 
       - name: Typecheck node
-        run: pnpm exec tsc -p tsconfig.node.json --noEmit
+        run: pnpm typecheck:node
 
       - name: Build renderer bundle
         run: pnpm build:tauri:web
