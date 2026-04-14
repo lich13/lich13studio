@@ -176,9 +176,7 @@ const Chat: FC<Props> = (props) => {
                 setActiveAssistant={props.setActiveAssistant}
                 position="left"
               />
-              <div
-                className="flex flex-1 flex-col justify-between"
-                style={{ height: `calc(${mainHeight} - var(--navbar-height))` }}>
+              <div className="flex flex-1 flex-col" style={{ height: `calc(${mainHeight} - var(--navbar-height))` }}>
                 <Messages
                   key={props.activeTopic.id}
                   assistant={assistant}
