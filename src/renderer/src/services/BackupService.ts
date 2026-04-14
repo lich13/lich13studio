@@ -8,6 +8,7 @@ import type { S3Config, WebDavConfig } from '@renderer/types'
 import { uuid } from '@renderer/utils'
 import dayjs from 'dayjs'
 
+import { buildDefaultBackupFileName, ensureBackupFileName } from './BackupNaming'
 import { NotificationService } from './NotificationService'
 
 const logger = loggerService.withContext('BackupService')
@@ -63,7 +64,7 @@ async function deleteWebdavFileWithRetry(fileName: string, webdavConfig: WebDavC
 }
 
 export async function backup(skipBackupFile: boolean) {
-  const filename = `cherry-studio.${dayjs().format('YYYYMMDDHHmm')}.zip`
+  const filename = ensureBackupFileName(`lich13studio.${dayjs().format('YYYYMMDDHHmm')}`)
   const selectFolder = await window.api.file.selectFolder()
   if (selectFolder) {
     // Use direct backup method - copy IndexedDB/LocalStorage directories directly
@@ -89,7 +90,7 @@ export async function backupToLanTransfer() {
 
 export async function restore() {
   const notificationService = NotificationService.getInstance()
-  const file = await window.api.file.open({ filters: [{ name: '备份文件', extensions: ['bak', 'zip'] }] })
+  const file = await window.api.file.open({ filters: [{ name: '备份文件', extensions: ['bak', 'zip', 'json'] }] })
 
   if (file) {
     try {
@@ -216,9 +217,7 @@ export async function backupToWebdav({
   } catch (error) {
     logger.error('Failed to get device type or hostname:', error as Error)
   }
-  const timestamp = dayjs().format('YYYYMMDDHHmmss')
-  const backupFileName = customFileName || `cherry-studio.${timestamp}.${hostname}.${deviceType}.zip`
-  const finalFileName = backupFileName.endsWith('.zip') ? backupFileName : `${backupFileName}.zip`
+  const finalFileName = ensureBackupFileName(customFileName, buildDefaultBackupFileName(hostname, deviceType))
 
   // 上传文件 - Use direct backup method (copy IndexedDB/LocalStorage directories)
   try {
@@ -397,9 +396,7 @@ export async function backupToS3({
   } catch (error) {
     logger.error('Failed to get device type or hostname:', error as Error)
   }
-  const timestamp = dayjs().format('YYYYMMDDHHmmss')
-  const backupFileName = customFileName || `cherry-studio.${timestamp}.${hostname}.${deviceType}.zip`
-  const finalFileName = backupFileName.endsWith('.zip') ? backupFileName : `${backupFileName}.zip`
+  const finalFileName = ensureBackupFileName(customFileName, buildDefaultBackupFileName(hostname, deviceType))
 
   try {
     // Use direct backup method (copy IndexedDB/LocalStorage directories)
@@ -1013,9 +1010,7 @@ export async function backupToLocal({
   } catch (error) {
     logger.error('Failed to get device type or hostname:', error as Error)
   }
-  const timestamp = dayjs().format('YYYYMMDDHHmmss')
-  const backupFileName = customFileName || `cherry-studio.${timestamp}.${hostname}.${deviceType}.zip`
-  const finalFileName = backupFileName.endsWith('.zip') ? backupFileName : `${backupFileName}.zip`
+  const finalFileName = ensureBackupFileName(customFileName, buildDefaultBackupFileName(hostname, deviceType))
 
   try {
     // Use direct backup method (copy IndexedDB/LocalStorage directories)

@@ -2,6 +2,7 @@
 import TopViewMinappContainer from '@renderer/components/MinApp/TopViewMinappContainer'
 import { useAppInit } from '@renderer/hooks/useAppInit'
 import { useShortcuts } from '@renderer/hooks/useShortcuts'
+import { runLegacyLocalMigrationIfNeeded } from '@renderer/services/LegacyLocalMigrationService'
 import { message, Modal } from 'antd'
 import type { PropsWithChildren } from 'react'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
@@ -46,6 +47,7 @@ const TopViewContainer: React.FC<Props> = ({ children }) => {
     window.modal = modal
     initMessageApi(messageApi)
     window.toast = getToastUtilities()
+    void runLegacyLocalMigrationIfNeeded()
   }, [messageApi, modal])
 
   onPop = () => {

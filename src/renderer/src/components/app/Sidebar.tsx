@@ -150,8 +150,8 @@ const Container = styled.div<{ $isFullscreen: boolean }>`
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 12px 0;
-  padding-bottom: 12px;
+  padding: 8px 0;
+  padding-bottom: 8px;
   width: var(--sidebar-width);
   min-width: var(--sidebar-width);
   height: ${({ $isFullscreen }) =>
@@ -175,8 +175,8 @@ const Menus = styled.div`
 `
 
 const Icon = styled.div<{ theme: string }>`
-  width: 35px;
-  height: 35px;
+  width: 33px;
+  height: 33px;
   display: flex;
   justify-content: center;
   align-items: center;

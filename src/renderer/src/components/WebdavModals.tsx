@@ -1,6 +1,6 @@
+import { buildDefaultBackupFileName } from '@renderer/services/BackupNaming'
 import { backupToWebdav } from '@renderer/services/BackupService'
 import { Input, Modal } from 'antd'
-import dayjs from 'dayjs'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -37,11 +37,9 @@ export function useWebdavBackupModal({ backupMethod }: { backupMethod?: typeof b
   }
 
   const showBackupModal = useCallback(async () => {
-    // 获取默认文件名
     const deviceType = await window.api.system.getDeviceType()
     const hostname = await window.api.system.getHostname()
-    const timestamp = dayjs().format('YYYYMMDDHHmmss')
-    const defaultFileName = `cherry-studio.${timestamp}.${hostname}.${deviceType}.zip`
+    const defaultFileName = buildDefaultBackupFileName(hostname, deviceType)
     setCustomFileName(defaultFileName)
     setIsModalVisible(true)
   }, [])

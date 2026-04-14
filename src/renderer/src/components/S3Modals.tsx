@@ -1,3 +1,4 @@
+import { buildDefaultBackupFileName } from '@renderer/services/BackupNaming'
 import { backupToS3 } from '@renderer/services/BackupService'
 import { formatFileSize } from '@renderer/utils'
 import { Input, Modal, Select, Spin } from 'antd'
@@ -31,11 +32,9 @@ export function useS3BackupModal() {
   }
 
   const showBackupModal = useCallback(async () => {
-    // 获取默认文件名
     const deviceType = await window.api.system.getDeviceType()
     const hostname = await window.api.system.getHostname()
-    const timestamp = dayjs().format('YYYYMMDDHHmmss')
-    const defaultFileName = `cherry-studio.${timestamp}.${hostname}.${deviceType}.zip`
+    const defaultFileName = buildDefaultBackupFileName(hostname, deviceType)
     setCustomFileName(defaultFileName)
     setIsModalVisible(true)
   }, [])

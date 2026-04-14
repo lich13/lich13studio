@@ -4,9 +4,9 @@ import store from '@renderer/store'
 import { setNutstoreSyncState } from '@renderer/store/nutstore'
 import type { WebDavConfig } from '@renderer/types'
 import { NUTSTORE_HOST } from '@shared/config/nutstore'
-import dayjs from 'dayjs'
 import { type CreateDirectoryOptions } from 'webdav'
 
+import { buildDefaultBackupFileName, ensureBackupFileName } from './BackupNaming'
 import { handleData } from './BackupService'
 
 const logger = loggerService.withContext('NutstoreService')
@@ -78,7 +78,7 @@ async function cleanupOldBackups(webdavConfig: WebDavConfig, maxBackups: number)
     }
 
     const backupFiles = files
-      .filter((file) => file.fileName.startsWith('cherry-studio') && file.fileName.endsWith('.zip'))
+      .filter((file) => file.fileName.startsWith('lich13studio') && file.fileName.endsWith('.zip'))
       .sort((a, b) => new Date(b.modifiedTime).getTime() - new Date(a.modifiedTime).getTime())
 
     if (backupFiles.length < maxBackups) {
@@ -95,7 +95,7 @@ async function cleanupOldBackups(webdavConfig: WebDavConfig, maxBackups: number)
         await window.api.backup.deleteWebdavFile(file.fileName, webdavConfig)
         deletedCount++
       } catch (error) {
-        logger.error(`[cleanupOldBackups] Failed to delete ${file.basename}:`, error as Error)
+        logger.error(`[cleanupOldBackups] Failed to delete ${file.fileName}:`, error as Error)
       }
     }
 
@@ -130,14 +130,14 @@ export async function backupToNutstore({
   }
 
   let deviceType = 'unknown'
+  let hostname = 'unknown'
   try {
     deviceType = (await window.api.system.getDeviceType()) || 'unknown'
+    hostname = (await window.api.system.getHostname()) || 'unknown'
   } catch (error) {
     logger.error('[backupToNutstore] Failed to get device type:', error as Error)
   }
-  const timestamp = dayjs().format('YYYYMMDDHHmmss')
-  const backupFileName = customFileName || `cherry-studio.${timestamp}.${deviceType}.zip`
-  const finalFileName = backupFileName.endsWith('.zip') ? backupFileName : `${backupFileName}.zip`
+  const finalFileName = ensureBackupFileName(customFileName, buildDefaultBackupFileName(hostname, deviceType))
 
   isManualBackupRunning = true
 

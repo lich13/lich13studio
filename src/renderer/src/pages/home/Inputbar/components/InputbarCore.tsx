@@ -72,7 +72,7 @@ export interface InputbarCoreProps {
 
 const TextareaStyle: CSSProperties = {
   paddingLeft: 0,
-  padding: '6px 15px 0px'
+  padding: '3px 12px 0px'
 }
 
 /**
@@ -578,13 +578,13 @@ export const InputbarCore: FC<InputbarCoreProps> = ({
             autoFocus
             variant="borderless"
             spellCheck={enableSpellCheck}
-            rows={2}
-            autoSize={height ? false : { minRows: 2, maxRows: 20 }}
+            rows={1}
+            autoSize={height ? false : { minRows: 1, maxRows: 12 }}
             styles={{ textarea: TextareaStyle }}
             style={{
               fontSize,
               height: height,
-              minHeight: '30px'
+              minHeight: '24px'
             }}
             disabled={searching}
             onClick={() => {
@@ -637,9 +637,9 @@ const Container = styled.div`
   flex-direction: column;
   position: relative;
   z-index: 2;
-  padding: 0 18px 18px 18px;
+  padding: 0 14px 12px 14px;
   [navbar-position='top'] & {
-    padding: 0 18px 10px 18px;
+    padding: 0 14px 8px 14px;
   }
 `
 
@@ -647,8 +647,8 @@ const InputBarContainer = styled.div`
   border: 0.5px solid var(--color-border);
   transition: all 0.2s ease;
   position: relative;
-  border-radius: 17px;
-  padding-top: 8px;
+  border-radius: 14px;
+  padding-top: 4px;
   background-color: var(--color-background-opacity);
 
   &.file-dragging {
@@ -662,7 +662,7 @@ const InputBarContainer = styled.div`
       right: 0;
       bottom: 0;
       background-color: rgba(46, 204, 113, 0.03);
-      border-radius: 14px;
+      border-radius: 12px;
       z-index: 5;
       pointer-events: none;
     }
@@ -690,9 +690,9 @@ const BottomBar = styled.div`
   display: flex;
   flex-direction: row;
   justify-content: space-between;
-  padding: 5px 8px;
-  height: 40px;
-  gap: 16px;
+  padding: 4px 10px 6px;
+  height: 34px;
+  gap: 12px;
   position: relative;
   z-index: 2;
   flex-shrink: 0;

@@ -9,14 +9,18 @@ use rusty_s3::{Bucket, Credentials, S3Action, UrlStyle};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::fs;
-use std::io::Cursor;
-use std::path::PathBuf;
+use std::fs::File;
+use std::io::{Cursor, Read, Write};
+use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tauri::{Emitter, Window};
 use tokio::process::Command;
 use url::Url;
 use uuid::Uuid;
+use walkdir::WalkDir;
 use xcap::Window as CaptureWindow;
+use zip::write::SimpleFileOptions;
+use zip::{CompressionMethod, ZipArchive, ZipWriter};
 
 #[cfg(target_os = "macos")]
 #[link(name = "CoreGraphics", kind = "framework")]
@@ -97,6 +101,7 @@ struct BackupWebDavConfig {
   username: String,
   password: String,
   file_name: Option<String>,
+  skip_backup_file: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -110,6 +115,7 @@ struct BackupS3Config {
   object_key: String,
   root: Option<String>,
   path_style: bool,
+  skip_backup_file: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -547,19 +553,19 @@ async fn stream_gemini(window: Window, stream_id: String, request: ChatRequest) 
   }
 }
 
-async fn upload_webdav(config: &BackupWebDavConfig, payload: String) -> Result<String, String> {
+async fn upload_webdav(config: &BackupWebDavConfig, payload: Vec<u8>) -> Result<String, String> {
   let client = Client::new();
   let file_name = config
     .file_name
     .clone()
     .filter(|file_name| !file_name.trim().is_empty())
-    .unwrap_or_else(|| String::from("lich13studio-backup.json"));
+    .unwrap_or_else(|| String::from("lich13studio-backup.zip"));
   let target = format!("{}/{}", normalize_base_url(&config.url), file_name);
 
   client
     .put(&target)
     .basic_auth(&config.username, Some(&config.password))
-    .header(CONTENT_TYPE, "application/json")
+    .header(CONTENT_TYPE, "application/zip")
     .body(payload)
     .send()
     .await
@@ -570,13 +576,13 @@ async fn upload_webdav(config: &BackupWebDavConfig, payload: String) -> Result<S
   Ok(target)
 }
 
-async fn download_webdav(config: &BackupWebDavConfig) -> Result<Value, String> {
+async fn download_webdav(config: &BackupWebDavConfig) -> Result<Vec<u8>, String> {
   let client = Client::new();
   let file_name = config
     .file_name
     .clone()
     .filter(|file_name| !file_name.trim().is_empty())
-    .unwrap_or_else(|| String::from("lich13studio-backup.json"));
+    .unwrap_or_else(|| String::from("lich13studio-backup.zip"));
   let target = format!("{}/{}", normalize_base_url(&config.url), file_name);
 
   let payload = client
@@ -587,11 +593,11 @@ async fn download_webdav(config: &BackupWebDavConfig) -> Result<Value, String> {
     .map_err(|error| error.to_string())?
     .error_for_status()
     .map_err(|error| error.to_string())?
-    .text()
+    .bytes()
     .await
     .map_err(|error| error.to_string())?;
 
-  serde_json::from_str(&payload).map_err(|error| error.to_string())
+  Ok(payload.to_vec())
 }
 
 fn parse_webdav_listing(xml: &str) -> Result<Vec<RemoteBackupFileInfo>, String> {
@@ -680,6 +686,49 @@ async fn list_webdav(config: &BackupWebDavConfig) -> Result<Vec<RemoteBackupFile
   parse_webdav_listing(&payload)
 }
 
+async fn check_webdav(config: &BackupWebDavConfig) -> Result<bool, String> {
+  let client = Client::new();
+  let target = normalize_base_url(&config.url);
+  let body = r#"<?xml version="1.0" encoding="utf-8" ?><propfind xmlns="DAV:"><prop><displayname/></prop></propfind>"#;
+
+  let response = client
+    .request(reqwest::Method::from_bytes(b"PROPFIND").map_err(|error| error.to_string())?, &target)
+    .basic_auth(&config.username, Some(&config.password))
+    .header("Depth", "0")
+    .header(CONTENT_TYPE, "application/xml")
+    .body(body.to_string())
+    .send()
+    .await
+    .map_err(|error| error.to_string())?;
+
+  Ok(response.status().is_success())
+}
+
+async fn create_webdav_folder(
+  config: &BackupWebDavConfig,
+  dir_path: &str,
+) -> Result<bool, String> {
+  let client = Client::new();
+  let mut current = normalize_base_url(&config.url);
+
+  for segment in dir_path.split('/').filter(|segment| !segment.trim().is_empty()) {
+    current = format!("{}/{}", current, segment);
+    let response = client
+      .request(reqwest::Method::from_bytes(b"MKCOL").map_err(|error| error.to_string())?, &current)
+      .basic_auth(&config.username, Some(&config.password))
+      .send()
+      .await
+      .map_err(|error| error.to_string())?;
+
+    let status = response.status();
+    if !(status.is_success() || status.as_u16() == 405) {
+      return Err(format!("Failed to create WebDAV directory: HTTP {}", status));
+    }
+  }
+
+  Ok(true)
+}
+
 async fn delete_webdav(config: &BackupWebDavConfig, file_name: &str) -> Result<bool, String> {
   let client = Client::new();
   let target = format!("{}/{}", normalize_base_url(&config.url), file_name);
@@ -696,7 +745,7 @@ async fn delete_webdav(config: &BackupWebDavConfig, file_name: &str) -> Result<b
   Ok(true)
 }
 
-async fn upload_s3(config: &BackupS3Config, payload: String) -> Result<String, String> {
+async fn upload_s3(config: &BackupS3Config, payload: Vec<u8>) -> Result<String, String> {
   let endpoint = Url::parse(&config.endpoint).map_err(|error| error.to_string())?;
   let bucket_name: &'static str = Box::leak(config.bucket.clone().into_boxed_str());
   let region: &'static str = Box::leak(config.region.clone().into_boxed_str());
@@ -715,7 +764,7 @@ async fn upload_s3(config: &BackupS3Config, payload: String) -> Result<String, S
 
   client
     .put(signed.as_str())
-    .header(CONTENT_TYPE, "application/json")
+    .header(CONTENT_TYPE, "application/zip")
     .body(payload)
     .send()
     .await
@@ -726,7 +775,7 @@ async fn upload_s3(config: &BackupS3Config, payload: String) -> Result<String, S
   Ok(format!("{}/{}", config.bucket, object_key))
 }
 
-async fn download_s3(config: &BackupS3Config) -> Result<Value, String> {
+async fn download_s3(config: &BackupS3Config) -> Result<Vec<u8>, String> {
   let endpoint = Url::parse(&config.endpoint).map_err(|error| error.to_string())?;
   let bucket_name: &'static str = Box::leak(config.bucket.clone().into_boxed_str());
   let region: &'static str = Box::leak(config.region.clone().into_boxed_str());
@@ -750,11 +799,11 @@ async fn download_s3(config: &BackupS3Config) -> Result<Value, String> {
     .map_err(|error| error.to_string())?
     .error_for_status()
     .map_err(|error| error.to_string())?
-    .text()
+    .bytes()
     .await
     .map_err(|error| error.to_string())?;
 
-  serde_json::from_str(&payload).map_err(|error| error.to_string())
+  Ok(payload.to_vec())
 }
 
 async fn list_s3(config: &BackupS3Config) -> Result<Vec<RemoteBackupFileInfo>, String> {
@@ -810,6 +859,10 @@ async fn list_s3(config: &BackupS3Config) -> Result<Vec<RemoteBackupFileInfo>, S
       .filter(|item| !item.file_name.is_empty())
       .collect(),
   )
+}
+
+async fn check_s3(config: &BackupS3Config) -> Result<bool, String> {
+  list_s3(config).await.map(|_| true)
 }
 
 async fn delete_s3(config: &BackupS3Config, file_name: &str) -> Result<bool, String> {
@@ -875,6 +928,12 @@ fn logs_dir() -> Result<PathBuf, String> {
   Ok(path)
 }
 
+fn data_dir() -> Result<PathBuf, String> {
+  let path = app_data_dir()?.join("Data");
+  fs::create_dir_all(&path).map_err(|error| error.to_string())?;
+  Ok(path)
+}
+
 fn install_dir() -> Result<PathBuf, String> {
   let exe = std::env::current_exe().map_err(|error| error.to_string())?;
   Ok(
@@ -888,6 +947,119 @@ fn install_dir() -> Result<PathBuf, String> {
 
 fn resources_dir() -> Result<PathBuf, String> {
   Ok(install_dir()?.join("Contents").join("Resources"))
+}
+
+fn zip_file_options() -> SimpleFileOptions {
+  SimpleFileOptions::default()
+    .compression_method(CompressionMethod::Deflated)
+    .unix_permissions(0o644)
+}
+
+fn add_directory_to_zip(
+  zip: &mut ZipWriter<Cursor<Vec<u8>>>,
+  source_dir: &Path,
+  archive_root: &str,
+) -> Result<(), String> {
+  if !source_dir.exists() {
+    return Ok(());
+  }
+
+  for entry in WalkDir::new(source_dir) {
+    let entry = entry.map_err(|error| error.to_string())?;
+    let path = entry.path();
+    let relative = path
+      .strip_prefix(source_dir)
+      .map_err(|error| error.to_string())?;
+
+    let archive_path = if relative.as_os_str().is_empty() {
+      archive_root.trim_end_matches('/').to_string()
+    } else {
+      format!(
+        "{}/{}",
+        archive_root.trim_end_matches('/'),
+        relative.to_string_lossy().replace('\\', "/")
+      )
+    };
+
+    if entry.file_type().is_dir() {
+      zip.add_directory(format!("{}/", archive_path.trim_end_matches('/')), zip_file_options())
+        .map_err(|error| error.to_string())?;
+      continue;
+    }
+
+    zip.start_file(archive_path, zip_file_options())
+      .map_err(|error| error.to_string())?;
+    let bytes = fs::read(path).map_err(|error| error.to_string())?;
+    zip.write_all(&bytes).map_err(|error| error.to_string())?;
+  }
+
+  Ok(())
+}
+
+fn create_backup_archive_bytes(state: &Value, include_files: bool) -> Result<Vec<u8>, String> {
+  let cursor = Cursor::new(Vec::new());
+  let mut zip = ZipWriter::new(cursor);
+
+  zip.start_file("data.json", zip_file_options())
+    .map_err(|error| error.to_string())?;
+  let payload = serde_json::to_vec_pretty(state).map_err(|error| error.to_string())?;
+  zip.write_all(&payload).map_err(|error| error.to_string())?;
+
+  if include_files {
+    add_directory_to_zip(&mut zip, &data_dir()?, "Data")?;
+  }
+
+  let cursor = zip.finish().map_err(|error| error.to_string())?;
+  Ok(cursor.into_inner())
+}
+
+fn extract_backup_archive(bytes: &[u8]) -> Result<String, String> {
+  let reader = Cursor::new(bytes);
+  let mut archive = ZipArchive::new(reader).map_err(|error| error.to_string())?;
+  let mut payload = String::new();
+  let mut has_data = false;
+  let data_root = data_dir()?;
+
+  for index in 0..archive.len() {
+    let mut file = archive.by_index(index).map_err(|error| error.to_string())?;
+    let name = file.name().replace('\\', "/");
+
+    if name == "data.json" {
+      file.read_to_string(&mut payload).map_err(|error| error.to_string())?;
+      continue;
+    }
+
+    if !name.starts_with("Data/") {
+      continue;
+    }
+
+    if !has_data {
+      fs::remove_dir_all(&data_root).ok();
+      fs::create_dir_all(&data_root).map_err(|error| error.to_string())?;
+      has_data = true;
+    }
+
+    let relative = name.trim_start_matches("Data/");
+    let out_path = data_root.join(relative);
+
+    if file.is_dir() {
+      fs::create_dir_all(&out_path).map_err(|error| error.to_string())?;
+      continue;
+    }
+
+    if let Some(parent) = out_path.parent() {
+      fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+    }
+
+    let mut output = File::create(&out_path).map_err(|error| error.to_string())?;
+    std::io::copy(&mut file, &mut output).map_err(|error| error.to_string())?;
+  }
+
+  if payload.is_empty() {
+    return Err(String::from("Backup archive missing data.json"));
+  }
+
+  Ok(payload)
 }
 
 fn encode_png(image: image::RgbaImage) -> Result<Vec<u8>, String> {
@@ -1021,32 +1193,36 @@ fn save_state(state: Value) -> Result<String, String> {
 
 #[tauri::command]
 fn export_backup(state: Value) -> Result<String, String> {
-  let path = downloads_dir()?.join(format!("lich13studio-backup-{}.json", timestamp_tag()));
-  let payload = serde_json::to_vec_pretty(&state).map_err(|error| error.to_string())?;
+  let path = downloads_dir()?.join(format!("lich13studio-backup-{}.zip", timestamp_tag()));
+  let payload = create_backup_archive_bytes(&state, true)?;
   fs::write(&path, payload).map_err(|error| error.to_string())?;
   Ok(path.display().to_string())
 }
 
 #[tauri::command]
 async fn webdav_backup(state: Value, config: BackupWebDavConfig) -> Result<String, String> {
-  let payload = serde_json::to_string_pretty(&state).map_err(|error| error.to_string())?;
+  let payload = create_backup_archive_bytes(&state, !config.skip_backup_file.unwrap_or(false))?;
   upload_webdav(&config, payload).await
 }
 
 #[tauri::command]
 async fn webdav_restore(config: BackupWebDavConfig) -> Result<Value, String> {
-  download_webdav(&config).await
+  let bytes = download_webdav(&config).await?;
+  let payload = extract_backup_archive(&bytes)?;
+  serde_json::from_str(&payload).map_err(|error| error.to_string())
 }
 
 #[tauri::command]
 async fn s3_backup(state: Value, config: BackupS3Config) -> Result<String, String> {
-  let payload = serde_json::to_string_pretty(&state).map_err(|error| error.to_string())?;
+  let payload = create_backup_archive_bytes(&state, !config.skip_backup_file.unwrap_or(false))?;
   upload_s3(&config, payload).await
 }
 
 #[tauri::command]
 async fn s3_restore(config: BackupS3Config) -> Result<Value, String> {
-  download_s3(&config).await
+  let bytes = download_s3(&config).await?;
+  let payload = extract_backup_archive(&bytes)?;
+  serde_json::from_str(&payload).map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -1091,14 +1267,21 @@ fn capture_window(window_id: u32) -> Result<Vec<u8>, String> {
 }
 
 #[tauri::command]
-async fn backup_to_local_dir(file_name: String, local_backup_dir: Option<String>, payload: String) -> Result<bool, String> {
+async fn backup_to_local_dir(
+  file_name: String,
+  local_backup_dir: Option<String>,
+  payload: String,
+  skip_backup_file: Option<bool>,
+) -> Result<bool, String> {
   let base_dir = local_backup_dir
     .map(PathBuf::from)
     .unwrap_or(downloads_dir()?);
 
   fs::create_dir_all(&base_dir).map_err(|error| error.to_string())?;
   let file_path = base_dir.join(file_name);
-  fs::write(file_path, payload).map_err(|error| error.to_string())?;
+  let state: Value = serde_json::from_str(&payload).map_err(|error| error.to_string())?;
+  let bytes = create_backup_archive_bytes(&state, !skip_backup_file.unwrap_or(false))?;
+  fs::write(file_path, bytes).map_err(|error| error.to_string())?;
   Ok(true)
 }
 
@@ -1108,7 +1291,25 @@ async fn restore_from_local_backup(file_name: String, local_backup_dir: Option<S
     .map(PathBuf::from)
     .unwrap_or(downloads_dir()?);
   let file_path = base_dir.join(file_name);
+  if file_path
+    .extension()
+    .and_then(|ext| ext.to_str())
+    .is_some_and(|ext| ext.eq_ignore_ascii_case("zip"))
+  {
+    let bytes = fs::read(file_path).map_err(|error| error.to_string())?;
+    return extract_backup_archive(&bytes);
+  }
+
   fs::read_to_string(file_path).map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+async fn restore_backup_archive(file_name: String, bytes: Vec<u8>) -> Result<String, String> {
+  if file_name.to_lowercase().ends_with(".zip") {
+    return extract_backup_archive(&bytes);
+  }
+
+  String::from_utf8(bytes).map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -1132,7 +1333,7 @@ async fn list_local_backup_files(local_backup_dir: Option<String>) -> Result<Vec
     }
 
     let file_name = entry.file_name().to_string_lossy().to_string();
-    if !file_name.starts_with("cherry-studio.") && !file_name.starts_with("lich13studio") {
+    if !file_name.starts_with("lich13studio") {
       continue;
     }
 
@@ -1169,6 +1370,16 @@ async fn list_webdav_files(config: BackupWebDavConfig) -> Result<Vec<RemoteBacku
 }
 
 #[tauri::command]
+async fn check_webdav_connection(config: BackupWebDavConfig) -> Result<bool, String> {
+  check_webdav(&config).await
+}
+
+#[tauri::command]
+async fn create_webdav_directory(config: BackupWebDavConfig, path: String) -> Result<bool, String> {
+  create_webdav_folder(&config, &path).await
+}
+
+#[tauri::command]
 async fn delete_webdav_file(file_name: String, config: BackupWebDavConfig) -> Result<bool, String> {
   delete_webdav(&config, &file_name).await
 }
@@ -1176,6 +1387,11 @@ async fn delete_webdav_file(file_name: String, config: BackupWebDavConfig) -> Re
 #[tauri::command]
 async fn list_s3_files(config: BackupS3Config) -> Result<Vec<RemoteBackupFileInfo>, String> {
   list_s3(&config).await
+}
+
+#[tauri::command]
+async fn check_s3_connection(config: BackupS3Config) -> Result<bool, String> {
+  check_s3(&config).await
 }
 
 #[tauri::command]
@@ -1345,11 +1561,15 @@ pub fn run() {
       capture_window,
       backup_to_local_dir,
       restore_from_local_backup,
+      restore_backup_archive,
       list_local_backup_files,
       delete_local_backup_file,
       list_webdav_files,
+      check_webdav_connection,
+      create_webdav_directory,
       delete_webdav_file,
       list_s3_files,
+      check_s3_connection,
       delete_s3_file,
       webdav_backup,
       webdav_restore,

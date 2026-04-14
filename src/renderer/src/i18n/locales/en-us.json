@@ -4447,7 +4447,7 @@
         },
         "root": {
           "label": "Backup Directory (Optional)",
-          "placeholder": "e.g: /cherry-studio"
+          "placeholder": "e.g: /lich13studio"
         },
         "secretAccessKey": {
           "label": "Secret Access Key",
@@ -4483,7 +4483,7 @@
           "title": "Connection Check"
         },
         "root_path": "Siyuan Note Root Path",
-        "root_path_placeholder": "e.g.: /CherryStudio",
+        "root_path_placeholder": "e.g.: /lich13studio",
         "title": "Siyuan Note Configuration",
         "token": {
           "help": "Get Siyuan Note Token",

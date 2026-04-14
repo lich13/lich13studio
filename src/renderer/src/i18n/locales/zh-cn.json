@@ -4447,7 +4447,7 @@
         },
         "root": {
           "label": "备份目录（可选）",
-          "placeholder": "例如：/cherry-studio"
+          "placeholder": "例如：/lich13studio"
         },
         "secretAccessKey": {
           "label": "Secret Access Key",
@@ -4483,7 +4483,7 @@
           "title": "连接检测"
         },
         "root_path": "文档根路径",
-        "root_path_placeholder": "例如：/CherryStudio",
+        "root_path_placeholder": "例如：/lich13studio",
         "title": "思源笔记配置",
         "token": {
           "help": "在思源笔记 -> 设置 -> 关于中获取",

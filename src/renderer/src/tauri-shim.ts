@@ -27,10 +27,18 @@ const mockInvoke = async (command: string) => {
   }
 
   if (command === 'webdav_restore' || command === 's3_restore') {
-    return buildBackupSnapshot()
+    return await buildBackupSnapshot()
   }
 
-  if (command === 'webdav_backup' || command === 's3_backup' || command === 'test_provider' || command === 'test_mcp') {
+  if (
+    command === 'webdav_backup' ||
+    command === 's3_backup' ||
+    command === 'test_provider' ||
+    command === 'test_mcp' ||
+    command === 'check_webdav_connection' ||
+    command === 'check_s3_connection' ||
+    command === 'create_webdav_directory'
+  ) {
     return true
   }
 
@@ -264,11 +272,46 @@ const serializeLocalStorage = () => {
   return snapshot
 }
 
-const buildBackupSnapshot = () => ({
+const openAppIndexedDb = () =>
+  new Promise<IDBDatabase | null>((resolve, reject) => {
+    const request = indexedDB.open('CherryStudio')
+    request.onerror = () => reject(request.error || new Error('Failed to open IndexedDB'))
+    request.onupgradeneeded = () => resolve(request.result)
+    request.onsuccess = () => resolve(request.result)
+  })
+
+const serializeIndexedDb = async () => {
+  try {
+    const db = await openAppIndexedDb()
+    if (!db) {
+      return {}
+    }
+
+    const snapshot: Record<string, any[]> = {}
+    const storeNames = Array.from(db.objectStoreNames)
+
+    for (const storeName of storeNames) {
+      snapshot[storeName] = await new Promise((resolve, reject) => {
+        const transaction = db.transaction([storeName], 'readonly')
+        const request = transaction.objectStore(storeName).getAll()
+        request.onerror = () => reject(request.error || new Error(`Failed to read ${storeName}`))
+        request.onsuccess = () => resolve(request.result || [])
+      })
+    }
+
+    db.close()
+    return snapshot
+  } catch (error) {
+    console.warn('[tauri-shim] Failed to serialize IndexedDB backup snapshot', error)
+    return {}
+  }
+}
+
+const buildBackupSnapshot = async () => ({
   time: Date.now(),
   version: 5,
   localStorage: serializeLocalStorage(),
-  indexedDB: {}
+  indexedDB: await serializeIndexedDb()
 })
 
 const registerBlob = async (blob: Blob, fileName: string, explicitPath?: string) => {
@@ -763,20 +806,36 @@ const api = {
     restore: async (filePath: string) => {
       const cached = await getCachedFile(filePath)
       if (!cached) return ''
+      if (invoke && cached.fileName.toLowerCase().endsWith('.zip')) {
+        const bytes = Array.from(await readBlobAsUint8Array(cached.blob))
+        return invoke('restore_backup_archive', { fileName: cached.fileName, bytes })
+      }
       return readBlobAsText(cached.blob)
     },
-    backup: async (fileName: string) => {
-      const blob = new Blob([JSON.stringify(buildBackupSnapshot(), null, 2)], { type: 'application/json' })
+    backup: async (fileName: string, destinationPath?: string, skipBackupFile: boolean = false) => {
+      const snapshot = await buildBackupSnapshot()
+      const payload = JSON.stringify(snapshot, null, 2)
+      if (invoke) {
+        await invoke('backup_to_local_dir', {
+          fileName,
+          localBackupDir: destinationPath || null,
+          payload,
+          skipBackupFile
+        })
+        return true
+      }
+      const blob = new Blob([payload], { type: 'application/json' })
       downloadBlob(fileName.replace(/\.zip$/i, '.json'), blob)
       return true
     },
     backupToWebdav: async (webdavConfig: AnyRecord) => {
-      const snapshot = buildBackupSnapshot()
+      const snapshot = await buildBackupSnapshot()
       const config = {
         url: `${String(webdavConfig.webdavHost || '').replace(/\/$/, '')}${webdavConfig.webdavPath || ''}`,
         username: webdavConfig.webdavUser || '',
         password: webdavConfig.webdavPass || '',
-        fileName: webdavConfig.fileName || 'lich13studio-backup.json'
+        fileName: webdavConfig.fileName || 'lich13studio-backup.zip',
+        skipBackupFile: Boolean(webdavConfig.skipBackupFile)
       }
       await invoke('webdav_backup', { state: snapshot, config })
       return true
@@ -786,7 +845,7 @@ const api = {
         url: `${String(webdavConfig.webdavHost || '').replace(/\/$/, '')}${webdavConfig.webdavPath || ''}`,
         username: webdavConfig.webdavUser || '',
         password: webdavConfig.webdavPass || '',
-        fileName: webdavConfig.fileName || 'lich13studio-backup.json'
+        fileName: webdavConfig.fileName || 'lich13studio-backup.zip'
       }
       const data = await invoke('webdav_restore', { config })
       return JSON.stringify(data)
@@ -797,7 +856,7 @@ const api = {
         url: `${String(webdavConfig.webdavHost || '').replace(/\/$/, '')}${webdavConfig.webdavPath || ''}`,
         username: webdavConfig.webdavUser || '',
         password: webdavConfig.webdavPass || '',
-        fileName: webdavConfig.fileName || 'lich13studio-backup.json'
+        fileName: webdavConfig.fileName || 'lich13studio-backup.zip'
       }
       const files = await invoke('list_webdav_files', { config })
       return files.map((file: AnyRecord) => ({
@@ -806,25 +865,36 @@ const api = {
         size: file.size
       }))
     },
-    checkConnection: async (webdavConfig: AnyRecord) => Boolean(webdavConfig?.webdavHost),
-    createDirectory: async () => true,
+    checkConnection: async (webdavConfig: AnyRecord) => {
+      if (invoke) {
+        return invoke('check_webdav_connection', { config: webdavConfig })
+      }
+      return Boolean(webdavConfig?.webdavHost)
+    },
+    createDirectory: async (webdavConfig: AnyRecord, targetPath: string, options?: AnyRecord) => {
+      if (invoke) {
+        return invoke('create_webdav_directory', { config: webdavConfig, path: targetPath, options })
+      }
+      return true
+    },
     deleteWebdavFile: async (fileName: string, webdavConfig: AnyRecord) => {
       if (!invoke) return true
       const config = {
         url: `${String(webdavConfig.webdavHost || '').replace(/\/$/, '')}${webdavConfig.webdavPath || ''}`,
         username: webdavConfig.webdavUser || '',
         password: webdavConfig.webdavPass || '',
-        fileName: webdavConfig.fileName || 'lich13studio-backup.json'
+        fileName: webdavConfig.fileName || 'lich13studio-backup.zip'
       }
       return invoke('delete_webdav_file', { fileName, config })
     },
     backupToLocalDir: async (fileName: string, localConfig?: AnyRecord) => {
-      const payload = JSON.stringify(buildBackupSnapshot(), null, 2)
+      const payload = JSON.stringify(await buildBackupSnapshot(), null, 2)
       if (invoke) {
         await invoke('backup_to_local_dir', {
           fileName,
           localBackupDir: localConfig?.localBackupDir || null,
-          payload
+          payload,
+          skipBackupFile: Boolean(localConfig?.skipBackupFile)
         })
         return true
       }
@@ -849,17 +919,23 @@ const api = {
       if (!invoke) return true
       return invoke('delete_local_backup_file', { fileName, localBackupDir: localBackupDir || null })
     },
-    checkWebdavConnection: async (webdavConfig: AnyRecord) => Boolean(webdavConfig?.webdavHost),
+    checkWebdavConnection: async (webdavConfig: AnyRecord) => {
+      if (invoke) {
+        return invoke('check_webdav_connection', { config: webdavConfig })
+      }
+      return Boolean(webdavConfig?.webdavHost)
+    },
     backupToS3: async (s3Config: AnyRecord) => {
-      const snapshot = buildBackupSnapshot()
+      const snapshot = await buildBackupSnapshot()
       const config = {
         endpoint: s3Config.endpoint || '',
         region: s3Config.region || 'us-east-1',
         bucket: s3Config.bucket || '',
         accessKey: s3Config.accessKeyId || '',
         secretKey: s3Config.secretAccessKey || '',
-        objectKey: [s3Config.root, s3Config.fileName || 'lich13studio-backup.json'].filter(Boolean).join('/'),
-        pathStyle: true
+        objectKey: [s3Config.root, s3Config.fileName || 'lich13studio-backup.zip'].filter(Boolean).join('/'),
+        pathStyle: true,
+        skipBackupFile: Boolean(s3Config.skipBackupFile)
       }
       await invoke('s3_backup', { state: snapshot, config })
       return true
@@ -871,7 +947,7 @@ const api = {
         bucket: s3Config.bucket || '',
         accessKey: s3Config.accessKeyId || '',
         secretKey: s3Config.secretAccessKey || '',
-        objectKey: [s3Config.root, s3Config.fileName || 'lich13studio-backup.json'].filter(Boolean).join('/'),
+        objectKey: [s3Config.root, s3Config.fileName || 'lich13studio-backup.zip'].filter(Boolean).join('/'),
         pathStyle: true
       }
       const data = await invoke('s3_restore', { config })
@@ -885,7 +961,7 @@ const api = {
         bucket: s3Config.bucket || '',
         accessKey: s3Config.accessKeyId || '',
         secretKey: s3Config.secretAccessKey || '',
-        objectKey: s3Config.fileName || 'lich13studio-backup.json',
+        objectKey: s3Config.fileName || 'lich13studio-backup.zip',
         root: s3Config.root || '',
         pathStyle: true
       }
@@ -904,13 +980,18 @@ const api = {
         bucket: s3Config.bucket || '',
         accessKey: s3Config.accessKeyId || '',
         secretKey: s3Config.secretAccessKey || '',
-        objectKey: s3Config.fileName || 'lich13studio-backup.json',
+        objectKey: s3Config.fileName || 'lich13studio-backup.zip',
         root: s3Config.root || '',
         pathStyle: true
       }
       return invoke('delete_s3_file', { fileName, config })
     },
-    checkS3Connection: async (s3Config: AnyRecord) => Boolean(s3Config?.endpoint && s3Config?.bucket),
+    checkS3Connection: async (s3Config: AnyRecord) => {
+      if (invoke) {
+        return invoke('check_s3_connection', { config: s3Config })
+      }
+      return Boolean(s3Config?.endpoint && s3Config?.bucket)
+    },
     createLanTransferBackup: async () => '',
     deleteLanTransferBackup: async () => true
   },

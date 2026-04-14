@@ -286,6 +286,20 @@ const Messages: React.FC<MessagesProps> = ({ assistant, topic, setActiveTopic, o
     requestAnimationFrame(() => onComponentUpdate?.())
   }, [onComponentUpdate])
 
+  useEffect(() => {
+    if (!messages.length) {
+      return
+    }
+
+    setTimeoutTimer(
+      'messages-scroll-bottom',
+      () => {
+        scrollToBottom()
+      },
+      120
+    )
+  }, [messages.length, scrollToBottom, setTimeoutTimer, topic.id])
+
   // NOTE: 因为displayMessages是倒序的，所以得到的groupedMessages每个group内部也是倒序的，需要再倒一遍
   const groupedMessages = useMemo(() => {
     const grouped = Object.entries(getGroupedMessages(displayMessages))
