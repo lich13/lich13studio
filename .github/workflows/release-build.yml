@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: Optional version to publish as a tag/release (for example 1.9.1 or v1.9.1). Leave empty to only build artifacts.
+        description: Optional version to publish as a tag/release (for example 0.1.0 or v0.1.0). Leave empty to only build artifacts.
         required: false
         type: string
 

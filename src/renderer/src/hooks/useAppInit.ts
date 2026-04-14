@@ -14,7 +14,6 @@ import {
 import { delay, runAsyncFunction } from '@renderer/utils'
 import { checkDataLimit } from '@renderer/utils'
 import { sendToolApprovalNotification } from '@renderer/utils/userConfirmation'
-import { defaultLanguage } from '@shared/config/constant'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -30,16 +29,8 @@ const logger = loggerService.withContext('useAppInit')
 export function useAppInit() {
   const { t } = useTranslation()
   const dispatch = useAppDispatch()
-  const {
-    proxyUrl,
-    proxyBypassRules,
-    language,
-    windowStyle,
-    autoCheckUpdate,
-    proxyMode,
-    customCss,
-    enableDataCollection
-  } = useSettings()
+  const { proxyUrl, proxyBypassRules, language, windowStyle, autoCheckUpdate, proxyMode, enableDataCollection } =
+    useSettings()
   const { isLeftNavbar } = useNavbarPosition()
   const { minappShow } = useRuntime()
   const { setDefaultModel, setQuickModel, setTranslateModel } = useDefaultModel()
@@ -113,7 +104,7 @@ export function useAppInit() {
   }, [proxyUrl, proxyMode, proxyBypassRules])
 
   useEffect(() => {
-    const currentLanguage = language || navigator.language || defaultLanguage
+    const currentLanguage = 'zh-CN'
     void i18n.changeLanguage(currentLanguage)
     setDayjsLocale(currentLanguage)
   }, [language])
@@ -146,20 +137,6 @@ export function useAppInit() {
       dispatch(setResourcesPath(info.resourcesPath))
     })
   }, [dispatch])
-
-  useEffect(() => {
-    let customCssElement = document.getElementById('user-defined-custom-css') as HTMLStyleElement
-    if (customCssElement) {
-      customCssElement.remove()
-    }
-
-    if (customCss) {
-      customCssElement = document.createElement('style')
-      customCssElement.id = 'user-defined-custom-css'
-      customCssElement.textContent = customCss
-      document.head.appendChild(customCssElement)
-    }
-  }, [customCss])
 
   useEffect(() => {
     const requestListener = async (payload: ToolPermissionRequestPayload) => {

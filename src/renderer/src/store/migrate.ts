@@ -3519,6 +3519,60 @@ const migrateConfig = {
       logger.error('migrate 208 error', error as Error)
       return state
     }
+  },
+  '209': (state: RootState) => {
+    try {
+      if (state.settings) {
+        state.settings.navbarPosition = 'left'
+      }
+
+      logger.info('migrate 209 success')
+      return state
+    } catch (error) {
+      logger.error('migrate 209 error', error as Error)
+      return state
+    }
+  },
+  '210': (state: RootState) => {
+    try {
+      if (state.settings) {
+        state.settings.showAssistants = true
+        state.settings.showTopics = true
+      }
+
+      logger.info('migrate 210 success')
+      return state
+    } catch (error) {
+      logger.error('migrate 210 error', error as Error)
+      return state
+    }
+  },
+  '211': (state: RootState) => {
+    try {
+      if (state.settings) {
+        state.settings.language = 'zh-CN'
+        state.settings.launchToTray = false
+        state.settings.tray = false
+        state.settings.trayOnClose = false
+        state.settings.enableDataCollection = false
+        state.settings.enableSpellCheck = false
+        state.settings.spellCheckLanguages = []
+        state.settings.disableHardwareAcceleration = false
+        state.settings.notification.backup = false
+        delete (state.settings as any).customCss
+      }
+
+      if (state.websearch) {
+        state.websearch.defaultProvider = 'local-google'
+        state.websearch.providers = state.websearch.providers.filter((provider) => provider.id === 'local-google')
+      }
+
+      logger.info('migrate 211 success')
+      return state
+    } catch (error) {
+      logger.error('migrate 211 error', error as Error)
+      return state
+    }
   }
 }
 

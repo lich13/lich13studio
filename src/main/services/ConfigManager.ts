@@ -15,14 +15,11 @@
  * --------------------------------------------------------------------------
  */
 import type { UpgradeChannel } from '@shared/config/constant'
-import { defaultLanguage, ZOOM_SHORTCUTS } from '@shared/config/constant'
+import { ZOOM_SHORTCUTS } from '@shared/config/constant'
 import type { LanguageVarious, Shortcut } from '@types'
 import { ThemeMode } from '@types'
-import { app } from 'electron'
 import Store from 'electron-store'
 import { v7 as uuid } from 'uuid'
-
-import { locales } from '../utils/locales'
 
 export enum ConfigKeys {
   Language = 'language',
@@ -62,12 +59,11 @@ export class ConfigManager {
   }
 
   getLanguage(): LanguageVarious {
-    const locale = Object.keys(locales).includes(app.getLocale()) ? app.getLocale() : defaultLanguage
-    return this.get(ConfigKeys.Language, locale) as LanguageVarious
+    return 'zh-CN'
   }
 
-  setLanguage(lang: LanguageVarious) {
-    this.setAndNotify(ConfigKeys.Language, lang)
+  setLanguage(_lang: LanguageVarious) {
+    this.setAndNotify(ConfigKeys.Language, 'zh-CN')
   }
 
   getTheme(): ThemeMode {
@@ -79,27 +75,27 @@ export class ConfigManager {
   }
 
   getLaunchToTray(): boolean {
-    return !!this.get(ConfigKeys.LaunchToTray, false)
+    return false
   }
 
-  setLaunchToTray(value: boolean) {
-    this.set(ConfigKeys.LaunchToTray, value)
+  setLaunchToTray(_value: boolean) {
+    this.set(ConfigKeys.LaunchToTray, false)
   }
 
   getTray(): boolean {
-    return !!this.get(ConfigKeys.Tray, true)
+    return false
   }
 
-  setTray(value: boolean) {
-    this.setAndNotify(ConfigKeys.Tray, value)
+  setTray(_value: boolean) {
+    this.setAndNotify(ConfigKeys.Tray, false)
   }
 
   getTrayOnClose(): boolean {
-    return !!this.get(ConfigKeys.TrayOnClose, true)
+    return false
   }
 
-  setTrayOnClose(value: boolean) {
-    this.set(ConfigKeys.TrayOnClose, value)
+  setTrayOnClose(_value: boolean) {
+    this.set(ConfigKeys.TrayOnClose, false)
   }
 
   getZoomFactor(): number {
@@ -186,11 +182,11 @@ export class ConfigManager {
   }
 
   getEnableDataCollection(): boolean {
-    return this.get<boolean>(ConfigKeys.EnableDataCollection, true)
+    return false
   }
 
-  setEnableDataCollection(value: boolean) {
-    this.set(ConfigKeys.EnableDataCollection, value)
+  setEnableDataCollection(_value: boolean) {
+    this.set(ConfigKeys.EnableDataCollection, false)
   }
 
   // Selection Assistant: is enabled the selection assistant
@@ -245,11 +241,11 @@ export class ConfigManager {
   }
 
   getDisableHardwareAcceleration(): boolean {
-    return this.get<boolean>(ConfigKeys.DisableHardwareAcceleration, false)
+    return false
   }
 
-  setDisableHardwareAcceleration(value: boolean) {
-    this.set(ConfigKeys.DisableHardwareAcceleration, value)
+  setDisableHardwareAcceleration(_value: boolean) {
+    this.set(ConfigKeys.DisableHardwareAcceleration, false)
   }
 
   getUseSystemTitleBar(): boolean {
@@ -265,7 +261,7 @@ export class ConfigManager {
   }
 
   getEnableDeveloperMode(): boolean {
-    return this.get<boolean>(ConfigKeys.EnableDeveloperMode, false)
+    return false
   }
 
   setEnableDeveloperMode(value: boolean) {

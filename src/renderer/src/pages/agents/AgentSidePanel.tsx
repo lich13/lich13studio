@@ -27,7 +27,7 @@ const AgentSidePanel = ({ onSelectItem }: AgentSidePanelProps) => {
       className="flex flex-col overflow-hidden"
       style={{
         width: 'var(--assistants-width)',
-        height: 'calc(100vh - var(--navbar-height))',
+        height: 'calc(var(--app-viewport-height) - var(--navbar-height))',
         borderRight: isLeftNavbar ? '0.5px solid var(--color-border)' : 'none',
         backgroundColor: isLeftNavbar ? 'var(--color-background)' : undefined
       }}>

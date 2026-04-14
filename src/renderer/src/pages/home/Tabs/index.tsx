@@ -38,7 +38,7 @@ const HomeTabs: FC<Props> = ({
   const { addAssistant } = useAssistants()
   const { topicPosition } = useSettings()
   const { defaultAssistant } = useDefaultAssistant()
-  const { toggleShowTopics } = useShowTopics()
+  const { setShowTopics } = useShowTopics()
   const { isLeftNavbar } = useNavbarPosition()
   const { t } = useTranslation()
 
@@ -79,12 +79,12 @@ const HomeTabs: FC<Props> = ({
       EventEmitter.on(EVENT_NAMES.SWITCH_TOPIC_SIDEBAR, () => {
         showTab && setTab('topic')
         if (position === 'left' && topicPosition === 'right') {
-          toggleShowTopics()
+          setShowTopics(true)
         }
       })
     ]
     return () => unsubscribes.forEach((unsub) => unsub())
-  }, [position, setTab, showTab, tab, toggleShowTopics, topicPosition])
+  }, [position, setShowTopics, showTab, tab, topicPosition])
 
   useEffect(() => {
     if (position === 'right' && topicPosition === 'right' && tab === 'assistants') {
@@ -137,18 +137,18 @@ const Container = styled.div`
   flex-direction: column;
   width: var(--assistants-width);
   transition: width 0.3s;
-  height: calc(100vh - var(--navbar-height));
+  height: calc(var(--app-viewport-height) - var(--navbar-height));
   position: relative;
 
   &.right {
-    height: calc(100vh - var(--navbar-height));
+    height: calc(var(--app-viewport-height) - var(--navbar-height));
   }
 
   [navbar-position='left'] & {
     background-color: var(--color-background);
   }
   [navbar-position='top'] & {
-    height: calc(100vh - var(--navbar-height));
+    height: calc(var(--app-viewport-height) - var(--navbar-height));
   }
   overflow: hidden;
   .collapsed {

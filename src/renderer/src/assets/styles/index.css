@@ -41,6 +41,13 @@ body,
   margin: 0;
 }
 
+html {
+  --app-zoom-factor: 1;
+  --app-inverse-zoom-factor: 1;
+  --app-viewport-height: 100vh;
+  --app-viewport-width: 100vw;
+}
+
 #root {
   display: flex;
   flex-direction: row;
@@ -49,7 +56,7 @@ body,
 
 body {
   display: flex;
-  min-height: 100vh;
+  min-height: var(--app-viewport-height);
   color: var(--color-text);
   font-size: 14px;
   line-height: 1.6;

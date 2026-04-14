@@ -92,34 +92,38 @@ const WebSearchSettings: FC = () => {
             icon={<Search size={18} />}
             titleStyle={{ fontWeight: 500 }}
           />
-          <DividerWithText text={t('settings.tool.websearch.api_providers')} style={{ margin: '10px 0 8px 0' }} />
-          {apiProviders.map((provider) => {
-            const logo = getProviderLogo(provider.id)
-            const isDefault = defaultProvider?.id === provider.id
-            return (
-              <ListItem
-                key={provider.id}
-                title={provider.name}
-                active={activeView === provider.id}
-                onClick={() => navigate(`/settings/websearch/provider/${provider.id}`)}
-                icon={
-                  logo ? (
-                    <img src={logo} alt={provider.name} className="h-5 w-5 rounded object-contain" />
-                  ) : (
-                    <div className="h-5 w-5 rounded bg-[var(--color-background-soft)]" />
-                  )
-                }
-                titleStyle={{ fontWeight: 500 }}
-                rightContent={
-                  isDefault ? (
-                    <Tag color="green" style={{ marginLeft: 'auto', marginRight: 0, borderRadius: 16 }}>
-                      {t('common.default')}
-                    </Tag>
-                  ) : undefined
-                }
-              />
-            )
-          })}
+          {apiProviders.length > 0 && (
+            <>
+              <DividerWithText text={t('settings.tool.websearch.api_providers')} style={{ margin: '10px 0 8px 0' }} />
+              {apiProviders.map((provider) => {
+                const logo = getProviderLogo(provider.id)
+                const isDefault = defaultProvider?.id === provider.id
+                return (
+                  <ListItem
+                    key={provider.id}
+                    title={provider.name}
+                    active={activeView === provider.id}
+                    onClick={() => navigate(`/settings/websearch/provider/${provider.id}`)}
+                    icon={
+                      logo ? (
+                        <img src={logo} alt={provider.name} className="h-5 w-5 rounded object-contain" />
+                      ) : (
+                        <div className="h-5 w-5 rounded bg-[var(--color-background-soft)]" />
+                      )
+                    }
+                    titleStyle={{ fontWeight: 500 }}
+                    rightContent={
+                      isDefault ? (
+                        <Tag color="green" style={{ marginLeft: 'auto', marginRight: 0, borderRadius: 16 }}>
+                          {t('common.default')}
+                        </Tag>
+                      ) : undefined
+                    }
+                  />
+                )
+              })}
+            </>
+          )}
           {localProviders.length > 0 && (
             <>
               <DividerWithText text={t('settings.tool.websearch.local_providers')} style={{ margin: '10px 0 8px 0' }} />

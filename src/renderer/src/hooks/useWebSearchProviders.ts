@@ -17,6 +17,7 @@ export const useDefaultWebSearchProvider = () => {
   const defaultProvider = useAppSelector((state) => state.websearch.defaultProvider)
   const { providers } = useWebSearchProviders()
   const provider = defaultProvider ? providers.find((provider) => provider.id === defaultProvider) : undefined
+  const resolvedProvider = provider || providers[0]
   const dispatch = useAppDispatch()
 
   const setDefaultProvider = (provider: WebSearchProvider) => {
@@ -27,11 +28,13 @@ export const useDefaultWebSearchProvider = () => {
     dispatch(updateWebSearchProvider(provider))
   }
 
-  return { provider, setDefaultProvider, updateDefaultProvider }
+  return { provider: resolvedProvider, setDefaultProvider, updateDefaultProvider }
 }
 
 export const useWebSearchProviders = () => {
-  const providers = useAppSelector((state) => state.websearch.providers)
+  const providers = useAppSelector((state) =>
+    state.websearch.providers.filter((provider) => provider.id === 'local-google')
+  )
 
   const dispatch = useAppDispatch()
 

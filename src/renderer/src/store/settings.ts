@@ -144,7 +144,6 @@ export interface SettingsState {
   autoTranslateWithSpace: boolean
   showTranslateConfirm: boolean
   enableTopicNaming: boolean
-  customCss: string
   topicNamingPrompt: string
   // 消息操作确认设置
   confirmDeleteMessage: boolean
@@ -256,7 +255,7 @@ export const initialState: SettingsState = {
   showTopics: true,
   assistantsTabSortType: 'list',
   sendMessageShortcut: 'Enter',
-  language: navigator.language as LanguageVarious,
+  language: 'zh-CN',
   targetLanguage: 'en-us',
   proxyMode: 'system',
   proxyUrl: undefined,
@@ -269,8 +268,8 @@ export const initialState: SettingsState = {
   showInputEstimatedTokens: false,
   launchOnBoot: false,
   launchToTray: false,
-  trayOnClose: true,
-  tray: true,
+  trayOnClose: false,
+  tray: false,
   theme: ThemeMode.system,
   userTheme: {
     colorPrimary: '#00b96b',
@@ -338,7 +337,6 @@ export const initialState: SettingsState = {
   autoTranslateWithSpace: false,
   showTranslateConfirm: true,
   enableTopicNaming: true,
-  customCss: '',
   topicNamingPrompt: '',
   sidebarIcons: {
     visible: DEFAULT_SIDEBAR_ICONS,
@@ -439,7 +437,7 @@ export const initialState: SettingsState = {
   // Developer mode
   enableDeveloperMode: false,
   // UI
-  navbarPosition: 'top',
+  navbarPosition: 'left',
   // API Server
   apiServer: {
     enabled: false,
@@ -516,9 +514,6 @@ const settingsSlice = createSlice({
     },
     setTheme: (state, action: PayloadAction<ThemeMode>) => {
       state.theme = action.payload
-    },
-    setCustomCss: (state, action: PayloadAction<string>) => {
-      state.customCss = action.payload
     },
     setUserTheme: (state, action: PayloadAction<UserTheme>) => {
       state.userTheme = action.payload
@@ -967,7 +962,6 @@ export const {
   setShowTranslateConfirm,
   setEnableTopicNaming,
   setPasteLongTextThreshold,
-  setCustomCss,
   setTopicNamingPrompt,
   setSidebarIcons,
   setNarrowMode,

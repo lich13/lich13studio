@@ -19,10 +19,7 @@ import type { AssistantIconType, SendMessageShortcut, SettingsState } from '@ren
 import {
   setAssistantIconType,
   setAutoCheckUpdate as _setAutoCheckUpdate,
-  setDisableHardwareAcceleration,
-  setEnableDeveloperMode,
   setLaunchOnBoot,
-  setLaunchToTray,
   setNavbarPosition,
   setPinTopicsToTop,
   setSendMessageShortcut as _setSendMessageShortcut,
@@ -32,8 +29,6 @@ import {
   setTestPlan as _setTestPlan,
   setTheme,
   setTopicPosition,
-  setTray as _setTray,
-  setTrayOnClose,
   setUseSystemTitleBar as _setUseSystemTitleBar,
   setWindowStyle
 } from '@renderer/store/settings'
@@ -54,32 +49,31 @@ export function useSettings() {
 
   return {
     ...settings,
+    language: 'zh-CN' as SettingsState['language'],
+    launchToTray: false,
+    tray: false,
+    trayOnClose: false,
+    enableDataCollection: false,
+    enableSpellCheck: false,
+    disableHardwareAcceleration: false,
+    notification: {
+      ...settings.notification,
+      backup: false
+    },
     sidebarIcons,
     setSendMessageShortcut(shortcut: SendMessageShortcut) {
       dispatch(_setSendMessageShortcut(shortcut))
     },
 
-    setLaunch(isLaunchOnBoot: boolean | undefined, isLaunchToTray: boolean | undefined = undefined) {
+    setLaunch(isLaunchOnBoot: boolean | undefined) {
       if (isLaunchOnBoot !== undefined) {
         dispatch(setLaunchOnBoot(isLaunchOnBoot))
         void window.api.setLaunchOnBoot(isLaunchOnBoot)
       }
-
-      if (isLaunchToTray !== undefined) {
-        dispatch(setLaunchToTray(isLaunchToTray))
-        void window.api.setLaunchToTray(isLaunchToTray)
-      }
     },
 
-    setTray(isShowTray: boolean | undefined, isTrayOnClose: boolean | undefined = undefined) {
-      if (isShowTray !== undefined) {
-        dispatch(_setTray(isShowTray))
-        void window.api.setTray(isShowTray)
-      }
-      if (isTrayOnClose !== undefined) {
-        dispatch(setTrayOnClose(isTrayOnClose))
-        void window.api.setTrayOnClose(isTrayOnClose)
-      }
+    setTray() {
+      return undefined
     },
 
     setAutoCheckUpdate(isAutoUpdate: boolean) {
@@ -129,10 +123,6 @@ export function useSettings() {
     setAssistantIconType(assistantIconType: AssistantIconType) {
       dispatch(setAssistantIconType(assistantIconType))
     },
-    setDisableHardwareAcceleration(disableHardwareAcceleration: boolean) {
-      dispatch(setDisableHardwareAcceleration(disableHardwareAcceleration))
-      void window.api.setDisableHardwareAcceleration(disableHardwareAcceleration)
-    },
     setUseSystemTitleBar(useSystemTitleBar: boolean) {
       dispatch(_setUseSystemTitleBar(useSystemTitleBar))
       void window.api.setUseSystemTitleBar(useSystemTitleBar)
@@ -154,20 +144,14 @@ export const getStoreSetting = <K extends keyof SettingsState>(key: K): Settings
 }
 
 export const useEnableDeveloperMode = () => {
-  const enableDeveloperMode = useAppSelector((state) => state.settings.enableDeveloperMode)
-  const dispatch = useAppDispatch()
-
   return {
-    enableDeveloperMode,
-    setEnableDeveloperMode: (enableDeveloperMode: boolean) => {
-      dispatch(setEnableDeveloperMode(enableDeveloperMode))
-      void window.api.config.set('enableDeveloperMode', enableDeveloperMode)
-    }
+    enableDeveloperMode: false,
+    setEnableDeveloperMode: () => undefined
   }
 }
 
 export const getEnableDeveloperMode = () => {
-  return store.getState().settings.enableDeveloperMode
+  return false
 }
 
 export const useNavbarPosition = () => {

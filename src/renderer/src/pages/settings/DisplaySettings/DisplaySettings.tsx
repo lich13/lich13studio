@@ -1,11 +1,10 @@
-import CodeEditor from '@renderer/components/CodeEditor'
 import { ResetIcon } from '@renderer/components/Icons'
 import { HStack } from '@renderer/components/Layout'
 import TextBadge from '@renderer/components/TextBadge'
 import { isLinux, isMac, THEME_COLOR_PRESETS } from '@renderer/config/constant'
 import { DEFAULT_SIDEBAR_ICONS } from '@renderer/config/sidebar'
 import { useTheme } from '@renderer/context/ThemeProvider'
-import { useNavbarPosition, useSettings } from '@renderer/hooks/useSettings'
+import { useSettings } from '@renderer/hooks/useSettings'
 import { useTimer } from '@renderer/hooks/useTimer'
 import useUserTheme from '@renderer/hooks/useUserTheme'
 import { useAppDispatch } from '@renderer/store'
@@ -13,7 +12,6 @@ import type { AssistantIconType } from '@renderer/store/settings'
 import {
   setAssistantIconType,
   setClickAssistantToShowTopic,
-  setCustomCss,
   setPinTopicsToTop,
   setShowTopicTime,
   setSidebarIcons
@@ -65,7 +63,6 @@ const DisplaySettings: FC = () => {
     clickAssistantToShowTopic,
     showTopicTime,
     pinTopicsToTop,
-    customCss,
     sidebarIcons,
     setTheme,
     assistantIconType,
@@ -73,7 +70,6 @@ const DisplaySettings: FC = () => {
     useSystemTitleBar,
     setUseSystemTitleBar
   } = useSettings()
-  const { navbarPosition, setNavbarPosition } = useNavbarPosition()
   const { theme, settedTheme } = useTheme()
   const { t } = useTranslation()
   const dispatch = useAppDispatch()
@@ -295,24 +291,6 @@ const DisplaySettings: FC = () => {
         )}
       </SettingGroup>
       <SettingGroup theme={theme}>
-        <SettingTitle style={{ justifyContent: 'flex-start', gap: 5 }}>
-          {t('settings.display.navbar.title')} <TextBadge text="New" />
-        </SettingTitle>
-        <SettingDivider />
-        <SettingRow>
-          <SettingRowTitle>{t('settings.display.navbar.position.label')}</SettingRowTitle>
-          <Segmented
-            value={navbarPosition}
-            shape="round"
-            onChange={setNavbarPosition}
-            options={[
-              { label: t('settings.display.navbar.position.left'), value: 'left' },
-              { label: t('settings.display.navbar.position.top'), value: 'top' }
-            ]}
-          />
-        </SettingRow>
-      </SettingGroup>
-      <SettingGroup theme={theme}>
         <SettingTitle>{t('settings.display.zoom.title')}</SettingTitle>
         <SettingDivider />
         <SettingRow>
@@ -451,62 +429,26 @@ const DisplaySettings: FC = () => {
           />
         </SettingRow>
       </SettingGroup>
-      {navbarPosition === 'left' && (
-        <SettingGroup theme={theme}>
-          <SettingTitle
-            style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span>{t('settings.display.sidebar.title')}</span>
-            <ResetButtonWrapper>
-              <Button onClick={handleReset}>{t('common.reset')}</Button>
-            </ResetButtonWrapper>
-          </SettingTitle>
-          <SettingDivider />
-          <SidebarIconsManager
-            visibleIcons={visibleIcons}
-            disabledIcons={disabledIcons}
-            setVisibleIcons={setVisibleIcons}
-            setDisabledIcons={setDisabledIcons}
-          />
-        </SettingGroup>
-      )}
       <SettingGroup theme={theme}>
-        <SettingTitle>
-          {t('settings.display.custom.css.label')}
-          <TitleExtra onClick={() => window.api.openWebsite('https://cherrycss.com/')}>
-            {t('settings.display.custom.css.cherrycss')}
-          </TitleExtra>
+        <SettingTitle
+          style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>{t('settings.display.sidebar.title')}</span>
+          <ResetButtonWrapper>
+            <Button onClick={handleReset}>{t('common.reset')}</Button>
+          </ResetButtonWrapper>
         </SettingTitle>
         <SettingDivider />
-        <CodeEditor
-          value={customCss}
-          language="css"
-          placeholder={t('settings.display.custom.css.placeholder')}
-          onChange={(value) => dispatch(setCustomCss(value))}
-          height="60vh"
-          expanded={false}
-          wrapped
-          options={{
-            autocompletion: true,
-            lineNumbers: true,
-            foldGutter: true,
-            keymap: true
-          }}
-          style={{
-            outline: '0.5px solid var(--color-border)',
-            borderRadius: '5px'
-          }}
+        <SidebarIconsManager
+          visibleIcons={visibleIcons}
+          disabledIcons={disabledIcons}
+          setVisibleIcons={setVisibleIcons}
+          setDisabledIcons={setDisabledIcons}
         />
       </SettingGroup>
     </SettingContainer>
   )
 }
 
-const TitleExtra = styled.div`
-  font-size: 12px;
-  cursor: pointer;
-  text-decoration: underline;
-  opacity: 0.7;
-`
 const ResetButtonWrapper = styled.div`
   display: flex;
   align-items: center;

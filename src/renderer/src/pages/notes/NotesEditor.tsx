@@ -1,4 +1,3 @@
-import ActionIconButton from '@renderer/components/Buttons/ActionIconButton'
 import type { CodeEditorHandles } from '@renderer/components/CodeEditor'
 import CodeEditor from '@renderer/components/CodeEditor'
 import { HSpaceBetweenStack } from '@renderer/components/Layout'
@@ -7,11 +6,8 @@ import type { RichEditorRef } from '@renderer/components/RichEditor/types'
 import Selector from '@renderer/components/Selector'
 import { useNotesSettings } from '@renderer/hooks/useNotesSettings'
 import { useSettings } from '@renderer/hooks/useSettings'
-import { useAppDispatch } from '@renderer/store'
-import { setEnableSpellCheck } from '@renderer/store/settings'
 import type { EditorView } from '@renderer/types'
-import { Empty, Tooltip } from 'antd'
-import { SpellCheck } from 'lucide-react'
+import { Empty } from 'antd'
 import type { FC, RefObject } from 'react'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -29,7 +25,6 @@ interface NotesEditorProps {
 const NotesEditor: FC<NotesEditorProps> = memo(
   ({ activeNodeId, currentContent, tokenCount, onMarkdownChange, editorRef, codeEditorRef }) => {
     const { t } = useTranslation()
-    const dispatch = useAppDispatch()
     const { settings } = useNotesSettings()
     const { enableSpellCheck } = useSettings()
     const currentViewMode = useMemo(() => {
@@ -106,19 +101,6 @@ const NotesEditor: FC<NotesEditorProps> = memo(
                 alignItems: 'center',
                 gap: 12
               }}>
-              {tmpViewMode === 'preview' && (
-                <Tooltip placement="top" title={t('notes.spell_check_tooltip')} mouseLeaveDelay={0} arrow>
-                  <ActionIconButton
-                    active={enableSpellCheck}
-                    onClick={() => {
-                      const newValue = !enableSpellCheck
-                      dispatch(setEnableSpellCheck(newValue))
-                      void window.api.setEnableSpellCheck(newValue)
-                    }}>
-                    <SpellCheck size={18} />
-                  </ActionIconButton>
-                </Tooltip>
-              )}
               <Selector
                 value={tmpViewMode as EditorView}
                 onChange={(value: EditorView) => setTmpViewMode(value)}

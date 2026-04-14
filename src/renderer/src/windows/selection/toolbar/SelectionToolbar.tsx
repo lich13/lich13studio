@@ -113,7 +113,7 @@ const ActionIcons: FC<{
  * demo is used in the settings page
  */
 const SelectionToolbar: FC<{ demo?: boolean }> = ({ demo = false }) => {
-  const { language, customCss } = useSettings()
+  const { language } = useSettings()
   const { isCompact, actionItems } = useSelectionAssistant()
   const [animateKey, setAnimateKey] = useState(0)
   const [copyIconStatus, setCopyIconStatus] = useState<'normal' | 'success' | 'fail'>('normal')
@@ -178,24 +178,6 @@ const SelectionToolbar: FC<{ demo?: boolean }> = ({ demo = false }) => {
   useEffect(() => {
     void (!demo && i18n.changeLanguage(language || navigator.language || defaultLanguage))
   }, [language, demo])
-
-  useEffect(() => {
-    if (demo) return
-
-    let customCssElement = document.getElementById('user-defined-custom-css') as HTMLStyleElement
-    if (customCssElement) {
-      customCssElement.remove()
-    }
-
-    if (customCss) {
-      const newCustomCss = customCss.replace(/(^|\s)background(-image|-color)?\s*:[^;]+;/gi, '')
-
-      customCssElement = document.createElement('style')
-      customCssElement.id = 'user-defined-custom-css'
-      customCssElement.textContent = newCustomCss
-      document.head.appendChild(customCssElement)
-    }
-  }, [customCss, demo])
 
   /**
    * Check if text is a valid URI or file path

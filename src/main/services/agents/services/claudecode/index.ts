@@ -1028,7 +1028,7 @@ async function buildAssistantContext(): Promise<string> {
 
   return [
     '## Current Environment',
-    `- App: Cherry Studio v${appVersion}`,
+    `- App: lich13studio v${appVersion}`,
     `- OS: ${platform}`,
     `- Language: ${language}, Theme: ${theme}`,
     proxy ? `- Proxy: ${proxy}` : '- Proxy: none',

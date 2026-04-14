@@ -61,6 +61,41 @@ async function updateCargoTomlVersion(filePath, nextVersion) {
   await fs.writeFile(filePath, `${updatedLines.join(newline)}${newline}`)
 }
 
+async function updateCargoLockVersion(filePath, packageName, nextVersion) {
+  const raw = await fs.readFile(filePath, 'utf8')
+  const newline = raw.includes('\r\n') ? '\r\n' : '\n'
+  const lines = raw.split(/\r?\n/)
+  let inTargetPackage = false
+  let replaced = false
+
+  const updatedLines = lines.map((line) => {
+    const trimmed = line.trim()
+
+    if (trimmed === '[[package]]') {
+      inTargetPackage = false
+      return line
+    }
+
+    if (/^name\s*=/.test(trimmed)) {
+      inTargetPackage = trimmed === `name = "${packageName}"`
+      return line
+    }
+
+    if (inTargetPackage && /^version\s*=/.test(trimmed) && !replaced) {
+      replaced = true
+      return line.replace(/(\s*version\s*=\s*")([^"]+)(")/, `$1${nextVersion}$3`)
+    }
+
+    return line
+  })
+
+  if (!replaced) {
+    throw new Error(`Failed to update Cargo.lock version for ${packageName}`)
+  }
+
+  await fs.writeFile(filePath, `${updatedLines.join(newline)}${newline}`)
+}
+
 async function main() {
   const { version } = parseArgs(process.argv.slice(2))
   const nextVersion = normalizeVersion(version)
@@ -69,6 +104,7 @@ async function main() {
   await updateJsonVersion(path.join(root, 'package.json'), nextVersion)
   await updateJsonVersion(path.join(root, 'src-tauri', 'tauri.conf.json'), nextVersion)
   await updateCargoTomlVersion(path.join(root, 'src-tauri', 'Cargo.toml'), nextVersion)
+  await updateCargoLockVersion(path.join(root, 'src-tauri', 'Cargo.lock'), 'lich13studio', nextVersion)
 
   console.log(`[set-app-version] Synced app version to ${nextVersion}`)
 }

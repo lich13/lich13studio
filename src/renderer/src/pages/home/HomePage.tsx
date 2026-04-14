@@ -35,18 +35,13 @@ const HomePage: FC = () => {
   )
   const { activeTopic, setActiveTopic: _setActiveTopic } = useActiveTopic(activeAssistant?.id ?? '', state?.topic)
   const { showAssistants, showTopics, topicPosition } = useSettings()
-  const { setShowAssistants, toggleShowAssistants } = useShowAssistants()
-  const { toggleShowTopics } = useShowTopics()
+  const { setShowAssistants } = useShowAssistants()
+  const { setShowTopics } = useShowTopics()
   const dispatch = useDispatch()
 
   _activeAssistant = activeAssistant
 
   useShortcut('toggle_show_assistants', () => {
-    if (topicPosition === 'right') {
-      toggleShowAssistants()
-      return
-    }
-
     if (!showAssistants) {
       setShowAssistants(true)
       requestAnimationFrame(() => {
@@ -59,13 +54,8 @@ const HomePage: FC = () => {
   })
 
   useShortcut('toggle_show_topics', () => {
-    if (topicPosition === 'right') {
-      toggleShowTopics()
-      return
-    }
-
-    if (!showAssistants) {
-      setShowAssistants(true)
+    if (!showTopics) {
+      setShowTopics(true)
       requestAnimationFrame(() => {
         void EventEmitter.emit(EVENT_NAMES.SHOW_TOPIC_SIDEBAR)
       })
@@ -167,10 +157,10 @@ const Container = styled.div`
   flex: 1;
   flex-direction: column;
   [navbar-position='left'] & {
-    max-width: calc(100vw - var(--sidebar-width));
+    max-width: calc(var(--app-viewport-width) - var(--sidebar-width));
   }
   [navbar-position='top'] & {
-    max-width: 100vw;
+    max-width: var(--app-viewport-width);
   }
 `
 
@@ -181,7 +171,7 @@ const ContentContainer = styled.div`
   overflow: hidden;
 
   [navbar-position='top'] & {
-    max-width: calc(100vw - 12px);
+    max-width: calc(var(--app-viewport-width) - 12px);
   }
 `
 

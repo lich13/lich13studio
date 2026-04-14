@@ -29,12 +29,15 @@ const tailwindThemeChange = (theme: ThemeMode) => {
   root.classList.add(theme)
 }
 
+const getSystemTheme = () =>
+  window.matchMedia('(prefers-color-scheme: dark)').matches ? ThemeMode.dark : ThemeMode.light
+
+const resolveActualTheme = (theme: ThemeMode) => (theme === ThemeMode.system ? getSystemTheme() : theme)
+
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   // 用户设置的主题
   const { theme: settedTheme, setTheme: setSettedTheme, language } = useSettings()
-  const [actualTheme, setActualTheme] = useState<ThemeMode>(
-    window.matchMedia('(prefers-color-scheme: dark)').matches ? ThemeMode.dark : ThemeMode.light
-  )
+  const [actualTheme, setActualTheme] = useState<ThemeMode>(() => resolveActualTheme(settedTheme))
   const { initUserTheme } = useUserTheme()
   const { navbarPosition } = useNavbarPosition()
 
@@ -48,7 +51,27 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   }
 
   useEffect(() => {
-    // Set initial theme and OS attributes on body
+    setActualTheme(resolveActualTheme(settedTheme))
+  }, [settedTheme])
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+    const handleSystemThemeChange = () => {
+      if (settedTheme === ThemeMode.system) {
+        setActualTheme(getSystemTheme())
+      }
+    }
+
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', handleSystemThemeChange)
+      return () => mediaQuery.removeEventListener('change', handleSystemThemeChange)
+    }
+
+    mediaQuery.addListener(handleSystemThemeChange)
+    return () => mediaQuery.removeListener(handleSystemThemeChange)
+  }, [settedTheme])
+
+  useEffect(() => {
     document.body.setAttribute('os', isMac ? 'mac' : isWin ? 'windows' : 'linux')
     document.body.setAttribute('theme-mode', actualTheme)
     if (actualTheme === ThemeMode.dark) {
@@ -68,13 +91,13 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     }
 
     initUserTheme()
-
-    // listen for theme updates from main process
-    return window.api.onThemeUpdated((actualTheme: ThemeMode) => {
-      document.body.setAttribute('theme-mode', actualTheme)
-      setActualTheme(actualTheme)
-    })
   }, [actualTheme, initUserTheme, language, navbarPosition, setSettedTheme, settedTheme])
+
+  useEffect(() => {
+    return window.api.onThemeUpdated((theme: ThemeMode) => {
+      setActualTheme(theme)
+    })
+  }, [])
 
   useEffect(() => {
     tailwindThemeChange(actualTheme)

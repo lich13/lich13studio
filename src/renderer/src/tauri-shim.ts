@@ -7,7 +7,7 @@ const previewMode = new URL(window.location.href).searchParams.has('tauri-previe
 const mockInvoke = async (command: string) => {
   if (command === 'app_info') {
     return {
-      version: '1.9.1-preview',
+      version: '0.1.0-preview',
       isPackaged: false,
       appPath: '/preview/resources',
       configPath: '/preview/config',
@@ -30,12 +30,7 @@ const mockInvoke = async (command: string) => {
     return buildBackupSnapshot()
   }
 
-  if (
-    command === 'webdav_backup' ||
-    command === 's3_backup' ||
-    command === 'test_provider' ||
-    command === 'test_mcp'
-  ) {
+  if (command === 'webdav_backup' || command === 's3_backup' || command === 'test_provider' || command === 'test_mcp') {
     return true
   }
 
@@ -88,6 +83,160 @@ const platform = navigator.userAgent.includes('Mac')
   : navigator.userAgent.includes('Windows')
     ? 'win32'
     : 'linux'
+
+const THEME_STORAGE_KEY = 'tauri:theme'
+const ZOOM_STORAGE_KEY = 'tauri:zoom-factor'
+const APP_ZOOM_FACTOR_VAR = '--app-zoom-factor'
+const APP_INVERSE_ZOOM_FACTOR_VAR = '--app-inverse-zoom-factor'
+const APP_VIEWPORT_HEIGHT_VAR = '--app-viewport-height'
+const APP_VIEWPORT_WIDTH_VAR = '--app-viewport-width'
+const systemThemeMediaQuery =
+  typeof window.matchMedia === 'function' ? window.matchMedia('(prefers-color-scheme: dark)') : null
+const themeListeners = new Set<(theme: 'light' | 'dark') => void>()
+
+const resolveThemeMode = (theme: string | null | undefined): 'light' | 'dark' => {
+  if (theme === 'light' || theme === 'dark') {
+    return theme
+  }
+
+  return systemThemeMediaQuery?.matches ? 'dark' : 'light'
+}
+
+const emitThemeUpdated = (theme?: string | null) => {
+  const resolvedTheme = resolveThemeMode(theme ?? localStorage.getItem(THEME_STORAGE_KEY))
+  themeListeners.forEach((listener) => listener(resolvedTheme))
+  return resolvedTheme
+}
+
+const clampZoomFactor = (factor: number) => {
+  if (!Number.isFinite(factor)) {
+    return 1
+  }
+
+  return Math.min(2, Math.max(0.5, Math.round(factor * 100) / 100))
+}
+
+let currentZoomFactor = clampZoomFactor(Number.parseFloat(localStorage.getItem(ZOOM_STORAGE_KEY) || '1'))
+
+const applyZoomFactor = (factor: number) => {
+  currentZoomFactor = clampZoomFactor(factor)
+  localStorage.setItem(ZOOM_STORAGE_KEY, String(currentZoomFactor))
+  document.documentElement.style.setProperty(APP_ZOOM_FACTOR_VAR, String(currentZoomFactor))
+  document.documentElement.style.setProperty(APP_INVERSE_ZOOM_FACTOR_VAR, String(1 / currentZoomFactor))
+  document.documentElement.style.setProperty(APP_VIEWPORT_HEIGHT_VAR, `calc(100vh / ${currentZoomFactor})`)
+  document.documentElement.style.setProperty(APP_VIEWPORT_WIDTH_VAR, `calc(100vw / ${currentZoomFactor})`)
+  document.documentElement.style.setProperty('zoom', String(currentZoomFactor))
+  return currentZoomFactor
+}
+
+applyZoomFactor(currentZoomFactor)
+
+const fontCandidatesByPlatform: Record<string, string[]> = {
+  darwin: [
+    'SF Pro Text',
+    'SF Pro Display',
+    'Helvetica Neue',
+    'Helvetica',
+    'Arial',
+    'PingFang SC',
+    'Hiragino Sans GB',
+    'Songti SC',
+    'STHeiti',
+    'Menlo',
+    'Monaco',
+    'Courier New',
+    'Times New Roman'
+  ],
+  win32: [
+    'Segoe UI',
+    'Microsoft YaHei UI',
+    'Microsoft YaHei',
+    'SimHei',
+    'SimSun',
+    'Arial',
+    'Tahoma',
+    'Verdana',
+    'Cascadia Code',
+    'Consolas',
+    'Courier New',
+    'Times New Roman'
+  ],
+  linux: [
+    'Ubuntu',
+    'Noto Sans',
+    'Noto Sans CJK SC',
+    'DejaVu Sans',
+    'Liberation Sans',
+    'Arial',
+    'Verdana',
+    'Fira Code',
+    'DejaVu Sans Mono',
+    'Liberation Mono',
+    'Courier New',
+    'Times New Roman'
+  ]
+}
+
+let cachedSystemFonts: string[] | null = null
+
+const detectSystemFontsFromDocument = (fonts: string[]) => {
+  const documentFonts = (document as AnyRecord).fonts
+  if (!documentFonts?.check) {
+    return fonts
+  }
+
+  return fonts.filter((font) => {
+    try {
+      return documentFonts.check(`16px "${font}"`)
+    } catch {
+      return false
+    }
+  })
+}
+
+const getSystemFonts = async () => {
+  if (cachedSystemFonts) {
+    return cachedSystemFonts
+  }
+
+  const queryLocalFonts = globalWindow.queryLocalFonts as undefined | (() => Promise<Array<{ family?: string }>>)
+
+  if (typeof queryLocalFonts === 'function') {
+    try {
+      const fonts = await queryLocalFonts()
+      const localFonts = Array.from(new Set(fonts.map((font) => font.family?.trim()).filter(Boolean) as string[])).sort(
+        (left, right) => left.localeCompare(right)
+      )
+
+      if (localFonts.length > 0) {
+        cachedSystemFonts = localFonts
+        return localFonts
+      }
+    } catch {
+      // Fall back to heuristic detection when local font access is unavailable.
+    }
+  }
+
+  const detectedFonts = detectSystemFontsFromDocument(
+    fontCandidatesByPlatform[platform] || fontCandidatesByPlatform.linux
+  )
+  cachedSystemFonts = Array.from(new Set(detectedFonts)).sort((left, right) => left.localeCompare(right))
+  return cachedSystemFonts
+}
+
+if (systemThemeMediaQuery) {
+  const handleSystemThemeChange = () => {
+    if ((localStorage.getItem(THEME_STORAGE_KEY) || 'system') === 'system') {
+      emitThemeUpdated('system')
+    }
+  }
+
+  if (typeof systemThemeMediaQuery.addEventListener === 'function') {
+    systemThemeMediaQuery.addEventListener('change', handleSystemThemeChange)
+  } else {
+    systemThemeMediaQuery.addListener?.(handleSystemThemeChange)
+  }
+}
 
 const fileCache = new Map<string, { fileName: string; ext: string; blob: Blob; text?: string }>()
 const fileObjectMap = new WeakMap<File, string>()
@@ -295,9 +444,21 @@ const api = {
   setTestPlan: noOpAsync,
   setTestChannel: noOpAsync,
   setTheme: async (theme: string) => {
-    localStorage.setItem('tauri:theme', theme)
+    const normalizedTheme = theme === 'light' || theme === 'dark' || theme === 'system' ? theme : 'system'
+    localStorage.setItem(THEME_STORAGE_KEY, normalizedTheme)
+    emitThemeUpdated(normalizedTheme)
   },
-  handleZoomFactor: noOpAsync,
+  handleZoomFactor: async (delta: number, reset: boolean = false) => {
+    if (reset) {
+      return applyZoomFactor(1)
+    }
+
+    if (delta === 0) {
+      return currentZoomFactor
+    }
+
+    return applyZoomFactor(currentZoomFactor + delta)
+  },
   setAutoUpdate: noOpAsync,
   select: async (options?: AnyRecord) => {
     if (options?.properties?.includes?.('openDirectory')) {
@@ -340,6 +501,13 @@ const api = {
   getCacheSize: async () => '0 B',
   clearCache: noOpAsync,
   logToMain: noOpAsync,
+  onThemeUpdated: (callback: (theme: 'light' | 'dark') => void) => {
+    themeListeners.add(callback)
+    callback(emitThemeUpdated())
+    return () => {
+      themeListeners.delete(callback)
+    }
+  },
   setFullScreen: async (value: boolean) => {
     if (value) {
       await document.documentElement.requestFullscreen?.()
@@ -348,7 +516,7 @@ const api = {
     }
   },
   isFullScreen: async () => Boolean(document.fullscreenElement),
-  getSystemFonts: async () => [],
+  getSystemFonts,
   getIpCountry: async () => 'us',
   shell: {
     openExternal: async (url: string) => window.open(url, '_blank', 'noopener,noreferrer')
@@ -430,7 +598,8 @@ const api = {
     closeSearchWindow: noOpAsync
   },
   file: {
-    select: async (options?: AnyRecord) => pickFiles(Boolean(options?.properties?.includes?.('multiSelections')), options?.filters),
+    select: async (options?: AnyRecord) =>
+      pickFiles(Boolean(options?.properties?.includes?.('multiSelections')), options?.filters),
     open: async (options?: AnyRecord) => {
       const files = await pickFiles(false, options?.filters)
       return files?.[0] || null

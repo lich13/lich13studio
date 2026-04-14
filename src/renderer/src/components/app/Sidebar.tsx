@@ -1,31 +1,23 @@
-import EmojiAvatar from '@renderer/components/Avatar/EmojiAvatar'
 import { isMac } from '@renderer/config/constant'
-import { UserAvatar } from '@renderer/config/env'
 import { useTheme } from '@renderer/context/ThemeProvider'
-import useAvatar from '@renderer/hooks/useAvatar'
 import { useFullscreen } from '@renderer/hooks/useFullscreen'
 import { useMinappPopup } from '@renderer/hooks/useMinappPopup'
 import { useMinapps } from '@renderer/hooks/useMinapps'
 import useNavBackgroundColor from '@renderer/hooks/useNavBackgroundColor'
 import { modelGenerating, useRuntime } from '@renderer/hooks/useRuntime'
 import { useSettings } from '@renderer/hooks/useSettings'
-import { getSidebarIconLabel, getThemeModeLabel } from '@renderer/i18n/label'
+import { getSidebarIconLabel } from '@renderer/i18n/label'
 import type { SidebarIcon } from '@renderer/types'
-import { ThemeMode } from '@renderer/types'
-import { isEmoji } from '@renderer/utils'
-import { Avatar, Tooltip } from 'antd'
+import { Tooltip } from 'antd'
 import {
   Code,
   Folder,
   LayoutGrid,
   MessageSquare,
-  Monitor,
-  Moon,
   MousePointerClick,
   NotepadText,
   Palette,
-  Settings,
-  Sun
+  Settings
 } from 'lucide-react'
 import type { FC, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -33,7 +25,6 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import styled from 'styled-components'
 
 import { OpenClawSidebarIcon } from '../Icons/SVGIcon'
-import UserPopup from '../Popups/UserPopup'
 import { SidebarOpenedMinappTabs, SidebarPinnedApps } from './PinnedMinapps'
 
 const Sidebar: FC = () => {
@@ -42,23 +33,9 @@ const Sidebar: FC = () => {
   const { sidebarIcons } = useSettings()
   const { pinned } = useMinapps()
 
-  const { pathname } = useLocation()
-  const navigate = useNavigate()
-
-  const { theme, settedTheme, toggleTheme } = useTheme()
-  const avatar = useAvatar()
-  const { t } = useTranslation()
-
-  const onEditUser = () => UserPopup.show()
-
   const backgroundColor = useNavBackgroundColor()
 
   const showPinnedApps = pinned.length > 0 && sidebarIcons.visible.includes('minapp')
-
-  const to = async (path: string) => {
-    await modelGenerating()
-    navigate(path)
-  }
 
   const isFullscreen = useFullscreen()
 
@@ -67,13 +44,6 @@ const Sidebar: FC = () => {
       $isFullscreen={isFullscreen}
       id="app-sidebar"
       style={{ backgroundColor, zIndex: minappShow ? 10000 : 'initial' }}>
-      {isEmoji(avatar) ? (
-        <EmojiAvatar onClick={onEditUser} className="sidebar-avatar" size={31} fontSize={18}>
-          {avatar}
-        </EmojiAvatar>
-      ) : (
-        <AvatarImg src={avatar || UserAvatar} draggable={false} className="nodrag" onClick={onEditUser} />
-      )}
       <MainMenusContainer>
         <Menus onClick={hideMinappPopup}>
           <MainMenus />
@@ -88,30 +58,6 @@ const Sidebar: FC = () => {
           </AppsContainer>
         )}
       </MainMenusContainer>
-      <Menus>
-        <Tooltip title={t('settings.theme.title') + ': ' + getThemeModeLabel(settedTheme)} placement="right">
-          <Icon theme={theme} onClick={toggleTheme}>
-            {settedTheme === ThemeMode.dark ? (
-              <Moon size={20} className="icon" />
-            ) : settedTheme === ThemeMode.light ? (
-              <Sun size={20} className="icon" />
-            ) : (
-              <Monitor size={20} className="icon" />
-            )}
-          </Icon>
-        </Tooltip>
-        <Tooltip title={t('settings.title')} mouseEnterDelay={0.8} placement="right">
-          <StyledLink
-            onClick={async () => {
-              hideMinappPopup()
-              await to('/settings/provider')
-            }}>
-            <Icon theme={theme} className={pathname.startsWith('/settings') && !minappShow ? 'active' : ''}>
-              <Settings size={20} className="icon" />
-            </Icon>
-          </StyledLink>
-        </Tooltip>
-      </Menus>
     </Container>
   )
 }
@@ -123,12 +69,16 @@ const MainMenus: FC = () => {
   const { minappShow } = useRuntime()
   const navigate = useNavigate()
   const { theme } = useTheme()
+  const { t } = useTranslation()
 
   const isRoute = (path: string): string => (pathname === path && !minappShow ? 'active' : '')
   const isRoutes = (path: string): string => (pathname.startsWith(path) && path !== '/' && !minappShow ? 'active' : '')
 
-  const iconMap: Partial<Record<SidebarIcon, ReactNode>> = {
+  type SidebarMenuItem = SidebarIcon | 'settings'
+
+  const iconMap: Partial<Record<SidebarMenuItem, ReactNode>> = {
     assistants: <MessageSquare size={18} className="icon" />,
+    settings: <Settings size={18} className="icon" />,
     agents: <MousePointerClick size={18} className="icon" />,
     paintings: <Palette size={18} className="icon" />,
     minapp: <LayoutGrid size={18} className="icon" />,
@@ -138,8 +88,9 @@ const MainMenus: FC = () => {
     openclaw: <OpenClawSidebarIcon style={{ width: 18, height: 18 }} className="icon" />
   }
 
-  const pathMap: Partial<Record<SidebarIcon, string>> = {
+  const pathMap: Partial<Record<SidebarMenuItem, string>> = {
     assistants: '/',
+    settings: '/settings/provider',
     agents: '/agents',
     paintings: `/paintings/${defaultPaintingProvider}`,
     minapp: '/apps',
@@ -149,16 +100,37 @@ const MainMenus: FC = () => {
     openclaw: '/openclaw'
   }
 
-  return sidebarIcons.visible.flatMap((icon) => {
+  const menuItems: SidebarMenuItem[] = []
+
+  sidebarIcons.visible.forEach((icon) => {
+    menuItems.push(icon)
+    if (icon === 'assistants') {
+      menuItems.push('settings')
+    }
+  })
+
+  if (!menuItems.includes('settings')) {
+    menuItems.unshift('settings')
+  }
+
+  return menuItems.flatMap((icon) => {
     const path = pathMap[icon]
     const iconNode = iconMap[icon]
     if (!path || !iconNode) {
       return []
     }
-    const isActive = path === '/' ? isRoute(path) : isRoutes(path)
+    const isActive =
+      icon === 'settings'
+        ? pathname.startsWith('/settings') && !minappShow
+          ? 'active'
+          : ''
+        : path === '/'
+          ? isRoute(path)
+          : isRoutes(path)
+    const title = icon === 'settings' ? t('settings.title') : getSidebarIconLabel(icon)
 
     return [
-      <Tooltip key={icon} title={getSidebarIconLabel(icon)} mouseEnterDelay={0.8} placement="right">
+      <Tooltip key={icon} title={title} mouseEnterDelay={0.8} placement="right">
         <StyledLink
           onClick={async () => {
             hideMinappPopup()
@@ -178,29 +150,14 @@ const Container = styled.div<{ $isFullscreen: boolean }>`
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 8px 0;
+  padding: 12px 0;
   padding-bottom: 12px;
   width: var(--sidebar-width);
   min-width: var(--sidebar-width);
-  height: ${({ $isFullscreen }) => (isMac && !$isFullscreen ? 'calc(100vh - var(--navbar-height))' : '100vh')};
+  height: ${({ $isFullscreen }) =>
+    isMac && !$isFullscreen ? 'calc(var(--app-viewport-height) - var(--navbar-height))' : 'var(--app-viewport-height)'};
   -webkit-app-region: drag !important;
   margin-top: ${({ $isFullscreen }) => (isMac && !$isFullscreen ? 'env(titlebar-area-height)' : 0)};
-
-  .sidebar-avatar {
-    margin-bottom: ${isMac ? '12px' : '12px'};
-    margin-top: ${isMac ? '0px' : '2px'};
-    -webkit-app-region: none;
-  }
-`
-
-const AvatarImg = styled(Avatar)`
-  width: 31px;
-  height: 31px;
-  background-color: var(--color-background-soft);
-  margin-bottom: ${isMac ? '12px' : '12px'};
-  margin-top: ${isMac ? '0px' : '2px'};
-  border: none;
-  cursor: pointer;
 `
 
 const MainMenusContainer = styled.div`

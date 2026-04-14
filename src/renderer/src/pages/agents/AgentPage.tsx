@@ -22,8 +22,8 @@ import { AgentEmpty, AgentServerDisabled, AgentServerStopped } from './component
 
 const AgentPage = () => {
   const { isLeftNavbar } = useNavbarPosition()
-  const { showAssistants, toggleShowAssistants } = useShowAssistants()
-  const { showTopics, toggleShowTopics } = useShowTopics()
+  const { showAssistants, setShowAssistants } = useShowAssistants()
+  const { showTopics, setShowTopics } = useShowTopics()
   const { topicPosition } = useSettings()
   const { chat } = useRuntime()
   const { activeAgentId } = chat
@@ -33,20 +33,18 @@ const AgentPage = () => {
   const { t } = useTranslation()
 
   useShortcut('toggle_show_assistants', () => {
-    if (topicPosition === 'left') {
-      toggleShowAssistants()
-      return
+    if (!showAssistants) {
+      setShowAssistants(true)
     }
-
     void EventEmitter.emit(EVENT_NAMES.SHOW_ASSISTANTS)
   })
 
   useShortcut('toggle_show_topics', () => {
-    if (topicPosition === 'right') {
-      toggleShowTopics()
-    } else {
-      void EventEmitter.emit(EVENT_NAMES.SHOW_TOPIC_SIDEBAR)
+    if (!showTopics) {
+      setShowTopics(true)
     }
+
+    void EventEmitter.emit(EVENT_NAMES.SHOW_TOPIC_SIDEBAR)
   })
 
   // Auto-select first agent when none is active

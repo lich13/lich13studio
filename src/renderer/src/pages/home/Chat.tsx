@@ -150,7 +150,9 @@ const Chat: FC<Props> = (props) => {
     firstUpdateOrNoFirstUpdateHandler()
   }
 
-  const mainHeight = isTopNavbar ? 'calc(100vh - var(--navbar-height) - 6px)' : 'calc(100vh - var(--navbar-height))'
+  const mainHeight = isTopNavbar
+    ? 'calc(var(--app-viewport-height) - var(--navbar-height) - 6px)'
+    : 'calc(var(--app-viewport-height) - var(--navbar-height))'
 
   return (
     <Container id="chat" className={classNames([messageStyle, { 'multi-select-mode': isMultiSelectMode }])}>
@@ -228,11 +230,11 @@ const Chat: FC<Props> = (props) => {
 const Container = styled.div`
   display: flex;
   flex-direction: column;
-  height: calc(100vh - var(--navbar-height));
+  height: calc(var(--app-viewport-height) - var(--navbar-height));
   flex: 1;
   overflow: hidden;
   [navbar-position='top'] & {
-    height: calc(100vh - var(--navbar-height) - 6px);
+    height: calc(var(--app-viewport-height) - var(--navbar-height) - 6px);
     background-color: var(--color-background);
     border-top-left-radius: 10px;
     border-bottom-left-radius: 10px;
@@ -241,7 +243,7 @@ const Container = styled.div`
 
 const Main = styled(Flex)`
   [navbar-position='left'] & {
-    height: calc(100vh - var(--navbar-height));
+    height: calc(var(--app-viewport-height) - var(--navbar-height));
   }
   transform: translateZ(0);
   position: relative;

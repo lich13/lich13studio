@@ -24,7 +24,7 @@ const PopupContainer = ({ resolve }: Props) => {
   return (
     <Drawer
       title={null}
-      height="100vh"
+      height="var(--app-viewport-height)"
       placement="left"
       open={open}
       onClose={onClose}
@@ -35,7 +35,7 @@ const PopupContainer = ({ resolve }: Props) => {
           display: 'flex',
           padding: 0,
           paddingTop: isMac ? 'var(--navbar-height)' : 0,
-          height: 'calc(100vh - var(--navbar-height))',
+          height: 'calc(var(--app-viewport-height) - var(--navbar-height))',
           overflow: 'hidden',
           backgroundColor: 'var(--color-background-opacity)'
         },
