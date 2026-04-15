@@ -14,6 +14,7 @@ import type { EndpointType, Model, Provider } from '@renderer/types'
 import { SystemProviderIds } from '@renderer/types'
 import { formatApiHost, withoutTrailingSlash } from '@renderer/utils'
 import { getDefaultGroupName } from '@renderer/utils/naming'
+import { getTauriNativeFetch } from '@renderer/utils/tauriNativeFetch'
 import { isAIGatewayProvider, isGeminiProvider, isOllamaProvider } from '@renderer/utils/provider'
 import { defaultAppHeaders } from '@shared/utils'
 import * as z from 'zod'
@@ -63,6 +64,7 @@ async function getFromApi<T>({
   responseSchema: z.ZodType<T>
   abortSignal?: AbortSignal
 }): Promise<T> {
+  const nativeFetch = getTauriNativeFetch()
   const { value } = await aiSdkGetFromApi({
     url,
     headers,
@@ -71,7 +73,8 @@ async function getFromApi<T>({
       errorSchema: zodSchema(ApiErrorSchema),
       errorToMessage: (error: ApiError) => error.error?.message || error.message || 'Unknown error'
     }),
-    abortSignal
+    abortSignal,
+    fetch: nativeFetch
   })
 
   return value
@@ -281,7 +284,12 @@ const openRouterFetcher: ModelFetcher = {
       }).catch(() => ({ data: [] }))
     ])
     const all = [...modelsResponse.data, ...embedModelsResponse.data]
-    return dedup(all, (m) => m.id).map((m) => toModel(m.id, provider, { owned_by: m.owned_by }))
+    return dedup(all, (m) => m.id).map((m) =>
+      toModel(m.id, provider, {
+        owned_by: m.owned_by,
+        supported_endpoint_types: m.supported_endpoint_types as EndpointType[] | undefined
+      })
+    )
   }
 }
 
@@ -310,7 +318,12 @@ const ppioFetcher: ModelFetcher = {
       }).catch(() => ({ data: [] }))
     ])
     const all = [...chat.data, ...embed.data, ...reranker.data]
-    return dedup(all, (m) => m.id).map((m) => toModel(m.id, provider, { owned_by: m.owned_by }))
+    return dedup(all, (m) => m.id).map((m) =>
+      toModel(m.id, provider, {
+        owned_by: m.owned_by,
+        supported_endpoint_types: m.supported_endpoint_types as EndpointType[] | undefined
+      })
+    )
   }
 }
 
@@ -343,7 +356,12 @@ const openAICompatibleFetcher: ModelFetcher = {
       responseSchema: OpenAIModelsResponseSchema,
       abortSignal: signal
     })
-    return dedup(response.data, (m) => m.id).map((m) => toModel(m.id, provider, { owned_by: m.owned_by }))
+    return dedup(response.data, (m) => m.id).map((m) =>
+      toModel(m.id, provider, {
+        owned_by: m.owned_by,
+        supported_endpoint_types: m.supported_endpoint_types as EndpointType[] | undefined
+      })
+    )
   }
 }
 

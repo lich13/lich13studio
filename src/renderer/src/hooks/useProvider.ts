@@ -81,14 +81,17 @@ export function useProvider(id: string) {
   const handleAddModel = useCallback(
     (model: Model) => {
       let processedModel = { ...model, supported_text_delta: !isNotSupportTextDeltaModel(model) }
+      const endpointTypes = model.supported_endpoint_types
 
-      if (isNewApiProvider(provider)) {
-        const endpointTypes = model.supported_endpoint_types
-        if (endpointTypes && endpointTypes.length > 0) {
-          processedModel = {
-            ...processedModel,
-            endpoint_type: endpointTypes.includes('image-generation') ? 'image-generation' : endpointTypes[0]
-          }
+      if (!processedModel.endpoint_type && endpointTypes && endpointTypes.length > 0) {
+        processedModel = {
+          ...processedModel,
+          endpoint_type: endpointTypes.includes('image-generation') ? 'image-generation' : endpointTypes[0]
+        }
+      } else if (isNewApiProvider(provider) && endpointTypes && endpointTypes.length > 0) {
+        processedModel = {
+          ...processedModel,
+          endpoint_type: endpointTypes.includes('image-generation') ? 'image-generation' : endpointTypes[0]
         }
       }
 

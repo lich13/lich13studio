@@ -1,5 +1,5 @@
 import { formatPrivateKey, hasProviderConfig, type StringKeys } from '@cherrystudio/ai-core/provider'
-import type { AppProviderId, AppProviderSettingsMap } from '@renderer/aiCore/types'
+import { appProviderIds, type AppProviderId, type AppProviderSettingsMap } from '@renderer/aiCore/types'
 import {
   getAwsBedrockAccessKeyId,
   getAwsBedrockApiKey,
@@ -12,6 +12,7 @@ import { getProviderByModel } from '@renderer/services/AssistantService'
 import { getProviderById } from '@renderer/services/ProviderService'
 import store from '@renderer/store'
 import { type Model, type Provider, SystemProviderIds } from '@renderer/types'
+import { getTauriNativeFetch } from '@renderer/utils/tauriNativeFetch'
 import {
   formatApiHost,
   formatOllamaApiHost,
@@ -49,6 +50,18 @@ interface BuilderContext {
   baseConfig: BaseConfig
   endpoint?: string
   aiSdkProviderId: AppProviderId
+}
+
+function shouldUseNewApiRouting(provider: Provider, model: Model): boolean {
+  if (provider.type === 'new-api') {
+    return true
+  }
+
+  if (provider.type !== 'openai' && provider.type !== 'anthropic') {
+    return false
+  }
+
+  return !!model.endpoint_type
 }
 
 // === Host Formatting ===
@@ -122,7 +135,9 @@ export function providerToAiSdkConfig(
   actualProvider: Provider,
   model: Model
 ): ProviderConfig | Promise<ProviderConfig> {
-  const aiSdkProviderId = getAiSdkProviderId(actualProvider)
+  const aiSdkProviderId = shouldUseNewApiRouting(actualProvider, model)
+    ? appProviderIds['new-api']
+    : getAiSdkProviderId(actualProvider)
   const { baseURL, endpoint } = routeToEndpoint(actualProvider.apiHost)
 
   const ctx: BuilderContext = {
@@ -175,11 +190,13 @@ export function isModernSdkSupported(provider: Provider): boolean {
 // === Config Builders ===
 
 function buildCommonOptions(ctx: BuilderContext) {
+  const nativeFetch = getTauriNativeFetch()
   const options: Record<string, any> = {
     headers: {
       ...defaultAppHeaders(),
       ...ctx.actualProvider.extra_headers
-    }
+    },
+    ...(nativeFetch ? { fetch: nativeFetch } : {})
   }
   if (ctx.aiSdkProviderId === 'openai') {
     options.headers['X-Api-Key'] = ctx.baseConfig.apiKey
@@ -205,6 +222,7 @@ async function buildCopilotConfig(ctx: BuilderContext): Promise<ProviderConfig<'
 }
 
 function buildOllamaConfig(ctx: BuilderContext): ProviderConfig<'ollama'> {
+  const nativeFetch = getTauriNativeFetch()
   const headers: ProviderConfig<'ollama'>['providerSettings']['headers'] = {
     ...defaultAppHeaders(),
     ...ctx.actualProvider.extra_headers
@@ -216,7 +234,7 @@ function buildOllamaConfig(ctx: BuilderContext): ProviderConfig<'ollama'> {
   return {
     providerId: 'ollama',
     endpoint: ctx.endpoint,
-    providerSettings: { ...ctx.baseConfig, headers }
+    providerSettings: { ...ctx.baseConfig, headers, ...(nativeFetch ? { fetch: nativeFetch } : {}) }
   }
 }
 
@@ -262,6 +280,7 @@ function buildVertexConfig(
 
 function buildCherryinConfig(ctx: BuilderContext): ProviderConfig<'cherryin'> {
   const cherryinProvider = getProviderById(SystemProviderIds.cherryin)
+  const nativeFetch = getTauriNativeFetch()
 
   return {
     providerId: 'cherryin',
@@ -271,7 +290,8 @@ function buildCherryinConfig(ctx: BuilderContext): ProviderConfig<'cherryin'> {
       endpointType: ctx.model.endpoint_type,
       anthropicBaseURL: cherryinProvider ? cherryinProvider.anthropicApiHost + '/v1' : undefined,
       geminiBaseURL: cherryinProvider ? cherryinProvider.apiHost + '/v1beta' : undefined,
-      headers: { ...defaultAppHeaders(), ...ctx.actualProvider.extra_headers }
+      headers: { ...defaultAppHeaders(), ...ctx.actualProvider.extra_headers },
+      ...(nativeFetch ? { fetch: nativeFetch } : {})
     }
   }
 }
@@ -307,6 +327,7 @@ function formatAzureBaseURL(baseURL: string, forAnthropic: boolean): string {
 function buildAzureConfig(
   ctx: BuilderContext
 ): ProviderConfig<'azure'> | ProviderConfig<'azure-responses'> | ProviderConfig<'azure-anthropic'> {
+  const nativeFetch = getTauriNativeFetch()
   // Azure 上的 Claude 模型走 azure-anthropic variant（内部使用 Anthropic SDK）
   if (ctx.model.id.startsWith('claude')) {
     return {
@@ -315,7 +336,8 @@ function buildAzureConfig(
       providerSettings: {
         ...ctx.baseConfig,
         baseURL: formatAzureBaseURL(ctx.baseConfig.baseURL, true),
-        headers: { ...defaultAppHeaders(), ...ctx.actualProvider.extra_headers }
+        headers: { ...defaultAppHeaders(), ...ctx.actualProvider.extra_headers },
+        ...(nativeFetch ? { fetch: nativeFetch } : {})
       }
     }
   }
@@ -326,7 +348,8 @@ function buildAzureConfig(
   const providerSettings: ProviderConfig<'azure'>['providerSettings'] = {
     ...ctx.baseConfig,
     baseURL: formatAzureBaseURL(ctx.baseConfig.baseURL, false),
-    headers: { ...defaultAppHeaders(), ...ctx.actualProvider.extra_headers }
+    headers: { ...defaultAppHeaders(), ...ctx.actualProvider.extra_headers },
+    ...(nativeFetch ? { fetch: nativeFetch } : {})
   }
 
   if (apiVersion) {
@@ -385,22 +408,26 @@ function buildGenericProviderConfig(ctx: BuilderContext): ProviderConfig {
 }
 
 function buildAiHubMixConfig(ctx: BuilderContext): ProviderConfig<'aihubmix'> {
+  const nativeFetch = getTauriNativeFetch()
   return {
     providerId: 'aihubmix',
     endpoint: ctx.endpoint,
     providerSettings: {
       ...ctx.baseConfig,
-      headers: { ...defaultAppHeaders(), ...ctx.actualProvider.extra_headers }
+      headers: { ...defaultAppHeaders(), ...ctx.actualProvider.extra_headers },
+      ...(nativeFetch ? { fetch: nativeFetch } : {})
     }
   }
 }
 
 function formatNewApiBaseURL(baseURL: string, endpointType?: string): string {
+  const baseWithoutVersion = baseURL.replace(/\/v1beta$/, '').replace(/\/v1$/, '')
+
   switch (endpointType) {
     case 'gemini':
-      return formatApiHost(baseURL, true, 'v1beta')
+      return formatApiHost(baseWithoutVersion, true, 'v1beta')
     case 'anthropic':
-      return formatApiHost(baseURL, false)
+      return formatApiHost(baseWithoutVersion, false)
     default:
       return formatApiHost(baseURL, true)
   }
@@ -408,6 +435,7 @@ function formatNewApiBaseURL(baseURL: string, endpointType?: string): string {
 
 function buildNewApiConfig(ctx: BuilderContext): ProviderConfig<'newapi'> {
   const baseURL = formatNewApiBaseURL(ctx.baseConfig.baseURL, ctx.model.endpoint_type)
+  const nativeFetch = getTauriNativeFetch()
 
   return {
     providerId: 'newapi',
@@ -416,7 +444,8 @@ function buildNewApiConfig(ctx: BuilderContext): ProviderConfig<'newapi'> {
       ...ctx.baseConfig,
       baseURL,
       endpointType: ctx.model.endpoint_type,
-      headers: { ...defaultAppHeaders(), ...ctx.actualProvider.extra_headers }
+      headers: { ...defaultAppHeaders(), ...ctx.actualProvider.extra_headers },
+      ...(nativeFetch ? { fetch: nativeFetch } : {})
     }
   }
 }

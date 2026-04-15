@@ -1,15 +1,18 @@
 use futures_util::StreamExt;
 use image::codecs::png::PngEncoder;
 use image::{ColorType, ImageEncoder};
-use reqwest::header::{AUTHORIZATION, CONTENT_TYPE, USER_AGENT};
-use reqwest::Client;
+use reqwest::header::{HeaderName, HeaderValue, AUTHORIZATION, CONTENT_TYPE, USER_AGENT};
+use reqwest::{Client, Method};
 use roxmltree::Document;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use std::collections::HashMap;
 use std::fs;
 use std::fs::File;
 use std::io::{Cursor, Read, Write};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tauri::{Emitter, Window};
 use tokio::process::Command;
@@ -93,6 +96,42 @@ struct ChatChunkEvent {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+struct NativeHttpHeader {
+  name: String,
+  value: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct NativeHttpRequest {
+  request_id: String,
+  url: String,
+  method: String,
+  headers: Vec<NativeHttpHeader>,
+  body: Option<Vec<u8>>,
+  timeout_ms: Option<u64>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct NativeHttpResponseStart {
+  request_id: String,
+  status: u16,
+  status_text: String,
+  headers: Vec<NativeHttpHeader>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct NativeHttpChunkEvent {
+  request_id: String,
+  chunk: Vec<u8>,
+  done: bool,
+  error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct BackupWebDavConfig {
   url: String,
   username: String,
@@ -159,6 +198,47 @@ struct CaptureWindowInfo {
   width: u32,
   height: u32,
   is_focused: bool,
+}
+
+const NATIVE_HTTP_CHUNK_EVENT: &str = "native_http_chunk";
+
+static HTTP_REQUEST_ABORTS: OnceLock<Mutex<HashMap<String, Arc<AtomicBool>>>> = OnceLock::new();
+
+fn native_http_abort_registry() -> &'static Mutex<HashMap<String, Arc<AtomicBool>>> {
+  HTTP_REQUEST_ABORTS.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn register_native_http_abort(request_id: &str) -> Arc<AtomicBool> {
+  let flag = Arc::new(AtomicBool::new(false));
+  if let Ok(mut registry) = native_http_abort_registry().lock() {
+    registry.insert(request_id.to_string(), flag.clone());
+  }
+  flag
+}
+
+fn remove_native_http_abort(request_id: &str) {
+  if let Ok(mut registry) = native_http_abort_registry().lock() {
+    registry.remove(request_id);
+  }
+}
+
+fn is_native_http_aborted(request_id: &str) -> bool {
+  native_http_abort_registry()
+    .lock()
+    .ok()
+    .and_then(|registry| registry.get(request_id).cloned())
+    .map(|flag| flag.load(Ordering::Relaxed))
+    .unwrap_or(false)
+}
+
+async fn emit_native_http_chunk(window: &Window, request_id: &str, chunk: Vec<u8>, done: bool, error: Option<String>) {
+  let payload = NativeHttpChunkEvent {
+    request_id: request_id.to_string(),
+    chunk,
+    done,
+    error,
+  };
+  let _ = window.emit(NATIVE_HTTP_CHUNK_EVENT, payload);
 }
 
 fn app_data_dir() -> Result<PathBuf, String> {
@@ -427,6 +507,107 @@ async fn emit_chunk(window: &Window, stream_id: &str, delta: String, done: bool,
     error,
   };
   let _ = window.emit("chat_chunk", payload);
+}
+
+#[tauri::command]
+async fn start_http_request(window: Window, request: NativeHttpRequest) -> Result<NativeHttpResponseStart, String> {
+  let request_id = if request.request_id.trim().is_empty() {
+    Uuid::new_v4().to_string()
+  } else {
+    request.request_id.clone()
+  };
+
+  let abort_flag = register_native_http_abort(&request_id);
+  let timeout = Duration::from_millis(request.timeout_ms.unwrap_or(600_000));
+  let client = Client::builder()
+    .timeout(timeout)
+    .build()
+    .map_err(|error| error.to_string())?;
+
+  let method = Method::from_bytes(request.method.as_bytes()).map_err(|error| error.to_string())?;
+  let mut builder = client.request(method, &request.url);
+
+  for header in &request.headers {
+    let header_name = HeaderName::from_bytes(header.name.as_bytes()).map_err(|error| error.to_string())?;
+    let header_value = HeaderValue::from_str(&header.value).map_err(|error| error.to_string())?;
+    builder = builder.header(header_name, header_value);
+  }
+
+  if let Some(body) = request.body.clone().filter(|bytes| !bytes.is_empty()) {
+    builder = builder.body(body);
+  }
+
+  if abort_flag.load(Ordering::Relaxed) {
+    remove_native_http_abort(&request_id);
+    return Err(String::from("Request was aborted"));
+  }
+
+  let response = builder.send().await.map_err(|error| {
+    remove_native_http_abort(&request_id);
+    error.to_string()
+  })?;
+
+  let response_headers = response
+    .headers()
+    .iter()
+    .filter_map(|(name, value)| {
+      value.to_str().ok().map(|value| NativeHttpHeader {
+        name: name.as_str().to_string(),
+        value: value.to_string(),
+      })
+    })
+    .collect::<Vec<_>>();
+
+  let response_start = NativeHttpResponseStart {
+    request_id: request_id.clone(),
+    status: response.status().as_u16(),
+    status_text: response
+      .status()
+      .canonical_reason()
+      .unwrap_or_default()
+      .to_string(),
+    headers: response_headers,
+  };
+
+  let task_window = window.clone();
+  let task_request_id = request_id.clone();
+  tauri::async_runtime::spawn(async move {
+    let mut stream = response.bytes_stream();
+
+    while let Some(chunk) = stream.next().await {
+      if abort_flag.load(Ordering::Relaxed) || is_native_http_aborted(&task_request_id) {
+        break;
+      }
+
+      match chunk {
+        Ok(bytes) => {
+          emit_native_http_chunk(&task_window, &task_request_id, bytes.to_vec(), false, None).await;
+        }
+        Err(error) => {
+          let _ = emit_native_http_chunk(&task_window, &task_request_id, Vec::new(), true, Some(error.to_string())).await;
+          remove_native_http_abort(&task_request_id);
+          return;
+        }
+      }
+    }
+
+    let _ = emit_native_http_chunk(&task_window, &task_request_id, Vec::new(), true, None).await;
+    remove_native_http_abort(&task_request_id);
+  });
+
+  Ok(response_start)
+}
+
+#[tauri::command]
+async fn abort_http_request(request_id: String) -> Result<bool, String> {
+  if let Ok(registry) = native_http_abort_registry().lock() {
+    if let Some(flag) = registry.get(&request_id) {
+      flag.store(true, Ordering::Relaxed);
+      return Ok(true);
+    }
+  }
+
+  Ok(false)
 }
 
 fn split_sse_events(buffer: &mut String) -> Vec<String> {
@@ -1610,7 +1791,9 @@ pub fn run() {
       test_provider,
       test_mcp,
       check_mcp_connectivity,
-      start_chat
+      start_chat,
+      start_http_request,
+      abort_http_request
     ])
     .run(tauri::generate_context!())
     .expect("failed to run lich13studio tauri runtime");
