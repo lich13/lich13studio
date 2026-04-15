@@ -1,3 +1,9 @@
+import {
+  isPermissionGranted as isNotificationPermissionGranted,
+  requestPermission as requestNotificationPermission,
+  sendNotification as sendSystemNotification
+} from '@tauri-apps/plugin-notification'
+
 type AnyRecord = Record<string, any>
 const WORD_DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 
@@ -764,14 +770,42 @@ const api = {
   },
   notification: {
     send: async (notification: AnyRecord) => {
-      if (invoke) {
-        return invoke('send_notification', {
-          notification: {
-            title: String(notification?.title || ''),
-            message: String(notification?.message || '')
-          }
-        })
+      const title = String(notification?.title || '').trim()
+      const message = String(notification?.message || '').trim()
+
+      if (!isTauriRuntime) {
+        return true
       }
+
+      if (!title && !message) {
+        return false
+      }
+
+      let permissionGranted = false
+
+      try {
+        permissionGranted = await isNotificationPermissionGranted()
+      } catch {
+        permissionGranted = window.Notification?.permission === 'granted'
+      }
+
+      if (!permissionGranted) {
+        try {
+          permissionGranted = (await requestNotificationPermission()) === 'granted'
+        } catch {
+          permissionGranted = false
+        }
+      }
+
+      if (!permissionGranted) {
+        return false
+      }
+
+      sendSystemNotification({
+        title: title || 'lich13studio',
+        body: message
+      })
+
       return true
     },
     onClick: () => createCleanup()
@@ -1144,10 +1178,7 @@ const api = {
           modifiedTime: file.modifiedTime,
           size: file.size
         }))
-        .sort(
-          (a, b) =>
-            new Date(b.modifiedTime || 0).getTime() - new Date(a.modifiedTime || 0).getTime()
-        )
+        .sort((a, b) => new Date(b.modifiedTime || 0).getTime() - new Date(a.modifiedTime || 0).getTime())
     },
     checkConnection: async (webdavConfig: AnyRecord) => {
       if (invoke) {

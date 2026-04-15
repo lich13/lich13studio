@@ -24,7 +24,7 @@ import { trackTokenUsage } from '@renderer/utils/analytics'
 import { isAbortError, isTimeoutError, serializeError } from '@renderer/utils/error'
 import { createBaseMessageBlock, createErrorBlock } from '@renderer/utils/messageUtils/create'
 import { findAllBlocks, getMainTextContent } from '@renderer/utils/messageUtils/find'
-import { isFocused, isOnHomePage } from '@renderer/utils/window'
+import { isFocused } from '@renderer/utils/window'
 import type { AISDKError } from 'ai'
 import { NoOutputGeneratedError } from 'ai'
 
@@ -54,8 +54,13 @@ export const createBaseCallbacks = (deps: BaseCallbacksDependencies) => {
     getCurrentThinkingInfo
   } = deps
 
-  const startTime = Date.now()
   const notificationService = NotificationService.getInstance()
+
+  const shouldNotifyAssistantCompletion = () => {
+    const state = getState()
+    const currentTopicId = state.messages.currentTopicId
+    return !isFocused() || (!!currentTopicId && currentTopicId !== topicId)
+  }
 
   // 通用的 block 查找函数
   const findBlockIdForCompletion = (message?: any) => {
@@ -182,21 +187,18 @@ export const createBaseCallbacks = (deps: BaseCallbacksDependencies) => {
         serializableError.i18nKey = ERROR_I18N_KEY_REQUEST_TIMEOUT
       }
 
-      const duration = Date.now() - startTime
       // 发送错误通知（除了中止错误）
-      if (!isErrorTypeAbort) {
-        const timeOut = duration > 30 * 1000
-        if ((!isOnHomePage() && timeOut) || (!isFocused() && timeOut)) {
-          await notificationService.send({
-            id: uuid(),
-            type: 'error',
-            title: i18n.t('notification.assistant'),
-            message: serializableError.message ?? '',
-            silent: false,
-            timestamp: Date.now(),
-            source: 'assistant'
-          })
-        }
+      if (!isErrorTypeAbort && shouldNotifyAssistantCompletion()) {
+        await notificationService.send({
+          id: uuid(),
+          type: 'error',
+          title: i18n.t('notification.assistant'),
+          message: serializableError.message ?? '',
+          silent: false,
+          timestamp: Date.now(),
+          source: 'assistant',
+          channel: 'system'
+        })
       }
 
       const possibleBlockId = findBlockIdForCompletion()
@@ -341,12 +343,9 @@ export const createBaseCallbacks = (deps: BaseCallbacksDependencies) => {
           blockManager.smartBlockUpdate(possibleBlockId, changes, blockManager.lastBlockType!, true)
         }
 
-        const duration = Date.now() - startTime
         const content = getMainTextContent(finalAssistantMsg)
 
-        const timeOut = duration > 30 * 1000
-        // 发送长时间运行消息的成功通知
-        if ((!isOnHomePage() && timeOut) || (!isFocused() && timeOut)) {
+        if (shouldNotifyAssistantCompletion()) {
           await notificationService.send({
             id: uuid(),
             type: 'success',

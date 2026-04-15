@@ -135,13 +135,6 @@ struct NativeHttpChunkEvent {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct DesktopNotificationRequest {
-  title: String,
-  message: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 struct BackupWebDavConfig {
   url: String,
   username: String,
@@ -362,48 +355,6 @@ fn should_persist_window_event(event: &WindowEvent) -> bool {
     event,
     WindowEvent::Resized(_) | WindowEvent::Moved(_) | WindowEvent::CloseRequested { .. } | WindowEvent::Destroyed
   )
-}
-
-fn escape_applescript_string(value: &str) -> String {
-  value
-    .replace('\\', "\\\\")
-    .replace('"', "\\\"")
-    .replace(['\r', '\n'], " ")
-}
-
-#[tauri::command]
-async fn send_notification(notification: DesktopNotificationRequest) -> Result<bool, String> {
-  #[cfg(target_os = "macos")]
-  {
-    let title = escape_applescript_string(notification.title.trim());
-    let message = escape_applescript_string(notification.message.trim());
-
-    let script = format!("display notification \"{}\" with title \"{}\"", message, title);
-
-    let output = Command::new("osascript")
-      .arg("-e")
-      .arg(script)
-      .output()
-      .await
-      .map_err(|error| error.to_string())?;
-
-    if !output.status.success() {
-      let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
-      return Err(if stderr.is_empty() {
-        String::from("Failed to display macOS notification")
-      } else {
-        stderr
-      });
-    }
-
-    return Ok(true);
-  }
-
-  #[cfg(not(target_os = "macos"))]
-  {
-    let _ = notification;
-    Ok(true)
-  }
 }
 
 fn handle_main_window_close(window: &Window, event: &WindowEvent) {
@@ -1936,6 +1887,7 @@ async fn start_chat(window: Window, request: ChatRequest) -> Result<String, Stri
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
+    .plugin(tauri_plugin_notification::init())
     .setup(|app| {
       if let Some(main_window) = app.get_webview_window("main") {
         if let Some(state) = load_window_state(main_window.label())? {
@@ -1991,8 +1943,7 @@ pub fn run() {
       check_mcp_connectivity,
       start_chat,
       start_http_request,
-      abort_http_request,
-      send_notification
+      abort_http_request
     ])
     .build(tauri::generate_context!())
     .expect("failed to build lich13studio tauri runtime")
