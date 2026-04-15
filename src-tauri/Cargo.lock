@@ -2370,7 +2370,7 @@ dependencies = [
 
 [[package]]
 name = "lich13studio"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "dirs",
  "futures-util",
@@ -6644,3 +6644,4 @@ dependencies = [
  "syn 2.0.117",
  "winnow 0.7.15",
 ]
+
