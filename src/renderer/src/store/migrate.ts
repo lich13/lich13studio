@@ -2290,6 +2290,26 @@ const migrateConfig = {
       return state
     }
   },
+  '212': (state: RootState) => {
+    try {
+      if (state.settings?.webdavPath === '/cherry-studio') {
+        state.settings.webdavPath = '/lich13studio'
+      }
+
+      if (state.nutstore?.nutstorePath === '/cherry-studio') {
+        state.nutstore.nutstorePath = '/lich13studio'
+      }
+
+      if (state.settings?.s3?.root === '/cherry-studio' || state.settings?.s3?.root === 'cherry-studio') {
+        state.settings.s3.root = '/lich13studio'
+      }
+
+      return state
+    } catch (error) {
+      logger.error('migrate 212 error', error as Error)
+      return state
+    }
+  },
   '133': (state: RootState) => {
     try {
       state.settings.sidebarIcons.visible.push('code_tools')
