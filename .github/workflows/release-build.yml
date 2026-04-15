@@ -16,6 +16,11 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+  TAURI_CLI_VERSION: 2.10.1
+
+concurrency:
+  group: release-${{ github.workflow }}-${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref }}
+  cancel-in-progress: true
 
 run-name: >-
   ${{
@@ -27,8 +32,67 @@ run-name: >-
   }}
 
 jobs:
+  prepare-web:
+    name: Prepare frontend assets
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Resolve app version
+        id: app_version
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            RAW_VERSION="${GITHUB_REF_NAME}"
+          elif [[ -n "${{ inputs.version }}" ]]; then
+            RAW_VERSION="${{ inputs.version }}"
+          else
+            RAW_VERSION="$(python3 -c "import json; print(json.load(open('package.json', 'r', encoding='utf-8'))['version'])")"
+          fi
+
+          RAW_VERSION="${RAW_VERSION//[[:space:]]/}"
+          APP_VERSION="${RAW_VERSION#v}"
+
+          if [[ -z "${APP_VERSION}" ]]; then
+            echo "Failed to resolve app version." >&2
+            exit 1
+          fi
+
+          echo "version=${APP_VERSION}" >> "${GITHUB_OUTPUT}"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+        with:
+          version: 10.27.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Sync app version
+        run: node scripts/set-app-version.mjs --version "${{ steps.app_version.outputs.version }}"
+
+      - name: Build renderer bundle
+        run: pnpm build:tauri:web
+
+      - name: Upload frontend assets
+        uses: actions/upload-artifact@v7
+        with:
+          name: frontend-assets
+          path: out
+          if-no-files-found: error
+          compression-level: 0
+
   build-tauri:
     name: Build ${{ matrix.label }}
+    needs: [prepare-web]
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -38,7 +102,7 @@ jobs:
             os: macos-14
             rust_target: aarch64-apple-darwin
             prepare_cmd: node scripts/prepare-tauri-bundled-binary.mjs --target aarch64-apple-darwin
-            build_cmd: cargo tauri build --config src-tauri/tauri.conf.json --bundles dmg --target aarch64-apple-darwin
+            build_cmd: pnpm dlx @tauri-apps/cli@${{ env.TAURI_CLI_VERSION }} build --ci --config src-tauri/tauri.conf.json --bundles dmg --target aarch64-apple-darwin
             postprocess_cmd: bash scripts/postprocess-macos-dmg.sh src-tauri/target/aarch64-apple-darwin/release/bundle/dmg lich13studio
             artifact_name: macos-dmg-arm64
             artifact_path: src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
@@ -46,7 +110,7 @@ jobs:
             os: windows-latest
             rust_target: x86_64-pc-windows-msvc
             prepare_cmd: node scripts/prepare-tauri-bundled-binary.mjs --target x86_64-pc-windows-msvc
-            build_cmd: cargo tauri build --config src-tauri/tauri.conf.json --bundles nsis --target x86_64-pc-windows-msvc
+            build_cmd: pnpm dlx @tauri-apps/cli@${{ env.TAURI_CLI_VERSION }} build --ci --config src-tauri/tauri.conf.json --bundles nsis --target x86_64-pc-windows-msvc
             postprocess_cmd: ''
             artifact_name: windows-exe-x64
             artifact_path: src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
@@ -93,20 +157,23 @@ jobs:
         with:
           targets: ${{ matrix.rust_target }}
 
-      - name: Install Tauri CLI
-        run: cargo install tauri-cli --version '^2' --locked
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Restore Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+          cache-on-failure: true
 
       - name: Sync app version
         run: node scripts/set-app-version.mjs --version "${{ steps.app_version.outputs.version }}"
 
+      - name: Download frontend assets
+        uses: actions/download-artifact@v8
+        with:
+          name: frontend-assets
+          path: out
+
       - name: Prepare bundled binary
         run: ${{ matrix.prepare_cmd }}
-
-      - name: Build renderer bundle
-        run: pnpm build:tauri:web
 
       - name: Build Tauri bundle (macOS)
         if: startsWith(matrix.os, 'macos')

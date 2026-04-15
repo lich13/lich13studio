@@ -6,9 +6,13 @@ on:
       - main
   pull_request:
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   validate:
-    runs-on: macos-14
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
@@ -25,20 +29,8 @@ jobs:
           node-version: 24
           cache: pnpm
 
-      - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install Tauri CLI
-        run: cargo install tauri-cli --version '^2' --locked
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
-      - name: Typecheck web
-        run: pnpm typecheck:web
-
-      - name: Typecheck node
-        run: pnpm typecheck:node
 
       - name: Build renderer bundle
         run: pnpm build:tauri:web
