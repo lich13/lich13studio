@@ -34,6 +34,7 @@ const BUNDLE_ID: &str = "com.lich13.studio";
 const DEFAULT_STATE_FILE: &str = "state.json";
 const WINDOW_STATE_KEY: &str = "windowState";
 
+#[cfg(target_os = "macos")]
 static APP_EXITING: AtomicBool = AtomicBool::new(false);
 
 #[derive(Serialize)]
@@ -357,24 +358,24 @@ fn should_persist_window_event(event: &WindowEvent) -> bool {
   )
 }
 
-fn handle_main_window_close(window: &Window, event: &WindowEvent) {
+fn handle_main_window_close(_window: &Window, _event: &WindowEvent) {
   #[cfg(target_os = "macos")]
-  if window.label() == "main" {
-    if let WindowEvent::CloseRequested { api, .. } = event {
+  if _window.label() == "main" {
+    if let WindowEvent::CloseRequested { api, .. } = _event {
       if APP_EXITING.load(Ordering::Relaxed) {
         return;
       }
 
       api.prevent_close();
-      let _ = persist_window_state(window);
-      let _ = window.hide();
+      let _ = persist_window_state(_window);
+      let _ = _window.hide();
     }
   }
 }
 
-fn handle_run_event(app: &AppHandle, event: &RunEvent) {
+fn handle_run_event(_app: &AppHandle, _event: &RunEvent) {
   #[cfg(target_os = "macos")]
-  match event {
+  match _event {
     RunEvent::ExitRequested { .. } => {
       APP_EXITING.store(true, Ordering::Relaxed);
     }
@@ -382,7 +383,7 @@ fn handle_run_event(app: &AppHandle, event: &RunEvent) {
       has_visible_windows, ..
     } => {
       if !has_visible_windows {
-        if let Some(main_window) = app.get_webview_window("main") {
+        if let Some(main_window) = _app.get_webview_window("main") {
           let _ = main_window.show();
           let _ = main_window.set_focus();
         }
