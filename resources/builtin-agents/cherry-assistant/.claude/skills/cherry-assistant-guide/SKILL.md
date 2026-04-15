@@ -82,7 +82,7 @@ navigate({ path: '/settings/provider', query: { id: 'anthropic' } })
 
 **版本更新**: `diagnose(check_update)` 检查→有新版导航到 `/settings/about`→GitHub不可达建议 cherry-ai.com
 
-**数据备份**: 设置→数据管理。方式: 本地ZIP/WebDAV(坚果云等)/S3(AWS/MinIO/R2)/局域网传输。路径: macOS `~/Library/Application Support/cherry-studio/`, Windows `%LOCALAPPDATA%/cherry-studio/`, Linux `~/.config/cherry-studio/`
+**数据备份**: 设置→数据管理。方式: 本地ZIP/WebDAV/局域网传输。路径: macOS `~/Library/Application Support/lich13studio/`, Windows `%LOCALAPPDATA%/lich13studio/`, Linux `~/.config/lich13studio/`
 
 ## 支持的 Provider（62+）
 

@@ -115,20 +115,20 @@
 
 | Path | Status | Note |
 | --- | --- | --- |
-| `src/renderer/src/pages/settings/DataSettings/DataSettings.tsx` | `refactor` | 收敛为本地 / Nutstore / S3 主线，第三方导入页单独评估 |
+| `src/renderer/src/pages/settings/DataSettings/DataSettings.tsx` | `refactor` | 收敛为本地 / WebDAV 主线，第三方导入页单独评估 |
 | `src/renderer/src/pages/settings/DataSettings/LocalBackupSettings.tsx` | `keep` | 本地备份与恢复 |
-| `src/renderer/src/pages/settings/DataSettings/NutstoreSettings.tsx` | `keep` | 坚果云 WebDAV |
-| `src/renderer/src/pages/settings/DataSettings/S3Settings.tsx` | `keep` | S3 兼容存储 |
-| `src/renderer/src/pages/settings/DataSettings/WebDavSettings.tsx` | `investigate` | 通用 WebDAV 当前不是 Lite 明确保留项 |
-| `src/renderer/src/services/BackupService.ts` | `keep` | 本地 / WebDAV / S3 备份总入口 |
-| `src/renderer/src/services/NutstoreService.ts` | `keep` | 坚果云适配 |
+| `src/renderer/src/pages/settings/DataSettings/NutstoreSettings.tsx` | `remove` | 坚果云入口已下线 |
+| `src/renderer/src/pages/settings/DataSettings/S3Settings.tsx` | `remove` | S3 入口已下线 |
+| `src/renderer/src/pages/settings/DataSettings/WebDavSettings.tsx` | `keep` | 通用 WebDAV 保留，并增加 Zotero 8+ agent 兼容开关 |
+| `src/renderer/src/services/BackupService.ts` | `refactor` | 本地 / WebDAV 备份总入口，负责跨平台恢复归一化 |
+| `src/renderer/src/services/NutstoreService.ts` | `remove` | 坚果云适配已下线 |
 | `src/renderer/src/store/backup.ts` | `keep` | 备份同步状态 |
-| `src/renderer/src/store/nutstore.ts` | `keep` | Nutstore 状态 |
-| `src/renderer/src/store/settings.ts` | `refactor` | 精简备份配置字段，保留本地 / Nutstore / S3 |
+| `src/renderer/src/store/nutstore.ts` | `remove` | Nutstore 状态已下线 |
+| `src/renderer/src/store/settings.ts` | `refactor` | 精简备份配置字段，仅保留本地 / WebDAV |
 | `src/main/services/BackupManager.ts` | `keep` | 主进程备份执行器 |
-| `src/main/services/WebDav.ts` | `keep` | Nutstore 仍依赖 WebDAV transport |
-| `src/main/services/S3Storage.ts` | `keep` | S3 兼容存储 |
-| `src/main/services/NutstoreService.ts` | `keep` | Nutstore SSO / 解密 |
+| `src/main/services/WebDav.ts` | `keep` | WebDAV transport，支持自定义 User-Agent |
+| `src/main/services/S3Storage.ts` | `remove` | S3 兼容存储已下线 |
+| `src/main/services/NutstoreService.ts` | `remove` | Nutstore SSO / 解密已下线 |
 
 ## translation
 
@@ -233,7 +233,7 @@
 | `src/main/utils/init.ts` | `refactor` | `~/.cherrystudio`、portable 名、appimage 名 |
 | `src/main/utils/file.ts` | `refactor` | temp / config / mcp 目录命名 |
 | `src/main/services/BackupManager.ts` | `refactor` | 备份文件前缀、metadata.appName、temp dir |
-| `src/main/services/NutstoreService.ts` | `refactor` | Nutstore app key / path 前缀 |
+| `src/main/services/NutstoreService.ts` | `remove` | Nutstore 相关代码树已下线 |
 | `src/main/services/ProtocolClient.ts` | `refactor` | `cherrystudio://` 深链协议 |
 | `src/main/services/AppService.ts` | `refactor` | desktop file 名与 Linux 启动项 |
 | `src/main/services/SelectionService.ts` | `refactor` | 自进程 bundle id 识别 |

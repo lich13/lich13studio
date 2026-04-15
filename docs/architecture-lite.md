@@ -83,7 +83,7 @@ lich13studio/
 | Command layer | Tauri command / invoke 接口 | 不承载业务规则 |
 | Core application | assistant / topic / provider / mcp / backup 用例编排 | 不依赖 UI，不依赖具体平台 API |
 | Storage layer | SQLite、settings、files、migration | 不做业务决策 |
-| Backup layer | zip/export/import、WebDAV、Nutstore、S3 | 不关心 UI 组件 |
+| Backup layer | zip/export/import、WebDAV | 不关心 UI 组件 |
 | MCP layer | local stdio / remote HTTP(SSE) / test connectivity / tool listing | 不关心聊天页面布局 |
 
 ## 推荐模块映射
@@ -95,7 +95,7 @@ lich13studio/
 | Provider / model service | `store/llm.ts`, `services/ProviderService.ts`, `services/ModelService.ts` | `domain::provider`, `application::provider_service`, `models::*` |
 | Quick phrase | `services/QuickPhraseService.ts`, `databases/index.ts` | `domain::quick_phrase`, `storage::quick_phrase_repo` |
 | MCP | `main/services/MCPService.ts`, `pages/settings/MCPSettings/*` | `mcp::server_registry`, `mcp::transport_stdio`, `mcp::transport_remote`, `commands/mcp.rs` |
-| Backup | `renderer/services/BackupService.ts`, `main/services/BackupManager.ts` | `backup::exporter`, `backup::importer`, `backup::webdav`, `backup::s3`, `commands/backup.rs` |
+| Backup | `renderer/services/BackupService.ts`, `main/services/BackupManager.ts` | `backup::exporter`, `backup::importer`, `backup::webdav`, `commands/backup.rs` |
 | Chat stream | `store/thunk/messageThunk.ts`, `services/ModelMessageService.ts` | `application::chat_runtime`, `models::stream_adapter` |
 
 ## 不进入新架构的模块
@@ -147,9 +147,7 @@ lich13studio/
 
 - export local backup
 - import local backup
-- Nutstore auth helper
 - backup / restore WebDAV
-- backup / restore S3
 
 ## 存储建议
 

@@ -49,12 +49,12 @@ const SETTINGS_ALLOWLIST = new Set([
   'webdavMaxBackups',
   'webdavSkipBackupFile',
   'webdavDisableStream',
+  'webdavUseZoteroAgent',
   'localBackupDir',
   'localBackupAutoSync',
   'localBackupSyncInterval',
   'localBackupMaxBackups',
-  'localBackupSkipBackupFile',
-  's3'
+  'localBackupSkipBackupFile'
 ])
 
 function loadPlaywright() {
@@ -401,15 +401,6 @@ function mergePersistState(currentState, oldState, appSupport) {
     ...pickObjectKeys(oldSettings, SETTINGS_ALLOWLIST)
   }
 
-  if (currentSettings.s3 || oldSettings.s3) {
-    mergedSettings.s3 = {
-      ...(currentSettings.s3 || {}),
-      ...(oldSettings.s3 || {})
-    }
-    mergedSettings.s3.syncInterval = coerceNumber(mergedSettings.s3.syncInterval, currentSettings.s3?.syncInterval || 0)
-    mergedSettings.s3.maxBackups = coerceNumber(mergedSettings.s3.maxBackups, currentSettings.s3?.maxBackups || 0)
-  }
-
   mergedSettings.webdavSyncInterval = coerceNumber(
     mergedSettings.webdavSyncInterval,
     currentSettings.webdavSyncInterval || 0
@@ -481,14 +472,54 @@ function mergePersistState(currentState, oldState, appSupport) {
 function normalizeIndexedDbStores(oldData, mergedProviders, appSupport) {
   const mergedProviderIds = new Set(mergedProviders.map((provider) => provider.id))
   const targetFilesDir = path.join(appSupport, 'Data', 'Files')
+  const normalizeFilePath = (file) => {
+    if (!file || typeof file !== 'object' || !file.path || typeof file.path !== 'string') {
+      return file
+    }
 
-  const files = (oldData.stores.files || []).map((file) => ({
-    ...file,
-    path: path.join(targetFilesDir, file.name || path.basename(String(file.path || '').replace(/\\/g, '/')))
+    if (file.path.startsWith('memory://')) {
+      return file
+    }
+
+    const fileName =
+      typeof file.id === 'string' && typeof file.ext === 'string' && file.id
+        ? `${file.id}${file.ext}`
+        : path.basename(String(file.path).replace(/\\/g, '/'))
+
+    return {
+      ...file,
+      path: path.join(targetFilesDir, fileName)
+    }
+  }
+
+  const files = (oldData.stores.files || []).map((file) => normalizeFilePath(file))
+
+  const topics = cloneJson(oldData.stores.topics || []).map((topic) => ({
+    ...topic,
+    messages: Array.isArray(topic.messages)
+      ? topic.messages.map((message) => ({
+          ...message,
+          files: Array.isArray(message.files) ? message.files.map((file) => normalizeFilePath(file)) : message.files,
+          images: Array.isArray(message.images)
+            ? message.images.map((imagePath) => {
+                if (!imagePath || imagePath.startsWith('memory://') || /^https?:\/\//i.test(imagePath)) {
+                  return imagePath
+                }
+
+                const fileName = path.basename(
+                  String(imagePath)
+                    .replace(/^file:\/\//i, '')
+                    .replace(/\\/g, '/')
+                )
+                return path.join(targetFilesDir, fileName)
+              })
+            : message.images
+        }))
+      : topic.messages
   }))
-
-  const topics = cloneJson(oldData.stores.topics || [])
-  const messageBlocks = cloneJson(oldData.stores.message_blocks || [])
+  const messageBlocks = cloneJson(oldData.stores.message_blocks || []).map((block) =>
+    block?.file ? { ...block, file: normalizeFilePath(block.file) } : block
+  )
   const quickPhrases = cloneJson(oldData.stores.quick_phrases || [])
   const settings = (oldData.stores.settings || []).filter((item) => {
     if (!item.id?.startsWith('image://provider-')) return false

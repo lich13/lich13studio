@@ -58,7 +58,7 @@ export function WebdavBackupManager({
     total: 0
   })
 
-  const { webdavHost, webdavUser, webdavPass, webdavPath } = webdavConfig
+  const { webdavHost, webdavUser, webdavPass, webdavPath, userAgent } = webdavConfig
 
   const fetchBackupFiles = useCallback(async () => {
     if (!webdavHost) {
@@ -72,7 +72,8 @@ export function WebdavBackupManager({
         webdavHost,
         webdavUser,
         webdavPass,
-        webdavPath
+        webdavPath,
+        userAgent
       } as WebdavConfig)
       setBackupFiles(files)
       setPagination((prev) => ({
@@ -84,7 +85,7 @@ export function WebdavBackupManager({
     } finally {
       setLoading(false)
     }
-  }, [webdavHost, webdavUser, webdavPass, webdavPath, t])
+  }, [webdavHost, webdavUser, webdavPass, webdavPath, userAgent, t])
 
   useEffect(() => {
     if (visible) {
@@ -128,7 +129,8 @@ export function WebdavBackupManager({
               webdavHost,
               webdavUser,
               webdavPass,
-              webdavPath
+              webdavPath,
+              userAgent
             } as WebdavConfig)
           }
           window.toast.success(
@@ -165,7 +167,8 @@ export function WebdavBackupManager({
             webdavHost,
             webdavUser,
             webdavPass,
-            webdavPath
+            webdavPath,
+            userAgent
           } as WebdavConfig)
           window.toast.success(t('settings.data.webdav.backup.manager.delete.success.single'))
           await fetchBackupFiles()

@@ -13,6 +13,7 @@ import { NotificationService } from './NotificationService'
 
 const logger = loggerService.withContext('BackupService')
 const ZOTERO_8_USER_AGENT = 'Zotero/8.0'
+const LEGACY_PERSIST_KEY = 'persist:cherry-studio'
 
 // 重试删除WebDAV文件的辅助函数
 async function deleteWebdavFileWithRetry(fileName: string, webdavConfig: WebDavConfig, maxRetries = 3) {
@@ -40,6 +41,111 @@ async function deleteWebdavFileWithRetry(fileName: string, webdavConfig: WebDavC
 }
 
 const getWebdavUserAgent = () => (store.getState().settings.webdavUseZoteroAgent ? ZOTERO_8_USER_AGENT : undefined)
+
+const toPortablePath = (value: string) => value.replace(/\\/g, '/')
+
+const getBackupFilesRoot = async () => {
+  const runtimeFilesPath = store.getState().runtime.filesPath
+  if (runtimeFilesPath) {
+    return toPortablePath(runtimeFilesPath).replace(/\/+$/, '')
+  }
+
+  const appInfo = await window.api.getAppInfo()
+  return toPortablePath(appInfo.filesPath).replace(/\/+$/, '')
+}
+
+const normalizeBackupFilePath = (file: any, filesRoot: string) => {
+  if (!file || typeof file !== 'object' || !file.path || typeof file.path !== 'string') {
+    return file
+  }
+
+  if (file.path.startsWith('memory://')) {
+    return file
+  }
+
+  const storedName =
+    typeof file.id === 'string' && typeof file.ext === 'string' && file.id
+      ? `${file.id}${file.ext}`
+      : toPortablePath(file.path).split('/').pop() || file.name
+
+  if (!storedName) {
+    return file
+  }
+
+  return {
+    ...file,
+    path: `${filesRoot}/${storedName}`
+  }
+}
+
+const normalizeBackupImagePath = (imagePath: string, filesRoot: string) => {
+  if (!imagePath || imagePath.startsWith('memory://') || /^https?:\/\//i.test(imagePath)) {
+    return imagePath
+  }
+
+  const normalized = imagePath.replace(/^file:\/\//i, '')
+  const fileName = toPortablePath(normalized).split('/').pop()
+  if (!fileName) {
+    return imagePath
+  }
+
+  return `${filesRoot}/${fileName}`
+}
+
+const normalizeBackupTopic = (topic: any, filesRoot: string) => {
+  if (!topic || !Array.isArray(topic.messages)) {
+    return topic
+  }
+
+  return {
+    ...topic,
+    messages: topic.messages.map((message: any) => ({
+      ...message,
+      files: Array.isArray(message.files)
+        ? message.files.map((file: any) => normalizeBackupFilePath(file, filesRoot))
+        : message.files,
+      images: Array.isArray(message.images)
+        ? message.images.map((image: string) => normalizeBackupImagePath(image, filesRoot))
+        : message.images
+    }))
+  }
+}
+
+const normalizeBackupMessageBlock = (block: any, filesRoot: string) => {
+  if (!block || typeof block !== 'object') {
+    return block
+  }
+
+  if (block.file) {
+    return {
+      ...block,
+      file: normalizeBackupFilePath(block.file, filesRoot)
+    }
+  }
+
+  return block
+}
+
+const normalizeBackupDatabase = async (backup: Record<string, any>) => {
+  const filesRoot = await getBackupFilesRoot()
+  const normalizedBackup = { ...backup }
+
+  if (Array.isArray(normalizedBackup.files)) {
+    normalizedBackup.files = normalizedBackup.files.map((file: any) => normalizeBackupFilePath(file, filesRoot))
+  }
+
+  if (Array.isArray(normalizedBackup.topics)) {
+    normalizedBackup.topics = normalizedBackup.topics.map((topic: any) => normalizeBackupTopic(topic, filesRoot))
+  }
+
+  if (Array.isArray(normalizedBackup.message_blocks)) {
+    normalizedBackup.message_blocks = normalizedBackup.message_blocks.map((block: any) =>
+      normalizeBackupMessageBlock(block, filesRoot)
+    )
+  }
+
+  return normalizedBackup
+}
 
 export async function backup(skipBackupFile: boolean) {
   const filename = ensureBackupFileName(`lich13studio.${dayjs().format('YYYYMMDDHHmm')}`)
@@ -663,14 +769,14 @@ export async function handleData(data: Record<string, any>) {
       }
     }
 
-    localStorage.setItem('persist:cherry-studio', data.localStorage['persist:cherry-studio'])
+    localStorage.setItem(LEGACY_PERSIST_KEY, data.localStorage[LEGACY_PERSIST_KEY])
     window.toast.success(i18n.t('message.restore.success'))
     setTimeout(() => window.api.relaunchApp(), 1000)
     return
   }
 
   if (data.version >= 2) {
-    localStorage.setItem('persist:cherry-studio', data.localStorage['persist:cherry-studio'])
+    localStorage.setItem(LEGACY_PERSIST_KEY, data.localStorage[LEGACY_PERSIST_KEY])
 
     // remove notes_tree from indexedDB
     if (data.indexedDB['notes_tree']) {
@@ -712,10 +818,12 @@ async function backupDatabase() {
 }
 
 async function restoreDatabase(backup: Record<string, any>) {
+  const normalizedBackup = await normalizeBackupDatabase(backup)
+
   await db.transaction('rw', db.tables, async () => {
-    for (const tableName in backup) {
+    for (const tableName in normalizedBackup) {
       await db.table(tableName).clear()
-      await db.table(tableName).bulkAdd(backup[tableName])
+      await db.table(tableName).bulkAdd(normalizedBackup[tableName])
     }
   })
 }

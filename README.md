@@ -6,7 +6,7 @@
 - provider and model management
 - MCP manual configuration
 - quick phrases
-- local, Nutstore WebDAV, and S3 backup
+- local and WebDAV backup
 - single-window streaming chat
 
 ## Scope

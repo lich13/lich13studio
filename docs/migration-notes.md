@@ -62,7 +62,7 @@
 | Item | Current state | Temporary decision |
 | --- | --- | --- |
 | `DocProcessSettings` | 与知识库 preprocess 强耦合 | 先标记 `investigate` |
-| 通用 WebDAV 备份 | Lite 明确保留的是 Nutstore WebDAV，不是泛 WebDAV | 先保留底层 transport，UI 后续再定 |
+| 通用 WebDAV 备份 | 已从 Nutstore/S3 收敛为唯一云备份路径 | 保留通用 WebDAV，并增加 Zotero 8+ User-Agent 兼容开关 |
 | `agents / channels / skills / tasks` | 上游大模块，但不在 Lite 冻结核心 | Phase 0 只做 `investigate` |
 | `notes / files / paintings / minapps / code / openclaw / launchpad` | 不在当前保留清单 | Phase 0 不硬删，避免误伤编译 |
 | workspace scope `@cherrystudio/*` | 内部依赖面太大 | 品牌先改用户可见面，scope 后续单独处理 |

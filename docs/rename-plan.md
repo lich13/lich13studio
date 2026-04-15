@@ -49,8 +49,8 @@
 | trace dir | `~/.cherrystudio/trace` | `~/.lich13studio/trace` | `src/main/services/SpanCacheService.ts` |
 | temp dir | `/tmp/CherryStudio` or `/tmp/cherry-studio/...` | `/tmp/lich13studio/...` | `src/main/utils/file.ts`, `src/main/services/BackupManager.ts`, `src/main/services/CodeToolsService.ts` |
 | default data folder | `userData/Data` | `userData/data` or `userData/Data` under new root | `src/main/utils/file.ts`, `src/main/utils/index.ts` |
-| backup filename prefix | `cherry-studio.*.zip` | `lich13studio.*.zip` | `src/main/services/BackupManager.ts`, `src/renderer/src/services/BackupService.ts`, `src/renderer/src/services/NutstoreService.ts` |
-| Nutstore path | `/cherry-studio` | `/lich13studio` | `src/renderer/src/store/nutstore.ts` |
+| backup filename prefix | `cherry-studio.*.zip` | `lich13studio.*.zip` | `src/main/services/BackupManager.ts`, `src/renderer/src/services/BackupService.ts` |
+| default WebDAV path | `/cherry-studio` | `/lich13studio` | `src/renderer/src/store/migrate.ts`, `src/renderer/src/pages/settings/DataSettings/WebDavSettings.tsx` |
 
 ## 4. UI / 文案 / 关于页触点
 
