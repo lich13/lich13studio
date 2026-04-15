@@ -1,7 +1,5 @@
 import { isMac } from '@main/constant'
-import { windowService } from '@main/services/WindowService'
 import { locales } from '@main/utils/locales'
-import { IpcChannel } from '@shared/IpcChannel'
 import type { MenuItemConstructorOptions } from 'electron'
 import { app, Menu, shell } from 'electron'
 
@@ -32,18 +30,6 @@ export class AppMenuService {
       {
         label: app.name,
         submenu: [
-          {
-            label: appMenu.about + ' ' + app.name,
-            click: () => {
-              // Emit event to navigate to About page
-              const mainWindow = windowService.getMainWindow()
-              if (mainWindow && !mainWindow.isDestroyed()) {
-                mainWindow.webContents.send(IpcChannel.Windows_NavigateToAbout)
-                windowService.showMainWindow()
-              }
-            }
-          },
-          { type: 'separator' },
           { role: 'services', label: appMenu.services },
           { type: 'separator' },
           { role: 'hide', label: `${appMenu.hide} ${app.name}` },
@@ -99,25 +85,25 @@ export class AppMenuService {
           {
             label: appMenu.website,
             click: () => {
-              void shell.openExternal('https://github.com/CherryHQ/cherry-studio')
+              void shell.openExternal('https://github.com/lich13/lich13studio')
             }
           },
           {
             label: appMenu.documentation,
             click: () => {
-              void shell.openExternal('https://github.com/CherryHQ/cherry-studio/tree/main/docs')
+              void shell.openExternal('https://github.com/lich13/lich13studio/tree/main/docs')
             }
           },
           {
             label: appMenu.feedback,
             click: () => {
-              void shell.openExternal('https://github.com/CherryHQ/cherry-studio/issues/new/choose')
+              void shell.openExternal('https://github.com/lich13/lich13studio/issues/new/choose')
             }
           },
           {
             label: appMenu.releases,
             click: () => {
-              void shell.openExternal('https://github.com/CherryHQ/cherry-studio/releases')
+              void shell.openExternal('https://github.com/lich13/lich13studio/releases')
             }
           }
         ]

@@ -4,7 +4,7 @@
  * 功能：
  * 1. onRequestStart: 智能意图识别 - 分析是否需要网络搜索
  * 2. transformParams: 根据意图分析结果动态添加对应的工具
- * 3. onRequestEnd: 自动记忆存储
+ * 3. onRequestEnd: 清理本次请求的分析缓存
  */
 import {
   type AiPlugin,
@@ -17,8 +17,6 @@ import { loggerService } from '@logger'
 // import { generateObject } from '@cherrystudio/ai-core'
 import { SEARCH_SUMMARY_PROMPT_WEB_ONLY } from '@renderer/config/prompts'
 import { getDefaultModel, getProviderByModel } from '@renderer/services/AssistantService'
-import store from '@renderer/store'
-import { selectCurrentUserId, selectGlobalMemoryEnabled, selectMemoryConfig } from '@renderer/store/memory'
 import type { Assistant } from '@renderer/types'
 import type { ExtractResults } from '@renderer/utils/extract'
 import { extractInfoFromXML } from '@renderer/utils/extract'
@@ -26,8 +24,6 @@ import type { LanguageModel, ModelMessage } from 'ai'
 import { generateText } from 'ai'
 import { isEmpty } from 'lodash'
 
-import { MemoryProcessor } from '../../services/MemoryProcessor'
-import { memorySearchTool } from '../tools/MemorySearchTool'
 import { webSearchToolWithPreExtractedKeywords } from '../tools/WebSearchTool'
 
 const logger = loggerService.withContext('SearchOrchestrationPlugin')
@@ -148,71 +144,6 @@ async function analyzeSearchIntent(
 }
 
 /**
- * 🧠 记忆存储函数 - 基于注释代码中的 processConversationMemory
- */
-async function storeConversationMemory(
-  messages: ModelMessage[],
-  assistant: Assistant,
-  context: AiRequestContext
-): Promise<void> {
-  const globalMemoryEnabled = selectGlobalMemoryEnabled(store.getState())
-
-  if (!globalMemoryEnabled || !assistant.enableMemory) {
-    return
-  }
-
-  try {
-    const memoryConfig = selectMemoryConfig(store.getState())
-
-    // 转换消息为记忆处理器期望的格式
-    const conversationMessages = messages
-      .filter((msg) => msg.role === 'user' || msg.role === 'assistant')
-      .map((msg) => ({
-        role: msg.role,
-        content: getMessageContent(msg) || ''
-      }))
-      .filter((msg) => msg.content.trim().length > 0)
-    logger.debug('conversationMessages', conversationMessages)
-    if (conversationMessages.length < 2) {
-      logger.info('Need at least a user message and assistant response for memory processing')
-      return
-    }
-
-    const currentUserId = selectCurrentUserId(store.getState())
-    // const lastUserMessage = messages.findLast((m) => m.role === 'user')
-
-    const processorConfig = MemoryProcessor.getProcessorConfig(
-      memoryConfig,
-      assistant.id,
-      currentUserId,
-      context.requestId
-    )
-
-    logger.info('Processing conversation memory...', { messageCount: conversationMessages.length })
-
-    // 后台处理对话记忆（不阻塞 UI）
-    const memoryProcessor = new MemoryProcessor()
-    memoryProcessor
-      .processConversation(conversationMessages, processorConfig)
-      .then((result) => {
-        logger.info('Memory processing completed:', result)
-        if (result.facts?.length > 0) {
-          logger.info('Extracted facts from conversation:', result.facts)
-          logger.info('Memory operations performed:', result.operations)
-        } else {
-          logger.info('No facts extracted from conversation')
-        }
-      })
-      .catch((error) => {
-        logger.error('Background memory processing failed:', error as Error)
-      })
-  } catch (error) {
-    logger.error('Error in conversation memory processing:', error as Error)
-    // 不抛出错误，避免影响主流程
-  }
-}
-
-/**
  * 🎯 搜索编排插件
  */
 export const searchOrchestrationPlugin = (
@@ -229,7 +160,7 @@ export const searchOrchestrationPlugin = (
      * 🔍 Step 1: 意图识别阶段
      */
     onRequestStart: async (context) => {
-      if (!(assistant.webSearchProviderId || assistant.enableMemory)) return
+      if (!assistant.webSearchProviderId) return
 
       try {
         const messages = context.originalParams.messages
@@ -294,13 +225,6 @@ export const searchOrchestrationPlugin = (
           }
         }
 
-        // 🧠 记忆搜索工具配置
-        const globalMemoryEnabled = selectGlobalMemoryEnabled(store.getState())
-        if (globalMemoryEnabled && assistant.enableMemory) {
-          // logger.info('🧠 Adding memory search tool')
-          params.tools['builtin_memory_search'] = memorySearchTool(assistant.id)
-        }
-
         // logger.info('🔧 Tools configured:', Object.keys(params.tools))
         return params
       } catch (error) {
@@ -309,27 +233,11 @@ export const searchOrchestrationPlugin = (
       }
     },
 
-    /**
-     * 💾 Step 3: 记忆存储阶段
-     */
-
     onRequestEnd: async (context) => {
-      // context.isAnalyzing = false
-      // logger.info('context.isAnalyzing', context, result)
-      // logger.info('💾 Starting memory storage...', context.requestId)
       try {
-        // ✅ 类型安全访问：context.originalParams 已通过泛型正确类型化
-        const messages = context.originalParams.messages
-
-        if (messages && assistant) {
-          await storeConversationMemory(messages, assistant, context)
-        }
-
-        // 清理缓存
         delete intentAnalysisResults[context.requestId]
       } catch (error) {
-        logger.error('💾 Memory storage failed:', error as Error)
-        // 不抛出错误，避免影响主流程
+        logger.error('Failed to clear intent analysis cache:', error as Error)
       }
     }
   })

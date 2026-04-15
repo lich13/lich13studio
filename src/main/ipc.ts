@@ -179,45 +179,9 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
     configManager.setLanguage(language)
   })
 
-  // spell check
-  ipcMain.handle(IpcChannel.App_SetEnableSpellCheck, (_, isEnable: boolean) => {
-    // disable spell check for all webviews
-    const webviews = webContents.getAllWebContents()
-    webviews.forEach((webview) => {
-      webview.session.setSpellCheckerEnabled(isEnable)
-    })
-  })
-
-  // spell check languages
-  ipcMain.handle(IpcChannel.App_SetSpellCheckLanguages, (_, languages: string[]) => {
-    if (languages.length === 0) {
-      return
-    }
-    const windows = BrowserWindow.getAllWindows()
-    windows.forEach((window) => {
-      window.webContents.session.setSpellCheckerLanguages(languages)
-    })
-    configManager.set('spellCheckLanguages', languages)
-  })
-
   // launch on boot
   ipcMain.handle(IpcChannel.App_SetLaunchOnBoot, async (_, isLaunchOnBoot: boolean) => {
     await appService.setAppLaunchOnBoot(isLaunchOnBoot)
-  })
-
-  // launch to tray
-  ipcMain.handle(IpcChannel.App_SetLaunchToTray, (_, isActive: boolean) => {
-    configManager.setLaunchToTray(isActive)
-  })
-
-  // tray
-  ipcMain.handle(IpcChannel.App_SetTray, (_, isActive: boolean) => {
-    configManager.setTray(isActive)
-  })
-
-  // to tray on close
-  ipcMain.handle(IpcChannel.App_SetTrayOnClose, (_, isActive: boolean) => {
-    configManager.setTrayOnClose(isActive)
   })
 
   // auto update
@@ -666,37 +630,6 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
     await shell.openPath(path)
   })
 
-  const removedFeatureHandler = (feature: string) => () => {
-    throw new Error(`${feature} has been removed in lich13studio`)
-  }
-
-  // shortcuts
-  ipcMain.handle(IpcChannel.Shortcuts_Update, removedFeatureHandler('Shortcuts'))
-
-  const knowledgeRemoved = () => {
-    throw new Error('Knowledge base has been removed in lich13studio')
-  }
-  ipcMain.handle(IpcChannel.KnowledgeBase_Create, knowledgeRemoved)
-  ipcMain.handle(IpcChannel.KnowledgeBase_Reset, knowledgeRemoved)
-  ipcMain.handle(IpcChannel.KnowledgeBase_Delete, knowledgeRemoved)
-  ipcMain.handle(IpcChannel.KnowledgeBase_Add, knowledgeRemoved)
-  ipcMain.handle(IpcChannel.KnowledgeBase_Remove, knowledgeRemoved)
-  ipcMain.handle(IpcChannel.KnowledgeBase_Search, knowledgeRemoved)
-  ipcMain.handle(IpcChannel.KnowledgeBase_Rerank, knowledgeRemoved)
-
-  // memory
-  ipcMain.handle(IpcChannel.Memory_Add, removedFeatureHandler('Global memory'))
-  ipcMain.handle(IpcChannel.Memory_Search, removedFeatureHandler('Global memory'))
-  ipcMain.handle(IpcChannel.Memory_List, removedFeatureHandler('Global memory'))
-  ipcMain.handle(IpcChannel.Memory_Delete, removedFeatureHandler('Global memory'))
-  ipcMain.handle(IpcChannel.Memory_Update, removedFeatureHandler('Global memory'))
-  ipcMain.handle(IpcChannel.Memory_Get, removedFeatureHandler('Global memory'))
-  ipcMain.handle(IpcChannel.Memory_SetConfig, removedFeatureHandler('Global memory'))
-  ipcMain.handle(IpcChannel.Memory_DeleteUser, removedFeatureHandler('Global memory'))
-  ipcMain.handle(IpcChannel.Memory_DeleteAllMemoriesForUser, removedFeatureHandler('Global memory'))
-  ipcMain.handle(IpcChannel.Memory_GetUsersList, removedFeatureHandler('Global memory'))
-  ipcMain.handle(IpcChannel.Memory_MigrateMemoryDb, removedFeatureHandler('Global memory'))
-
   // window
   ipcMain.handle(IpcChannel.Windows_SetMinimumSize, (_, width: number, height: number) => {
     checkMainWindow()
@@ -909,10 +842,6 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
   SelectionService.registerIpcHandler()
 
   ipcMain.handle(IpcChannel.App_QuoteToMain, (_, text: string) => windowService.quoteToMainWindow(text))
-
-  ipcMain.handle(IpcChannel.App_SetDisableHardwareAcceleration, (_, isDisable: boolean) => {
-    configManager.setDisableHardwareAcceleration(isDisable)
-  })
   ipcMain.handle(IpcChannel.App_SetUseSystemTitleBar, (_, isActive: boolean) => {
     configManager.setUseSystemTitleBar(isActive)
   })
@@ -959,6 +888,10 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
     }
   })
   // API Server
+  const removedFeatureHandler = (feature: string) => () => {
+    throw new Error(`${feature} has been removed in lich13studio`)
+  }
+
   ipcMain.handle(IpcChannel.ApiServer_Start, removedFeatureHandler('API server'))
   ipcMain.handle(IpcChannel.ApiServer_Stop, removedFeatureHandler('API server'))
   ipcMain.handle(IpcChannel.ApiServer_Restart, removedFeatureHandler('API server'))

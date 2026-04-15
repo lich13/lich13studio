@@ -78,24 +78,12 @@ export class ConfigManager {
     return false
   }
 
-  setLaunchToTray(_value: boolean) {
-    this.set(ConfigKeys.LaunchToTray, false)
-  }
-
   getTray(): boolean {
     return false
   }
 
-  setTray(_value: boolean) {
-    this.setAndNotify(ConfigKeys.Tray, false)
-  }
-
   getTrayOnClose(): boolean {
     return false
-  }
-
-  setTrayOnClose(_value: boolean) {
-    this.set(ConfigKeys.TrayOnClose, false)
   }
 
   getZoomFactor(): number {
@@ -242,10 +230,6 @@ export class ConfigManager {
 
   getDisableHardwareAcceleration(): boolean {
     return false
-  }
-
-  setDisableHardwareAcceleration(_value: boolean) {
-    this.set(ConfigKeys.DisableHardwareAcceleration, false)
   }
 
   getUseSystemTitleBar(): boolean {

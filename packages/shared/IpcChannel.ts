@@ -3,17 +3,12 @@ export enum IpcChannel {
   App_ClearCache = 'app:clear-cache',
   App_SetLaunchOnBoot = 'app:set-launch-on-boot',
   App_SetLanguage = 'app:set-language',
-  App_SetEnableSpellCheck = 'app:set-enable-spell-check',
-  App_SetSpellCheckLanguages = 'app:set-spell-check-languages',
   App_CheckForUpdate = 'app:check-for-update',
   App_QuitAndInstall = 'app:quit-and-install',
   App_Reload = 'app:reload',
   App_Quit = 'app:quit',
   App_Info = 'app:info',
   App_Proxy = 'app:proxy',
-  App_SetLaunchToTray = 'app:set-launch-to-tray',
-  App_SetTray = 'app:set-tray',
-  App_SetTrayOnClose = 'app:set-tray-on-close',
   App_SetTheme = 'app:set-theme',
   App_SetAutoUpdate = 'app:set-auto-update',
   App_SetTestPlan = 'app:set-test-plan',
@@ -49,7 +44,6 @@ export enum IpcChannel {
   App_MacRequestProcessTrust = 'app:mac-request-process-trust',
 
   App_QuoteToMain = 'app:quote-to-main',
-  App_SetDisableHardwareAcceleration = 'app:set-disable-hardware-acceleration',
   App_SetUseSystemTitleBar = 'app:set-use-system-title-bar',
 
   Notification_Send = 'notification:send',
@@ -174,15 +168,6 @@ export enum IpcChannel {
   Windows_Close = 'window:close',
   Windows_IsMaximized = 'window:is-maximized',
   Windows_MaximizedChanged = 'window:maximized-changed',
-  Windows_NavigateToAbout = 'window:navigate-to-about',
-
-  KnowledgeBase_Create = 'knowledge-base:create',
-  KnowledgeBase_Reset = 'knowledge-base:reset',
-  KnowledgeBase_Delete = 'knowledge-base:delete',
-  KnowledgeBase_Add = 'knowledge-base:add',
-  KnowledgeBase_Remove = 'knowledge-base:remove',
-  KnowledgeBase_Search = 'knowledge-base:search',
-  KnowledgeBase_Rerank = 'knowledge-base:rerank',
 
   //file
   File_Open = 'file:open',
@@ -242,8 +227,6 @@ export enum IpcChannel {
   FileService_Retrieve = 'file-service:retrieve',
 
   Export_Word = 'export:word',
-
-  Shortcuts_Update = 'shortcuts:update',
 
   // backup
   Backup_Backup = 'backup:backup',
@@ -331,19 +314,6 @@ export enum IpcChannel {
   Selection_ProcessAction = 'selection:process-action',
   Selection_UpdateActionData = 'selection:update-action-data',
   Selection_GetLinuxEnvInfo = 'selection:get-linux-env-info',
-
-  // Memory
-  Memory_Add = 'memory:add',
-  Memory_Search = 'memory:search',
-  Memory_List = 'memory:list',
-  Memory_Delete = 'memory:delete',
-  Memory_Update = 'memory:update',
-  Memory_Get = 'memory:get',
-  Memory_SetConfig = 'memory:set-config',
-  Memory_DeleteUser = 'memory:delete-user',
-  Memory_DeleteAllMemoriesForUser = 'memory:delete-all-memories-for-user',
-  Memory_GetUsersList = 'memory:get-users-list',
-  Memory_MigrateMemoryDb = 'memory:migrate-memory-db',
 
   // TRACE
   TRACE_SAVE_DATA = 'trace:saveData',

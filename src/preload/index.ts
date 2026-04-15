@@ -21,25 +21,16 @@ import type { ExternalAppInfo } from '@shared/externalApp/types'
 import { IpcChannel } from '@shared/IpcChannel'
 import type { Notification } from '@types'
 import type {
-  AddMemoryOptions,
-  AssistantMessage,
   FileListResponse,
   FileMetadata,
   FileUploadResponse,
   GetApiServerStatusResult,
-  KnowledgeBaseParams,
-  KnowledgeItem,
-  KnowledgeSearchResult,
   MCPServer,
-  MemoryConfig,
-  MemoryListOptions,
-  MemorySearchOptions,
   Model,
   OcrProvider,
   OcrResult,
   Provider,
   RestartApiServerStatusResult,
-  Shortcut,
   StartApiServerStatusResult,
   StopApiServerStatusResult,
   SupportedOcrFile,
@@ -119,12 +110,7 @@ const api = {
   checkForUpdate: () => ipcRenderer.invoke(IpcChannel.App_CheckForUpdate),
   quitAndInstall: () => ipcRenderer.invoke(IpcChannel.App_QuitAndInstall),
   setLanguage: (lang: string) => ipcRenderer.invoke(IpcChannel.App_SetLanguage, lang),
-  setEnableSpellCheck: (isEnable: boolean) => ipcRenderer.invoke(IpcChannel.App_SetEnableSpellCheck, isEnable),
-  setSpellCheckLanguages: (languages: string[]) => ipcRenderer.invoke(IpcChannel.App_SetSpellCheckLanguages, languages),
   setLaunchOnBoot: (isActive: boolean) => ipcRenderer.invoke(IpcChannel.App_SetLaunchOnBoot, isActive),
-  setLaunchToTray: (isActive: boolean) => ipcRenderer.invoke(IpcChannel.App_SetLaunchToTray, isActive),
-  setTray: (isActive: boolean) => ipcRenderer.invoke(IpcChannel.App_SetTray, isActive),
-  setTrayOnClose: (isActive: boolean) => ipcRenderer.invoke(IpcChannel.App_SetTrayOnClose, isActive),
   setTestPlan: (isActive: boolean) => ipcRenderer.invoke(IpcChannel.App_SetTestPlan, isActive),
   setTestChannel: (channel: UpgradeChannel) => ipcRenderer.invoke(IpcChannel.App_SetTestChannel, channel),
   setTheme: (theme: ThemeMode) => ipcRenderer.invoke(IpcChannel.App_SetTheme, theme),
@@ -310,37 +296,6 @@ const api = {
     getFiles: (vaultName: string) => ipcRenderer.invoke(IpcChannel.Obsidian_GetFiles, vaultName)
   },
   openPath: (path: string) => ipcRenderer.invoke(IpcChannel.Open_Path, path),
-  shortcuts: {
-    update: (_shortcuts: Shortcut[]) => removedFeatureError('Shortcuts')
-  },
-  knowledgeBase: {
-    create: (_base: KnowledgeBaseParams, _context?: SpanContext) => removedFeatureError('Knowledge base'),
-    reset: (_base: KnowledgeBaseParams) => removedFeatureError('Knowledge base'),
-    delete: (_id: string) => removedFeatureError('Knowledge base'),
-    add: (_params: { base: KnowledgeBaseParams; item: KnowledgeItem; userId?: string; forceReload?: boolean }) =>
-      removedFeatureError('Knowledge base'),
-    remove: (_params: { uniqueId: string; uniqueIds: string[]; base: KnowledgeBaseParams }) =>
-      removedFeatureError('Knowledge base'),
-    search: (_params: { search: string; base: KnowledgeBaseParams }, _context?: SpanContext) =>
-      removedFeatureError('Knowledge base'),
-    rerank: (
-      _params: { search: string; base: KnowledgeBaseParams; results: KnowledgeSearchResult[] },
-      _context?: SpanContext
-    ) => removedFeatureError('Knowledge base')
-  },
-  memory: {
-    add: (_messages: string | AssistantMessage[], _options?: AddMemoryOptions) => removedFeatureError('Global memory'),
-    search: (_query: string, _options: MemorySearchOptions) => removedFeatureError('Global memory'),
-    list: (_options?: MemoryListOptions) => removedFeatureError('Global memory'),
-    delete: (_id: string) => removedFeatureError('Global memory'),
-    update: (_id: string, _memory: string, _metadata?: Record<string, any>) => removedFeatureError('Global memory'),
-    get: (_id: string) => removedFeatureError('Global memory'),
-    setConfig: (_config: MemoryConfig) => removedFeatureError('Global memory'),
-    deleteUser: (_userId: string) => removedFeatureError('Global memory'),
-    deleteAllMemoriesForUser: (_userId: string) => removedFeatureError('Global memory'),
-    getUsersList: () => removedFeatureError('Global memory'),
-    migrateMemoryDb: () => removedFeatureError('Global memory')
-  },
   window: {
     setMinimumSize: (width: number, height: number) =>
       ipcRenderer.invoke(IpcChannel.Windows_SetMinimumSize, width, height),
@@ -700,8 +655,6 @@ const api = {
   },
   quoteToMainWindow: (text: string) => ipcRenderer.invoke(IpcChannel.App_QuoteToMain, text),
   onQuoteToMainWindow: (callback: (text: string) => void) => addIpcListener(IpcChannel.App_QuoteToMain, callback),
-  setDisableHardwareAcceleration: (isDisable: boolean) =>
-    ipcRenderer.invoke(IpcChannel.App_SetDisableHardwareAcceleration, isDisable),
   setUseSystemTitleBar: (isActive: boolean) => ipcRenderer.invoke(IpcChannel.App_SetUseSystemTitleBar, isActive),
   trace: {
     saveData: (topicId: string) => ipcRenderer.invoke(IpcChannel.TRACE_SAVE_DATA, topicId),

@@ -28,7 +28,6 @@ import copilot from './copilot'
 import inputToolsReducer from './inputTools'
 import llm from './llm'
 import mcp from './mcp'
-import memory from './memory'
 import messageBlocksReducer from './messageBlock'
 import migrate from './migrate'
 import minapps from './minapps'
@@ -61,7 +60,6 @@ const rootReducer = combineReducers({
   minapps,
   websearch,
   mcp,
-  memory,
   copilot,
   openclaw,
   selectionStore,
@@ -79,7 +77,7 @@ const persistedReducer = persistReducer(
   {
     key: 'cherry-studio',
     storage,
-    version: 213,
+    version: 214,
     blacklist: ['runtime', 'messages', 'messageBlocks', 'tabs', 'toolPermissions'],
     migrate
   },

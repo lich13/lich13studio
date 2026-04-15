@@ -663,12 +663,7 @@ const api = {
   setLanguage: async (lang: string) => {
     localStorage.setItem('tauri:language', lang)
   },
-  setEnableSpellCheck: noOpAsync,
-  setSpellCheckLanguages: noOpAsync,
   setLaunchOnBoot: noOpAsync,
-  setLaunchToTray: noOpAsync,
-  setTray: noOpAsync,
-  setTrayOnClose: noOpAsync,
   setTestPlan: noOpAsync,
   setTestChannel: noOpAsync,
   setTheme: async (theme: string) => {

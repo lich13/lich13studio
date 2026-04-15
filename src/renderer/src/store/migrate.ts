@@ -2314,6 +2314,16 @@ const migrateConfig = {
       return state
     }
   },
+  '214': (state: RootState) => {
+    try {
+      delete (state as any).memory
+      delete (state as any).knowledge
+      return state
+    } catch (error) {
+      logger.error('migrate 214 error', error as Error)
+      return state
+    }
+  },
   '133': (state: RootState) => {
     try {
       state.settings.sidebarIcons.visible.push('code_tools')
@@ -3179,24 +3189,21 @@ const migrateConfig = {
   // 1.7.7
   '189': (state: RootState) => {
     try {
-      // @ts-ignore
-      const memoryLlmApiClient = state?.memory?.memoryConfig?.llmApiClient
-      // @ts-ignore
-      const memoryEmbeddingApiClient = state?.memory?.memoryConfig?.embedderApiClient
+      const memoryState = (state as any)?.memory
+      const memoryLlmApiClient = memoryState?.memoryConfig?.llmApiClient
+      const memoryEmbeddingApiClient = memoryState?.memoryConfig?.embedderApiClient
 
       if (memoryLlmApiClient) {
-        state.memory.memoryConfig.llmModel = getModel(memoryLlmApiClient.model, memoryLlmApiClient.provider)
-        // @ts-ignore
-        delete state.memory.memoryConfig.llmApiClient
+        memoryState.memoryConfig.llmModel = getModel(memoryLlmApiClient.model, memoryLlmApiClient.provider)
+        delete memoryState.memoryConfig.llmApiClient
       }
 
       if (memoryEmbeddingApiClient) {
-        state.memory.memoryConfig.embeddingModel = getModel(
+        memoryState.memoryConfig.embeddingModel = getModel(
           memoryEmbeddingApiClient.model,
           memoryEmbeddingApiClient.provider
         )
-        // @ts-ignore
-        delete state.memory.memoryConfig.embedderApiClient
+        delete memoryState.memoryConfig.embedderApiClient
       }
       return state
     } catch (error) {
@@ -3525,8 +3532,8 @@ const migrateConfig = {
   },
   '208': (state: RootState) => {
     try {
-      if (state.memory) {
-        state.memory.globalMemoryEnabled = false
+      if ((state as any).memory) {
+        ;(state as any).memory.globalMemoryEnabled = false
       }
 
       if (state.selectionStore?.triggerMode === 'shortcut') {
