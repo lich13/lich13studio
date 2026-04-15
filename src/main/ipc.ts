@@ -57,7 +57,6 @@ import { localTransferService } from './services/LocalTransferService'
 import mcpService from './services/MCPService'
 import { openTraceWindow, setTraceWindowTitle } from './services/NodeTraceService'
 import NotificationService from './services/NotificationService'
-import * as NutstoreService from './services/NutstoreService'
 import ObsidianVaultService from './services/ObsidianVaultService'
 import { ocrService } from './services/ocr/OcrService'
 import { openClawService } from './services/OpenClawService'
@@ -672,11 +671,9 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
     await shell.openPath(path)
   })
 
-  const removedFeatureHandler =
-    (feature: string) =>
-    () => {
-      throw new Error(`${feature} has been removed in lich13studio`)
-    }
+  const removedFeatureHandler = (feature: string) => () => {
+    throw new Error(`${feature} has been removed in lich13studio`)
+  }
 
   // shortcuts
   ipcMain.handle(IpcChannel.Shortcuts_Update, removedFeatureHandler('Shortcuts'))
@@ -877,13 +874,6 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
   ipcMain.handle(IpcChannel.Obsidian_GetFiles, (_event, vaultName) => {
     return obsidianVaultService.getFilesByVaultName(vaultName)
   })
-
-  // nutstore
-  ipcMain.handle(IpcChannel.Nutstore_GetSsoUrl, NutstoreService.getNutstoreSSOUrl.bind(NutstoreService))
-  ipcMain.handle(IpcChannel.Nutstore_DecryptToken, (_, token: string) => NutstoreService.decryptToken(token))
-  ipcMain.handle(IpcChannel.Nutstore_GetDirectoryContents, (_, token: string, path: string) =>
-    NutstoreService.getDirectoryContents(token, path)
-  )
 
   // search window
   ipcMain.handle(IpcChannel.SearchWindow_Open, async (_, uid: string, show?: boolean) => {

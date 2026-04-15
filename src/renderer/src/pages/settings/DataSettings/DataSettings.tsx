@@ -1,7 +1,6 @@
-import { CloudServerOutlined, CloudSyncOutlined, YuqueOutlined } from '@ant-design/icons'
+import { CloudSyncOutlined, YuqueOutlined } from '@ant-design/icons'
 import DividerWithText from '@renderer/components/DividerWithText'
 import { JoplinIcon, SiyuanIcon } from '@renderer/components/Icons'
-import { NutstoreIcon } from '@renderer/components/Icons/NutstoreIcons'
 import { HStack } from '@renderer/components/Layout'
 import ListItem from '@renderer/components/ListItem'
 import { useTheme } from '@renderer/context/ThemeProvider'
@@ -19,9 +18,7 @@ import JoplinSettings from './JoplinSettings'
 import LocalBackupSettings from './LocalBackupSettings'
 import MarkdownExportSettings from './MarkdownExportSettings'
 import NotionSettings from './NotionSettings'
-import NutstoreSettings from './NutstoreSettings'
 import ObsidianSettings from './ObsidianSettings'
-import S3Settings from './S3Settings'
 import SiyuanSettings from './SiyuanSettings'
 import WebDavSettings from './WebDavSettings'
 import YuqueSettings from './YuqueSettings'
@@ -37,8 +34,6 @@ const DataSettings: FC = () => {
     { key: 'divider_1', isDivider: true, text: t('settings.data.divider.cloud_storage') },
     { key: 'local_backup', title: t('settings.data.local.title'), icon: <FolderCog size={16} /> },
     { key: 'webdav', title: t('settings.data.webdav.title'), icon: <CloudSyncOutlined style={{ fontSize: 16 }} /> },
-    { key: 'nutstore', title: t('settings.data.nutstore.title'), icon: <NutstoreIcon /> },
-    { key: 's3', title: t('settings.data.s3.title.label'), icon: <CloudServerOutlined style={{ fontSize: 16 }} /> },
     { key: 'divider_2', isDivider: true, text: t('settings.data.divider.import_settings') },
     {
       key: 'import_settings',
@@ -102,8 +97,6 @@ const DataSettings: FC = () => {
       <SettingContainer theme={theme} style={{ display: 'flex', flex: 1, height: '100%' }}>
         {menu === 'data' && <BasicDataSettings />}
         {menu === 'webdav' && <WebDavSettings />}
-        {menu === 'nutstore' && <NutstoreSettings />}
-        {menu === 's3' && <S3Settings />}
         {menu === 'import_settings' && <ImportMenuOptions />}
         {menu === 'export_menu' && <ExportMenuOptions />}
         {menu === 'markdown_export' && <MarkdownExportSettings />}

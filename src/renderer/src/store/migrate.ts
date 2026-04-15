@@ -2254,10 +2254,6 @@ const migrateConfig = {
       if (state.settings && state.settings.openAI && !state.settings.openAI.verbosity) {
         state.settings.openAI.verbosity = 'medium'
       }
-      // 为 nutstore 添加备份数量限制的默认值
-      if (state.nutstore && state.nutstore.nutstoreMaxBackups === undefined) {
-        state.nutstore.nutstoreMaxBackups = 0
-      }
       return state
     } catch (error) {
       logger.error('migrate 130 error', error as Error)
@@ -2294,10 +2290,6 @@ const migrateConfig = {
     try {
       if (state.settings?.webdavPath === '/cherry-studio') {
         state.settings.webdavPath = '/lich13studio'
-      }
-
-      if (state.nutstore?.nutstorePath === '/cherry-studio') {
-        state.nutstore.nutstorePath = '/lich13studio'
       }
 
       if (state.settings?.s3?.root === '/cherry-studio' || state.settings?.s3?.root === 'cherry-studio') {

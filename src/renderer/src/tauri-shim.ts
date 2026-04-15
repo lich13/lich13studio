@@ -249,8 +249,6 @@ if (systemThemeMediaQuery) {
 const fileCache = new Map<string, { fileName: string; ext: string; blob: Blob; text?: string }>()
 const fileObjectMap = new WeakMap<File, string>()
 let cachedAppInfo: AnyRecord | null = null
-let nutstoreLibPromise: Promise<AnyRecord> | null = null
-
 type ProgressPayload = {
   stage: string
   progress: number
@@ -309,11 +307,6 @@ const waitForNextFrame = async () =>
       setTimeout(resolve, 0)
     })
   })
-
-const loadNutstoreLib = async () => {
-  nutstoreLibPromise = nutstoreLibPromise || import('../../main/integration/nutstore/sso/lib/index.mjs')
-  return nutstoreLibPromise
-}
 
 const toProtocolPayload = (url: string): ProtocolPayload => {
   try {
@@ -1252,50 +1245,6 @@ const api = {
       ensureDeepLinkListener()
       return () => {
         protocolListeners.delete(callback)
-      }
-    }
-  },
-  nutstore: {
-    getSSOUrl: async () => {
-      const { createOAuthUrl } = await loadNutstoreLib()
-      return createOAuthUrl({ app: 'cherrystudio' })
-    },
-    decryptToken: async (token: string) => {
-      if (!token) return null
-      try {
-        const { decryptSecret } = await loadNutstoreLib()
-        const payload = await decryptSecret({ app: 'cherrystudio', s: token })
-        return JSON.parse(payload)
-      } catch (error) {
-        console.warn('[tauri-shim] Failed to decrypt nutstore token', error)
-        return null
-      }
-    },
-    getDirectoryContents: async (token: string, target: string) => {
-      try {
-        const decoded = window.atob(token)
-        const delimiterIndex = decoded.indexOf(':')
-        const username = delimiterIndex >= 0 ? decoded.slice(0, delimiterIndex) : decoded
-        const accessToken = delimiterIndex >= 0 ? decoded.slice(delimiterIndex + 1) : ''
-        const files = await api.backup.listWebdavFiles({
-          webdavHost: 'https://dav.jianguoyun.com/dav',
-          webdavUser: username,
-          webdavPass: accessToken,
-          webdavPath: target
-        })
-
-        return files.map((file: AnyRecord) => ({
-          filename: `${String(target || '/').replace(/\/$/, '')}/${file.fileName}`.replace(/^$/, '/'),
-          basename: file.fileName,
-          lastmod: file.modifiedTime,
-          size: file.size,
-          type: 'file',
-          etag: null,
-          mime: 'application/octet-stream'
-        }))
-      } catch (error) {
-        console.warn('[tauri-shim] Failed to list nutstore directory contents', error)
-        return []
       }
     }
   },

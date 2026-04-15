@@ -41,14 +41,10 @@ import type {
 import { API_SERVER_DEFAULTS, UpgradeChannel } from '@shared/config/constant'
 import { v4 as uuid } from 'uuid'
 
-import type { RemoteSyncState } from './backup'
-
 export type SendMessageShortcut = 'Enter' | 'Shift+Enter' | 'Ctrl+Enter' | 'Command+Enter' | 'Alt+Enter'
 
 // Re-export for backward compatibility
 export { DEFAULT_SIDEBAR_ICONS }
-
-export interface NutstoreSyncRuntime extends RemoteSyncState {}
 
 export type AssistantIconType = 'model' | 'emoji' | 'none'
 

@@ -35,7 +35,6 @@ import minapps from './minapps'
 import newMessagesReducer from './newMessage'
 import { setNotesPath } from './note'
 import note from './note'
-import nutstore from './nutstore'
 import ocr from './ocr'
 import openclaw from './openclaw'
 import paintings from './paintings'
@@ -54,7 +53,6 @@ const rootReducer = combineReducers({
   assistants,
   backup,
   codeTools,
-  nutstore,
   paintings,
   llm,
   settings,

@@ -149,11 +149,6 @@ export enum IpcChannel {
   Obsidian_GetVaults = 'obsidian:get-vaults',
   Obsidian_GetFiles = 'obsidian:get-files',
 
-  // nutstore
-  Nutstore_GetSsoUrl = 'nutstore:get-sso-url',
-  Nutstore_DecryptToken = 'nutstore:decrypt-token',
-  Nutstore_GetDirectoryContents = 'nutstore:get-directory-contents',
-
   //aes
   Aes_Encrypt = 'aes:encrypt',
   Aes_Decrypt = 'aes:decrypt',
