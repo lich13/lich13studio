@@ -5,6 +5,7 @@ export const ScrollContainer = styled.div`
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
+  flex: 1;
   min-height: 100%;
   box-sizing: border-box;
   padding: 8px 10px 2px;

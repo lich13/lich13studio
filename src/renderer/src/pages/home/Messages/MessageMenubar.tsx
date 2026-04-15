@@ -24,15 +24,7 @@ import type { Assistant, Model, Topic } from '@renderer/types'
 import { type Message, MessageBlockType } from '@renderer/types/newMessage'
 import { captureScrollableAsBlob, captureScrollableAsDataURL, classNames } from '@renderer/utils'
 import { copyMessageAsPlainText } from '@renderer/utils/copy'
-import {
-  exportMarkdownToJoplin,
-  exportMarkdownToSiyuan,
-  exportMarkdownToYuque,
-  exportMessageAsMarkdown,
-  exportMessageToNotes,
-  exportMessageToNotion,
-  messageToMarkdown
-} from '@renderer/utils/export'
+import { exportMessageAsMarkdown, exportMessageToNotes, messageToMarkdown } from '@renderer/utils/export'
 // import { withMessageThought } from '@renderer/utils/formats'
 import { removeTrailingDoubleSpaces } from '@renderer/utils/markdown'
 import { findMainTextBlocks, getMainTextContent } from '@renderer/utils/messageUtils/find'
@@ -130,12 +122,8 @@ const MessageMenubar: FC<Props> = (props) => {
   // remove confirm for regenerate; tooltip stays simple
   const [showDeleteTooltip, setShowDeleteTooltip] = useState(false)
   // const assistantModel = assistant?.model
-  const {
-    deleteMessage,
-    resendMessage,
-    regenerateAssistantMessage,
-    appendAssistantResponse
-  } = useMessageOperations(topic)
+  const { deleteMessage, resendMessage, regenerateAssistantMessage, appendAssistantResponse } =
+    useMessageOperations(topic)
 
   const { isBubbleStyle } = useMessageStyle()
   const { enableDeveloperMode } = useEnableDeveloperMode()
@@ -314,47 +302,12 @@ const MessageMenubar: FC<Props> = (props) => {
               void window.api.export.toWord(markdown, title)
             }
           },
-          exportMenuOptions.notion && {
-            label: t('chat.topics.export.notion'),
-            key: 'notion',
-            onClick: async () => {
-              const title = await getMessageTitle(message)
-              const markdown = messageToMarkdown(message)
-              void exportMessageToNotion(title, markdown, message)
-            }
-          },
-          exportMenuOptions.yuque && {
-            label: t('chat.topics.export.yuque'),
-            key: 'yuque',
-            onClick: async () => {
-              const title = await getMessageTitle(message)
-              const markdown = messageToMarkdown(message)
-              void exportMarkdownToYuque(title, markdown)
-            }
-          },
           exportMenuOptions.obsidian && {
             label: t('chat.topics.export.obsidian'),
             key: 'obsidian',
             onClick: async () => {
               const title = topic.name?.replace(/\\/g, '_') || 'Untitled'
               await ObsidianExportPopup.show({ title, message, processingMethod: '1' })
-            }
-          },
-          exportMenuOptions.joplin && {
-            label: t('chat.topics.export.joplin'),
-            key: 'joplin',
-            onClick: async () => {
-              const title = await getMessageTitle(message)
-              void exportMarkdownToJoplin(title, message)
-            }
-          },
-          exportMenuOptions.siyuan && {
-            label: t('chat.topics.export.siyuan'),
-            key: 'siyuan',
-            onClick: async () => {
-              const title = await getMessageTitle(message)
-              const markdown = messageToMarkdown(message)
-              void exportMarkdownToSiyuan(title, markdown)
             }
           }
         ].filter(Boolean)
@@ -382,14 +335,10 @@ const MessageMenubar: FC<Props> = (props) => {
     dropdownRootAllowKeys,
     exportMenuOptions.docx,
     exportMenuOptions.image,
-    exportMenuOptions.joplin,
     exportMenuOptions.markdown,
     exportMenuOptions.markdown_reason,
-    exportMenuOptions.notion,
     exportMenuOptions.obsidian,
     exportMenuOptions.plain_text,
-    exportMenuOptions.siyuan,
-    exportMenuOptions.yuque,
     isEditable,
     mainTextContent,
     message,

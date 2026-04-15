@@ -29,6 +29,7 @@ import ChatNavbar from './components/ChatNavBar'
 import Inputbar from './Inputbar/Inputbar'
 import ChatNavigation from './Messages/ChatNavigation'
 import Messages from './Messages/Messages'
+import Prompt from './Messages/Prompt'
 import Tabs from './Tabs'
 
 const logger = loggerService.withContext('Chat')
@@ -43,7 +44,7 @@ interface Props {
 const Chat: FC<Props> = (props) => {
   const { assistant, updateAssistant, updateTopic } = useAssistant(props.assistant.id)
   const { t } = useTranslation()
-  const { topicPosition, messageStyle, messageNavigation } = useSettings()
+  const { topicPosition, messageStyle, messageNavigation, showPrompt } = useSettings()
   const { showTopics } = useShowTopics()
   const { isMultiSelectMode } = useChatContext(props.activeTopic)
   const { isTopNavbar } = useNavbarPosition()
@@ -182,6 +183,7 @@ const Chat: FC<Props> = (props) => {
                   flex: 1,
                   minHeight: 0
                 }}>
+                {showPrompt && <Prompt assistant={assistant} topic={props.activeTopic} />}
                 <Messages
                   key={props.activeTopic.id}
                   assistant={assistant}

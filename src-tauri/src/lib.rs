@@ -189,6 +189,22 @@ fn timestamp_tag() -> String {
     .unwrap_or_else(|_| String::from("0"))
 }
 
+#[tauri::command]
+async fn save_file(file_name: String, bytes: Vec<u8>) -> Result<String, String> {
+  let handle = rfd::AsyncFileDialog::new()
+    .set_file_name(file_name.as_str())
+    .save_file()
+    .await;
+
+  let Some(file_handle) = handle else {
+    return Err(String::from("User canceled the save dialog"));
+  };
+
+  let file_path = file_handle.path().to_path_buf();
+  fs::write(&file_path, bytes).map_err(|error| error.to_string())?;
+  Ok(file_path.display().to_string())
+}
+
 fn normalize_base_url(url: &str) -> String {
   url.trim_end_matches('/').to_string()
 }
@@ -1383,6 +1399,7 @@ pub fn run() {
       load_state,
       save_state,
       export_backup,
+      save_file,
       pick_folder,
       open_path,
       list_capture_windows,

@@ -14,6 +14,7 @@
  * - v2 Refactor PR   : https://github.com/CherryHQ/cherry-studio/pull/10162
  * --------------------------------------------------------------------------
  */
+import { DEFAULT_SIDEBAR_ICONS } from '@renderer/config/sidebar'
 import store, { useAppDispatch, useAppSelector } from '@renderer/store'
 import type { AssistantIconType, SendMessageShortcut, SettingsState } from '@renderer/store/settings'
 import {
@@ -21,9 +22,7 @@ import {
   setAutoCheckUpdate as _setAutoCheckUpdate,
   setLaunchOnBoot,
   setNavbarPosition,
-  setPinTopicsToTop,
   setSendMessageShortcut as _setSendMessageShortcut,
-  setSidebarIcons,
   setTargetLanguage,
   setTestChannel as _setTestChannel,
   setTestPlan as _setTestPlan,
@@ -43,8 +42,8 @@ export function useSettings() {
   const settings = useAppSelector((state) => state.settings)
   const dispatch = useAppDispatch()
   const sidebarIcons = {
-    visible: sanitizeSidebarIcons(settings.sidebarIcons.visible),
-    disabled: sanitizeSidebarIcons(settings.sidebarIcons.disabled)
+    visible: sanitizeSidebarIcons(DEFAULT_SIDEBAR_ICONS),
+    disabled: [] as SidebarIcon[]
   }
 
   return {
@@ -53,6 +52,9 @@ export function useSettings() {
     launchToTray: false,
     tray: false,
     trayOnClose: false,
+    clickAssistantToShowTopic: true,
+    showTopicTime: false,
+    pinTopicsToTop: false,
     enableDataCollection: false,
     enableSpellCheck: false,
     disableHardwareAcceleration: false,
@@ -102,23 +104,6 @@ export function useSettings() {
     },
     setTopicPosition(topicPosition: 'left' | 'right') {
       dispatch(setTopicPosition(topicPosition))
-    },
-    setPinTopicsToTop(pinTopicsToTop: boolean) {
-      dispatch(setPinTopicsToTop(pinTopicsToTop))
-    },
-    updateSidebarIcons(icons: { visible: SidebarIcon[]; disabled: SidebarIcon[] }) {
-      dispatch(
-        setSidebarIcons({
-          visible: sanitizeSidebarIcons(icons.visible),
-          disabled: sanitizeSidebarIcons(icons.disabled)
-        })
-      )
-    },
-    updateSidebarVisibleIcons(icons: SidebarIcon[]) {
-      dispatch(setSidebarIcons({ visible: sanitizeSidebarIcons(icons) }))
-    },
-    updateSidebarDisabledIcons(icons: SidebarIcon[]) {
-      dispatch(setSidebarIcons({ disabled: sanitizeSidebarIcons(icons) }))
     },
     setAssistantIconType(assistantIconType: AssistantIconType) {
       dispatch(setAssistantIconType(assistantIconType))

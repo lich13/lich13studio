@@ -168,30 +168,10 @@ export const useNotesMenu = ({
                 key: 'word',
                 onClick: () => exportNote({ node, platform: 'docx' })
               },
-              exportMenuOptions.notion && {
-                label: t('chat.topics.export.notion'),
-                key: 'notion',
-                onClick: () => exportNote({ node, platform: 'notion' })
-              },
-              exportMenuOptions.yuque && {
-                label: t('chat.topics.export.yuque'),
-                key: 'yuque',
-                onClick: () => exportNote({ node, platform: 'yuque' })
-              },
               exportMenuOptions.obsidian && {
                 label: t('chat.topics.export.obsidian'),
                 key: 'obsidian',
                 onClick: () => exportNote({ node, platform: 'obsidian' })
-              },
-              exportMenuOptions.joplin && {
-                label: t('chat.topics.export.joplin'),
-                key: 'joplin',
-                onClick: () => exportNote({ node, platform: 'joplin' })
-              },
-              exportMenuOptions.siyuan && {
-                label: t('chat.topics.export.siyuan'),
-                key: 'siyuan',
-                onClick: () => exportNote({ node, platform: 'siyuan' })
               }
             ].filter(Boolean) as ItemType<MenuItemType>[]
           }

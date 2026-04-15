@@ -155,32 +155,17 @@ export interface SettingsState {
   clickTrayToShowQuickAssistant: boolean
   multiModelMessageStyle: MultiModelMessageStyle
   readClipboardAtStartup: boolean
-  notionDatabaseID: string | null
-  notionApiKey: string | null
-  notionPageNameKey: string | null
   markdownExportPath: string | null
   forceDollarMathInMarkdown: boolean
   useTopicNamingForMessageTitle: boolean
   showModelNameInMarkdown: boolean
   showModelProviderInMarkdown: boolean
   thoughtAutoCollapse: boolean
-  notionExportReasoning: boolean
   excludeCitationsInExport: boolean
   standardizeCitationsInExport: boolean
-  yuqueToken: string | null
-  yuqueUrl: string | null
-  yuqueRepoId: string | null
-  joplinToken: string | null
-  joplinUrl: string | null
-  joplinExportReasoning: boolean
   defaultObsidianVault: string | null
   /** This state is actaully default assistant preset */
   defaultAgent: string | null
-  // 思源笔记配置
-  siyuanApiUrl: string | null
-  siyuanToken: string | null
-  siyuanBoxId: string | null
-  siyuanRootPath: string | null
   // 订阅的助手地址
   agentssubscribeUrl: string | null
   // MinApps
@@ -202,11 +187,7 @@ export interface SettingsState {
     image: boolean
     markdown: boolean
     markdown_reason: boolean
-    notion: boolean
-    yuque: boolean
-    joplin: boolean
     obsidian: boolean
-    siyuan: boolean
     docx: boolean
     plain_text: boolean
     notes: boolean
@@ -343,30 +324,16 @@ export const initialState: SettingsState = {
   clickTrayToShowQuickAssistant: false,
   readClipboardAtStartup: true,
   multiModelMessageStyle: 'horizontal',
-  notionDatabaseID: '',
-  notionApiKey: '',
-  notionPageNameKey: 'Name',
   markdownExportPath: null,
   forceDollarMathInMarkdown: false,
   useTopicNamingForMessageTitle: false,
   showModelNameInMarkdown: false,
   showModelProviderInMarkdown: false,
   thoughtAutoCollapse: true,
-  notionExportReasoning: false,
   excludeCitationsInExport: false,
   standardizeCitationsInExport: false,
-  yuqueToken: '',
-  yuqueUrl: '',
-  yuqueRepoId: '',
-  joplinToken: '',
-  joplinUrl: '',
-  joplinExportReasoning: false,
   defaultObsidianVault: null,
   defaultAgent: null,
-  siyuanApiUrl: null,
-  siyuanToken: null,
-  siyuanBoxId: null,
-  siyuanRootPath: null,
   agentssubscribeUrl: '',
   // MinApps
   maxKeepAliveMinapps: 3,
@@ -388,11 +355,7 @@ export const initialState: SettingsState = {
     image: true,
     markdown: true,
     markdown_reason: true,
-    notion: true,
-    yuque: true,
-    joplin: true,
     obsidian: true,
-    siyuan: true,
     docx: true,
     plain_text: true,
     notes: true
@@ -510,12 +473,6 @@ const settingsSlice = createSlice({
     setTopicPosition: (state, action: PayloadAction<'left' | 'right'>) => {
       state.topicPosition = action.payload
     },
-    setShowTopicTime: (state, action: PayloadAction<boolean>) => {
-      state.showTopicTime = action.payload
-    },
-    setPinTopicsToTop: (state, action: PayloadAction<boolean>) => {
-      state.pinTopicsToTop = action.payload
-    },
     setAssistantIconType: (state, action: PayloadAction<AssistantIconType>) => {
       state.assistantIconType = action.payload
     },
@@ -533,9 +490,6 @@ const settingsSlice = createSlice({
     },
     setRenderInputMessageAsMarkdown: (state, action: PayloadAction<boolean>) => {
       state.renderInputMessageAsMarkdown = action.payload
-    },
-    setClickAssistantToShowTopic: (state, action: PayloadAction<boolean>) => {
-      state.clickAssistantToShowTopic = action.payload
     },
     setSkipBackupFile: (state, action: PayloadAction<boolean>) => {
       state.skipBackupFile = action.payload
@@ -671,14 +625,6 @@ const settingsSlice = createSlice({
     setTopicNamingPrompt: (state, action: PayloadAction<string>) => {
       state.topicNamingPrompt = action.payload
     },
-    setSidebarIcons: (state, action: PayloadAction<{ visible?: SidebarIcon[]; disabled?: SidebarIcon[] }>) => {
-      if (action.payload.visible) {
-        state.sidebarIcons.visible = action.payload.visible
-      }
-      if (action.payload.disabled) {
-        state.sidebarIcons.disabled = action.payload.disabled
-      }
-    },
     setNarrowMode: (state, action: PayloadAction<boolean>) => {
       state.narrowMode = action.payload
     },
@@ -693,15 +639,6 @@ const settingsSlice = createSlice({
     },
     setMultiModelMessageStyle: (state, action: PayloadAction<'horizontal' | 'vertical' | 'fold' | 'grid'>) => {
       state.multiModelMessageStyle = action.payload
-    },
-    setNotionDatabaseID: (state, action: PayloadAction<string>) => {
-      state.notionDatabaseID = action.payload
-    },
-    setNotionApiKey: (state, action: PayloadAction<string>) => {
-      state.notionApiKey = action.payload
-    },
-    setNotionPageNameKey: (state, action: PayloadAction<string>) => {
-      state.notionPageNameKey = action.payload
     },
     setmarkdownExportPath: (state, action: PayloadAction<string | null>) => {
       state.markdownExportPath = action.payload
@@ -721,32 +658,11 @@ const settingsSlice = createSlice({
     setThoughtAutoCollapse: (state, action: PayloadAction<boolean>) => {
       state.thoughtAutoCollapse = action.payload
     },
-    setNotionExportReasoning: (state, action: PayloadAction<boolean>) => {
-      state.notionExportReasoning = action.payload
-    },
     setExcludeCitationsInExport: (state, action: PayloadAction<boolean>) => {
       state.excludeCitationsInExport = action.payload
     },
     setStandardizeCitationsInExport: (state, action: PayloadAction<boolean>) => {
       state.standardizeCitationsInExport = action.payload
-    },
-    setYuqueToken: (state, action: PayloadAction<string>) => {
-      state.yuqueToken = action.payload
-    },
-    setYuqueRepoId: (state, action: PayloadAction<string>) => {
-      state.yuqueRepoId = action.payload
-    },
-    setYuqueUrl: (state, action: PayloadAction<string>) => {
-      state.yuqueUrl = action.payload
-    },
-    setJoplinToken: (state, action: PayloadAction<string>) => {
-      state.joplinToken = action.payload
-    },
-    setJoplinUrl: (state, action: PayloadAction<string>) => {
-      state.joplinUrl = action.payload
-    },
-    setJoplinExportReasoning: (state, action: PayloadAction<boolean>) => {
-      state.joplinExportReasoning = action.payload
     },
     setMessageNavigation: (state, action: PayloadAction<'none' | 'buttons' | 'anchor'>) => {
       state.messageNavigation = action.payload
@@ -756,18 +672,6 @@ const settingsSlice = createSlice({
     },
     setDefaultAgent: (state, action: PayloadAction<string>) => {
       state.defaultAgent = action.payload
-    },
-    setSiyuanApiUrl: (state, action: PayloadAction<string>) => {
-      state.siyuanApiUrl = action.payload
-    },
-    setSiyuanToken: (state, action: PayloadAction<string>) => {
-      state.siyuanToken = action.payload
-    },
-    setSiyuanBoxId: (state, action: PayloadAction<string>) => {
-      state.siyuanBoxId = action.payload
-    },
-    setSiyuanRootPath: (state, action: PayloadAction<string>) => {
-      state.siyuanRootPath = action.payload
     },
     setAgentssubscribeUrl: (state, action: PayloadAction<string>) => {
       state.agentssubscribeUrl = action.payload
@@ -904,15 +808,12 @@ export const {
   setFontSize,
   setWindowStyle,
   setTopicPosition,
-  setShowTopicTime,
-  setPinTopicsToTop,
   setAssistantIconType,
   setPasteLongTextAsFile,
   setAutoCheckUpdate,
   setTestPlan,
   setTestChannel,
   setRenderInputMessageAsMarkdown,
-  setClickAssistantToShowTopic,
   setSkipBackupFile,
   setWebdavHost,
   setWebdavUser,
@@ -944,36 +845,21 @@ export const {
   setEnableTopicNaming,
   setPasteLongTextThreshold,
   setTopicNamingPrompt,
-  setSidebarIcons,
   setNarrowMode,
   setClickTrayToShowQuickAssistant,
   setEnableQuickAssistant,
   setReadClipboardAtStartup,
   setMultiModelMessageStyle,
-  setNotionDatabaseID,
-  setNotionApiKey,
-  setNotionPageNameKey,
   setmarkdownExportPath,
   setForceDollarMathInMarkdown,
   setUseTopicNamingForMessageTitle,
   setThoughtAutoCollapse,
-  setNotionExportReasoning,
   setExcludeCitationsInExport,
   setStandardizeCitationsInExport,
-  setYuqueToken,
-  setYuqueRepoId,
-  setYuqueUrl,
-  setJoplinToken,
-  setJoplinUrl,
-  setJoplinExportReasoning,
   setMessageNavigation,
   setDefaultObsidianVault,
   setDefaultAgent,
-  setSiyuanApiUrl,
-  setSiyuanToken,
-  setSiyuanBoxId,
   setAgentssubscribeUrl,
-  setSiyuanRootPath,
   setMaxKeepAliveMinapps,
   setShowOpenedMinappsInSidebar,
   setMinappsOpenLinkExternal,

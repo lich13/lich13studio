@@ -78,7 +78,10 @@ const Container = styled.div<{ $isDark: boolean }>`
   cursor: pointer;
   border: 0.5px solid var(--color-border);
   margin: 15px 20px;
-  margin-bottom: 0;
+  margin-bottom: 8px;
+  background: var(--color-background);
+  position: relative;
+  z-index: 1;
 `
 
 const Text = styled.div<{ $isVisible: boolean }>`

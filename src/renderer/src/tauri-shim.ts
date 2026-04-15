@@ -1,4 +1,5 @@
 type AnyRecord = Record<string, any>
+const WORD_DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 
 const globalWindow = window as AnyRecord
 globalWindow.__LICH13_TAURI_SHIM__ = true
@@ -531,6 +532,17 @@ const downloadBlob = (fileName: string, blob: Blob) => {
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
+const saveBlob = async (fileName: string, blob: Blob) => {
+  if (invoke) {
+    const bytes = Array.from(new Uint8Array(await blob.arrayBuffer()))
+    await invoke('save_file', { fileName, bytes })
+    return true
+  }
+
+  downloadBlob(fileName, blob)
+  return true
+}
+
 const pickFiles = async (multiple = true, filters?: Array<{ name: string; extensions: string[] }>) =>
   new Promise<any[] | null>((resolve) => {
     const input = document.createElement('input')
@@ -820,6 +832,34 @@ const api = {
     openWindow: noOpAsync,
     getData: async () => []
   },
+  export: {
+    toWord: async (markdown: string, fileName: string) => {
+      const [{ Document, Packer, Paragraph }, { markdownToPlainText }] = await Promise.all([
+        import('docx'),
+        import('@renderer/utils/markdown')
+      ])
+
+      const plainText = markdownToPlainText(markdown)
+      const paragraphs = plainText
+        .split(/\n{2,}/)
+        .map((block) => block.trim())
+        .filter(Boolean)
+        .map((block) => new Paragraph({ text: block }))
+
+      const doc = new Document({
+        sections: [
+          {
+            properties: {},
+            children: paragraphs.length > 0 ? paragraphs : [new Paragraph({ text: '' })]
+          }
+        ]
+      })
+
+      const blob = await Packer.toBlob(doc)
+      const targetName = fileName.toLowerCase().endsWith('.docx') ? fileName : `${fileName}.docx`
+      return saveBlob(targetName, new Blob([blob], { type: WORD_DOCX_MIME }))
+    }
+  },
   obsidian: {
     getVaults: async () => [],
     getFiles: async () => []
@@ -911,8 +951,7 @@ const api = {
     save: async (name: string, content: string | Uint8Array) => {
       const blob =
         typeof content === 'string' ? new Blob([content], { type: 'text/plain' }) : new Blob([toBlobPart(content)])
-      downloadBlob(name, blob)
-      return true
+      return saveBlob(name, blob)
     },
     selectFolder: async () => {
       if (invoke) {
@@ -926,8 +965,7 @@ const api = {
     },
     saveImage: async (name: string, data: string) => {
       const blob = await (await fetch(data)).blob()
-      downloadBlob(`${name}.png`, blob)
-      return true
+      return saveBlob(`${name}.png`, blob)
     },
     binaryImage: async (fileId: string) => {
       const cached = await getCachedFile(fileId)

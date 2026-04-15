@@ -52,32 +52,8 @@ const ExportMenuOptions: FC = () => {
       <SettingDivider />
 
       <SettingRow>
-        <SettingRowTitle>{t('settings.data.export_menu.notion')}</SettingRowTitle>
-        <Switch checked={exportMenuOptions.notion} onChange={(checked) => handleToggleOption('notion', checked)} />
-      </SettingRow>
-      <SettingDivider />
-
-      <SettingRow>
-        <SettingRowTitle>{t('settings.data.export_menu.yuque')}</SettingRowTitle>
-        <Switch checked={exportMenuOptions.yuque} onChange={(checked) => handleToggleOption('yuque', checked)} />
-      </SettingRow>
-      <SettingDivider />
-
-      <SettingRow>
-        <SettingRowTitle>{t('settings.data.export_menu.joplin')}</SettingRowTitle>
-        <Switch checked={exportMenuOptions.joplin} onChange={(checked) => handleToggleOption('joplin', checked)} />
-      </SettingRow>
-      <SettingDivider />
-
-      <SettingRow>
         <SettingRowTitle>{t('settings.data.export_menu.obsidian')}</SettingRowTitle>
         <Switch checked={exportMenuOptions.obsidian} onChange={(checked) => handleToggleOption('obsidian', checked)} />
-      </SettingRow>
-      <SettingDivider />
-
-      <SettingRow>
-        <SettingRowTitle>{t('settings.data.export_menu.siyuan')}</SettingRowTitle>
-        <Switch checked={exportMenuOptions.siyuan} onChange={(checked) => handleToggleOption('siyuan', checked)} />
       </SettingRow>
       <SettingDivider />
 

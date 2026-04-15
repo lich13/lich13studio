@@ -2324,6 +2324,34 @@ const migrateConfig = {
       return state
     }
   },
+  '215': (state: RootState) => {
+    try {
+      delete (state.settings as any).notionDatabaseID
+      delete (state.settings as any).notionApiKey
+      delete (state.settings as any).notionPageNameKey
+      delete (state.settings as any).notionExportReasoning
+      delete (state.settings as any).yuqueToken
+      delete (state.settings as any).yuqueUrl
+      delete (state.settings as any).yuqueRepoId
+      delete (state.settings as any).joplinToken
+      delete (state.settings as any).joplinUrl
+      delete (state.settings as any).joplinExportReasoning
+      delete (state.settings as any).siyuanApiUrl
+      delete (state.settings as any).siyuanToken
+      delete (state.settings as any).siyuanBoxId
+      delete (state.settings as any).siyuanRootPath
+      if (state.settings?.exportMenuOptions) {
+        delete (state.settings.exportMenuOptions as any).notion
+        delete (state.settings.exportMenuOptions as any).yuque
+        delete (state.settings.exportMenuOptions as any).joplin
+        delete (state.settings.exportMenuOptions as any).siyuan
+      }
+      return state
+    } catch (error) {
+      logger.error('migrate 215 error', error as Error)
+      return state
+    }
+  },
   '133': (state: RootState) => {
     try {
       state.settings.sidebarIcons.visible.push('code_tools')

@@ -39,7 +39,6 @@ import styled from 'styled-components'
 import MessageAnchorLine from './MessageAnchorLine'
 import MessageGroup from './MessageGroup'
 import NarrowLayout from './NarrowLayout'
-import Prompt from './Prompt'
 import { MessagesContainer, ScrollContainer } from './shared'
 
 interface MessagesProps {
@@ -62,7 +61,7 @@ const Messages: React.FC<MessagesProps> = ({ assistant, topic, setActiveTopic, o
   const [isProcessingContext, setIsProcessingContext] = useState(false)
 
   const { addTopic } = useAssistant(assistant.id)
-  const { showPrompt, messageNavigation } = useSettings()
+  const { messageNavigation } = useSettings()
   const { t } = useTranslation()
   const dispatch = useAppDispatch()
   const messages = useTopicMessages(topic.id)
@@ -337,7 +336,6 @@ const Messages: React.FC<MessagesProps> = ({ assistant, topic, setActiveTopic, o
       key={assistant.id}
       onScroll={handleMessagesScroll}>
       <NarrowLayout style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
-        {showPrompt && <Prompt assistant={assistant} key={assistant.prompt} topic={topic} />}
         <ContextMenu>
           <ScrollContainer>
             {isLoadingMore && (

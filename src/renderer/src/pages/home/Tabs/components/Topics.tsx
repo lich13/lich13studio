@@ -23,15 +23,7 @@ import { setGenerating } from '@renderer/store/runtime'
 import type { Assistant, Topic } from '@renderer/types'
 import { classNames, removeSpecialCharactersForFileName } from '@renderer/utils'
 import { copyTopicAsMarkdown, copyTopicAsPlainText } from '@renderer/utils/copy'
-import {
-  exportMarkdownToJoplin,
-  exportMarkdownToSiyuan,
-  exportMarkdownToYuque,
-  exportTopicAsMarkdown,
-  exportTopicToNotes,
-  exportTopicToNotion,
-  topicToMarkdown
-} from '@renderer/utils/export'
+import { exportTopicAsMarkdown, exportTopicToNotes, topicToMarkdown } from '@renderer/utils/export'
 import type { MenuProps } from 'antd'
 import { Dropdown, Tooltip } from 'antd'
 import type { ItemType, MenuItemType } from 'antd/es/menu/interface'
@@ -403,42 +395,11 @@ export const Topics: React.FC<Props> = ({ assistant: _assistant, activeTopic, se
               void window.api.export.toWord(markdown, removeSpecialCharactersForFileName(topic.name))
             }
           },
-          exportMenuOptions.notion && {
-            label: t('chat.topics.export.notion'),
-            key: 'notion',
-            onClick: async () => {
-              void exportTopicToNotion(topic)
-            }
-          },
-          exportMenuOptions.yuque && {
-            label: t('chat.topics.export.yuque'),
-            key: 'yuque',
-            onClick: async () => {
-              const markdown = await topicToMarkdown(topic)
-              void exportMarkdownToYuque(topic.name, markdown)
-            }
-          },
           exportMenuOptions.obsidian && {
             label: t('chat.topics.export.obsidian'),
             key: 'obsidian',
             onClick: async () => {
               await ObsidianExportPopup.show({ title: topic.name, topic, processingMethod: '3' })
-            }
-          },
-          exportMenuOptions.joplin && {
-            label: t('chat.topics.export.joplin'),
-            key: 'joplin',
-            onClick: async () => {
-              const topicMessages = await TopicManager.getTopicMessages(topic.id)
-              void exportMarkdownToJoplin(topic.name, topicMessages)
-            }
-          },
-          exportMenuOptions.siyuan && {
-            label: t('chat.topics.export.siyuan'),
-            key: 'siyuan',
-            onClick: async () => {
-              const markdown = await topicToMarkdown(topic)
-              void exportMarkdownToSiyuan(topic.name, markdown)
             }
           }
         ].filter(Boolean) as ItemType<MenuItemType>[]
@@ -482,11 +443,7 @@ export const Topics: React.FC<Props> = ({ assistant: _assistant, activeTopic, se
     exportMenuOptions.markdown,
     exportMenuOptions.markdown_reason,
     exportMenuOptions.docx,
-    exportMenuOptions.notion,
-    exportMenuOptions.yuque,
     exportMenuOptions.obsidian,
-    exportMenuOptions.joplin,
-    exportMenuOptions.siyuan,
     assistants,
     notesPath,
     assistant,

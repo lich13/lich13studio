@@ -1,11 +1,9 @@
-import { CloudSyncOutlined, YuqueOutlined } from '@ant-design/icons'
+import { CloudSyncOutlined } from '@ant-design/icons'
 import DividerWithText from '@renderer/components/DividerWithText'
-import { JoplinIcon, SiyuanIcon } from '@renderer/components/Icons'
 import { HStack } from '@renderer/components/Layout'
 import ListItem from '@renderer/components/ListItem'
 import { useTheme } from '@renderer/context/ThemeProvider'
-import ImportMenuOptions from '@renderer/pages/settings/DataSettings/ImportMenuSettings'
-import { FileText, FolderCog, FolderInput, FolderOpen } from 'lucide-react'
+import { FileText, FolderCog, FolderInput } from 'lucide-react'
 import type { FC } from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -14,14 +12,10 @@ import styled from 'styled-components'
 import { SettingContainer } from '..'
 import BasicDataSettings from './BasicDataSettings'
 import ExportMenuOptions from './ExportMenuSettings'
-import JoplinSettings from './JoplinSettings'
 import LocalBackupSettings from './LocalBackupSettings'
 import MarkdownExportSettings from './MarkdownExportSettings'
-import NotionSettings from './NotionSettings'
 import ObsidianSettings from './ObsidianSettings'
-import SiyuanSettings from './SiyuanSettings'
 import WebDavSettings from './WebDavSettings'
-import YuqueSettings from './YuqueSettings'
 
 const DataSettings: FC = () => {
   const { t } = useTranslation()
@@ -34,12 +28,6 @@ const DataSettings: FC = () => {
     { key: 'divider_1', isDivider: true, text: t('settings.data.divider.cloud_storage') },
     { key: 'local_backup', title: t('settings.data.local.title'), icon: <FolderCog size={16} /> },
     { key: 'webdav', title: t('settings.data.webdav.title'), icon: <CloudSyncOutlined style={{ fontSize: 16 }} /> },
-    { key: 'divider_2', isDivider: true, text: t('settings.data.divider.import_settings') },
-    {
-      key: 'import_settings',
-      title: t('settings.data.import_settings.title'),
-      icon: <FolderOpen size={16} />
-    },
     { key: 'divider_3', isDivider: true, text: t('settings.data.divider.export_settings') },
     {
       key: 'export_menu',
@@ -53,26 +41,10 @@ const DataSettings: FC = () => {
     },
 
     { key: 'divider_4', isDivider: true, text: t('settings.data.divider.third_party') },
-    { key: 'notion', title: t('settings.data.notion.title'), icon: <i className="iconfont icon-notion" /> },
-    {
-      key: 'yuque',
-      title: t('settings.data.yuque.title'),
-      icon: <YuqueOutlined style={{ fontSize: 16 }} />
-    },
-    {
-      key: 'joplin',
-      title: t('settings.data.joplin.title'),
-      icon: <JoplinIcon />
-    },
     {
       key: 'obsidian',
       title: t('settings.data.obsidian.title'),
       icon: <i className="iconfont icon-obsidian" />
-    },
-    {
-      key: 'siyuan',
-      title: t('settings.data.siyuan.title'),
-      icon: <SiyuanIcon />
     }
   ]
 
@@ -97,14 +69,9 @@ const DataSettings: FC = () => {
       <SettingContainer theme={theme} style={{ display: 'flex', flex: 1, height: '100%' }}>
         {menu === 'data' && <BasicDataSettings />}
         {menu === 'webdav' && <WebDavSettings />}
-        {menu === 'import_settings' && <ImportMenuOptions />}
         {menu === 'export_menu' && <ExportMenuOptions />}
         {menu === 'markdown_export' && <MarkdownExportSettings />}
-        {menu === 'notion' && <NotionSettings />}
-        {menu === 'yuque' && <YuqueSettings />}
-        {menu === 'joplin' && <JoplinSettings />}
         {menu === 'obsidian' && <ObsidianSettings />}
-        {menu === 'siyuan' && <SiyuanSettings />}
         {menu === 'local_backup' && <LocalBackupSettings />}
       </SettingContainer>
     </Container>
