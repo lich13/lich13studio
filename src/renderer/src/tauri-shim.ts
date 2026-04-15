@@ -1128,11 +1128,16 @@ const api = {
       if (!invoke) return []
       const config = mapWebdavConfig(webdavConfig)
       const files = await invoke('list_webdav_files', { config })
-      return files.map((file: AnyRecord) => ({
-        fileName: file.fileName,
-        modifiedTime: file.modifiedTime,
-        size: file.size
-      }))
+      return files
+        .map((file: AnyRecord) => ({
+          fileName: file.fileName,
+          modifiedTime: file.modifiedTime,
+          size: file.size
+        }))
+        .sort(
+          (a, b) =>
+            new Date(b.modifiedTime || 0).getTime() - new Date(a.modifiedTime || 0).getTime()
+        )
     },
     checkConnection: async (webdavConfig: AnyRecord) => {
       if (invoke) {
@@ -1148,12 +1153,7 @@ const api = {
     },
     deleteWebdavFile: async (fileName: string, webdavConfig: AnyRecord) => {
       if (!invoke) return true
-      const config = {
-        url: `${String(webdavConfig.webdavHost || '').replace(/\/$/, '')}${webdavConfig.webdavPath || ''}`,
-        username: webdavConfig.webdavUser || '',
-        password: webdavConfig.webdavPass || '',
-        fileName: webdavConfig.fileName || 'lich13studio-backup.zip'
-      }
+      const config = mapWebdavConfig(webdavConfig)
       return invoke('delete_webdav_file', { fileName, config })
     },
     backupToLocalDir: async (fileName: string, localConfig?: AnyRecord) => {

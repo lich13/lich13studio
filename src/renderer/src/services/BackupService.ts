@@ -347,10 +347,12 @@ export async function backupToWebdav({
           })
 
           // 筛选当前设备的备份文件
-          const currentDeviceFiles = files.filter((file) => {
-            // 检查文件名是否包含当前设备的标识信息
-            return file.fileName.includes(deviceType) && file.fileName.includes(hostname)
-          })
+          const currentDeviceFiles = files
+            .filter((file) => {
+              // 检查文件名是否包含当前设备的标识信息
+              return file.fileName.includes(deviceType) && file.fileName.includes(hostname)
+            })
+            .sort((a, b) => dayjs(b.modifiedTime).valueOf() - dayjs(a.modifiedTime).valueOf())
 
           // 如果当前设备的备份文件数量超过最大保留数量，删除最旧的文件
           if (currentDeviceFiles.length > webdavMaxBackups) {
