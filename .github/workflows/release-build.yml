@@ -50,14 +50,6 @@ jobs:
             postprocess_cmd: ''
             artifact_name: windows-exe-x64
             artifact_path: src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
-          - label: Windows arm64
-            os: windows-latest
-            rust_target: aarch64-pc-windows-msvc
-            prepare_cmd: node scripts/prepare-tauri-bundled-binary.mjs --target aarch64-pc-windows-msvc
-            build_cmd: cargo tauri build --config src-tauri/tauri.conf.json --bundles nsis --target aarch64-pc-windows-msvc
-            postprocess_cmd: ''
-            artifact_name: windows-exe-arm64
-            artifact_path: src-tauri/target/aarch64-pc-windows-msvc/release/bundle/nsis/*.exe
 
     steps:
       - name: Checkout
