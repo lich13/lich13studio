@@ -14,7 +14,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use tauri::{Emitter, Window};
+use tauri::{Emitter, Manager, PhysicalPosition, PhysicalSize, Position, Size, Window, WindowEvent};
 use tokio::process::Command;
 use uuid::Uuid;
 use walkdir::WalkDir;
@@ -32,6 +32,7 @@ unsafe extern "C" {
 const APP_NAME: &str = "lich13studio";
 const BUNDLE_ID: &str = "com.lich13.studio";
 const DEFAULT_STATE_FILE: &str = "state.json";
+const WINDOW_STATE_KEY: &str = "windowState";
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -200,6 +201,17 @@ struct CaptureWindowInfo {
   is_focused: bool,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+struct PersistedWindowState {
+  x: Option<i32>,
+  y: Option<i32>,
+  width: Option<u32>,
+  height: Option<u32>,
+  maximized: bool,
+  fullscreen: bool,
+}
+
 const NATIVE_HTTP_CHUNK_EVENT: &str = "native_http_chunk";
 
 static HTTP_REQUEST_ABORTS: OnceLock<Mutex<HashMap<String, Arc<AtomicBool>>>> = OnceLock::new();
@@ -268,6 +280,79 @@ fn save_state_file(state: &Value) -> Result<String, String> {
   let payload = serde_json::to_vec_pretty(state).map_err(|error| error.to_string())?;
   fs::write(&path, payload).map_err(|error| error.to_string())?;
   Ok(path.display().to_string())
+}
+
+fn load_window_state(label: &str) -> Result<Option<PersistedWindowState>, String> {
+  let state = load_state_file()?;
+  let Some(window_state) = state.get(WINDOW_STATE_KEY) else {
+    return Ok(None);
+  };
+
+  let Some(serialized_window_state) = window_state.get(label) else {
+    return Ok(None);
+  };
+
+  serde_json::from_value(serialized_window_state.clone())
+    .map(Some)
+    .map_err(|error| error.to_string())
+}
+
+fn persist_window_state(window: &Window) -> Result<(), String> {
+  let label = window.label().to_string();
+  let mut state = load_state_file().unwrap_or_else(|_| json!({}));
+  let mut persisted_state = load_window_state(&label)?.unwrap_or_default();
+  let is_maximized = window.is_maximized().map_err(|error| error.to_string())?;
+  let is_fullscreen = window.is_fullscreen().map_err(|error| error.to_string())?;
+
+  persisted_state.maximized = is_maximized;
+  persisted_state.fullscreen = is_fullscreen;
+
+  if !is_maximized && !is_fullscreen {
+    if let Ok(position) = window.outer_position() {
+      persisted_state.x = Some(position.x);
+      persisted_state.y = Some(position.y);
+    }
+
+    if let Ok(size) = window.outer_size() {
+      persisted_state.width = Some(size.width);
+      persisted_state.height = Some(size.height);
+    }
+  }
+
+  if !state.is_object() {
+    state = json!({});
+  }
+
+  let root = state
+    .as_object_mut()
+    .ok_or_else(|| String::from("Invalid state payload: root must be an object"))?;
+
+  let window_state_value = root
+    .entry(WINDOW_STATE_KEY.to_string())
+    .or_insert_with(|| json!({}));
+
+  if !window_state_value.is_object() {
+    *window_state_value = json!({});
+  }
+
+  let window_state_map = window_state_value
+    .as_object_mut()
+    .ok_or_else(|| String::from("Invalid state payload: windowState must be an object"))?;
+
+  window_state_map.insert(
+    label,
+    serde_json::to_value(persisted_state).map_err(|error| error.to_string())?,
+  );
+
+  save_state_file(&state)?;
+  Ok(())
+}
+
+fn should_persist_window_event(event: &WindowEvent) -> bool {
+  matches!(
+    event,
+    WindowEvent::Resized(_) | WindowEvent::Moved(_) | WindowEvent::CloseRequested { .. } | WindowEvent::Destroyed
+  )
 }
 
 fn downloads_dir() -> Result<PathBuf, String> {
@@ -1765,6 +1850,32 @@ async fn start_chat(window: Window, request: ChatRequest) -> Result<String, Stri
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
+    .setup(|app| {
+      if let Some(main_window) = app.get_webview_window("main") {
+        if let Some(state) = load_window_state(main_window.label())? {
+          if let (Some(width), Some(height)) = (state.width, state.height) {
+            let _ = main_window.set_size(Size::Physical(PhysicalSize::new(width, height)));
+          }
+
+          if let (Some(x), Some(y)) = (state.x, state.y) {
+            let _ = main_window.set_position(Position::Physical(PhysicalPosition::new(x, y)));
+          }
+
+          if state.fullscreen {
+            let _ = main_window.set_fullscreen(true);
+          } else if state.maximized {
+            let _ = main_window.maximize();
+          }
+        }
+      }
+
+      Ok(())
+    })
+    .on_window_event(|window, event| {
+      if should_persist_window_event(event) {
+        let _ = persist_window_state(window);
+      }
+    })
     .invoke_handler(tauri::generate_handler![
       app_info,
       load_state,
