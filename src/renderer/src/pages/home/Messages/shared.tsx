@@ -4,7 +4,7 @@ import styled from 'styled-components'
 export const ScrollContainer = styled.div`
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
+  justify-content: flex-start;
   flex: 1;
   min-height: 100%;
   box-sizing: border-box;

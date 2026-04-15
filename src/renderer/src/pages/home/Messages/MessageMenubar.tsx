@@ -275,11 +275,19 @@ const MessageMenubar: FC<Props> = (props) => {
             label: t('chat.topics.export.image'),
             key: 'image',
             onClick: async () => {
-              const imageData = await captureScrollableAsDataURL(messageContainerRef)
-              const title = await getMessageTitle(message)
-              if (title && imageData) {
+              try {
+                const imageData = await captureScrollableAsDataURL(messageContainerRef)
+                const title = (await getMessageTitle(message)) || dayjs(message.createdAt).format('YYYYMMDDHHmm')
+                if (!imageData) {
+                  throw new Error('capture returned empty image data')
+                }
                 const success = await window.api.file.saveImage(title, imageData)
-                if (success) window.toast.success(t('chat.topics.export.image_saved'))
+                if (success) {
+                  window.toast.success(t('chat.topics.export.image_saved'))
+                }
+              } catch (error) {
+                logger.error('Failed to export message image:', error as Error)
+                window.toast.error(t('common.export_failed'))
               }
             }
           },

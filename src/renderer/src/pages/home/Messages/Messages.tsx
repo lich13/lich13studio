@@ -134,9 +134,18 @@ const Messages: React.FC<MessagesProps> = ({ assistant, topic, setActiveTopic, o
         })
       }),
       EventEmitter.on(EVENT_NAMES.EXPORT_TOPIC_IMAGE, async () => {
-        const imageData = await captureScrollableAsDataURL(scrollContainerRef)
-        if (imageData) {
-          void window.api.file.saveImage(removeSpecialCharactersForFileName(topic.name), imageData)
+        try {
+          const imageData = await captureScrollableAsDataURL(scrollContainerRef)
+          if (!imageData) {
+            throw new Error('capture returned empty image data')
+          }
+          const success = await window.api.file.saveImage(removeSpecialCharactersForFileName(topic.name), imageData)
+          if (success) {
+            window.toast.success(t('chat.topics.export.image_saved'))
+          }
+        } catch (error) {
+          logger.error('Failed to export topic image:', error as Error)
+          window.toast.error(t('common.export_failed'))
         }
       }),
       EventEmitter.on(EVENT_NAMES.NEW_CONTEXT, async () => {
