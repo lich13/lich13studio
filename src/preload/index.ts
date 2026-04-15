@@ -39,7 +39,6 @@ import type {
   OcrResult,
   Provider,
   RestartApiServerStatusResult,
-  S3Config,
   Shortcut,
   StartApiServerStatusResult,
   StopApiServerStatusResult,
@@ -216,12 +215,6 @@ const api = {
       ipcRenderer.invoke(IpcChannel.Backup_DeleteLocalBackupFile, fileName, localBackupDir),
     checkWebdavConnection: (webdavConfig: WebDavConfig) =>
       ipcRenderer.invoke(IpcChannel.Backup_CheckConnection, webdavConfig),
-    backupToS3: (s3Config: S3Config) => ipcRenderer.invoke(IpcChannel.Backup_BackupToS3, s3Config),
-    restoreFromS3: (s3Config: S3Config) => ipcRenderer.invoke(IpcChannel.Backup_RestoreFromS3, s3Config),
-    listS3Files: (s3Config: S3Config) => ipcRenderer.invoke(IpcChannel.Backup_ListS3Files, s3Config),
-    deleteS3File: (fileName: string, s3Config: S3Config) =>
-      ipcRenderer.invoke(IpcChannel.Backup_DeleteS3File, fileName, s3Config),
-    checkS3Connection: (s3Config: S3Config) => ipcRenderer.invoke(IpcChannel.Backup_CheckS3Connection, s3Config),
     createLanTransferBackup: (data: string, destinationPath?: string): Promise<string> =>
       ipcRenderer.invoke(IpcChannel.Backup_CreateLanTransferBackup, data, destinationPath),
     deleteLanTransferBackup: (filePath: string): Promise<boolean> =>

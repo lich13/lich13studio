@@ -2329,8 +2329,6 @@
         "enter": {
           "model": "Te rugăm să selectezi un model"
         },
-        "nutstore": "Setări Nutstore invalide",
-        "nutstore_token": "Token Nutstore invalid",
         "proxy": {
           "url": "URL proxy invalid"
         },
@@ -4273,57 +4271,6 @@
         "page_name_key_placeholder": "Introdu numele câmpului pentru titlul paginii, implicit este Name",
         "title": "Setări Notion"
       },
-      "nutstore": {
-        "backup": {
-          "button": "Backup în Nutstore",
-          "modal": {
-            "filename": {
-              "placeholder": "Introdu numele fișierului de backup"
-            },
-            "title": "Backup în Nutstore"
-          }
-        },
-        "checkConnection": {
-          "fail": "Conexiunea Nutstore a eșuat",
-          "name": "Verifică conexiunea",
-          "success": "Conectat la Nutstore"
-        },
-        "isLogin": "Conectat",
-        "login": {
-          "button": "Conectare"
-        },
-        "logout": {
-          "button": "Deconectare",
-          "content": "După deconectare, nu vei mai putea face backup în Nutstore sau restaura din Nutstore.",
-          "title": "Ești sigur că vrei să te deconectezi de la Nutstore?"
-        },
-        "new_folder": {
-          "button": {
-            "cancel": "Anulează",
-            "confirm": "Confirmă",
-            "label": "Dosar nou"
-          }
-        },
-        "notLogin": "Neconectat",
-        "path": {
-          "label": "Cale stocare Nutstore",
-          "placeholder": "Introdu calea de stocare Nutstore"
-        },
-        "pathSelector": {
-          "currentPath": "Cale curentă",
-          "return": "Înapoi",
-          "title": "Cale stocare Nutstore"
-        },
-        "restore": {
-          "button": "Restaurează din Nutstore",
-          "confirm": {
-            "content": "Restaurarea din Nutstore va suprascrie datele curente. Vrei să continui?",
-            "title": "Restaurează din Nutstore"
-          }
-        },
-        "title": "Configurare Nutstore",
-        "username": "Nume utilizator Nutstore"
-      },
       "obsidian": {
         "default_vault": "Seif Obsidian implicit",
         "default_vault_export_failed": "Export eșuat",
@@ -4332,131 +4279,6 @@
         "default_vault_no_vaults": "Nu s-au găsit seifuri Obsidian",
         "default_vault_placeholder": "Te rugăm să selectezi seiful Obsidian implicit",
         "title": "Configurare Obsidian"
-      },
-      "s3": {
-        "accessKeyId": {
-          "label": "ID cheie de acces",
-          "placeholder": "ID cheie de acces"
-        },
-        "autoSync": {
-          "hour": "La fiecare {{count}} oră",
-          "label": "Sincronizare automată",
-          "minute": "La fiecare {{count}} minute",
-          "off": "Oprit"
-        },
-        "backup": {
-          "button": "Backup acum",
-          "error": "Backup S3 eșuat: {{message}}",
-          "manager": {
-            "button": "Gestionează backup-uri"
-          },
-          "modal": {
-            "filename": {
-              "placeholder": "Te rugăm să introduci numele fișierului de backup"
-            },
-            "title": "Backup S3"
-          },
-          "operation": "Operațiune de backup",
-          "success": "Backup S3 reușit"
-        },
-        "bucket": {
-          "label": "Bucket",
-          "placeholder": "Bucket, de ex.: exemplu"
-        },
-        "endpoint": {
-          "label": "Endpoint API",
-          "placeholder": "https://s3.example.com"
-        },
-        "manager": {
-          "close": "Închide",
-          "columns": {
-            "actions": "Acțiuni",
-            "fileName": "Nume fișier",
-            "modifiedTime": "Ora modificării",
-            "size": "Dimensiune fișier"
-          },
-          "config": {
-            "incomplete": "Te rugăm să completezi configurația S3 completă"
-          },
-          "delete": {
-            "confirm": {
-              "multiple": "Ești sigur că vrei să ștergi cele {{count}} fișiere de backup selectate? Această acțiune nu poate fi anulată.",
-              "single": "Ești sigur că vrei să ștergi fișierul de backup \"{{fileName}}\"? Această acțiune nu poate fi anulată.",
-              "title": "Confirmă ștergerea"
-            },
-            "error": "Nu s-a putut șterge fișierul de backup: {{message}}",
-            "label": "Șterge",
-            "selected": "Șterge selectate ({{count}})",
-            "success": {
-              "multiple": "S-au șters cu succes {{count}} fișiere de backup",
-              "single": "Fișier de backup șters cu succes"
-            }
-          },
-          "files": {
-            "fetch": {
-              "error": "Nu s-a putut prelua lista fișierelor de backup: {{message}}"
-            }
-          },
-          "refresh": "Reîmprospătează",
-          "restore": "Restaurează",
-          "select": {
-            "warning": "Te rugăm să selectezi fișierele de backup de șters"
-          },
-          "title": "Manager fișiere backup S3"
-        },
-        "maxBackups": {
-          "label": "Backup-uri maxime",
-          "unlimited": "Nelimitat"
-        },
-        "region": {
-          "label": "Regiune",
-          "placeholder": "Regiune, de ex.: us-east-1"
-        },
-        "restore": {
-          "config": {
-            "incomplete": "Te rugăm să completezi configurația S3 completă"
-          },
-          "confirm": {
-            "cancel": "Anulează",
-            "content": "Restaurarea datelor va suprascrie toate datele curente. Această acțiune nu poate fi anulată. Ești sigur că vrei să continui?",
-            "ok": "Confirmă restaurarea",
-            "title": "Confirmă restaurarea datelor"
-          },
-          "error": "Restaurarea datelor a eșuat: {{message}}",
-          "file": {
-            "required": "Te rugăm să selectezi fișierul de backup pentru restaurare"
-          },
-          "modal": {
-            "select": {
-              "placeholder": "Te rugăm să selectezi fișierul de backup pentru restaurare"
-            },
-            "title": "Restaurare date S3"
-          },
-          "success": "Restaurarea datelor a reușit"
-        },
-        "root": {
-          "label": "Director backup (Opțional)",
-          "placeholder": "de ex.: /cherry-studio"
-        },
-        "secretAccessKey": {
-          "label": "Cheie secretă de acces",
-          "placeholder": "Cheie secretă de acces"
-        },
-        "skipBackupFile": {
-          "help": "Când este activat, datele fișierelor vor fi omise în timpul backup-ului, vor fi salvate doar informațiile de configurare, reducând semnificativ dimensiunea fișierului de backup",
-          "label": "Backup ușor"
-        },
-        "syncStatus": {
-          "error": "Eroare sincronizare: {{message}}",
-          "label": "Stare sincronizare",
-          "lastSync": "Ultima sincronizare: {{time}}",
-          "noSync": "Nesincronizat"
-        },
-        "title": {
-          "help": "Servicii de stocare a obiectelor compatibile S3, cum ar fi AWS S3, Cloudflare R2, Aliyun OSS, Tencent COS etc.",
-          "label": "Stocare compatibilă S3",
-          "tooltip": "Documentație configurare stocare compatibilă S3"
-        }
       },
       "siyuan": {
         "api_url": "URL API SiYuan Note",

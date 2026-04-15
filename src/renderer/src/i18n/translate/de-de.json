@@ -2329,8 +2329,6 @@
         "enter": {
           "model": "Bitte wählen Sie ein Modell aus"
         },
-        "nutstore": "Ungültige Nutstore-Einstellungen",
-        "nutstore_token": "Ungültiger Nutstore-Token",
         "proxy": {
           "url": "Ungültige Proxy-Adresse"
         },
@@ -4273,57 +4271,6 @@
         "page_name_key_placeholder": "Bitte Feldnamen für Seitentitel eingeben, Standard ist Name",
         "title": "Notion-Einstellungen"
       },
-      "nutstore": {
-        "backup": {
-          "button": "Zu Nutstore sichern",
-          "modal": {
-            "filename": {
-              "placeholder": "Bitte Backup-Dateinamen eingeben"
-            },
-            "title": "Zu Nutstore sichern"
-          }
-        },
-        "checkConnection": {
-          "fail": "Nutstore-Verbindung fehlgeschlagen",
-          "name": "Verbindung prüfen",
-          "success": "Mit Nutstore verbunden"
-        },
-        "isLogin": "Angemeldet",
-        "login": {
-          "button": "Anmelden"
-        },
-        "logout": {
-          "button": "Abmelden",
-          "content": "Nach Abmeldung kein Backup zu/von Nutstore möglich",
-          "title": "Wirklich von Nutstore abmelden?"
-        },
-        "new_folder": {
-          "button": {
-            "cancel": "Abbrechen",
-            "confirm": "Bestätigen",
-            "label": "Neuer Ordner"
-          }
-        },
-        "notLogin": "Nicht angemeldet",
-        "path": {
-          "label": "Nutstore-Speicherpfad",
-          "placeholder": "Bitte Nutstore-Speicherpfad eingeben"
-        },
-        "pathSelector": {
-          "currentPath": "Aktueller Pfad",
-          "return": "Zurück",
-          "title": "Nutstore-Speicherpfad"
-        },
-        "restore": {
-          "button": "Von Nutstore wiederherstellen",
-          "confirm": {
-            "content": "Wiederherstellung von Nutstore überschreibt aktuelle Daten. Fortfahren?",
-            "title": "Von Nutstore wiederherstellen"
-          }
-        },
-        "title": "Nutstore-Konfiguration",
-        "username": "Nutstore-Benutzername"
-      },
       "obsidian": {
         "default_vault": "Standard-Obsidian-Tresor",
         "default_vault_export_failed": "Export fehlgeschlagen",
@@ -4332,131 +4279,6 @@
         "default_vault_no_vaults": "Kein Obsidian-Tresor gefunden",
         "default_vault_placeholder": "Bitte Standard-Obsidian-Tresor auswählen",
         "title": "Obsidian-Konfiguration"
-      },
-      "s3": {
-        "accessKeyId": {
-          "label": "Access Key ID",
-          "placeholder": "Access Key ID"
-        },
-        "autoSync": {
-          "hour": "Alle {{count}} Stunden",
-          "label": "Automatische Synchronisation",
-          "minute": "Alle {{count}} Minuten",
-          "off": "Schließen"
-        },
-        "backup": {
-          "button": "Jetzt sichern",
-          "error": "S3-Backup fehlgeschlagen: {{message}}",
-          "manager": {
-            "button": "Backups verwalten"
-          },
-          "modal": {
-            "filename": {
-              "placeholder": "Bitte Backup-Dateinamen eingeben"
-            },
-            "title": "S3-Backup"
-          },
-          "operation": "Backup-Vorgang",
-          "success": "S3-Backup erfolgreich"
-        },
-        "bucket": {
-          "label": "Bucket",
-          "placeholder": "Bucket, z. B.: example"
-        },
-        "endpoint": {
-          "label": "API-Adresse",
-          "placeholder": "https://s3.example.com"
-        },
-        "manager": {
-          "close": "Schließen",
-          "columns": {
-            "actions": "Aktionen",
-            "fileName": "Dateiname",
-            "modifiedTime": "Änderungsdatum",
-            "size": "Dateigröße"
-          },
-          "config": {
-            "incomplete": "Bitte vollständige S3-Konfiguration ausfüllen"
-          },
-          "delete": {
-            "confirm": {
-              "multiple": "Möchten Sie die ausgewählten {{count}} Backup-Dateien wirklich löschen? Dieser Vorgang kann nicht rückgängig gemacht werden.",
-              "single": "Möchten Sie die Backup-Datei \"{{fileName}}\" wirklich löschen? Dieser Vorgang kann nicht rückgängig gemacht werden.",
-              "title": "Löschen bestätigen"
-            },
-            "error": "Löschen der Backup-Datei fehlgeschlagen: {{message}}",
-            "label": "Löschen",
-            "selected": "Auswahl löschen ({{count}})",
-            "success": {
-              "multiple": "Erfolgreich {{count}} Backup-Dateien gelöscht",
-              "single": "Backup-Datei erfolgreich gelöscht"
-            }
-          },
-          "files": {
-            "fetch": {
-              "error": "Abrufen der Backup-Dateiliste fehlgeschlagen: {{message}}"
-            }
-          },
-          "refresh": "Aktualisieren",
-          "restore": "Wiederherstellen",
-          "select": {
-            "warning": "Bitte zu löschende Backup-Datei auswählen"
-          },
-          "title": "S3-Backup-Dateiverwaltung"
-        },
-        "maxBackups": {
-          "label": "Maximale Backup-Anzahl",
-          "unlimited": "Unbegrenzt"
-        },
-        "region": {
-          "label": "Region",
-          "placeholder": "Region, z. B.: us-east-1"
-        },
-        "restore": {
-          "config": {
-            "incomplete": "Bitte vollständige S3-Konfiguration ausfüllen"
-          },
-          "confirm": {
-            "cancel": "Abbrechen",
-            "content": "Datenwiederherstellung überschreibt alle aktuellen Daten. Dieser Vorgang ist nicht umkehrbar. Fortfahren?",
-            "ok": "Wiederherstellung bestätigen",
-            "title": "Datenwiederherstellung bestätigen"
-          },
-          "error": "Datenwiederherstellung fehlgeschlagen: {{message}}",
-          "file": {
-            "required": "Bitte wiederherzustellende Backup-Datei auswählen"
-          },
-          "modal": {
-            "select": {
-              "placeholder": "Bitte wiederherzustellende Backup-Datei auswählen"
-            },
-            "title": "S3-Datenwiederherstellung"
-          },
-          "success": "Datenwiederherstellung erfolgreich"
-        },
-        "root": {
-          "label": "Backup-Stammverzeichnis (optional)",
-          "placeholder": "z. B.: /cherry-studio"
-        },
-        "secretAccessKey": {
-          "label": "Secret Access Key",
-          "placeholder": "Secret Access Key"
-        },
-        "skipBackupFile": {
-          "help": "Nach Aktivierung werden beim Backup Dateidaten übersprungen, nur Konfiguration gesichert. Reduziert Backup-Größe erheblich",
-          "label": "Kompaktes Backup"
-        },
-        "syncStatus": {
-          "error": "Synchronisationsfehler: {{message}}",
-          "label": "Synchronisationsstatus",
-          "lastSync": "Letzte Synchronisation: {{time}}",
-          "noSync": "Nicht synchronisiert"
-        },
-        "title": {
-          "help": "Objektspeicher kompatibel mit AWS S3 API, z. B. AWS S3, Cloudflare R2, Alibaba Cloud OSS, Tencent Cloud COS usw.",
-          "label": "S3-kompatibler Speicher",
-          "tooltip": "Konfigurationsdokumentation für S3-kompatiblen Speicher"
-        }
       },
       "siyuan": {
         "api_url": "API-Adresse",

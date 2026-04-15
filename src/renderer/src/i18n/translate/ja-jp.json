@@ -2329,8 +2329,6 @@
         "enter": {
           "model": "モデルを選択してください"
         },
-        "nutstore": "無効なNutstore設定です",
-        "nutstore_token": "無効なNutstoreトークンです",
         "proxy": {
           "url": "無効なプロキシURL"
         },
@@ -4273,57 +4271,6 @@
         "page_name_key_placeholder": "ページタイトルフィールド名を入力してください。デフォルトは Name です",
         "title": "Notion 設定"
       },
-      "nutstore": {
-        "backup": {
-          "button": "Nutstoreにバックアップ",
-          "modal": {
-            "filename": {
-              "placeholder": "バックアップファイル名を入力"
-            },
-            "title": "Nutstoreにバックアップ"
-          }
-        },
-        "checkConnection": {
-          "fail": "Nutstore接続に失敗しました",
-          "name": "接続確認",
-          "success": "Nutstoreに接続しました"
-        },
-        "isLogin": "ログイン済み",
-        "login": {
-          "button": "ログイン"
-        },
-        "logout": {
-          "button": "ログアウト",
-          "content": "ログアウト後、Nutstoreへのバックアップや復元ができなくなります。",
-          "title": "Nutstoreからログアウトしますか？"
-        },
-        "new_folder": {
-          "button": {
-            "cancel": "キャンセル",
-            "confirm": "確認",
-            "label": "新しいフォルダー"
-          }
-        },
-        "notLogin": "未ログイン",
-        "path": {
-          "label": "Nutstoreストレージパス",
-          "placeholder": "Nutstoreストレージパスを入力"
-        },
-        "pathSelector": {
-          "currentPath": "現在のパス",
-          "return": "戻る",
-          "title": "Nutstoreストレージパス"
-        },
-        "restore": {
-          "button": "Nutstoreから復元",
-          "confirm": {
-            "content": "Nutstoreからの復元により現在のデータが上書きされます。続行しますか？",
-            "title": "Nutstoreから復元"
-          }
-        },
-        "title": "Nutstore設定",
-        "username": "Nutstoreユーザー名"
-      },
       "obsidian": {
         "default_vault": "デフォルトの Obsidian 保管庫",
         "default_vault_export_failed": "エクスポートに失敗しました",
@@ -4332,131 +4279,6 @@
         "default_vault_no_vaults": "Obsidian 保管庫が見つかりません",
         "default_vault_placeholder": "デフォルトの Obsidian 保管庫を選択してください",
         "title": "Obsidian 設定"
-      },
-      "s3": {
-        "accessKeyId": {
-          "label": "Access Key ID",
-          "placeholder": "Access Key ID"
-        },
-        "autoSync": {
-          "hour": "{{count}}時間毎",
-          "label": "自動同期",
-          "minute": "{{count}}分毎",
-          "off": "オフ"
-        },
-        "backup": {
-          "button": "今すぐバックアップ",
-          "error": "S3バックアップ失敗: {{message}}",
-          "manager": {
-            "button": "バックアップ管理"
-          },
-          "modal": {
-            "filename": {
-              "placeholder": "バックアップファイル名を入力してください"
-            },
-            "title": "S3バックアップ"
-          },
-          "operation": "バックアップ操作",
-          "success": "S3バックアップ成功"
-        },
-        "bucket": {
-          "label": "バケット",
-          "placeholder": "Bucket、例: example"
-        },
-        "endpoint": {
-          "label": "APIエンドポイント",
-          "placeholder": "https://s3.example.com"
-        },
-        "manager": {
-          "close": "閉じる",
-          "columns": {
-            "actions": "操作",
-            "fileName": "ファイル名",
-            "modifiedTime": "変更日時",
-            "size": "ファイルサイズ"
-          },
-          "config": {
-            "incomplete": "完全なS3設定情報を入力してください"
-          },
-          "delete": {
-            "confirm": {
-              "multiple": "選択した{{count}}個のバックアップファイルを削除してもよろしいですか？この操作は元に戻せません。",
-              "single": "バックアップファイル「{{fileName}}」を削除してもよろしいですか？この操作は元に戻せません。",
-              "title": "削除の確認"
-            },
-            "error": "バックアップファイルの削除に失敗しました: {{message}}",
-            "label": "削除",
-            "selected": "選択項目を削除 ({{count}})",
-            "success": {
-              "multiple": "{{count}}個のバックアップファイルを正常に削除しました",
-              "single": "バックアップファイルの削除に成功しました"
-            }
-          },
-          "files": {
-            "fetch": {
-              "error": "バックアップファイルリストの取得に失敗しました: {{message}}"
-            }
-          },
-          "refresh": "更新",
-          "restore": "復元",
-          "select": {
-            "warning": "削除するバックアップファイルを選択してください"
-          },
-          "title": "S3バックアップファイルマネージャー"
-        },
-        "maxBackups": {
-          "label": "最大バックアップ数",
-          "unlimited": "無制限"
-        },
-        "region": {
-          "label": "リージョン",
-          "placeholder": "Region、例: us-east-1"
-        },
-        "restore": {
-          "config": {
-            "incomplete": "完全なS3設定情報を入力してください"
-          },
-          "confirm": {
-            "cancel": "キャンセル",
-            "content": "データを復元すると、現在のすべてのデータが上書きされます。この操作は元に戻せません。続行してもよろしいですか？",
-            "ok": "復元を確認",
-            "title": "データ復元の確認"
-          },
-          "error": "データの復元に失敗しました: {{message}}",
-          "file": {
-            "required": "復元するバックアップファイルを選択してください"
-          },
-          "modal": {
-            "select": {
-              "placeholder": "復元するバックアップファイルを選択してください"
-            },
-            "title": "S3データ復元"
-          },
-          "success": "データの復元に成功しました"
-        },
-        "root": {
-          "label": "バックアップディレクトリ（オプション）",
-          "placeholder": "例：/cherry-studio"
-        },
-        "secretAccessKey": {
-          "label": "Secret Access Key",
-          "placeholder": "Secret Access Key"
-        },
-        "skipBackupFile": {
-          "help": "有効にすると、バックアップ時にファイルデータがスキップされ、設定情報のみがバックアップされ、バックアップファイルのサイズが大幅に削減されます。",
-          "label": "軽量バックアップ"
-        },
-        "syncStatus": {
-          "error": "同期エラー: {{message}}",
-          "label": "同期ステータス",
-          "lastSync": "最終同期: {{time}}",
-          "noSync": "未同期"
-        },
-        "title": {
-          "help": "AWS S3 APIと互換性のあるオブジェクトストレージサービス（例：AWS S3、Cloudflare R2、Alibaba Cloud OSS、Tencent Cloud COSなど）",
-          "label": "S3互換ストレージ",
-          "tooltip": "S3互換ストレージ設定ガイド"
-        }
       },
       "siyuan": {
         "api_url": "APIアドレス",

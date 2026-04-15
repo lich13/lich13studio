@@ -258,11 +258,6 @@ export enum IpcChannel {
   Backup_RestoreFromLocalBackup = 'backup:restoreFromLocalBackup',
   Backup_ListLocalBackupFiles = 'backup:listLocalBackupFiles',
   Backup_DeleteLocalBackupFile = 'backup:deleteLocalBackupFile',
-  Backup_BackupToS3 = 'backup:backupToS3',
-  Backup_RestoreFromS3 = 'backup:restoreFromS3',
-  Backup_ListS3Files = 'backup:listS3Files',
-  Backup_DeleteS3File = 'backup:deleteS3File',
-  Backup_CheckS3Connection = 'backup:checkS3Connection',
   Backup_CreateLanTransferBackup = 'backup:createLanTransferBackup',
   Backup_DeleteLanTransferBackup = 'backup:deleteLanTransferBackup',
 

@@ -17,6 +17,7 @@ interface WebdavConfig {
   webdavUser?: string
   webdavPass?: string
   webdavPath?: string
+  userAgent?: string
 }
 
 interface WebdavBackupManagerProps {
@@ -28,6 +29,7 @@ interface WebdavBackupManagerProps {
     webdavPass?: string
     webdavPath?: string
     webdavDisableStream?: boolean
+    userAgent?: string
   }
   restoreMethod?: (fileName: string) => Promise<void>
   customLabels?: {

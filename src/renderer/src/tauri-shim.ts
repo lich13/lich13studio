@@ -26,17 +26,15 @@ const mockInvoke = async (command: string) => {
     }
   }
 
-  if (command === 'webdav_restore' || command === 's3_restore') {
+  if (command === 'webdav_restore') {
     return await buildBackupSnapshot()
   }
 
   if (
     command === 'webdav_backup' ||
-    command === 's3_backup' ||
     command === 'test_provider' ||
     command === 'test_mcp' ||
     command === 'check_webdav_connection' ||
-    command === 'check_s3_connection' ||
     command === 'create_webdav_directory'
   ) {
     return true
@@ -369,24 +367,9 @@ const mapWebdavConfig = (webdavConfig: AnyRecord) => ({
   username: webdavConfig.webdavUser || '',
   password: webdavConfig.webdavPass || '',
   fileName: webdavConfig.fileName || 'lich13studio-backup.zip',
-  skipBackupFile: Boolean(webdavConfig.skipBackupFile)
+  skipBackupFile: Boolean(webdavConfig.skipBackupFile),
+  userAgent: webdavConfig.userAgent || ''
 })
-
-const mapS3Config = (s3Config: AnyRecord) => {
-  const normalizedRoot = String(s3Config.root || '').replace(/^\/+|\/+$/g, '')
-
-  return {
-    endpoint: s3Config.endpoint || '',
-    region: s3Config.region || 'us-east-1',
-    bucket: s3Config.bucket || '',
-    accessKey: s3Config.accessKeyId || '',
-    secretKey: s3Config.secretAccessKey || '',
-    objectKey: [normalizedRoot, s3Config.fileName || 'lich13studio-backup.zip'].filter(Boolean).join('/'),
-    root: normalizedRoot,
-    pathStyle: true,
-    skipBackupFile: Boolean(s3Config.skipBackupFile)
-  }
-}
 
 const serializeLocalStorage = () => {
   const snapshot: Record<string, string> = {}
@@ -1188,53 +1171,6 @@ const api = {
         return invoke('check_webdav_connection', { config: mapWebdavConfig(webdavConfig) })
       }
       return Boolean(webdavConfig?.webdavHost)
-    },
-    backupToS3: async (s3Config: AnyRecord) => {
-      try {
-        const snapshot = await buildBackupSnapshot()
-        emitBackupProgress({ stage: 'compressing', progress: 82, total: 100 })
-        const config = mapS3Config(s3Config)
-        await invoke('s3_backup', { state: snapshot, config })
-        emitBackupProgress({ stage: 'completed', progress: 100, total: 100 })
-        return true
-      } catch (error) {
-        emitBackupProgress({ stage: 'completed', progress: 100, total: 100 })
-        throw error
-      }
-    },
-    restoreFromS3: async (s3Config: AnyRecord) => {
-      try {
-        emitRestoreProgress({ stage: 'preparing', progress: 5, total: 100 })
-        const config = mapS3Config(s3Config)
-        emitRestoreProgress({ stage: 'extracting', progress: 40, total: 100 })
-        const data = await invoke('s3_restore', { config })
-        emitRestoreProgress({ stage: 'completed', progress: 100, total: 100 })
-        return JSON.stringify(data)
-      } catch (error) {
-        emitRestoreProgress({ stage: 'completed', progress: 100, total: 100 })
-        throw error
-      }
-    },
-    listS3Files: async (s3Config: AnyRecord) => {
-      if (!invoke) return []
-      const config = mapS3Config(s3Config)
-      const files = await invoke('list_s3_files', { config })
-      return files.map((file: AnyRecord) => ({
-        fileName: file.fileName,
-        modifiedTime: file.modifiedTime,
-        size: file.size
-      }))
-    },
-    deleteS3File: async (fileName: string, s3Config: AnyRecord) => {
-      if (!invoke) return true
-      const config = mapS3Config(s3Config)
-      return invoke('delete_s3_file', { fileName, config })
-    },
-    checkS3Connection: async (s3Config: AnyRecord) => {
-      if (invoke) {
-        return invoke('check_s3_connection', { config: mapS3Config(s3Config) })
-      }
-      return Boolean(s3Config?.endpoint && s3Config?.bucket)
     },
     createLanTransferBackup: async () => '',
     deleteLanTransferBackup: async () => true

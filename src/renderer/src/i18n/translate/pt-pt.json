@@ -2329,8 +2329,6 @@
         "enter": {
           "model": "Selecione um modelo"
         },
-        "nutstore": "Configuração inválida do Nutstore",
-        "nutstore_token": "Token do Nutstore inválido",
         "proxy": {
           "url": "URL do proxy inválido"
         },
@@ -4273,57 +4271,6 @@
         "page_name_key_placeholder": "Insira o campo do título da página, por padrão é Nome",
         "title": "Configurações do Notion"
       },
-      "nutstore": {
-        "backup": {
-          "button": "Fazer backup para o Nutstore",
-          "modal": {
-            "filename": {
-              "placeholder": "Por favor, introduza o nome do ficheiro de cópia de segurança"
-            },
-            "title": "Fazer backup para o Nutstore"
-          }
-        },
-        "checkConnection": {
-          "fail": "Falha na conexão com o Nutstore",
-          "name": "Verificar Conexão",
-          "success": "Conectado ao Nutstore"
-        },
-        "isLogin": "Logado",
-        "login": {
-          "button": "Entrar"
-        },
-        "logout": {
-          "button": "Sair",
-          "content": "Após sair, não será possível fazer backup ou restaurar dados do Nutstore",
-          "title": "Tem certeza de que deseja sair da conta do Nutstore?"
-        },
-        "new_folder": {
-          "button": {
-            "cancel": "Cancelar",
-            "confirm": "Confirmar",
-            "label": "Nova Pasta"
-          }
-        },
-        "notLogin": "Não Logado",
-        "path": {
-          "label": "Caminho de armazenamento do Nutstore",
-          "placeholder": "Por favor, insira o caminho de armazenamento do Nutstore"
-        },
-        "pathSelector": {
-          "currentPath": "Caminho atual",
-          "return": "Voltar",
-          "title": "Caminho de armazenamento do Nutstore"
-        },
-        "restore": {
-          "button": "Restaurar do Nutstore",
-          "confirm": {
-            "content": "Restaurar a partir da Nutstore irá substituir os dados atuais. Deseja continuar?",
-            "title": "Restaurar a partir do Nutstore"
-          }
-        },
-        "title": "Configuração do Nutstore",
-        "username": "Nome de usuário do Nutstore"
-      },
       "obsidian": {
         "default_vault": "Repositório Obsidian padrão",
         "default_vault_export_failed": "Falha na exportação",
@@ -4332,131 +4279,6 @@
         "default_vault_no_vaults": "Nenhum repositório Obsidian encontrado",
         "default_vault_placeholder": "Selecione o repositório Obsidian padrão",
         "title": "Configuração do Obsidian"
-      },
-      "s3": {
-        "accessKeyId": {
-          "label": "ID da Chave de Acesso",
-          "placeholder": "ID da Chave de Acesso"
-        },
-        "autoSync": {
-          "hour": "A cada {{count}} horas",
-          "label": "Sincronização Automática",
-          "minute": "A cada {{count}} minutos",
-          "off": "Desligado"
-        },
-        "backup": {
-          "button": "Fazer backup agora",
-          "error": "Falha no backup S3: {{message}}",
-          "manager": {
-            "button": "Gerenciar backup"
-          },
-          "modal": {
-            "filename": {
-              "placeholder": "Por favor, insira o nome do arquivo de backup"
-            },
-            "title": "Backup S3"
-          },
-          "operation": "Operação de backup",
-          "success": "Backup S3 realizado com sucesso"
-        },
-        "bucket": {
-          "label": "Bucket",
-          "placeholder": "Bucket, por exemplo: example"
-        },
-        "endpoint": {
-          "label": "Endereço da API",
-          "placeholder": "https://s3.example.com"
-        },
-        "manager": {
-          "close": "Fechar",
-          "columns": {
-            "actions": "Ações",
-            "fileName": "Nome do arquivo",
-            "modifiedTime": "Data de modificação",
-            "size": "Tamanho do arquivo"
-          },
-          "config": {
-            "incomplete": "Por favor, preencha todas as informações de configuração do S3"
-          },
-          "delete": {
-            "confirm": {
-              "multiple": "Deseja realmente excluir os {{count}} arquivos de backup selecionados? Esta ação não pode ser desfeita.",
-              "single": "Deseja realmente excluir o arquivo de backup \"{{fileName}}\"? Esta ação não pode ser desfeita.",
-              "title": "Confirmar exclusão"
-            },
-            "error": "Falha ao excluir arquivo de backup: {{message}}",
-            "label": "Excluir",
-            "selected": "Excluir selecionados ({{count}})",
-            "success": {
-              "multiple": "{{count}} arquivos de backup excluídos com sucesso",
-              "single": "Arquivo de backup excluído com sucesso"
-            }
-          },
-          "files": {
-            "fetch": {
-              "error": "Falha ao obter lista de arquivos de backup: {{message}}"
-            }
-          },
-          "refresh": "Atualizar",
-          "restore": "Restaurar",
-          "select": {
-            "warning": "Por favor, selecione os arquivos de backup para exclusão"
-          },
-          "title": "Gerenciamento de Arquivos de Backup S3"
-        },
-        "maxBackups": {
-          "label": "Número máximo de backups",
-          "unlimited": "Ilimitado"
-        },
-        "region": {
-          "label": "Região",
-          "placeholder": "Região, por exemplo: us-east-1"
-        },
-        "restore": {
-          "config": {
-            "incomplete": "Por favor, preencha todas as informações de configuração do S3"
-          },
-          "confirm": {
-            "cancel": "Cancelar",
-            "content": "A restauração dos dados irá sobrescrever todos os dados atuais; esta ação não pode ser desfeita. Deseja continuar?",
-            "ok": "Confirmar restauração",
-            "title": "Confirmar restauração de dados"
-          },
-          "error": "Falha na restauração de dados: {{message}}",
-          "file": {
-            "required": "Por favor, selecione o arquivo de backup para restauração"
-          },
-          "modal": {
-            "select": {
-              "placeholder": "Selecione o arquivo de backup para restauração"
-            },
-            "title": "Restauração de Dados S3"
-          },
-          "success": "Restauração de dados realizada com sucesso"
-        },
-        "root": {
-          "label": "Diretório de backup (opcional)",
-          "placeholder": "Por exemplo: /cherry-studio"
-        },
-        "secretAccessKey": {
-          "label": "Chave de Acesso Secreta",
-          "placeholder": "Chave de Acesso Secreta"
-        },
-        "skipBackupFile": {
-          "help": "Quando ativado, o backup pulará os dados de arquivos, salvando apenas as configurações, reduzindo significativamente o tamanho do arquivo de backup",
-          "label": "Backup reduzido"
-        },
-        "syncStatus": {
-          "error": "Erro de sincronização: {{message}}",
-          "label": "Status da sincronização",
-          "lastSync": "Última sincronização: {{time}}",
-          "noSync": "Não sincronizado"
-        },
-        "title": {
-          "help": "Serviço de armazenamento de objetos compatível com a API da AWS S3, por exemplo: AWS S3, Cloudflare R2, Alibaba Cloud OSS, Tencent Cloud COS, etc.",
-          "label": "Armazenamento compatível com S3",
-          "tooltip": "Documentação de configuração de armazenamento compatível com S3"
-        }
       },
       "siyuan": {
         "api_url": "Endereço da API",

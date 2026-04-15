@@ -21,7 +21,7 @@ export default class WebDav {
   constructor(params: WebDavConfig) {
     this.webdavPath = params.webdavPath || '/'
 
-    this.instance = createClient(params.webdavHost, {
+    const options: any = {
       username: params.webdavUser,
       password: params.webdavPass,
       maxBodyLength: Infinity,
@@ -29,7 +29,15 @@ export default class WebDav {
       httpsAgent: new https.Agent({
         rejectUnauthorized: false
       })
-    })
+    }
+
+    if (params.userAgent) {
+      options.headers = {
+        'User-Agent': params.userAgent
+      }
+    }
+
+    this.instance = createClient(params.webdavHost, options)
 
     this.putFileContents = this.putFileContents.bind(this)
     this.getFileContents = this.getFileContents.bind(this)

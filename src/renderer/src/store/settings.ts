@@ -28,7 +28,6 @@ import type {
   MinAppRegionFilter,
   OpenAIServiceTier,
   PaintingProvider,
-  S3Config,
   SidebarIcon,
   TranslateLanguageCode
 } from '@renderer/types'
@@ -136,6 +135,7 @@ export interface SettingsState {
   webdavMaxBackups: number
   webdavSkipBackupFile: boolean
   webdavDisableStream: boolean
+  webdavUseZoteroAgent: boolean
   translateModelPrompt: string
   autoTranslateWithSpace: boolean
   showTranslateConfirm: boolean
@@ -234,7 +234,6 @@ export interface SettingsState {
   localBackupMaxBackups: number
   localBackupSkipBackupFile: boolean
   defaultPaintingProvider: PaintingProvider
-  s3: S3Config
   // Developer mode
   enableDeveloperMode: boolean
   // UI
@@ -329,6 +328,7 @@ export const initialState: SettingsState = {
   webdavMaxBackups: 0,
   webdavSkipBackupFile: false,
   webdavDisableStream: false,
+  webdavUseZoteroAgent: false,
   translateModelPrompt: TRANSLATE_PROMPT,
   autoTranslateWithSpace: false,
   showTranslateConfirm: true,
@@ -417,19 +417,6 @@ export const initialState: SettingsState = {
   localBackupMaxBackups: 0,
   localBackupSkipBackupFile: false,
   defaultPaintingProvider: 'cherryin',
-  s3: {
-    endpoint: '',
-    region: '',
-    bucket: '',
-    accessKeyId: '',
-    secretAccessKey: '',
-    root: '',
-    autoSync: false,
-    syncInterval: 0,
-    maxBackups: 0,
-    skipBackupFile: false
-  },
-
   // Developer mode
   enableDeveloperMode: false,
   // UI
@@ -579,6 +566,9 @@ const settingsSlice = createSlice({
     },
     setWebdavDisableStream: (state, action: PayloadAction<boolean>) => {
       state.webdavDisableStream = action.payload
+    },
+    setWebdavUseZoteroAgent: (state, action: PayloadAction<boolean>) => {
+      state.webdavUseZoteroAgent = action.payload
     },
     setCodeExecution: (state, action: PayloadAction<{ enabled?: boolean; timeoutMinutes?: number }>) => {
       if (action.payload.enabled !== undefined) {
@@ -855,12 +845,6 @@ const settingsSlice = createSlice({
     setDefaultPaintingProvider: (state, action: PayloadAction<PaintingProvider>) => {
       state.defaultPaintingProvider = action.payload
     },
-    setS3: (state, action: PayloadAction<S3Config>) => {
-      state.s3 = action.payload
-    },
-    setS3Partial: (state, action: PayloadAction<Partial<S3Config>>) => {
-      state.s3 = { ...state.s3, ...action.payload }
-    },
     setEnableDeveloperMode: (state, action: PayloadAction<boolean>) => {
       state.enableDeveloperMode = action.payload
     },
@@ -939,6 +923,7 @@ export const {
   setWebdavMaxBackups,
   setWebdavSkipBackupFile,
   setWebdavDisableStream,
+  setWebdavUseZoteroAgent,
   setCodeExecution,
   setCodeEditor,
   setCodeViewer,
@@ -1013,8 +998,6 @@ export const {
   setLocalBackupMaxBackups,
   setLocalBackupSkipBackupFile,
   setDefaultPaintingProvider,
-  setS3,
-  setS3Partial,
   setEnableDeveloperMode,
   setNavbarPosition,
   setShowMessageOutline,

@@ -18,7 +18,6 @@ import { loggerService } from '@logger'
 import { isWin } from '@main/constant'
 import { IpcChannel } from '@shared/IpcChannel'
 import type { WebDavConfig } from '@types'
-import type { S3Config } from '@types'
 import archiver from 'archiver'
 import { app } from 'electron'
 import * as fs from 'fs-extra'
@@ -28,7 +27,6 @@ import type { CreateDirectoryOptions, FileStat } from 'webdav'
 
 import { getDataPath } from '../utils'
 import { resolveAndValidatePath } from '../utils/file'
-import S3Storage from './S3Storage'
 import WebDav from './WebDav'
 import { windowService } from './WindowService'
 
@@ -39,19 +37,9 @@ class BackupManager {
   private backupDir = path.join(app.getPath('temp'), 'cherry-studio', 'backup')
 
   // Cached instance to avoid recreating
-  private s3Storage: S3Storage | null = null
   private webdavInstance: WebDav | null = null
 
   // Cached core connection config, used to detect if connection config has changed
-  private cachedS3ConnectionConfig: {
-    endpoint: string
-    region: string
-    bucket: string
-    accessKeyId: string
-    secretAccessKey: string
-    root?: string
-  } | null = null
-
   private cachedWebdavConnectionConfig: {
     webdavHost: string
     webdavUser?: string
@@ -457,39 +445,6 @@ class BackupManager {
   }
 
   /**
-   * Direct backup to S3
-   * Creates a backup and uploads it to an S3-compatible storage.
-   * @param _ - Electron IPC event
-   * @param s3Config - S3 configuration including endpoint, bucket, credentials, and options
-   * @returns Result from S3 upload operation
-   */
-  async backupToS3(_: Electron.IpcMainInvokeEvent, s3Config: S3Config) {
-    const os = require('os')
-    const deviceName = os.hostname ? os.hostname() : 'device'
-    const timestamp = new Date()
-      .toISOString()
-      .replace(/[-:T.Z]/g, '')
-      .slice(0, 14)
-    const filename = s3Config.fileName || `lich13studio.backup.${deviceName}.${timestamp}.zip`
-
-    logger.debug(`[backupToS3] Starting S3 backup to ${filename}`)
-
-    const backupedFilePath = await this.backup(_, filename, undefined, s3Config.skipBackupFile)
-    const s3Client = this.getS3Storage(s3Config)
-    try {
-      const fileBuffer = await fs.promises.readFile(backupedFilePath)
-      const result = await s3Client.putFileContents(filename, fileBuffer)
-      await fs.remove(backupedFilePath)
-      logger.info(`S3 backup completed: ${filename}`)
-      return result
-    } catch (error) {
-      logger.error('[backupToS3] S3 backup failed:', error as Error)
-      await fs.remove(backupedFilePath)
-      throw error
-    }
-  }
-
-  /**
    * Restore from a backup file
    * Automatically detects backup format (direct v6+ or legacy) and restores accordingly.
    * For direct backup: replaces IndexedDB and Local Storage directories, then relaunches app.
@@ -751,41 +706,6 @@ class BackupManager {
       return await this.restore(_, backupedFilePath)
     } catch (error: any) {
       logger.error('Failed to restore from WebDAV:', error)
-      throw new Error(error.message || 'Failed to restore backup file')
-    }
-  }
-
-  /**
-   * Restore from an S3 backup
-   * Downloads the backup file from S3 storage and restores it.
-   * @param _ - Electron IPC event
-   * @param s3Config - S3 configuration including bucket, credentials, and file name
-   * @returns Result from restore operation
-   */
-  async restoreFromS3(_: Electron.IpcMainInvokeEvent, s3Config: S3Config) {
-    const filename = s3Config.fileName || 'lich13studio.backup.zip'
-
-    logger.debug(`Starting restore from S3: ${filename}`)
-
-    const s3Client = this.getS3Storage(s3Config)
-    try {
-      const retrievedFile = await s3Client.getFileContents(filename)
-      const backupedFilePath = path.join(this.backupDir, filename)
-      if (!fs.existsSync(this.backupDir)) {
-        fs.mkdirSync(this.backupDir, { recursive: true })
-      }
-      await new Promise<void>((resolve, reject) => {
-        const writeStream = fs.createWriteStream(backupedFilePath)
-        writeStream.write(retrievedFile)
-        writeStream.end()
-        writeStream.on('finish', () => resolve())
-        writeStream.on('error', (error) => reject(error))
-      })
-
-      logger.info(`S3 restore file downloaded successfully: ${filename}`)
-      return await this.restore(_, backupedFilePath)
-    } catch (error: any) {
-      logger.error('[BackupManager] Failed to restore from S3:', error)
       throw new Error(error.message || 'Failed to restore backup file')
     }
   }
@@ -1142,117 +1062,6 @@ class BackupManager {
     } catch (error) {
       logger.error('[BackupManager] Failed to delete temp backup:', error as Error)
       return false
-    }
-  }
-
-  // ==================== S3 Methods ====================
-  // These methods handle backup operations with S3-compatible storage.
-
-  /**
-   * Get S3Storage instance, reuses existing instance if connection config hasn't changed
-   * Note: Only connection-related config changes will recreate the instance
-   * Other config changes don't affect instance reuse
-   * @param config - S3 configuration
-   * @returns S3Storage instance
-   */
-  private getS3Storage(config: S3Config): S3Storage {
-    // Check if core connection config has changed
-    const configChanged = !this.isS3ConfigEqual(this.cachedS3ConnectionConfig, config)
-
-    if (configChanged || !this.s3Storage) {
-      this.s3Storage = new S3Storage(config)
-      // Only cache connection-related config fields
-      this.cachedS3ConnectionConfig = {
-        endpoint: config.endpoint,
-        region: config.region,
-        bucket: config.bucket,
-        accessKeyId: config.accessKeyId,
-        secretAccessKey: config.secretAccessKey,
-        root: config.root
-      }
-      logger.debug('[BackupManager] Created new S3Storage instance')
-    } else {
-      logger.debug('[BackupManager] Reusing existing S3Storage instance')
-    }
-
-    return this.s3Storage
-  }
-
-  /**
-   * Compare two S3 config objects for equality
-   * Only compares core fields that affect client connection, ignores volatile fields like fileName
-   * @param cachedConfig - The cached S3 configuration
-   * @param config - The new S3 configuration to compare
-   * @returns True if the configs are equal (connection-related fields only)
-   */
-  private isS3ConfigEqual(cachedConfig: typeof this.cachedS3ConnectionConfig, config: S3Config): boolean {
-    if (!cachedConfig) return false
-
-    return (
-      cachedConfig.endpoint === config.endpoint &&
-      cachedConfig.region === config.region &&
-      cachedConfig.bucket === config.bucket &&
-      cachedConfig.accessKeyId === config.accessKeyId &&
-      cachedConfig.secretAccessKey === config.secretAccessKey &&
-      cachedConfig.root === config.root
-    )
-  }
-
-  /**
-   * Check S3 connection
-   * @param _ - Electron IPC event
-   * @param s3Config - S3 configuration to test
-   * @returns True if connection is successful
-   */
-  async checkS3Connection(_: Electron.IpcMainInvokeEvent, s3Config: S3Config) {
-    const s3Client = this.getS3Storage(s3Config)
-    return await s3Client.checkConnection()
-  }
-
-  /**
-   * List backup files in S3 storage
-   * @param _ - Electron IPC event
-   * @param s3Config - S3 configuration
-   * @returns Array of backup file info (name, modified time, size), sorted by newest first
-   */
-  listS3Files = async (_: Electron.IpcMainInvokeEvent, s3Config: S3Config) => {
-    try {
-      const s3Client = this.getS3Storage(s3Config)
-
-      const objects = await s3Client.listFiles()
-      const files = objects
-        .filter((obj) => obj.key.endsWith('.zip'))
-        .map((obj) => {
-          const segments = obj.key.split('/')
-          const fileName = segments[segments.length - 1]
-          return {
-            fileName,
-            modifiedTime: obj.lastModified || '',
-            size: obj.size
-          }
-        })
-
-      return files.sort((a, b) => new Date(b.modifiedTime).getTime() - new Date(a.modifiedTime).getTime())
-    } catch (error: any) {
-      logger.error('Failed to list S3 files:', error)
-      throw new Error(error.message || 'Failed to list backup files')
-    }
-  }
-
-  /**
-   * Delete a backup file from S3 storage
-   * @param _ - Electron IPC event
-   * @param fileName - Name of the file to delete
-   * @param s3Config - S3 configuration
-   * @returns Result from S3 operation
-   */
-  async deleteS3File(_: Electron.IpcMainInvokeEvent, fileName: string, s3Config: S3Config) {
-    try {
-      const s3Client = this.getS3Storage(s3Config)
-      return await s3Client.deleteFile(fileName)
-    } catch (error: any) {
-      logger.error('Failed to delete S3 file:', error)
-      throw new Error(error.message || 'Failed to delete backup file')
     }
   }
 }

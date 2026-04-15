@@ -1,11 +1,9 @@
 use futures_util::StreamExt;
 use image::codecs::png::PngEncoder;
 use image::{ColorType, ImageEncoder};
-use reqwest::header::{AUTHORIZATION, CONTENT_TYPE};
+use reqwest::header::{AUTHORIZATION, CONTENT_TYPE, USER_AGENT};
 use reqwest::Client;
 use roxmltree::Document;
-use rusty_s3::actions::ListObjectsV2;
-use rusty_s3::{Bucket, Credentials, S3Action, UrlStyle};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::fs;
@@ -15,7 +13,6 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tauri::{Emitter, Window};
 use tokio::process::Command;
-use url::Url;
 use uuid::Uuid;
 use walkdir::WalkDir;
 use xcap::Window as CaptureWindow;
@@ -102,20 +99,7 @@ struct BackupWebDavConfig {
   password: String,
   file_name: Option<String>,
   skip_backup_file: Option<bool>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct BackupS3Config {
-  endpoint: String,
-  region: String,
-  bucket: String,
-  access_key: String,
-  secret_key: String,
-  object_key: String,
-  root: Option<String>,
-  path_style: bool,
-  skip_backup_file: Option<bool>,
+  user_agent: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -562,10 +546,16 @@ async fn upload_webdav(config: &BackupWebDavConfig, payload: Vec<u8>) -> Result<
     .unwrap_or_else(|| String::from("lich13studio-backup.zip"));
   let target = format!("{}/{}", normalize_base_url(&config.url), file_name);
 
-  client
+  let mut request = client
     .put(&target)
     .basic_auth(&config.username, Some(&config.password))
-    .header(CONTENT_TYPE, "application/zip")
+    .header(CONTENT_TYPE, "application/zip");
+
+  if let Some(user_agent) = config.user_agent.as_ref().filter(|value| !value.trim().is_empty()) {
+    request = request.header(USER_AGENT, user_agent);
+  }
+
+  request
     .body(payload)
     .send()
     .await
@@ -585,9 +575,12 @@ async fn download_webdav(config: &BackupWebDavConfig) -> Result<Vec<u8>, String>
     .unwrap_or_else(|| String::from("lich13studio-backup.zip"));
   let target = format!("{}/{}", normalize_base_url(&config.url), file_name);
 
-  let payload = client
-    .get(&target)
-    .basic_auth(&config.username, Some(&config.password))
+  let mut request = client.get(&target).basic_auth(&config.username, Some(&config.password));
+  if let Some(user_agent) = config.user_agent.as_ref().filter(|value| !value.trim().is_empty()) {
+    request = request.header(USER_AGENT, user_agent);
+  }
+
+  let payload = request
     .send()
     .await
     .map_err(|error| error.to_string())?
@@ -670,12 +663,18 @@ async fn list_webdav(config: &BackupWebDavConfig) -> Result<Vec<RemoteBackupFile
   let target = normalize_base_url(&config.url);
   let body = r#"<?xml version="1.0" encoding="utf-8" ?><propfind xmlns="DAV:"><prop><getlastmodified/><getcontentlength/><resourcetype/></prop></propfind>"#;
 
-  let response = client
+  let mut request = client
     .request(reqwest::Method::from_bytes(b"PROPFIND").map_err(|error| error.to_string())?, &target)
     .basic_auth(&config.username, Some(&config.password))
     .header("Depth", "1")
     .header(CONTENT_TYPE, "application/xml")
-    .body(body.to_string())
+    .body(body.to_string());
+
+  if let Some(user_agent) = config.user_agent.as_ref().filter(|value| !value.trim().is_empty()) {
+    request = request.header(USER_AGENT, user_agent);
+  }
+
+  let response = request
     .send()
     .await
     .map_err(|error| error.to_string())?
@@ -691,15 +690,18 @@ async fn check_webdav(config: &BackupWebDavConfig) -> Result<bool, String> {
   let target = normalize_base_url(&config.url);
   let body = r#"<?xml version="1.0" encoding="utf-8" ?><propfind xmlns="DAV:"><prop><displayname/></prop></propfind>"#;
 
-  let response = client
+  let mut request = client
     .request(reqwest::Method::from_bytes(b"PROPFIND").map_err(|error| error.to_string())?, &target)
     .basic_auth(&config.username, Some(&config.password))
     .header("Depth", "0")
     .header(CONTENT_TYPE, "application/xml")
-    .body(body.to_string())
-    .send()
-    .await
-    .map_err(|error| error.to_string())?;
+    .body(body.to_string());
+
+  if let Some(user_agent) = config.user_agent.as_ref().filter(|value| !value.trim().is_empty()) {
+    request = request.header(USER_AGENT, user_agent);
+  }
+
+  let response = request.send().await.map_err(|error| error.to_string())?;
 
   Ok(response.status().is_success())
 }
@@ -713,12 +715,15 @@ async fn create_webdav_folder(
 
   for segment in dir_path.split('/').filter(|segment| !segment.trim().is_empty()) {
     current = format!("{}/{}", current, segment);
-    let response = client
+    let mut request = client
       .request(reqwest::Method::from_bytes(b"MKCOL").map_err(|error| error.to_string())?, &current)
-      .basic_auth(&config.username, Some(&config.password))
-      .send()
-      .await
-      .map_err(|error| error.to_string())?;
+      .basic_auth(&config.username, Some(&config.password));
+
+    if let Some(user_agent) = config.user_agent.as_ref().filter(|value| !value.trim().is_empty()) {
+      request = request.header(USER_AGENT, user_agent);
+    }
+
+    let response = request.send().await.map_err(|error| error.to_string())?;
 
     let status = response.status();
     if !(status.is_success() || status.as_u16() == 405) {
@@ -733,161 +738,12 @@ async fn delete_webdav(config: &BackupWebDavConfig, file_name: &str) -> Result<b
   let client = Client::new();
   let target = format!("{}/{}", normalize_base_url(&config.url), file_name);
 
-  client
-    .delete(target)
-    .basic_auth(&config.username, Some(&config.password))
-    .send()
-    .await
-    .map_err(|error| error.to_string())?
-    .error_for_status()
-    .map_err(|error| error.to_string())?;
-
-  Ok(true)
-}
-
-async fn upload_s3(config: &BackupS3Config, payload: Vec<u8>) -> Result<String, String> {
-  let endpoint = Url::parse(&config.endpoint).map_err(|error| error.to_string())?;
-  let bucket_name: &'static str = Box::leak(config.bucket.clone().into_boxed_str());
-  let region: &'static str = Box::leak(config.region.clone().into_boxed_str());
-  let object_key = config.object_key.clone();
-  let bucket = Bucket::new(
-    endpoint,
-    if config.path_style { UrlStyle::Path } else { UrlStyle::VirtualHost },
-    bucket_name,
-    region,
-  )
-  .map_err(|error| error.to_string())?;
-  let credentials = Credentials::new(&config.access_key, &config.secret_key);
-  let action = bucket.put_object(Some(&credentials), &object_key);
-  let signed = action.sign(Duration::from_secs(900));
-  let client = Client::new();
-
-  client
-    .put(signed.as_str())
-    .header(CONTENT_TYPE, "application/zip")
-    .body(payload)
-    .send()
-    .await
-    .map_err(|error| error.to_string())?
-    .error_for_status()
-    .map_err(|error| error.to_string())?;
-
-  Ok(format!("{}/{}", config.bucket, object_key))
-}
-
-async fn download_s3(config: &BackupS3Config) -> Result<Vec<u8>, String> {
-  let endpoint = Url::parse(&config.endpoint).map_err(|error| error.to_string())?;
-  let bucket_name: &'static str = Box::leak(config.bucket.clone().into_boxed_str());
-  let region: &'static str = Box::leak(config.region.clone().into_boxed_str());
-  let object_key = config.object_key.clone();
-  let bucket = Bucket::new(
-    endpoint,
-    if config.path_style { UrlStyle::Path } else { UrlStyle::VirtualHost },
-    bucket_name,
-    region,
-  )
-  .map_err(|error| error.to_string())?;
-  let credentials = Credentials::new(&config.access_key, &config.secret_key);
-  let action = bucket.get_object(Some(&credentials), &object_key);
-  let signed = action.sign(Duration::from_secs(900));
-  let client = Client::new();
-
-  let payload = client
-    .get(signed.as_str())
-    .send()
-    .await
-    .map_err(|error| error.to_string())?
-    .error_for_status()
-    .map_err(|error| error.to_string())?
-    .bytes()
-    .await
-    .map_err(|error| error.to_string())?;
-
-  Ok(payload.to_vec())
-}
-
-async fn list_s3(config: &BackupS3Config) -> Result<Vec<RemoteBackupFileInfo>, String> {
-  let endpoint = Url::parse(&config.endpoint).map_err(|error| error.to_string())?;
-  let bucket_name: &'static str = Box::leak(config.bucket.clone().into_boxed_str());
-  let region: &'static str = Box::leak(config.region.clone().into_boxed_str());
-  let bucket = Bucket::new(
-    endpoint,
-    if config.path_style { UrlStyle::Path } else { UrlStyle::VirtualHost },
-    bucket_name,
-    region,
-  )
-  .map_err(|error| error.to_string())?;
-  let credentials = Credentials::new(&config.access_key, &config.secret_key);
-  let mut action = bucket.list_objects_v2(Some(&credentials));
-  if let Some(root) = config.root.as_ref().filter(|root| !root.trim().is_empty()) {
-    action.with_prefix(root.clone());
+  let mut request = client.delete(target).basic_auth(&config.username, Some(&config.password));
+  if let Some(user_agent) = config.user_agent.as_ref().filter(|value| !value.trim().is_empty()) {
+    request = request.header(USER_AGENT, user_agent);
   }
-  let signed = action.sign(Duration::from_secs(900));
-  let client = Client::new();
 
-  let payload = client
-    .get(signed.as_str())
-    .send()
-    .await
-    .map_err(|error| error.to_string())?
-    .error_for_status()
-    .map_err(|error| error.to_string())?
-    .text()
-    .await
-    .map_err(|error| error.to_string())?;
-
-  let parsed = ListObjectsV2::parse_response(&payload).map_err(|error| error.to_string())?;
-  let root_prefix = config.root.clone().unwrap_or_default();
-
-  Ok(
-    parsed
-      .contents
-      .into_iter()
-      .map(|item| {
-        let file_name = if !root_prefix.is_empty() && item.key.starts_with(&root_prefix) {
-          item.key[root_prefix.len()..].trim_start_matches('/').to_string()
-        } else {
-          item.key.rsplit('/').next().unwrap_or(&item.key).to_string()
-        };
-
-        RemoteBackupFileInfo {
-          file_name,
-          modified_time: item.last_modified,
-          size: item.size,
-        }
-      })
-      .filter(|item| !item.file_name.is_empty())
-      .collect(),
-  )
-}
-
-async fn check_s3(config: &BackupS3Config) -> Result<bool, String> {
-  list_s3(config).await.map(|_| true)
-}
-
-async fn delete_s3(config: &BackupS3Config, file_name: &str) -> Result<bool, String> {
-  let endpoint = Url::parse(&config.endpoint).map_err(|error| error.to_string())?;
-  let bucket_name: &'static str = Box::leak(config.bucket.clone().into_boxed_str());
-  let region: &'static str = Box::leak(config.region.clone().into_boxed_str());
-  let bucket = Bucket::new(
-    endpoint,
-    if config.path_style { UrlStyle::Path } else { UrlStyle::VirtualHost },
-    bucket_name,
-    region,
-  )
-  .map_err(|error| error.to_string())?;
-  let credentials = Credentials::new(&config.access_key, &config.secret_key);
-  let object_key = if let Some(root) = config.root.as_ref().filter(|root| !root.trim().is_empty()) {
-    format!("{}/{}", root.trim_end_matches('/'), file_name)
-  } else {
-    file_name.to_string()
-  };
-  let action = bucket.delete_object(Some(&credentials), &object_key);
-  let signed = action.sign(Duration::from_secs(900));
-  let client = Client::new();
-
-  client
-    .delete(signed.as_str())
+  request
     .send()
     .await
     .map_err(|error| error.to_string())?
@@ -1213,19 +1069,6 @@ async fn webdav_restore(config: BackupWebDavConfig) -> Result<Value, String> {
 }
 
 #[tauri::command]
-async fn s3_backup(state: Value, config: BackupS3Config) -> Result<String, String> {
-  let payload = create_backup_archive_bytes(&state, !config.skip_backup_file.unwrap_or(false))?;
-  upload_s3(&config, payload).await
-}
-
-#[tauri::command]
-async fn s3_restore(config: BackupS3Config) -> Result<Value, String> {
-  let bytes = download_s3(&config).await?;
-  let payload = extract_backup_archive(&bytes)?;
-  serde_json::from_str(&payload).map_err(|error| error.to_string())
-}
-
-#[tauri::command]
 async fn pick_folder() -> Result<Option<String>, String> {
   let handle = rfd::AsyncFileDialog::new().pick_folder().await;
   Ok(handle.map(|path| path.path().display().to_string()))
@@ -1382,21 +1225,6 @@ async fn create_webdav_directory(config: BackupWebDavConfig, path: String) -> Re
 #[tauri::command]
 async fn delete_webdav_file(file_name: String, config: BackupWebDavConfig) -> Result<bool, String> {
   delete_webdav(&config, &file_name).await
-}
-
-#[tauri::command]
-async fn list_s3_files(config: BackupS3Config) -> Result<Vec<RemoteBackupFileInfo>, String> {
-  list_s3(&config).await
-}
-
-#[tauri::command]
-async fn check_s3_connection(config: BackupS3Config) -> Result<bool, String> {
-  check_s3(&config).await
-}
-
-#[tauri::command]
-async fn delete_s3_file(file_name: String, config: BackupS3Config) -> Result<bool, String> {
-  delete_s3(&config, &file_name).await
 }
 
 #[tauri::command]
@@ -1568,13 +1396,8 @@ pub fn run() {
       check_webdav_connection,
       create_webdav_directory,
       delete_webdav_file,
-      list_s3_files,
-      check_s3_connection,
-      delete_s3_file,
       webdav_backup,
       webdav_restore,
-      s3_backup,
-      s3_restore,
       test_provider,
       test_mcp,
       check_mcp_connectivity,

@@ -16,7 +16,8 @@ import {
   setWebdavPath as _setWebdavPath,
   setWebdavSkipBackupFile as _setWebdavSkipBackupFile,
   setWebdavSyncInterval as _setWebdavSyncInterval,
-  setWebdavUser as _setWebdavUser
+  setWebdavUser as _setWebdavUser,
+  setWebdavUseZoteroAgent as _setWebdavUseZoteroAgent
 } from '@renderer/store/settings'
 import { Button, Input, Switch, Tooltip } from 'antd'
 import dayjs from 'dayjs'
@@ -35,7 +36,8 @@ const WebDavSettings: FC = () => {
     webdavSyncInterval: webDAVSyncInterval,
     webdavMaxBackups: webDAVMaxBackups,
     webdavSkipBackupFile: webdDAVSkipBackupFile,
-    webdavDisableStream: webDAVDisableStream
+    webdavDisableStream: webDAVDisableStream,
+    webdavUseZoteroAgent: webDAVUseZoteroAgent
   } = useSettings()
 
   const [webdavHost, setWebdavHost] = useState<string | undefined>(webDAVHost)
@@ -44,6 +46,7 @@ const WebDavSettings: FC = () => {
   const [webdavPath, setWebdavPath] = useState<string | undefined>(webDAVPath)
   const [webdavSkipBackupFile, setWebdavSkipBackupFile] = useState<boolean>(webdDAVSkipBackupFile)
   const [webdavDisableStream, setWebdavDisableStream] = useState<boolean>(webDAVDisableStream)
+  const [webdavUseZoteroAgent, setWebdavUseZoteroAgent] = useState<boolean>(webDAVUseZoteroAgent)
   const [backupManagerVisible, setBackupManagerVisible] = useState(false)
 
   const [syncInterval, setSyncInterval] = useState<number>(webDAVSyncInterval)
@@ -83,6 +86,11 @@ const WebDavSettings: FC = () => {
   const onDisableStreamChange = (value: boolean) => {
     setWebdavDisableStream(value)
     dispatch(_setWebdavDisableStream(value))
+  }
+
+  const onUseZoteroAgentChange = (value: boolean) => {
+    setWebdavUseZoteroAgent(value)
+    dispatch(_setWebdavUseZoteroAgent(value))
   }
 
   const renderSyncStatus = () => {
@@ -237,6 +245,14 @@ const WebDavSettings: FC = () => {
       <SettingRow>
         <SettingHelpText>{t('settings.data.webdav.disableStream.help')}</SettingHelpText>
       </SettingRow>
+      <SettingDivider />
+      <SettingRow>
+        <SettingRowTitle>{t('settings.data.webdav.zoteroAgent.title')}</SettingRowTitle>
+        <Switch checked={webdavUseZoteroAgent} onChange={onUseZoteroAgentChange} />
+      </SettingRow>
+      <SettingRow>
+        <SettingHelpText>{t('settings.data.webdav.zoteroAgent.help')}</SettingHelpText>
+      </SettingRow>
       {webdavSync && syncInterval > 0 && (
         <>
           <SettingDivider />
@@ -264,7 +280,8 @@ const WebDavSettings: FC = () => {
             webdavUser,
             webdavPass,
             webdavPath,
-            webdavDisableStream
+            webdavDisableStream,
+            userAgent: webdavUseZoteroAgent ? 'Zotero/8.0' : undefined
           }}
         />
       </>

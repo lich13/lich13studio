@@ -559,6 +559,7 @@ export type WebDavConfig = {
   fileName?: string
   skipBackupFile?: boolean
   disableStream?: boolean
+  userAgent?: string
 }
 
 export type AppInfo = {
@@ -1002,20 +1003,6 @@ export interface StoreSyncAction {
     fromSync?: boolean
     source?: string
   }
-}
-
-export type S3Config = {
-  endpoint: string
-  region: string
-  bucket: string
-  accessKeyId: string
-  secretAccessKey: string
-  root?: string
-  fileName?: string
-  skipBackupFile: boolean
-  autoSync: boolean
-  syncInterval: number
-  maxBackups: number
 }
 
 export type { Message } from './newMessage'

@@ -1964,10 +1964,6 @@ const migrateConfig = {
         )
       }
 
-      if (!state.settings.s3) {
-        state.settings.s3 = settingsInitialState.s3
-      }
-
       const langMap: Record<string, TranslateLanguageCode> = {
         english: 'en-us',
         chinese: 'zh-cn',
@@ -2292,13 +2288,29 @@ const migrateConfig = {
         state.settings.webdavPath = '/lich13studio'
       }
 
-      if (state.settings?.s3?.root === '/cherry-studio' || state.settings?.s3?.root === 'cherry-studio') {
-        state.settings.s3.root = '/lich13studio'
-      }
+      delete (state.settings as any).s3
+      delete (state as any).nutstore
+      delete (state.backup as any).s3Sync
 
       return state
     } catch (error) {
       logger.error('migrate 212 error', error as Error)
+      return state
+    }
+  },
+  '213': (state: RootState) => {
+    try {
+      if (typeof state.settings.webdavUseZoteroAgent === 'undefined') {
+        state.settings.webdavUseZoteroAgent = false
+      }
+
+      delete (state.settings as any).s3
+      delete (state as any).nutstore
+      delete (state.backup as any).s3Sync
+
+      return state
+    } catch (error) {
+      logger.error('migrate 213 error', error as Error)
       return state
     }
   },
