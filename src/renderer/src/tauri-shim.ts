@@ -763,7 +763,17 @@ const api = {
     openExternal: async (url: string) => window.open(url, '_blank', 'noopener,noreferrer')
   },
   notification: {
-    send: async () => true,
+    send: async (notification: AnyRecord) => {
+      if (invoke) {
+        return invoke('send_notification', {
+          notification: {
+            title: String(notification?.title || ''),
+            message: String(notification?.message || '')
+          }
+        })
+      }
+      return true
+    },
     onClick: () => createCleanup()
   },
   system: {

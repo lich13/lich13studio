@@ -243,8 +243,8 @@ export const initialState: SettingsState = {
   showInputEstimatedTokens: false,
   launchOnBoot: false,
   launchToTray: false,
-  trayOnClose: false,
-  tray: false,
+  trayOnClose: true,
+  tray: true,
   theme: ThemeMode.system,
   userTheme: {
     colorPrimary: '#00b96b',

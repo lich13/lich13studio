@@ -20,8 +20,11 @@ import type { AssistantIconType, SendMessageShortcut, SettingsState } from '@ren
 import {
   setAssistantIconType,
   setAutoCheckUpdate as _setAutoCheckUpdate,
+  setLaunchToTray,
   setLaunchOnBoot,
   setNavbarPosition,
+  setTray as _setTray,
+  setTrayOnClose,
   setSendMessageShortcut as _setSendMessageShortcut,
   setTargetLanguage,
   setTestChannel as _setTestChannel,
@@ -49,33 +52,35 @@ export function useSettings() {
   return {
     ...settings,
     language: 'zh-CN' as SettingsState['language'],
-    launchToTray: false,
-    tray: false,
-    trayOnClose: false,
     clickAssistantToShowTopic: true,
     showTopicTime: false,
     pinTopicsToTop: false,
     enableDataCollection: false,
     enableSpellCheck: false,
     disableHardwareAcceleration: false,
-    notification: {
-      ...settings.notification,
-      backup: false
-    },
     sidebarIcons,
     setSendMessageShortcut(shortcut: SendMessageShortcut) {
       dispatch(_setSendMessageShortcut(shortcut))
     },
 
-    setLaunch(isLaunchOnBoot: boolean | undefined) {
+    setLaunch(isLaunchOnBoot: boolean | undefined, isLaunchToTray: boolean | undefined = undefined) {
       if (isLaunchOnBoot !== undefined) {
         dispatch(setLaunchOnBoot(isLaunchOnBoot))
         void window.api.setLaunchOnBoot(isLaunchOnBoot)
       }
+
+      if (isLaunchToTray !== undefined) {
+        dispatch(setLaunchToTray(isLaunchToTray))
+      }
     },
 
-    setTray() {
-      return undefined
+    setTray(isShowTray: boolean | undefined, isTrayOnClose: boolean | undefined = undefined) {
+      if (isShowTray !== undefined) {
+        dispatch(_setTray(isShowTray))
+      }
+      if (isTrayOnClose !== undefined) {
+        dispatch(setTrayOnClose(isTrayOnClose))
+      }
     },
 
     setAutoCheckUpdate(isAutoUpdate: boolean) {

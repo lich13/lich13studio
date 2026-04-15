@@ -5,6 +5,7 @@ import { appendMessageTrace, pauseTrace, restartTrace } from '@renderer/services
 import { estimateUserPromptUsage } from '@renderer/services/TokenService'
 import store, { type RootState, useAppDispatch, useAppSelector } from '@renderer/store'
 import { updateOneBlock } from '@renderer/store/messageBlock'
+import { messageBlocksSelectors } from '@renderer/store/messageBlock'
 import { newMessagesActions, selectMessagesForTopic } from '@renderer/store/newMessage'
 import {
   appendAssistantResponseThunk,
@@ -22,8 +23,9 @@ import {
 } from '@renderer/store/thunk/messageThunk'
 import { type Assistant, type Model, objectKeys, type Topic, type TranslateLanguageCode } from '@renderer/types'
 import type { Message, MessageBlock } from '@renderer/types/newMessage'
-import { MessageBlockStatus, MessageBlockType } from '@renderer/types/newMessage'
+import { AssistantMessageStatus, MessageBlockStatus, MessageBlockType } from '@renderer/types/newMessage'
 import { abortCompletion } from '@renderer/utils/abortController'
+import { isMessageProcessing } from '@renderer/utils/messageUtils/is'
 import { difference, throttle } from 'lodash'
 import { useCallback } from 'react'
 
@@ -469,4 +471,37 @@ export const useTopicMessages = (topicId: string) => {
 
 export const useTopicLoading = (topic: Topic) => {
   return useAppSelector((state) => selectNewTopicLoading(state, topic.id))
+}
+
+export const useTopicResponding = (topic: Topic) => {
+  return useAppSelector((state) => {
+    const messages = selectMessagesForTopic(state, topic.id)
+    const blockEntities = messageBlocksSelectors.selectEntities(state)
+
+    const hasActiveMessage = messages.some((message) => message.role === 'assistant' && isMessageProcessing(message))
+    if (hasActiveMessage) {
+      return true
+    }
+
+    return messages.some((message) => {
+      if (
+        message.role !== 'assistant' ||
+        message.status === AssistantMessageStatus.SUCCESS ||
+        message.status === AssistantMessageStatus.ERROR ||
+        message.status === AssistantMessageStatus.PAUSED
+      ) {
+        return false
+      }
+
+      return message.blocks.some((blockId) => {
+        const block = blockEntities[blockId]
+        return (
+          !!block &&
+          (block.status === MessageBlockStatus.PROCESSING ||
+            block.status === MessageBlockStatus.STREAMING ||
+            block.status === MessageBlockStatus.PENDING)
+        )
+      })
+    })
+  })
 }

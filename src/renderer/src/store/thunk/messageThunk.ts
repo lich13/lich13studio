@@ -89,6 +89,55 @@ const finishTopicLoading = async (topicId: string) => {
   store.dispatch(newMessagesActions.setTopicFulfilled({ topicId, fulfilled: true }))
 }
 
+const repairTerminalThinkingBlocks = (messages: Message[], blocks: MessageBlock[]) => {
+  const blockMap = new Map(blocks.map((block) => [block.id, block]))
+  const repairedBlocks: MessageBlock[] = []
+
+  for (const message of messages) {
+    if (message.role !== 'assistant') {
+      continue
+    }
+
+    const repairedStatus =
+      message.status === AssistantMessageStatus.SUCCESS
+        ? MessageBlockStatus.SUCCESS
+        : message.status === AssistantMessageStatus.ERROR
+          ? MessageBlockStatus.ERROR
+          : message.status === AssistantMessageStatus.PAUSED
+            ? MessageBlockStatus.PAUSED
+            : null
+
+    if (!repairedStatus) {
+      continue
+    }
+
+    for (const blockId of message.blocks || []) {
+      const block = blockMap.get(blockId)
+      if (
+        !block ||
+        block.type !== MessageBlockType.THINKING ||
+        (block.status !== MessageBlockStatus.PROCESSING &&
+          block.status !== MessageBlockStatus.STREAMING &&
+          block.status !== MessageBlockStatus.PENDING)
+      ) {
+        continue
+      }
+
+      const repairedBlock = {
+        ...block,
+        status: repairedStatus
+      }
+      blockMap.set(blockId, repairedBlock)
+      repairedBlocks.push(repairedBlock)
+    }
+  }
+
+  return {
+    blocks: blocks.map((block) => blockMap.get(block.id) || block),
+    repairedBlocks
+  }
+}
+
 type AgentSessionContext = {
   agentId: string
   sessionId: string
@@ -1907,16 +1956,22 @@ export const loadTopicMessagesThunk =
 
       // Unified call - no need to check isAgentSessionTopicId
       const { messages, blocks } = await dbService.fetchMessages(topicId)
+      const { blocks: normalizedBlocks, repairedBlocks } = repairTerminalThinkingBlocks(messages, blocks)
 
       logger.silly('Loaded messages via DbService', {
         topicId,
         messageCount: messages.length,
-        blockCount: blocks.length
+        blockCount: normalizedBlocks.length,
+        repairedThinkingBlockCount: repairedBlocks.length
       })
 
+      if (repairedBlocks.length > 0) {
+        await updateBlocks(repairedBlocks)
+      }
+
       // Update Redux state with fetched data
-      if (blocks.length > 0) {
-        dispatch(upsertManyBlocks(blocks))
+      if (normalizedBlocks.length > 0) {
+        dispatch(upsertManyBlocks(normalizedBlocks))
       }
       dispatch(newMessagesActions.messagesReceived({ topicId, messages }))
     } catch (error) {

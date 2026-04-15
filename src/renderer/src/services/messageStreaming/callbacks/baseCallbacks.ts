@@ -123,6 +123,43 @@ export const createBaseCallbacks = (deps: BaseCallbacksDependencies) => {
     return cleanedBlockIds
   }
 
+  const finalizeDanglingThinkingBlocks = (): string[] => {
+    const currentMessage = getState().messages.entities[assistantMsgId]
+    if (!currentMessage) return []
+
+    const allBlockRefs = findAllBlocks(currentMessage)
+    const blockState = getState().messageBlocks
+    const thinkingInfo = getCurrentThinkingInfo?.()
+    const finalizedBlockIds: string[] = []
+
+    for (const blockRef of allBlockRefs) {
+      const block = blockState.entities[blockRef.id]
+      if (
+        !block ||
+        block.type !== MessageBlockType.THINKING ||
+        (block.status !== MessageBlockStatus.PROCESSING &&
+          block.status !== MessageBlockStatus.STREAMING &&
+          block.status !== MessageBlockStatus.PENDING)
+      ) {
+        continue
+      }
+
+      const changes: Partial<ThinkingMessageBlock> = {
+        status: MessageBlockStatus.SUCCESS
+      }
+
+      const thinkingMillis = thinkingInfo && thinkingInfo.blockId === block.id ? thinkingInfo.millsec : 0
+      if (thinkingMillis > 0) {
+        changes.thinking_millsec = thinkingMillis
+      }
+
+      dispatch(updateOneBlock({ id: block.id, changes }))
+      finalizedBlockIds.push(block.id)
+    }
+
+    return finalizedBlockIds
+  }
+
   return {
     onLLMResponseCreated: async () => {
       const baseBlock = createBaseMessageBlock(assistantMsgId, MessageBlockType.UNKNOWN, {
@@ -354,7 +391,9 @@ export const createBaseCallbacks = (deps: BaseCallbacksDependencies) => {
 
       // Mark in_progress todos as completed since stream ended
       const todoCleanupIds = cleanupInProgressTodos()
+      const finalizedThinkingBlockIds = status === 'success' ? finalizeDanglingThinkingBlocks() : []
       const todoBlocksToSave = todoCleanupIds
+        .concat(finalizedThinkingBlockIds)
         .map((id) => getState().messageBlocks.entities[id])
         .filter(Boolean) as MessageBlock[]
 

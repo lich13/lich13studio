@@ -14,7 +14,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use tauri::{Emitter, Manager, PhysicalPosition, PhysicalSize, Position, Size, Window, WindowEvent};
+use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, Position, RunEvent, Size, Window, WindowEvent};
 use tokio::process::Command;
 use uuid::Uuid;
 use walkdir::WalkDir;
@@ -33,6 +33,8 @@ const APP_NAME: &str = "lich13studio";
 const BUNDLE_ID: &str = "com.lich13.studio";
 const DEFAULT_STATE_FILE: &str = "state.json";
 const WINDOW_STATE_KEY: &str = "windowState";
+
+static APP_EXITING: AtomicBool = AtomicBool::new(false);
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -129,6 +131,13 @@ struct NativeHttpChunkEvent {
   chunk: Vec<u8>,
   done: bool,
   error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DesktopNotificationRequest {
+  title: String,
+  message: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -353,6 +362,83 @@ fn should_persist_window_event(event: &WindowEvent) -> bool {
     event,
     WindowEvent::Resized(_) | WindowEvent::Moved(_) | WindowEvent::CloseRequested { .. } | WindowEvent::Destroyed
   )
+}
+
+fn escape_applescript_string(value: &str) -> String {
+  value
+    .replace('\\', "\\\\")
+    .replace('"', "\\\"")
+    .replace(['\r', '\n'], " ")
+}
+
+#[tauri::command]
+async fn send_notification(notification: DesktopNotificationRequest) -> Result<bool, String> {
+  #[cfg(target_os = "macos")]
+  {
+    let title = escape_applescript_string(notification.title.trim());
+    let message = escape_applescript_string(notification.message.trim());
+
+    let script = format!("display notification \"{}\" with title \"{}\"", message, title);
+
+    let output = Command::new("osascript")
+      .arg("-e")
+      .arg(script)
+      .output()
+      .await
+      .map_err(|error| error.to_string())?;
+
+    if !output.status.success() {
+      let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+      return Err(if stderr.is_empty() {
+        String::from("Failed to display macOS notification")
+      } else {
+        stderr
+      });
+    }
+
+    return Ok(true);
+  }
+
+  #[cfg(not(target_os = "macos"))]
+  {
+    let _ = notification;
+    Ok(true)
+  }
+}
+
+fn handle_main_window_close(window: &Window, event: &WindowEvent) {
+  #[cfg(target_os = "macos")]
+  if window.label() == "main" {
+    if let WindowEvent::CloseRequested { api, .. } = event {
+      if APP_EXITING.load(Ordering::Relaxed) {
+        return;
+      }
+
+      api.prevent_close();
+      let _ = persist_window_state(window);
+      let _ = window.hide();
+    }
+  }
+}
+
+fn handle_run_event(app: &AppHandle, event: &RunEvent) {
+  #[cfg(target_os = "macos")]
+  match event {
+    RunEvent::ExitRequested { .. } => {
+      APP_EXITING.store(true, Ordering::Relaxed);
+    }
+    RunEvent::Reopen {
+      has_visible_windows, ..
+    } => {
+      if !has_visible_windows {
+        if let Some(main_window) = app.get_webview_window("main") {
+          let _ = main_window.show();
+          let _ = main_window.set_focus();
+        }
+      }
+    }
+    _ => {}
+  }
 }
 
 fn downloads_dir() -> Result<PathBuf, String> {
@@ -1872,6 +1958,7 @@ pub fn run() {
       Ok(())
     })
     .on_window_event(|window, event| {
+      handle_main_window_close(window, event);
       if should_persist_window_event(event) {
         let _ = persist_window_state(window);
       }
@@ -1904,8 +1991,12 @@ pub fn run() {
       check_mcp_connectivity,
       start_chat,
       start_http_request,
-      abort_http_request
+      abort_http_request,
+      send_notification
     ])
-    .run(tauri::generate_context!())
-    .expect("failed to run lich13studio tauri runtime");
+    .build(tauri::generate_context!())
+    .expect("failed to build lich13studio tauri runtime")
+    .run(|app, event| {
+      handle_run_event(app, &event);
+    });
 }
