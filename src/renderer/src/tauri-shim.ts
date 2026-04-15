@@ -861,8 +861,14 @@ const api = {
     }
   },
   obsidian: {
-    getVaults: async () => [],
-    getFiles: async () => []
+    getVaults: async () => {
+      if (!invoke) return []
+      return invoke('get_obsidian_vaults')
+    },
+    getFiles: async (vaultName: string) => {
+      if (!invoke) return []
+      return invoke('get_obsidian_files', { vaultName })
+    }
   },
   searchService: {
     openUrlInSearchWindow: async (_uid: string, url: string) => {

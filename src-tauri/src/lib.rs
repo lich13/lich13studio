@@ -137,6 +137,21 @@ struct RemoteBackupFileInfo {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+struct ObsidianVaultInfo {
+  path: String,
+  name: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ObsidianFileInfo {
+  path: String,
+  r#type: String,
+  name: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct CaptureWindowInfo {
   id: u32,
   app_name: String,
@@ -207,6 +222,171 @@ async fn save_file(file_name: String, bytes: Vec<u8>) -> Result<String, String> 
 
 fn normalize_base_url(url: &str) -> String {
   url.trim_end_matches('/').to_string()
+}
+
+fn default_obsidian_config_path() -> Result<PathBuf, String> {
+  #[cfg(target_os = "windows")]
+  {
+    let base = dirs::config_dir().ok_or_else(|| String::from("Unable to resolve config directory"))?;
+    return Ok(base.join("obsidian").join("obsidian.json"));
+  }
+
+  #[cfg(target_os = "macos")]
+  {
+    let home = dirs::home_dir().ok_or_else(|| String::from("Unable to resolve home directory"))?;
+    return Ok(
+      home
+        .join("Library")
+        .join("Application Support")
+        .join("obsidian")
+        .join("obsidian.json"),
+    );
+  }
+
+  #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+  {
+    let home = dirs::home_dir().ok_or_else(|| String::from("Unable to resolve home directory"))?;
+    let xdg_config_home = std::env::var("XDG_CONFIG_HOME")
+      .map(PathBuf::from)
+      .unwrap_or_else(|_| home.join(".config"));
+
+    let config_dirs = ["obsidian", "Obsidian"];
+    let file_names = ["obsidian.json", "Obsidian.json"];
+    let mut candidates = Vec::new();
+
+    for dir in config_dirs {
+      for file in file_names {
+        candidates.push(xdg_config_home.join(dir).join(file));
+        candidates.push(home.join("snap").join("obsidian").join("current").join(".config").join(dir).join(file));
+        candidates.push(home.join("snap").join("obsidian").join("common").join(".config").join(dir).join(file));
+        candidates.push(
+          home
+            .join(".var")
+            .join("app")
+            .join("md.obsidian.Obsidian")
+            .join("config")
+            .join(dir)
+            .join(file),
+        );
+      }
+    }
+
+    if let Some(existing) = candidates.into_iter().find(|path| path.exists()) {
+      return Ok(existing);
+    }
+
+    Ok(xdg_config_home.join("obsidian").join("obsidian.json"))
+  }
+}
+
+fn parse_obsidian_vaults(config_content: &str) -> Result<Vec<ObsidianVaultInfo>, String> {
+  let config: Value = serde_json::from_str(config_content).map_err(|error| error.to_string())?;
+  let Some(vaults) = config.get("vaults").and_then(|vaults| vaults.as_object()) else {
+    return Ok(Vec::new());
+  };
+
+  Ok(
+    vaults
+      .values()
+      .filter_map(|vault| {
+        let path = vault.get("path")?.as_str()?.trim().to_string();
+        if path.is_empty() {
+          return None;
+        }
+        let name = vault
+          .get("name")
+          .and_then(|name| name.as_str())
+          .map(str::trim)
+          .filter(|name| !name.is_empty())
+          .map(ToOwned::to_owned)
+          .or_else(|| {
+            Path::new(&path)
+              .file_name()
+              .and_then(|name| name.to_str())
+              .map(ToOwned::to_owned)
+          })
+          .unwrap_or_else(|| path.clone());
+
+        Some(ObsidianVaultInfo { path, name })
+      })
+      .collect(),
+  )
+}
+
+fn obsidian_vaults() -> Result<Vec<ObsidianVaultInfo>, String> {
+  let config_path = default_obsidian_config_path()?;
+  if !config_path.exists() {
+    return Ok(Vec::new());
+  }
+
+  let config_content = fs::read_to_string(config_path).map_err(|error| error.to_string())?;
+  parse_obsidian_vaults(&config_content)
+}
+
+fn traverse_obsidian_directory(dir_path: &Path, relative_path: &str, results: &mut Vec<ObsidianFileInfo>) -> Result<(), String> {
+  if !relative_path.is_empty() {
+    let name = Path::new(relative_path)
+      .file_name()
+      .and_then(|name| name.to_str())
+      .unwrap_or(relative_path)
+      .to_string();
+
+    results.push(ObsidianFileInfo {
+      path: relative_path.to_string(),
+      r#type: String::from("folder"),
+      name,
+    });
+  }
+
+  let mut entries = fs::read_dir(dir_path)
+    .map_err(|error| error.to_string())?
+    .collect::<Result<Vec<_>, _>>()
+    .map_err(|error| error.to_string())?;
+
+  entries.sort_by_key(|entry| entry.file_name());
+
+  for entry in entries {
+    let file_type = entry.file_type().map_err(|error| error.to_string())?;
+    let item_name = entry.file_name().to_string_lossy().to_string();
+    if item_name.starts_with('.') {
+      continue;
+    }
+
+    let next_relative = if relative_path.is_empty() {
+      item_name.clone()
+    } else {
+      format!("{}/{}", relative_path, item_name)
+    };
+
+    let full_path = entry.path();
+    if file_type.is_dir() {
+      traverse_obsidian_directory(&full_path, &next_relative, results)?;
+    } else if file_type.is_file() && item_name.ends_with(".md") {
+      results.push(ObsidianFileInfo {
+        path: next_relative,
+        r#type: String::from("markdown"),
+        name: item_name,
+      });
+    }
+  }
+
+  Ok(())
+}
+
+fn obsidian_files(vault_name: &str) -> Result<Vec<ObsidianFileInfo>, String> {
+  let vault = obsidian_vaults()?
+    .into_iter()
+    .find(|vault| vault.name == vault_name || vault.path == vault_name)
+    .ok_or_else(|| format!("Obsidian vault not found: {}", vault_name))?;
+
+  let vault_path = PathBuf::from(&vault.path);
+  if !vault_path.exists() {
+    return Ok(Vec::new());
+  }
+
+  let mut results = Vec::new();
+  traverse_obsidian_directory(&vault_path, "", &mut results)?;
+  Ok(results)
 }
 
 fn resolve_openai_host(provider: &ProviderRequest) -> String {
@@ -1091,6 +1271,16 @@ async fn pick_folder() -> Result<Option<String>, String> {
 }
 
 #[tauri::command]
+fn get_obsidian_vaults() -> Result<Vec<ObsidianVaultInfo>, String> {
+  obsidian_vaults()
+}
+
+#[tauri::command]
+fn get_obsidian_files(vault_name: String) -> Result<Vec<ObsidianFileInfo>, String> {
+  obsidian_files(&vault_name)
+}
+
+#[tauri::command]
 async fn open_path(path: String) -> Result<bool, String> {
   if path.trim().is_empty() {
     return Ok(false);
@@ -1401,6 +1591,8 @@ pub fn run() {
       export_backup,
       save_file,
       pick_folder,
+      get_obsidian_vaults,
+      get_obsidian_files,
       open_path,
       list_capture_windows,
       capture_window,
