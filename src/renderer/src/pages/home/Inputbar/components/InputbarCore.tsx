@@ -69,7 +69,7 @@ export interface InputbarCoreProps {
 
 const TextareaStyle: CSSProperties = {
   paddingLeft: 0,
-  padding: '3px 12px 0px'
+  padding: '6px 15px 0px'
 }
 
 /**
@@ -540,7 +540,7 @@ export const InputbarCore: FC<InputbarCoreProps> = ({
   const quickPanelElement = config.enableQuickPanel ? <QuickPanelView setInputText={setText} /> : null
 
   return (
-    <NarrowLayout style={{ width: '100%', maxWidth: '880px' }}>
+    <NarrowLayout style={{ width: '100%' }}>
       <Container
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
@@ -572,13 +572,13 @@ export const InputbarCore: FC<InputbarCoreProps> = ({
             autoFocus
             variant="borderless"
             spellCheck={enableSpellCheck}
-            rows={1}
-            autoSize={height ? false : { minRows: 1, maxRows: 12 }}
+            rows={2}
+            autoSize={height ? false : { minRows: 2, maxRows: 20 }}
             styles={{ textarea: TextareaStyle }}
             style={{
               fontSize,
               height: height,
-              minHeight: '24px'
+              minHeight: '30px'
             }}
             disabled={searching}
             onClick={() => {
@@ -631,9 +631,9 @@ const Container = styled.div`
   flex-direction: column;
   position: relative;
   z-index: 2;
-  padding: 0 14px 0 14px;
+  padding: 0 18px 18px 18px;
   [navbar-position='top'] & {
-    padding: 0 14px 0 14px;
+    padding: 0 18px 10px 18px;
   }
 `
 
@@ -641,8 +641,8 @@ const InputBarContainer = styled.div`
   border: 0.5px solid var(--color-border);
   transition: all 0.2s ease;
   position: relative;
-  border-radius: 14px;
-  padding-top: 4px;
+  border-radius: 17px;
+  padding-top: 8px;
   background-color: var(--color-background-opacity);
 
   &.file-dragging {
@@ -656,7 +656,7 @@ const InputBarContainer = styled.div`
       right: 0;
       bottom: 0;
       background-color: rgba(46, 204, 113, 0.03);
-      border-radius: 12px;
+      border-radius: 14px;
       z-index: 5;
       pointer-events: none;
     }
@@ -684,8 +684,8 @@ const BottomBar = styled.div`
   display: flex;
   flex-direction: row;
   justify-content: space-between;
-  padding: 4px 10px 6px;
-  height: 34px;
+  padding: 6px 12px 8px;
+  min-height: 36px;
   gap: 12px;
   position: relative;
   z-index: 2;
