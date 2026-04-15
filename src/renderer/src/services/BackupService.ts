@@ -14,6 +14,9 @@ import { NotificationService } from './NotificationService'
 const logger = loggerService.withContext('BackupService')
 const ZOTERO_8_USER_AGENT = 'Zotero/8.0'
 const LEGACY_PERSIST_KEY = 'persist:cherry-studio'
+const WEBDAV_SYNC_LOCK_DIR = '.lich13studio-sync-locks'
+const WEBDAV_SYNC_LOCK_TTL_MS = 10 * 60 * 1000
+const WEBDAV_SYNC_CONFLICT_ERROR = 'WebDavSyncConflictError'
 
 // 重试删除WebDAV文件的辅助函数
 async function deleteWebdavFileWithRetry(fileName: string, webdavConfig: WebDavConfig, maxRetries = 3) {
@@ -41,6 +44,106 @@ async function deleteWebdavFileWithRetry(fileName: string, webdavConfig: WebDavC
 }
 
 const getWebdavUserAgent = () => (store.getState().settings.webdavUseZoteroAgent ? ZOTERO_8_USER_AGENT : undefined)
+
+const joinWebdavPath = (...segments: Array<string | undefined>) => {
+  const normalized = segments
+    .map((segment) => String(segment || '').trim())
+    .filter(Boolean)
+    .map((segment) => segment.replace(/^\/+|\/+$/g, ''))
+    .filter(Boolean)
+
+  return normalized.length > 0 ? `/${normalized.join('/')}` : ''
+}
+
+const sanitizeWebdavMarkerPart = (value: string) => {
+  const normalized = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+
+  return normalized || 'unknown'
+}
+
+const buildWebdavSyncMarkerFileName = (hostname: string, deviceType: string) =>
+  `${sanitizeWebdavMarkerPart(hostname)}.${sanitizeWebdavMarkerPart(deviceType)}.sync.lock`
+
+const buildWebdavSyncLockConfig = (webdavConfig: WebDavConfig, fileName?: string): WebDavConfig => ({
+  ...webdavConfig,
+  webdavPath: joinWebdavPath(webdavConfig.webdavPath, WEBDAV_SYNC_LOCK_DIR),
+  fileName
+})
+
+const isWebdavSyncConflictError = (error: unknown) =>
+  error instanceof Error && error.name === WEBDAV_SYNC_CONFLICT_ERROR
+
+const createWebdavSyncConflictError = (markerFileName: string) => {
+  const error = new Error(`WebDAV sync skipped because another device is syncing (${markerFileName}).`)
+  error.name = WEBDAV_SYNC_CONFLICT_ERROR
+  return error
+}
+
+const isActiveWebdavSyncMarker = (modifiedTime: string) => {
+  const modifiedAt = dayjs(modifiedTime)
+  if (!modifiedAt.isValid()) {
+    return false
+  }
+
+  return Date.now() - modifiedAt.valueOf() <= WEBDAV_SYNC_LOCK_TTL_MS
+}
+
+const writeWebdavSyncMarker = async (markerConfig: WebDavConfig, hostname: string, deviceType: string) => {
+  await window.api.backup.writeWebdavTextFile(
+    markerConfig.fileName || buildWebdavSyncMarkerFileName(hostname, deviceType),
+    JSON.stringify(
+      {
+        hostname,
+        deviceType,
+        updatedAt: new Date().toISOString()
+      },
+      null,
+      2
+    ),
+    markerConfig
+  )
+}
+
+const acquireWebdavSyncMarker = async (webdavConfig: WebDavConfig, hostname: string, deviceType: string) => {
+  await window.api.backup.createDirectory(webdavConfig, WEBDAV_SYNC_LOCK_DIR)
+
+  const markerFileName = buildWebdavSyncMarkerFileName(hostname, deviceType)
+  const markerConfig = buildWebdavSyncLockConfig(webdavConfig, markerFileName)
+  const markerFiles = await window.api.backup.listWebdavFiles(buildWebdavSyncLockConfig(webdavConfig))
+
+  for (const markerFile of markerFiles) {
+    if (markerFile.fileName === markerFileName) {
+      continue
+    }
+
+    if (!isActiveWebdavSyncMarker(markerFile.modifiedTime)) {
+      logger.verbose(`[WebDAVBackup] Removing stale sync marker: ${markerFile.fileName}`)
+      await deleteWebdavFileWithRetry(markerFile.fileName, buildWebdavSyncLockConfig(webdavConfig), 2)
+      continue
+    }
+
+    throw createWebdavSyncConflictError(markerFile.fileName)
+  }
+
+  await writeWebdavSyncMarker(markerConfig, hostname, deviceType)
+  return markerConfig
+}
+
+const releaseWebdavSyncMarker = async (markerConfig: WebDavConfig) => {
+  if (!markerConfig.fileName) {
+    return
+  }
+
+  try {
+    await deleteWebdavFileWithRetry(markerConfig.fileName, markerConfig, 2)
+  } catch (error) {
+    logger.error('[WebDAVBackup] Failed to release sync marker:', error as Error)
+  }
+}
 
 const toPortablePath = (value: string) => value.replace(/\\/g, '/')
 
@@ -269,11 +372,11 @@ export async function backupToWebdav({
   showMessage?: boolean
   customFileName?: string
   autoBackupProcess?: boolean
-} = {}) {
+} = {}): Promise<boolean> {
   const notificationService = NotificationService.getInstance()
   if (isManualBackupRunning) {
     logger.verbose('Manual backup already in progress')
-    return
+    return false
   }
   // force set showMessage to false when auto backup process
   if (autoBackupProcess) {
@@ -303,19 +406,22 @@ export async function backupToWebdav({
     logger.error('Failed to get device type or hostname:', error as Error)
   }
   const finalFileName = ensureBackupFileName(customFileName, buildDefaultBackupFileName(hostname, deviceType))
+  const webdavConfig: WebDavConfig = {
+    webdavHost,
+    webdavUser,
+    webdavPass,
+    webdavPath,
+    fileName: finalFileName,
+    skipBackupFile: webdavSkipBackupFile,
+    disableStream: webdavDisableStream,
+    userAgent
+  }
+  let markerConfig: WebDavConfig | null = null
 
   // 上传文件 - Use direct backup method (copy IndexedDB/LocalStorage directories)
   try {
-    const success = await window.api.backup.backupToWebdav({
-      webdavHost,
-      webdavUser,
-      webdavPass,
-      webdavPath,
-      fileName: finalFileName,
-      skipBackupFile: webdavSkipBackupFile,
-      disableStream: webdavDisableStream,
-      userAgent
-    })
+    markerConfig = await acquireWebdavSyncMarker(webdavConfig, hostname, deviceType)
+    const success = await window.api.backup.backupToWebdav(webdavConfig)
     if (success) {
       store.dispatch(
         setWebDAVSyncState({
@@ -382,6 +488,7 @@ export async function backupToWebdav({
           logger.error('Failed to clean up old backup files:', error as Error)
         }
       }
+      return true
     } else {
       // if auto backup process, throw error
       if (autoBackupProcess) {
@@ -390,8 +497,24 @@ export async function backupToWebdav({
 
       store.dispatch(setWebDAVSyncState({ lastSyncError: 'Backup failed' }))
       showMessage && window.toast.error(i18n.t('message.backup.failed'))
+      return false
     }
   } catch (error: any) {
+    if (isWebdavSyncConflictError(error)) {
+      logger.info(`[WebDAVBackup] ${error.message}`)
+      store.dispatch(setWebDAVSyncState({ lastSyncError: null }))
+
+      if (autoBackupProcess) {
+        throw error
+      }
+
+      if (!autoBackupProcess) {
+        window.toast.info(error.message)
+      }
+
+      return false
+    }
+
     // if auto backup process, throw error
     if (autoBackupProcess) {
       throw error
@@ -411,6 +534,9 @@ export async function backupToWebdav({
     logger.error('[Backup] backupToWebdav: Error uploading file to WebDAV:', error)
     throw error
   } finally {
+    if (markerConfig) {
+      await releaseWebdavSyncMarker(markerConfig)
+    }
     if (!autoBackupProcess) {
       store.dispatch(
         setWebDAVSyncState({
@@ -662,6 +788,19 @@ export function startAutoSync(immediate = false, type?: BackupType) {
         scheduleNextBackup('fromNow', backupType)
         break
       } catch (error: any) {
+        if (backupType === 'webdav' && isWebdavSyncConflictError(error)) {
+          logger.info(`${logPrefix} Skipping this cycle because another device is syncing`)
+          store.dispatch(
+            setWebDAVSyncState({
+              lastSyncError: null,
+              syncing: false
+            })
+          )
+          scheduleNextBackup('fromNow', backupType)
+          isWebdavAutoBackupRunning = false
+          break
+        }
+
         retryCount++
         if (retryCount === maxRetries) {
           logger.error(`${logPrefix} Auto backup failed after all retries:`, error)

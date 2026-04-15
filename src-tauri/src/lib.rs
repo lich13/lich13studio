@@ -1036,19 +1036,19 @@ async fn stream_gemini(window: Window, stream_id: String, request: ChatRequest) 
   }
 }
 
-async fn upload_webdav(config: &BackupWebDavConfig, payload: Vec<u8>) -> Result<String, String> {
+async fn put_webdav_payload(
+  config: &BackupWebDavConfig,
+  file_name: &str,
+  payload: Vec<u8>,
+  content_type: &str,
+) -> Result<String, String> {
   let client = Client::new();
-  let file_name = config
-    .file_name
-    .clone()
-    .filter(|file_name| !file_name.trim().is_empty())
-    .unwrap_or_else(|| String::from("lich13studio-backup.zip"));
   let target = format!("{}/{}", normalize_base_url(&config.url), file_name);
 
   let mut request = client
     .put(&target)
     .basic_auth(&config.username, Some(&config.password))
-    .header(CONTENT_TYPE, "application/zip");
+    .header(CONTENT_TYPE, content_type);
 
   if let Some(user_agent) = config.user_agent.as_ref().filter(|value| !value.trim().is_empty()) {
     request = request.header(USER_AGENT, user_agent);
@@ -1063,6 +1063,16 @@ async fn upload_webdav(config: &BackupWebDavConfig, payload: Vec<u8>) -> Result<
     .map_err(|error| error.to_string())?;
 
   Ok(target)
+}
+
+async fn upload_webdav(config: &BackupWebDavConfig, payload: Vec<u8>) -> Result<String, String> {
+  let file_name = config
+    .file_name
+    .clone()
+    .filter(|file_name| !file_name.trim().is_empty())
+    .unwrap_or_else(|| String::from("lich13studio-backup.zip"));
+
+  put_webdav_payload(config, &file_name, payload, "application/zip").await
 }
 
 async fn download_webdav(config: &BackupWebDavConfig) -> Result<Vec<u8>, String> {
@@ -1248,6 +1258,18 @@ async fn delete_webdav(config: &BackupWebDavConfig, file_name: &str) -> Result<b
     .map_err(|error| error.to_string())?
     .error_for_status()
     .map_err(|error| error.to_string())?;
+
+  Ok(true)
+}
+
+async fn put_webdav_text(config: &BackupWebDavConfig, file_name: &str, content: &str) -> Result<bool, String> {
+  put_webdav_payload(
+    config,
+    file_name,
+    content.as_bytes().to_vec(),
+    "text/plain; charset=utf-8",
+  )
+  .await?;
 
   Ok(true)
 }
@@ -1737,6 +1759,15 @@ async fn delete_webdav_file(file_name: String, config: BackupWebDavConfig) -> Re
 }
 
 #[tauri::command]
+async fn put_webdav_text_file(
+  file_name: String,
+  content: String,
+  config: BackupWebDavConfig,
+) -> Result<bool, String> {
+  put_webdav_text(&config, &file_name, &content).await
+}
+
+#[tauri::command]
 async fn test_provider(provider: ProviderRequest) -> Result<OperationResult, String> {
   let client = Client::new();
   let model_id = provider
@@ -1936,6 +1967,7 @@ pub fn run() {
       check_webdav_connection,
       create_webdav_directory,
       delete_webdav_file,
+      put_webdav_text_file,
       webdav_backup,
       webdav_restore,
       test_provider,
