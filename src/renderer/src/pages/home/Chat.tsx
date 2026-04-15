@@ -151,7 +151,7 @@ const Chat: FC<Props> = (props) => {
   }
 
   const mainHeight = isTopNavbar
-    ? 'calc(var(--app-viewport-height) - var(--navbar-height) - 6px)'
+    ? 'calc(var(--app-viewport-height) - 6px)'
     : 'calc(var(--app-viewport-height) - var(--navbar-height))'
 
   return (
@@ -180,8 +180,7 @@ const Chat: FC<Props> = (props) => {
                 className="flex flex-1 flex-col"
                 style={{
                   flex: 1,
-                  minHeight: 0,
-                  height: isTopNavbar ? `calc(${mainHeight} - var(--navbar-height))` : '100%'
+                  minHeight: 0
                 }}>
                 <Messages
                   key={props.activeTopic.id}
@@ -238,7 +237,7 @@ const Container = styled.div`
   flex: 1;
   overflow: hidden;
   [navbar-position='top'] & {
-    height: calc(var(--app-viewport-height) - var(--navbar-height) - 6px);
+    height: calc(var(--app-viewport-height) - 6px);
     background-color: var(--color-background);
     border-top-left-radius: 10px;
     border-bottom-left-radius: 10px;

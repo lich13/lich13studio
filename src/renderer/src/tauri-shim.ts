@@ -379,17 +379,21 @@ const mapWebdavConfig = (webdavConfig: AnyRecord) => ({
   skipBackupFile: Boolean(webdavConfig.skipBackupFile)
 })
 
-const mapS3Config = (s3Config: AnyRecord) => ({
-  endpoint: s3Config.endpoint || '',
-  region: s3Config.region || 'us-east-1',
-  bucket: s3Config.bucket || '',
-  accessKey: s3Config.accessKeyId || '',
-  secretKey: s3Config.secretAccessKey || '',
-  objectKey: [s3Config.root, s3Config.fileName || 'lich13studio-backup.zip'].filter(Boolean).join('/'),
-  root: s3Config.root || '',
-  pathStyle: true,
-  skipBackupFile: Boolean(s3Config.skipBackupFile)
-})
+const mapS3Config = (s3Config: AnyRecord) => {
+  const normalizedRoot = String(s3Config.root || '').replace(/^\/+|\/+$/g, '')
+
+  return {
+    endpoint: s3Config.endpoint || '',
+    region: s3Config.region || 'us-east-1',
+    bucket: s3Config.bucket || '',
+    accessKey: s3Config.accessKeyId || '',
+    secretKey: s3Config.secretAccessKey || '',
+    objectKey: [normalizedRoot, s3Config.fileName || 'lich13studio-backup.zip'].filter(Boolean).join('/'),
+    root: normalizedRoot,
+    pathStyle: true,
+    skipBackupFile: Boolean(s3Config.skipBackupFile)
+  }
+}
 
 const serializeLocalStorage = () => {
   const snapshot: Record<string, string> = {}
@@ -946,7 +950,8 @@ const api = {
           return selected
         }
       }
-      return (await getAppInfo()).appDataPath
+      const appInfo = await getAppInfo()
+      return appInfo?.appDataPath || '/tmp'
     },
     saveImage: async (name: string, data: string) => {
       const blob = await (await fetch(data)).blob()
