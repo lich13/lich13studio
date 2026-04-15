@@ -57,7 +57,7 @@ import {
   resetAssistantMessage
 } from '@renderer/utils/messageUtils/create'
 import { getMainTextContent } from '@renderer/utils/messageUtils/find'
-import { getTopicQueue, waitForTopicQueue } from '@renderer/utils/queue'
+import { getTopicQueue, hasTopicPendingRequests, waitForTopicQueue } from '@renderer/utils/queue'
 import { defaultAppHeaders } from '@shared/utils'
 import type { TextStreamPart } from 'ai'
 import { t } from 'i18next'
@@ -134,6 +134,62 @@ const repairTerminalThinkingBlocks = (messages: Message[], blocks: MessageBlock[
 
   return {
     blocks: blocks.map((block) => blockMap.get(block.id) || block),
+    repairedBlocks
+  }
+}
+
+const pauseStaleStreamingState = (topicId: string, messages: Message[], blocks: MessageBlock[]) => {
+  if (hasTopicPendingRequests(topicId)) {
+    return { messages, blocks, repairedMessages: [] as Message[], repairedBlocks: [] as MessageBlock[] }
+  }
+
+  const staleMessageMap = new Map<string, Message>()
+  const repairedMessages: Message[] = []
+
+  for (const message of messages) {
+    if (
+      message.role === 'assistant' &&
+      (message.status === AssistantMessageStatus.PROCESSING ||
+        message.status === AssistantMessageStatus.PENDING ||
+        message.status === AssistantMessageStatus.SEARCHING)
+    ) {
+      const repairedMessage = {
+        ...message,
+        status: AssistantMessageStatus.PAUSED
+      }
+      staleMessageMap.set(message.id, repairedMessage)
+      repairedMessages.push(repairedMessage)
+    }
+  }
+
+  if (repairedMessages.length === 0) {
+    return { messages, blocks, repairedMessages, repairedBlocks: [] as MessageBlock[] }
+  }
+
+  const repairedBlocks: MessageBlock[] = []
+  const normalizedBlocks = blocks.map((block) => {
+    if (
+      !staleMessageMap.has(block.messageId) ||
+      (block.status !== MessageBlockStatus.PROCESSING &&
+        block.status !== MessageBlockStatus.STREAMING &&
+        block.status !== MessageBlockStatus.PENDING)
+    ) {
+      return block
+    }
+
+    const repairedBlock = {
+      ...block,
+      status: MessageBlockStatus.PAUSED
+    }
+
+    repairedBlocks.push(repairedBlock)
+    return repairedBlock
+  })
+
+  return {
+    messages: messages.map((message) => staleMessageMap.get(message.id) || message),
+    blocks: normalizedBlocks,
+    repairedMessages,
     repairedBlocks
   }
 }
@@ -1956,24 +2012,39 @@ export const loadTopicMessagesThunk =
 
       // Unified call - no need to check isAgentSessionTopicId
       const { messages, blocks } = await dbService.fetchMessages(topicId)
-      const { blocks: normalizedBlocks, repairedBlocks } = repairTerminalThinkingBlocks(messages, blocks)
+      const {
+        messages: pausedMessages,
+        blocks: pausedBlocks,
+        repairedMessages,
+        repairedBlocks: pausedBlocksToPersist
+      } = pauseStaleStreamingState(topicId, messages, blocks)
+      const { blocks: normalizedBlocks, repairedBlocks: repairedThinkingBlocks } = repairTerminalThinkingBlocks(
+        pausedMessages,
+        pausedBlocks
+      )
+      const blocksToPersist = [...pausedBlocksToPersist, ...repairedThinkingBlocks]
 
       logger.silly('Loaded messages via DbService', {
         topicId,
-        messageCount: messages.length,
+        messageCount: pausedMessages.length,
         blockCount: normalizedBlocks.length,
-        repairedThinkingBlockCount: repairedBlocks.length
+        repairedThinkingBlockCount: repairedThinkingBlocks.length,
+        repairedMessageCount: repairedMessages.length
       })
 
-      if (repairedBlocks.length > 0) {
-        await updateBlocks(repairedBlocks)
+      if (repairedMessages.length > 0) {
+        await Promise.all(repairedMessages.map((message) => updateMessage(topicId, message.id, { status: message.status })))
+      }
+
+      if (blocksToPersist.length > 0) {
+        await updateBlocks(blocksToPersist)
       }
 
       // Update Redux state with fetched data
       if (normalizedBlocks.length > 0) {
         dispatch(upsertManyBlocks(normalizedBlocks))
       }
-      dispatch(newMessagesActions.messagesReceived({ topicId, messages }))
+      dispatch(newMessagesActions.messagesReceived({ topicId, messages: pausedMessages }))
     } catch (error) {
       logger.error(`Failed to load messages for topic ${topicId}:`, error as Error)
       // Could dispatch an error action here if needed

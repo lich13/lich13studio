@@ -107,15 +107,13 @@ const normalizeThinkingTime = (value?: number) => (typeof value === 'number' && 
 const ThinkingTimeSeconds = memo(
   ({ blockThinkingTime, isThinking }: { blockThinkingTime: number; isThinking: boolean }) => {
     const { t } = useTranslation()
-    // Initialize to 0 so the local timer always starts fresh when thinking begins.
-    // The actual blockThinkingTime is only applied once thinking completes (isThinking = false),
-    // which prevents a race condition from inflating the initial display value.
-    const [displayTime, setDisplayTime] = useState(isThinking ? 0 : normalizeThinkingTime(blockThinkingTime))
+    const [displayTime, setDisplayTime] = useState(normalizeThinkingTime(blockThinkingTime))
 
     const timer = useRef<NodeJS.Timeout | null>(null)
 
     useEffect(() => {
       if (isThinking) {
+        setDisplayTime((prev) => Math.max(prev, normalizeThinkingTime(blockThinkingTime)))
         if (!timer.current) {
           timer.current = setInterval(() => {
             setDisplayTime((prev) => prev + 100)
