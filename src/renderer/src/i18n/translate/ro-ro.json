@@ -1078,6 +1078,17 @@
     },
     "input": {
       "auto_resize": "Redimensionare automată înălțime",
+      "capture": {
+        "cancelled": "[to be translated]:Window capture cancelled",
+        "current": "[to be translated]:Current Window",
+        "failed": "[to be translated]:Window capture failed",
+        "image_required": "[to be translated]:The current model does not support image analysis. Switch to a vision-capable model first.",
+        "label": "[to be translated]:Capture other app window",
+        "pick_window": "[to be translated]:Choose the app window you want to analyze",
+        "success": "[to be translated]:Window screenshot added to the input",
+        "unavailable": "[to be translated]:No capturable app windows were found",
+        "unsupported": "[to be translated]:This runtime does not support window capture"
+      },
       "clear": {
         "content": "Vrei să ștergi toate mesajele subiectului curent?",
         "label": "Șterge {{Command}}",
@@ -4386,7 +4397,11 @@
         "syncError": "Eroare backup",
         "syncStatus": "Stare backup",
         "title": "WebDAV",
-        "user": "Utilizator WebDAV"
+        "user": "Utilizator WebDAV",
+        "zoteroAgent": {
+          "help": "[to be translated]:When enabled, WebDAV requests will use the User-Agent Zotero/8.0 for providers that require the client app to be Zotero 8 or above.",
+          "title": "[to be translated]:Impersonate Zotero 8+"
+        }
       },
       "yuque": {
         "check": {
@@ -5298,6 +5313,11 @@
       "search": "Caută furnizori...",
       "search_placeholder": "Caută id sau nume model",
       "title": "Furnizor model",
+      "user_agent": {
+        "help": "Antet User-Agent personalizat optional pentru cererile API ale acestui furnizor.",
+        "label": "User-Agent",
+        "placeholder": "Exemplu: CherryStudio/1.0"
+      },
       "vertex_ai": {
         "api_host_help": "Gazda API pentru Vertex AI, nerecomandat de completat, aplicabil în general pentru reverse proxy",
         "documentation": "Vezi documentația oficială pentru mai multe detalii de configurare:",

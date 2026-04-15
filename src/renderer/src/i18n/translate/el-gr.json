@@ -1078,6 +1078,17 @@
     },
     "input": {
       "auto_resize": "Αυτόματη μείωση ύψους",
+      "capture": {
+        "cancelled": "[to be translated]:Window capture cancelled",
+        "current": "[to be translated]:Current Window",
+        "failed": "[to be translated]:Window capture failed",
+        "image_required": "[to be translated]:The current model does not support image analysis. Switch to a vision-capable model first.",
+        "label": "[to be translated]:Capture other app window",
+        "pick_window": "[to be translated]:Choose the app window you want to analyze",
+        "success": "[to be translated]:Window screenshot added to the input",
+        "unavailable": "[to be translated]:No capturable app windows were found",
+        "unsupported": "[to be translated]:This runtime does not support window capture"
+      },
       "clear": {
         "content": "Είσαι σίγουρος ότι θέλεις να διαγράψεις όλα τα μηνύματα της τρέχουσας συζήτησης;",
         "label": "Καθαρισμός μηνυμάτων {{Command}}",
@@ -4386,7 +4397,11 @@
         "syncError": "Σφάλμα στην αντιγραφή ασφαλείας",
         "syncStatus": "Κατάσταση αντιγραφής ασφαλείας",
         "title": "WebDAV",
-        "user": "Όνομα χρήστη WebDAV"
+        "user": "Όνομα χρήστη WebDAV",
+        "zoteroAgent": {
+          "help": "[to be translated]:When enabled, WebDAV requests will use the User-Agent Zotero/8.0 for providers that require the client app to be Zotero 8 or above.",
+          "title": "[to be translated]:Impersonate Zotero 8+"
+        }
       },
       "yuque": {
         "check": {
@@ -5298,6 +5313,11 @@
       "search": "Αναζήτηση πλατφόρμας μονάδων...",
       "search_placeholder": "Αναζήτηση ID ή ονόματος μονάδας",
       "title": "Υπηρεσία μονάδων",
+      "user_agent": {
+        "help": "Προαιρετική προσαρμοσμένη κεφαλίδα User-Agent για τα API αιτήματα αυτού του παρόχου.",
+        "label": "User-Agent",
+        "placeholder": "Παράδειγμα: CherryStudio/1.0"
+      },
       "vertex_ai": {
         "api_host_help": "Η διεύθυνση API του Vertex AI, δεν συνιστάται να συμπληρωθεί, συνήθως κατάλληλη για αντίστροφη διαμεσολάβηση",
         "documentation": "Δείτε την επίσημη τεκμηρίωση για περισσότερες λεπτομέρειες ρύθμισης:",

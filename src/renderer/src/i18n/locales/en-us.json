@@ -1078,6 +1078,17 @@
     },
     "input": {
       "auto_resize": "Auto resize height",
+      "capture": {
+        "cancelled": "Window capture cancelled",
+        "current": "Current Window",
+        "failed": "Window capture failed",
+        "image_required": "The current model does not support image analysis. Switch to a vision-capable model first.",
+        "label": "Capture other app window",
+        "pick_window": "Choose the app window you want to analyze",
+        "success": "Window screenshot added to the input",
+        "unavailable": "No capturable app windows were found",
+        "unsupported": "This runtime does not support window capture"
+      },
       "clear": {
         "content": "Do you want to clear all messages of the current topic?",
         "label": "Clear {{Command}}",
@@ -1160,17 +1171,6 @@
       "topics": " Topics ",
       "translate": "Translate to {{target_language}}",
       "translating": "Translating...",
-      "capture": {
-        "cancelled": "Window capture cancelled",
-        "current": "Current Window",
-        "failed": "Window capture failed",
-        "image_required": "The current model does not support image analysis. Switch to a vision-capable model first.",
-        "label": "Capture other app window",
-        "pick_window": "Choose the app window you want to analyze",
-        "success": "Window screenshot added to the input",
-        "unavailable": "No capturable app windows were found",
-        "unsupported": "This runtime does not support window capture"
-      },
       "upload": {
         "attachment": "Upload attachment",
         "document": "Upload document file (model does not support images)",
@@ -4369,10 +4369,6 @@
           "help": "When enabled, loads the file into memory before uploading. This can solve incompatibility issues with some WebDAV servers that do not support chunked uploads, but it will increase memory usage.",
           "title": "Disable Stream Upload"
         },
-        "zoteroAgent": {
-          "help": "When enabled, WebDAV requests will use the User-Agent Zotero/8.0 for providers that require the client app to be Zotero 8 or above.",
-          "title": "Impersonate Zotero 8+"
-        },
         "host": {
           "label": "WebDAV Host",
           "placeholder": "http://localhost:8080"
@@ -4401,7 +4397,11 @@
         "syncError": "Backup Error",
         "syncStatus": "Backup Status",
         "title": "WebDAV",
-        "user": "WebDAV User"
+        "user": "WebDAV User",
+        "zoteroAgent": {
+          "help": "When enabled, WebDAV requests will use the User-Agent Zotero/8.0 for providers that require the client app to be Zotero 8 or above.",
+          "title": "Impersonate Zotero 8+"
+        }
       },
       "yuque": {
         "check": {
@@ -5313,6 +5313,11 @@
       "search": "Search Providers...",
       "search_placeholder": "Search model id or name",
       "title": "Model Provider",
+      "user_agent": {
+        "help": "Optional custom User-Agent header for this provider's API requests.",
+        "label": "User-Agent",
+        "placeholder": "Example: CherryStudio/1.0"
+      },
       "vertex_ai": {
         "api_host_help": "The API host for Vertex AI, not recommended to fill in, generally applicable to reverse proxy",
         "documentation": "View official documentation for more configuration details:",

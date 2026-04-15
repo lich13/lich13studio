@@ -1078,6 +1078,17 @@
     },
     "input": {
       "auto_resize": "Ajuste automático de altura",
+      "capture": {
+        "cancelled": "[to be translated]:Window capture cancelled",
+        "current": "[to be translated]:Current Window",
+        "failed": "[to be translated]:Window capture failed",
+        "image_required": "[to be translated]:The current model does not support image analysis. Switch to a vision-capable model first.",
+        "label": "[to be translated]:Capture other app window",
+        "pick_window": "[to be translated]:Choose the app window you want to analyze",
+        "success": "[to be translated]:Window screenshot added to the input",
+        "unavailable": "[to be translated]:No capturable app windows were found",
+        "unsupported": "[to be translated]:This runtime does not support window capture"
+      },
       "clear": {
         "content": "Tem certeza de que deseja limpar todas as mensagens da sessão atual?",
         "label": "Limpar mensagens {{Command}}",
@@ -4386,7 +4397,11 @@
         "syncError": "Erro de backup",
         "syncStatus": "Status de backup",
         "title": "WebDAV",
-        "user": "Nome de usuário WebDAV"
+        "user": "Nome de usuário WebDAV",
+        "zoteroAgent": {
+          "help": "[to be translated]:When enabled, WebDAV requests will use the User-Agent Zotero/8.0 for providers that require the client app to be Zotero 8 or above.",
+          "title": "[to be translated]:Impersonate Zotero 8+"
+        }
       },
       "yuque": {
         "check": {
@@ -5298,6 +5313,11 @@
       "search": "Procurar plataforma de modelos...",
       "search_placeholder": "Procurar ID ou nome do modelo",
       "title": "Serviços de Modelos",
+      "user_agent": {
+        "help": "Cabeçalho User-Agent personalizado opcional para os pedidos API deste fornecedor.",
+        "label": "User-Agent",
+        "placeholder": "Exemplo: CherryStudio/1.0"
+      },
       "vertex_ai": {
         "api_host_help": "O endereço da API do Vertex AI, não é recomendado preencher, normalmente aplicável a proxy reverso",
         "documentation": "Consulte a documentação oficial para obter mais detalhes de configuração:",

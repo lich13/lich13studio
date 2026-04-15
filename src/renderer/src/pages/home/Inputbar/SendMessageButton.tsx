@@ -1,19 +1,42 @@
+import { ActionIconButton } from '@renderer/components/Buttons'
+import { CirclePause } from 'lucide-react'
 import type { FC, KeyboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
 interface Props {
   disabled: boolean
   sendMessage: () => void
+  isLoading?: boolean
+  pauseMessage?: () => void
 }
 
-const SendMessageButton: FC<Props> = ({ disabled, sendMessage }) => {
+const SendMessageButton: FC<Props> = ({ disabled, sendMessage, isLoading = false, pauseMessage }) => {
   const { t } = useTranslation()
 
   const handleKeyDown = (e: KeyboardEvent<HTMLElement>) => {
+    if (isLoading && pauseMessage && (e.key === 'Enter' || e.key === ' ')) {
+      e.preventDefault()
+      pauseMessage()
+      return
+    }
+
     if (!disabled && (e.key === 'Enter' || e.key === ' ')) {
       e.preventDefault()
       sendMessage()
     }
+  }
+
+  if (isLoading) {
+    return (
+      <ActionIconButton
+        onClick={pauseMessage}
+        onKeyDown={handleKeyDown}
+        aria-label={t('chat.input.pause')}
+        title={t('chat.input.pause')}
+        style={{ marginRight: -2 }}>
+        <CirclePause size={20} color="var(--color-error)" />
+      </ActionIconButton>
+    )
   }
 
   return (

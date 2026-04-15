@@ -19,6 +19,19 @@ type HostFormatter = {
   format: (provider: Provider, appendApiVersion: boolean) => string | Promise<string>
 }
 
+function mergeProviderRequestHeaders(provider: Provider): Provider {
+  const userAgent = provider.userAgent?.trim()
+  const extraHeaders = { ...provider.extra_headers }
+
+  delete extraHeaders['User-Agent']
+  delete extraHeaders['user-agent']
+
+  return {
+    ...provider,
+    extra_headers: userAgent ? { ...extraHeaders, 'User-Agent': userAgent } : extraHeaders
+  }
+}
+
 /**
  * Format and normalize the API host URL for a provider.
  * Handles provider-specific URL formatting rules (e.g., appending version paths, Azure formatting).
@@ -27,7 +40,7 @@ type HostFormatter = {
  * @returns A new provider instance with the formatted API host.
  */
 export async function formatProviderApiHost(provider: Provider): Promise<Provider> {
-  const formatted = { ...provider }
+  const formatted = mergeProviderRequestHeaders({ ...provider })
   const appendApiVersion = !isWithTrailingSharp(provider.apiHost)
 
   if (formatted.anthropicApiHost) {

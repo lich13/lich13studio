@@ -58,9 +58,22 @@ type HostFormatter = {
   format: (provider: Provider, appendApiVersion: boolean) => string
 }
 
+function mergeProviderRequestHeaders(provider: Provider): Provider {
+  const userAgent = provider.userAgent?.trim()
+  const extraHeaders = { ...provider.extra_headers }
+
+  delete extraHeaders['User-Agent']
+  delete extraHeaders['user-agent']
+
+  return {
+    ...provider,
+    extra_headers: userAgent ? { ...extraHeaders, 'User-Agent': userAgent } : extraHeaders
+  }
+}
+
 // WARNING: if any changes are made here, please sync it to src/main/aiCore/provider/providerConfig.ts:formatProviderApiHost
 export function formatProviderApiHost(provider: Provider): Provider {
-  const formatted = { ...provider }
+  const formatted = mergeProviderRequestHeaders({ ...provider })
   const appendApiVersion = !isWithTrailingSharp(provider.apiHost)
 
   if (formatted.anthropicApiHost) {

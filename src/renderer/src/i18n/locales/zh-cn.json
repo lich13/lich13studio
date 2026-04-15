@@ -1078,6 +1078,17 @@
     },
     "input": {
       "auto_resize": "自动调整高度",
+      "capture": {
+        "cancelled": "已取消窗口截屏",
+        "current": "当前窗口",
+        "failed": "窗口截屏失败",
+        "image_required": "当前模型不支持图片分析，请先切换到支持图片的模型",
+        "label": "截屏其他应用窗口",
+        "pick_window": "请选择要分析的应用窗口",
+        "success": "窗口截图已加入输入框",
+        "unavailable": "未找到可截取的应用窗口",
+        "unsupported": "当前运行环境不支持窗口截屏"
+      },
       "clear": {
         "content": "确定要清除当前会话所有消息吗？",
         "label": "清空消息 {{Command}}",
@@ -1160,17 +1171,6 @@
       "topics": "话题",
       "translate": "翻译成 {{target_language}}",
       "translating": "翻译中...",
-      "capture": {
-        "cancelled": "已取消窗口截屏",
-        "current": "当前窗口",
-        "failed": "窗口截屏失败",
-        "image_required": "当前模型不支持图片分析，请先切换到支持图片的模型",
-        "label": "截屏其他应用窗口",
-        "pick_window": "请选择要分析的应用窗口",
-        "success": "窗口截图已加入输入框",
-        "unavailable": "未找到可截取的应用窗口",
-        "unsupported": "当前运行环境不支持窗口截屏"
-      },
       "upload": {
         "attachment": "上传附件",
         "document": "上传文档（模型不支持图片）",
@@ -4369,10 +4369,6 @@
           "help": "开启后，将文件加载到内存中再上传，可解决部分WebDAV服务不兼容chunked上传的问题，但会增加内存占用。",
           "title": "禁用流式上传"
         },
-        "zoteroAgent": {
-          "help": "开启后，将把 WebDAV 请求的 User-Agent 伪装为 Zotero/8.0，用于兼容要求指定应用为 Zotero 8 及以上的服务商。",
-          "title": "伪装为 Zotero 8+"
-        },
         "host": {
           "label": "WebDAV 地址",
           "placeholder": "http://localhost:8080"
@@ -4401,7 +4397,11 @@
         "syncError": "备份错误",
         "syncStatus": "备份状态",
         "title": "WebDAV",
-        "user": "WebDAV 用户名"
+        "user": "WebDAV 用户名",
+        "zoteroAgent": {
+          "help": "开启后，将把 WebDAV 请求的 User-Agent 伪装为 Zotero/8.0，用于兼容要求指定应用为 Zotero 8 及以上的服务商。",
+          "title": "伪装为 Zotero 8+"
+        }
       },
       "yuque": {
         "check": {
@@ -5313,6 +5313,11 @@
       "search": "搜索模型平台...",
       "search_placeholder": "搜索模型 ID 或名称",
       "title": "模型服务",
+      "user_agent": {
+        "help": "可选。为当前提供商的 API 请求自定义 User-Agent 请求头。",
+        "label": "User-Agent",
+        "placeholder": "例如：CherryStudio/1.0"
+      },
       "vertex_ai": {
         "api_host_help": "Vertex AI 的 API 地址，不建议填写，通常适用于反向代理",
         "documentation": "查看官方文档了解更多配置详情：",

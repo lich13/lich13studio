@@ -1078,6 +1078,17 @@
     },
     "input": {
       "auto_resize": "自動調整高度",
+      "capture": {
+        "cancelled": "[to be translated]:Window capture cancelled",
+        "current": "[to be translated]:Current Window",
+        "failed": "[to be translated]:Window capture failed",
+        "image_required": "[to be translated]:The current model does not support image analysis. Switch to a vision-capable model first.",
+        "label": "[to be translated]:Capture other app window",
+        "pick_window": "[to be translated]:Choose the app window you want to analyze",
+        "success": "[to be translated]:Window screenshot added to the input",
+        "unavailable": "[to be translated]:No capturable app windows were found",
+        "unsupported": "[to be translated]:This runtime does not support window capture"
+      },
       "clear": {
         "content": "您想要清除目前話題的所有訊息嗎？",
         "label": "清除 {{Command}}",
@@ -4386,7 +4397,11 @@
         "syncError": "備份錯誤",
         "syncStatus": "備份狀態",
         "title": "WebDAV",
-        "user": "WebDAV 使用者名稱"
+        "user": "WebDAV 使用者名稱",
+        "zoteroAgent": {
+          "help": "[to be translated]:When enabled, WebDAV requests will use the User-Agent Zotero/8.0 for providers that require the client app to be Zotero 8 or above.",
+          "title": "[to be translated]:Impersonate Zotero 8+"
+        }
       },
       "yuque": {
         "check": {
@@ -5298,6 +5313,11 @@
       "search": "搜尋模型平臺...",
       "search_placeholder": "搜尋模型 ID 或名稱",
       "title": "模型提供者",
+      "user_agent": {
+        "help": "可選。為目前提供商的 API 請求自訂 User-Agent 標頭。",
+        "label": "User-Agent",
+        "placeholder": "例如：CherryStudio/1.0"
+      },
       "vertex_ai": {
         "api_host_help": "Vertex AI 的 API 位址，不建議填寫，通常適用於反向代理",
         "documentation": "檢視官方文件以取得更多設定詳細資訊：",

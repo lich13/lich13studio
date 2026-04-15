@@ -1078,6 +1078,17 @@
     },
     "input": {
       "auto_resize": "高さを自動調整",
+      "capture": {
+        "cancelled": "[to be translated]:Window capture cancelled",
+        "current": "[to be translated]:Current Window",
+        "failed": "[to be translated]:Window capture failed",
+        "image_required": "[to be translated]:The current model does not support image analysis. Switch to a vision-capable model first.",
+        "label": "[to be translated]:Capture other app window",
+        "pick_window": "[to be translated]:Choose the app window you want to analyze",
+        "success": "[to be translated]:Window screenshot added to the input",
+        "unavailable": "[to be translated]:No capturable app windows were found",
+        "unsupported": "[to be translated]:This runtime does not support window capture"
+      },
       "clear": {
         "content": "現在のトピックのすべてのメッセージをクリアしますか？",
         "label": "クリア {{Command}}",
@@ -4386,7 +4397,11 @@
         "syncError": "バックアップエラー",
         "syncStatus": "バックアップ状態",
         "title": "WebDAV",
-        "user": "WebDAVユーザー"
+        "user": "WebDAVユーザー",
+        "zoteroAgent": {
+          "help": "[to be translated]:When enabled, WebDAV requests will use the User-Agent Zotero/8.0 for providers that require the client app to be Zotero 8 or above.",
+          "title": "[to be translated]:Impersonate Zotero 8+"
+        }
       },
       "yuque": {
         "check": {
@@ -5298,6 +5313,11 @@
       "search": "プロバイダーを検索...",
       "search_placeholder": "モデルIDまたは名前を検索",
       "title": "モデルプロバイダー",
+      "user_agent": {
+        "help": "このプロバイダーの API リクエストに使う任意のカスタム User-Agent ヘッダーです。",
+        "label": "User-Agent",
+        "placeholder": "例: CherryStudio/1.0"
+      },
       "vertex_ai": {
         "api_host_help": "Vertex AIのAPIアドレス。逆プロキシに適しています。",
         "documentation": "詳細な設定については、公式ドキュメントを参照してください:",

@@ -107,6 +107,7 @@ const ProviderSetting: FC<Props> = ({ providerId, isOnboarding = false }) => {
   const [apiHost, setApiHost] = useState(provider.apiHost)
   const [anthropicApiHost, setAnthropicHost] = useState<string | undefined>(provider.anthropicApiHost)
   const [apiVersion, setApiVersion] = useState(provider.apiVersion)
+  const [userAgent, setUserAgent] = useState(provider.userAgent || '')
   const [activeHostField, setActiveHostField] = useState<HostField>('apiHost')
   const { t, i18n } = useTranslation()
   const { theme } = useTheme()
@@ -243,6 +244,11 @@ const ProviderSetting: FC<Props> = ({ providerId, isOnboarding = false }) => {
     }
   }
   const onUpdateApiVersion = () => updateProvider({ apiVersion })
+  const onUpdateUserAgent = () => {
+    const normalizedUserAgent = userAgent.trim()
+    updateProvider({ userAgent: normalizedUserAgent || undefined })
+    setUserAgent(normalizedUserAgent)
+  }
 
   const openApiKeyList = async () => {
     if (localApiKey !== provider.apiKey) {
@@ -397,6 +403,10 @@ const ProviderSetting: FC<Props> = ({ providerId, isOnboarding = false }) => {
   useEffect(() => {
     setAnthropicHost(provider.anthropicApiHost)
   }, [provider.anthropicApiHost])
+
+  useEffect(() => {
+    setUserAgent(provider.userAgent || '')
+  }, [provider.userAgent])
 
   const canConfigureAnthropicHost = useMemo(() => {
     if (isCherryIN) {
@@ -636,6 +646,22 @@ const ProviderSetting: FC<Props> = ({ providerId, isOnboarding = false }) => {
               )}
             </>
           )}
+        </>
+      )}
+      {!hideApiInput && !isAnthropicOAuth() && !isDmxapi && (
+        <>
+          <SettingSubtitle>{t('settings.provider.user_agent.label')}</SettingSubtitle>
+          <Space.Compact style={{ width: '100%', marginTop: 5 }}>
+            <Input
+              value={userAgent}
+              placeholder={t('settings.provider.user_agent.placeholder')}
+              onChange={(e) => setUserAgent(e.target.value)}
+              onBlur={onUpdateUserAgent}
+            />
+          </Space.Compact>
+          <SettingHelpTextRow style={{ justifyContent: 'space-between' }}>
+            <SettingHelpText>{t('settings.provider.user_agent.help')}</SettingHelpText>
+          </SettingHelpTextRow>
         </>
       )}
       {isAzureOpenAI && (

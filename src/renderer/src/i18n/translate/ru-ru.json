@@ -1078,6 +1078,17 @@
     },
     "input": {
       "auto_resize": "Автоматическая высота",
+      "capture": {
+        "cancelled": "[to be translated]:Window capture cancelled",
+        "current": "[to be translated]:Current Window",
+        "failed": "[to be translated]:Window capture failed",
+        "image_required": "[to be translated]:The current model does not support image analysis. Switch to a vision-capable model first.",
+        "label": "[to be translated]:Capture other app window",
+        "pick_window": "[to be translated]:Choose the app window you want to analyze",
+        "success": "[to be translated]:Window screenshot added to the input",
+        "unavailable": "[to be translated]:No capturable app windows were found",
+        "unsupported": "[to be translated]:This runtime does not support window capture"
+      },
       "clear": {
         "content": "Хотите очистить все сообщения текущего топика?",
         "label": "Очистить {{Command}}",
@@ -4386,7 +4397,11 @@
         "syncError": "Ошибка резервного копирования",
         "syncStatus": "Статус резервного копирования",
         "title": "WebDAV",
-        "user": "Пользователь WebDAV"
+        "user": "Пользователь WebDAV",
+        "zoteroAgent": {
+          "help": "[to be translated]:When enabled, WebDAV requests will use the User-Agent Zotero/8.0 for providers that require the client app to be Zotero 8 or above.",
+          "title": "[to be translated]:Impersonate Zotero 8+"
+        }
       },
       "yuque": {
         "check": {
@@ -5298,6 +5313,11 @@
       "search": "Поиск поставщиков...",
       "search_placeholder": "Поиск по ID или имени модели",
       "title": "Провайдеры моделей",
+      "user_agent": {
+        "help": "Необязательный пользовательский заголовок User-Agent для API-запросов этого провайдера.",
+        "label": "User-Agent",
+        "placeholder": "Например: CherryStudio/1.0"
+      },
       "vertex_ai": {
         "api_host_help": "API-адрес Vertex AI, не рекомендуется заполнять, обычно применим к обратным прокси",
         "documentation": "Смотрите официальную документацию для получения более подробной информации о конфигурации:",
