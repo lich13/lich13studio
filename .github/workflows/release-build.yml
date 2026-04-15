@@ -16,10 +16,9 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
-  TAURI_CLI_VERSION: 2.10.1
 
 concurrency:
-  group: release-${{ github.workflow }}-${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref }}
+  group: release-${{ github.workflow }}-${{ github.ref_name }}
   cancel-in-progress: true
 
 run-name: >-
@@ -102,7 +101,7 @@ jobs:
             os: macos-14
             rust_target: aarch64-apple-darwin
             prepare_cmd: node scripts/prepare-tauri-bundled-binary.mjs --target aarch64-apple-darwin
-            build_cmd: pnpm dlx @tauri-apps/cli@${{ env.TAURI_CLI_VERSION }} build --ci --config src-tauri/tauri.conf.json --bundles dmg --target aarch64-apple-darwin
+            build_cmd: pnpm dlx @tauri-apps/cli@2.10.1 build --ci --config src-tauri/tauri.conf.json --bundles dmg --target aarch64-apple-darwin
             postprocess_cmd: bash scripts/postprocess-macos-dmg.sh src-tauri/target/aarch64-apple-darwin/release/bundle/dmg lich13studio
             artifact_name: macos-dmg-arm64
             artifact_path: src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
@@ -110,7 +109,7 @@ jobs:
             os: windows-latest
             rust_target: x86_64-pc-windows-msvc
             prepare_cmd: node scripts/prepare-tauri-bundled-binary.mjs --target x86_64-pc-windows-msvc
-            build_cmd: pnpm dlx @tauri-apps/cli@${{ env.TAURI_CLI_VERSION }} build --ci --config src-tauri/tauri.conf.json --bundles nsis --target x86_64-pc-windows-msvc
+            build_cmd: pnpm dlx @tauri-apps/cli@2.10.1 build --ci --config src-tauri/tauri.conf.json --bundles nsis --target x86_64-pc-windows-msvc
             postprocess_cmd: ''
             artifact_name: windows-exe-x64
             artifact_path: src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
@@ -158,7 +157,7 @@ jobs:
           targets: ${{ matrix.rust_target }}
 
       - name: Restore Rust cache
-        uses: Swatinem/rust-cache@v2
+        uses: swatinem/rust-cache@v2
         with:
           workspaces: src-tauri -> target
           cache-on-failure: true
