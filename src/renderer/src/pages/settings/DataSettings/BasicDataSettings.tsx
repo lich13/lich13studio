@@ -513,7 +513,7 @@ const BasicDataSettings: React.FC = () => {
         <SettingRow>
           <SettingRowTitle>
             {t('settings.data.clear_cache.title')}
-            {cacheSize && <CacheText>({cacheSize}MB)</CacheText>}
+            {cacheSize && <CacheText>({cacheSize})</CacheText>}
           </SettingRowTitle>
           <HStack gap="5px">
             <Button onClick={handleClearCache}>{t('settings.data.clear_cache.button')}</Button>

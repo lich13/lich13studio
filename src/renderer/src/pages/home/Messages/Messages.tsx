@@ -34,7 +34,6 @@ import { isTextLikeBlock } from '@renderer/utils/messageUtils/is'
 import { last } from 'lodash'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import InfiniteScroll from 'react-infinite-scroll-component'
 import styled from 'styled-components'
 
 import MessageAnchorLine from './MessageAnchorLine'
@@ -98,7 +97,7 @@ const Messages: React.FC<MessagesProps> = ({ assistant, topic, setActiveTopic, o
     if (scrollContainerRef.current) {
       requestAnimationFrame(() => {
         if (scrollContainerRef.current) {
-          scrollContainerRef.current.scrollTo({ top: 0 })
+          scrollContainerRef.current.scrollTo({ top: scrollContainerRef.current.scrollHeight })
         }
       })
     }
@@ -252,6 +251,10 @@ const Messages: React.FC<MessagesProps> = ({ assistant, topic, setActiveTopic, o
   const loadMoreMessages = useCallback(() => {
     if (!hasMore || isLoadingMore) return
 
+    const container = scrollContainerRef.current
+    const previousScrollHeight = container?.scrollHeight ?? 0
+    const previousScrollTop = container?.scrollTop ?? 0
+
     setIsLoadingMore(true)
     setTimeoutTimer(
       'loadMoreMessages',
@@ -259,13 +262,23 @@ const Messages: React.FC<MessagesProps> = ({ assistant, topic, setActiveTopic, o
         const currentLength = displayMessages.length
         const newMessages = computeDisplayMessages(messages, currentLength, LOAD_MORE_COUNT)
 
-        setDisplayMessages((prev) => [...prev, ...newMessages])
+        setDisplayMessages((prev) => [...newMessages, ...prev])
         setHasMore(currentLength + LOAD_MORE_COUNT < messages.length)
         setIsLoadingMore(false)
+
+        requestAnimationFrame(() => {
+          const currentContainer = scrollContainerRef.current
+          if (!currentContainer) {
+            return
+          }
+
+          const nextScrollHeight = currentContainer.scrollHeight
+          currentContainer.scrollTop = previousScrollTop + (nextScrollHeight - previousScrollHeight)
+        })
       },
       300
     )
-  }, [displayMessages.length, hasMore, isLoadingMore, messages, setTimeoutTimer])
+  }, [displayMessages.length, hasMore, isLoadingMore, messages, scrollContainerRef, setTimeoutTimer])
 
   useShortcut('copy_last_message', () => {
     const lastMessage = last(messages) as Message | undefined
@@ -300,19 +313,21 @@ const Messages: React.FC<MessagesProps> = ({ assistant, topic, setActiveTopic, o
     )
   }, [messages.length, scrollToBottom, setTimeoutTimer, topic.id])
 
-  // NOTE: 因为displayMessages是倒序的，所以得到的groupedMessages每个group内部也是倒序的，需要再倒一遍
   const groupedMessages = useMemo(() => {
-    const grouped = Object.entries(getGroupedMessages(displayMessages))
-    const newGrouped: {
-      [key: string]: (Message & {
-        index: number
-      })[]
-    } = {}
-    grouped.forEach(([key, group]) => {
-      newGrouped[key] = group.toReversed()
-    })
-    return Object.entries(newGrouped)
+    return Object.entries(getGroupedMessages(displayMessages))
   }, [displayMessages])
+
+  const handleMessagesScroll = useCallback(() => {
+    handleScrollPosition()
+
+    if (!scrollContainerRef.current || isLoadingMore || !hasMore) {
+      return
+    }
+
+    if (scrollContainerRef.current.scrollTop <= 80) {
+      loadMoreMessages()
+    }
+  }, [handleScrollPosition, hasMore, isLoadingMore, loadMoreMessages, scrollContainerRef])
 
   return (
     <MessagesContainer
@@ -320,36 +335,26 @@ const Messages: React.FC<MessagesProps> = ({ assistant, topic, setActiveTopic, o
       className="messages-container"
       ref={scrollContainerRef}
       key={assistant.id}
-      onScroll={handleScrollPosition}>
-      <NarrowLayout style={{ display: 'flex', flexDirection: 'column-reverse' }}>
-        <InfiniteScroll
-          dataLength={displayMessages.length}
-          next={loadMoreMessages}
-          hasMore={hasMore}
-          loader={null}
-          scrollableTarget="messages"
-          inverse
-          style={{ overflow: 'visible' }}>
-          <ContextMenu>
-            <ScrollContainer>
-              {groupedMessages.map(([key, groupMessages]) => (
-                <MessageGroup
-                  key={key}
-                  messages={groupMessages}
-                  topic={topic}
-                  registerMessageElement={registerMessageElement}
-                />
-              ))}
-              {isLoadingMore && (
-                <LoaderContainer>
-                  <LoadingIcon color="var(--color-text-2)" />
-                </LoaderContainer>
-              )}
-            </ScrollContainer>
-          </ContextMenu>
-        </InfiniteScroll>
-
+      onScroll={handleMessagesScroll}>
+      <NarrowLayout style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
         {showPrompt && <Prompt assistant={assistant} key={assistant.prompt} topic={topic} />}
+        <ContextMenu>
+          <ScrollContainer>
+            {isLoadingMore && (
+              <LoaderContainer>
+                <LoadingIcon color="var(--color-text-2)" />
+              </LoaderContainer>
+            )}
+            {groupedMessages.map(([key, groupMessages]) => (
+              <MessageGroup
+                key={key}
+                messages={groupMessages}
+                topic={topic}
+                registerMessageElement={registerMessageElement}
+              />
+            ))}
+          </ScrollContainer>
+        </ContextMenu>
       </NarrowLayout>
       {messageNavigation === 'anchor' && <MessageAnchorLine messages={displayMessages} />}
       <SelectionBox
@@ -363,14 +368,6 @@ const Messages: React.FC<MessagesProps> = ({ assistant, topic, setActiveTopic, o
 }
 
 const computeDisplayMessages = (messages: Message[], startIndex: number, displayCount: number) => {
-  // 如果剩余消息数量小于 displayCount，直接返回所有剩余消息的倒序切片
-  if (messages.length - startIndex <= displayCount) {
-    const result: Message[] = []
-    for (let i = messages.length - 1 - startIndex; i >= 0; i--) {
-      result.push(messages[i])
-    }
-    return result
-  }
   const userIdSet = new Set() // 用户消息 id 集合
   const assistantIdSet = new Set() // 助手消息 askId 集合
   const displayMessages: Message[] = []
@@ -396,7 +393,7 @@ const computeDisplayMessages = (messages: Message[], startIndex: number, display
     processMessage(messages[i])
   }
 
-  return displayMessages
+  return displayMessages.toReversed()
 }
 
 const LoaderContainer = styled.div`

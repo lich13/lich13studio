@@ -4301,7 +4301,13 @@
         },
         "isLogin": "Logged in",
         "login": {
-          "button": "Login"
+          "button": "Login",
+          "manual": {
+            "title": "Complete Nutstore Authorization",
+            "message": "After authorizing in the browser, paste the full callback URL or the s parameter here.",
+            "placeholder": "Paste lich13studio://... or s=...",
+            "invalid": "Unable to generate the Nutstore authorization link"
+          }
         },
         "logout": {
           "button": "Logout",

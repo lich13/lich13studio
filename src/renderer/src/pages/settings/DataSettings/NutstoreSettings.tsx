@@ -1,11 +1,11 @@
 import { CheckOutlined, FolderOutlined, LoadingOutlined, SyncOutlined, WarningOutlined } from '@ant-design/icons'
 import { HStack } from '@renderer/components/Layout'
 import NutstorePathPopup from '@renderer/components/Popups/NutsorePathPopup'
+import PromptPopup from '@renderer/components/Popups/PromptPopup'
 import Selector from '@renderer/components/Selector'
 import { WebdavBackupManager } from '@renderer/components/WebdavBackupManager'
 import { useWebdavBackupModal, WebdavBackupModal } from '@renderer/components/WebdavModals'
 import { useTheme } from '@renderer/context/ThemeProvider'
-import { useNutstoreSSO } from '@renderer/hooks/useNutstoreSSO'
 import { useTimer } from '@renderer/hooks/useTimer'
 import {
   backupToNutstore,
@@ -35,6 +35,23 @@ import { type FileStat } from 'webdav'
 
 import { SettingDivider, SettingGroup, SettingHelpText, SettingRow, SettingRowTitle, SettingTitle } from '..'
 
+const extractNutstoreToken = (input: string | null | undefined) => {
+  const value = input?.trim()
+  if (!value) {
+    return null
+  }
+
+  try {
+    const url = new URL(value)
+    return url.searchParams.get('s') || value
+  } catch {
+    if (value.startsWith('s=')) {
+      return value.slice(2)
+    }
+    return value
+  }
+}
+
 const NutstoreSettings: FC = () => {
   const { theme } = useTheme()
   const { t } = useTranslation()
@@ -59,16 +76,35 @@ const NutstoreSettings: FC = () => {
   const [nutSkipBackupFile, setNutSkipBackupFile] = useState<boolean>(nutstoreSkipBackupFile)
   const [backupManagerVisible, setBackupManagerVisible] = useState(false)
 
-  const nutstoreSSOHandler = useNutstoreSSO()
   const { setTimeoutTimer } = useTimer()
 
   const handleClickNutstoreSSO = useCallback(async () => {
     const ssoUrl = await window.api.nutstore.getSSOUrl()
-    window.open(ssoUrl, '_blank')
-    const nutstoreToken = await nutstoreSSOHandler()
+    if (!ssoUrl) {
+      window.toast.error(t('settings.data.nutstore.login.manual.invalid'))
+      return
+    }
+
+    await window.api.openWebsite(ssoUrl)
+    const nutstoreInput = await PromptPopup.show({
+      title: t('settings.data.nutstore.login.manual.title'),
+      message: t('settings.data.nutstore.login.manual.message'),
+      inputPlaceholder: t('settings.data.nutstore.login.manual.placeholder'),
+      inputProps: {
+        autoSize: {
+          minRows: 3,
+          maxRows: 6
+        }
+      }
+    })
+    const nutstoreToken = extractNutstoreToken(nutstoreInput)
+
+    if (!nutstoreToken) {
+      return
+    }
 
     dispatch(setNutstoreToken(nutstoreToken))
-  }, [dispatch, nutstoreSSOHandler])
+  }, [dispatch, t])
 
   useEffect(() => {
     async function decryptTokenEffect() {

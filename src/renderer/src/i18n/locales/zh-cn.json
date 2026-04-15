@@ -4301,7 +4301,13 @@
         },
         "isLogin": "已登录",
         "login": {
-          "button": "登录"
+          "button": "登录",
+          "manual": {
+            "title": "完成坚果云授权",
+            "message": "浏览器授权完成后，把跳回的完整链接或其中的 s 参数粘贴到这里。",
+            "placeholder": "粘贴 lich13studio://... 或 s=... ",
+            "invalid": "无法生成坚果云授权链接"
+          }
         },
         "logout": {
           "button": "退出登录",

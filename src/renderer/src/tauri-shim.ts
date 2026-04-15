@@ -249,6 +249,23 @@ if (systemThemeMediaQuery) {
 const fileCache = new Map<string, { fileName: string; ext: string; blob: Blob; text?: string }>()
 const fileObjectMap = new WeakMap<File, string>()
 let cachedAppInfo: AnyRecord | null = null
+let nutstoreLibPromise: Promise<AnyRecord> | null = null
+
+type ProgressPayload = {
+  stage: string
+  progress: number
+  total: number
+}
+
+type ProtocolPayload = {
+  url: string
+  params: Record<string, string>
+}
+
+const backupProgressListeners = new Set<(data: ProgressPayload) => void>()
+const restoreProgressListeners = new Set<(data: ProgressPayload) => void>()
+const protocolListeners = new Set<(data: ProtocolPayload) => void>()
+let deepLinkUnlistenPromise: Promise<unknown> | null = null
 
 const createId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
@@ -258,6 +275,121 @@ const normalizeExt = (fileName: string) => {
   const match = /\.([^.]+)$/.exec(fileName)
   return match ? `.${match[1]}` : ''
 }
+
+const clampProgress = (value: number) => {
+  if (!Number.isFinite(value)) {
+    return 0
+  }
+
+  return Math.max(0, Math.min(100, Math.round(value)))
+}
+
+const emitProgress = (listeners: Set<(data: ProgressPayload) => void>, payload: ProgressPayload) => {
+  const nextPayload = {
+    ...payload,
+    progress: clampProgress(payload.progress),
+    total: payload.total || 100
+  }
+
+  listeners.forEach((listener) => {
+    try {
+      listener(nextPayload)
+    } catch (error) {
+      console.error('[tauri-shim] Progress listener failed', error)
+    }
+  })
+}
+
+const emitBackupProgress = (payload: ProgressPayload) => emitProgress(backupProgressListeners, payload)
+const emitRestoreProgress = (payload: ProgressPayload) => emitProgress(restoreProgressListeners, payload)
+
+const waitForNextFrame = async () =>
+  new Promise<void>((resolve) => {
+    requestAnimationFrame(() => {
+      setTimeout(resolve, 0)
+    })
+  })
+
+const loadNutstoreLib = async () => {
+  nutstoreLibPromise = nutstoreLibPromise || import('../../main/integration/nutstore/sso/lib/index.mjs')
+  return nutstoreLibPromise
+}
+
+const toProtocolPayload = (url: string): ProtocolPayload => {
+  try {
+    const parsed = new URL(url)
+    return {
+      url,
+      params: Object.fromEntries(parsed.searchParams.entries())
+    }
+  } catch {
+    return {
+      url,
+      params: {}
+    }
+  }
+}
+
+const emitProtocolPayload = (url: string) => {
+  const payload = toProtocolPayload(url)
+  protocolListeners.forEach((listener) => {
+    try {
+      listener(payload)
+    } catch (error) {
+      console.error('[tauri-shim] Protocol listener failed', error)
+    }
+  })
+}
+
+const ensureDeepLinkListener = () => {
+  if (deepLinkUnlistenPromise) {
+    return
+  }
+
+  const deepLink = (tauri as AnyRecord)?.deepLink
+  const onOpenUrl = deepLink?.onOpenUrl
+
+  if (typeof onOpenUrl !== 'function') {
+    return
+  }
+
+  deepLinkUnlistenPromise = Promise.resolve(
+    onOpenUrl((urlsOrPayload: string[] | { urls?: string[]; url?: string }) => {
+      const urls = Array.isArray(urlsOrPayload)
+        ? urlsOrPayload
+        : Array.isArray(urlsOrPayload?.urls)
+          ? urlsOrPayload.urls
+          : urlsOrPayload?.url
+            ? [urlsOrPayload.url]
+            : []
+
+      urls.forEach((url) => emitProtocolPayload(url))
+    })
+  ).catch((error) => {
+    console.warn('[tauri-shim] Failed to register deep-link listener', error)
+    deepLinkUnlistenPromise = null
+  })
+}
+
+const mapWebdavConfig = (webdavConfig: AnyRecord) => ({
+  url: `${String(webdavConfig.webdavHost || '').replace(/\/$/, '')}${webdavConfig.webdavPath || ''}`,
+  username: webdavConfig.webdavUser || '',
+  password: webdavConfig.webdavPass || '',
+  fileName: webdavConfig.fileName || 'lich13studio-backup.zip',
+  skipBackupFile: Boolean(webdavConfig.skipBackupFile)
+})
+
+const mapS3Config = (s3Config: AnyRecord) => ({
+  endpoint: s3Config.endpoint || '',
+  region: s3Config.region || 'us-east-1',
+  bucket: s3Config.bucket || '',
+  accessKey: s3Config.accessKeyId || '',
+  secretKey: s3Config.secretAccessKey || '',
+  objectKey: [s3Config.root, s3Config.fileName || 'lich13studio-backup.zip'].filter(Boolean).join('/'),
+  root: s3Config.root || '',
+  pathStyle: true,
+  skipBackupFile: Boolean(s3Config.skipBackupFile)
+})
 
 const serializeLocalStorage = () => {
   const snapshot: Record<string, string> = {}
@@ -280,7 +412,7 @@ const openAppIndexedDb = () =>
     request.onsuccess = () => resolve(request.result)
   })
 
-const serializeIndexedDb = async () => {
+const serializeIndexedDb = async (onProgress?: (progress: number) => void) => {
   try {
     const db = await openAppIndexedDb()
     if (!db) {
@@ -297,6 +429,8 @@ const serializeIndexedDb = async () => {
         request.onerror = () => reject(request.error || new Error(`Failed to read ${storeName}`))
         request.onsuccess = () => resolve(request.result || [])
       })
+      onProgress?.((snapshot[storeName] ? Object.keys(snapshot).length : 0) / Math.max(storeNames.length, 1))
+      await waitForNextFrame()
     }
 
     db.close()
@@ -307,12 +441,32 @@ const serializeIndexedDb = async () => {
   }
 }
 
-const buildBackupSnapshot = async () => ({
-  time: Date.now(),
-  version: 5,
-  localStorage: serializeLocalStorage(),
-  indexedDB: await serializeIndexedDb()
-})
+const buildBackupSnapshot = async () => {
+  emitBackupProgress({ stage: 'preparing', progress: 5, total: 100 })
+  await waitForNextFrame()
+
+  const localStorageSnapshot = serializeLocalStorage()
+  emitBackupProgress({ stage: 'writing_data', progress: 12, total: 100 })
+  await waitForNextFrame()
+
+  const indexedDBSnapshot = await serializeIndexedDb((progress) => {
+    emitBackupProgress({
+      stage: 'copying_database',
+      progress: 15 + progress * 45,
+      total: 100
+    })
+  })
+
+  emitBackupProgress({ stage: 'preparing_compression', progress: 65, total: 100 })
+  await waitForNextFrame()
+
+  return {
+    time: Date.now(),
+    version: 5,
+    localStorage: localStorageSnapshot,
+    indexedDB: indexedDBSnapshot
+  }
+}
 
 const registerBlob = async (blob: Blob, fileName: string, explicitPath?: string) => {
   const ext = normalizeExt(fileName)
@@ -325,6 +479,7 @@ const registerBlob = async (blob: Blob, fileName: string, explicitPath?: string)
     id,
     name: fileName.replace(ext, ''),
     origin_name: fileName,
+    fileName,
     ext,
     filePath: cacheKey,
     path: cacheKey,
@@ -336,7 +491,8 @@ const registerBlob = async (blob: Blob, fileName: string, explicitPath?: string)
         : blob.type.includes('pdf') || blob.type.includes('json') || blob.type.includes('markdown')
           ? 'document'
           : 'other',
-    created_at: new Date().toISOString()
+    created_at: new Date().toISOString(),
+    count: 1
   }
 }
 
@@ -415,10 +571,12 @@ const pickFiles = async (multiple = true, filters?: Array<{ name: string; extens
           const path = await registerBrowserFile(file)
           const meta = await getCachedFile(path)
           const ext = normalizeExt(file.name)
+          const content = new Uint8Array(await file.arrayBuffer())
           return {
             id: path.split('/')[2] || createId('file'),
             name: file.name.replace(ext, ''),
             origin_name: file.name,
+            fileName: file.name,
             ext,
             filePath: path,
             path,
@@ -428,7 +586,9 @@ const pickFiles = async (multiple = true, filters?: Array<{ name: string; extens
               : meta?.blob.type.startsWith('text/')
                 ? 'text'
                 : 'document',
-            created_at: new Date().toISOString()
+            created_at: new Date().toISOString(),
+            count: 1,
+            content
           }
         })
       )
@@ -437,13 +597,58 @@ const pickFiles = async (multiple = true, filters?: Array<{ name: string; extens
     input.click()
   })
 
+const getAppDataOverride = () => localStorage.getItem('tauri:app-data-path') || null
+
+const computeCacheSizeBytes = () => {
+  let bytes = 0
+
+  for (let index = 0; index < localStorage.length; index += 1) {
+    const key = localStorage.key(index)
+    if (!key) continue
+    const value = localStorage.getItem(key) || ''
+    bytes += (key.length + value.length) * 2
+  }
+
+  fileCache.forEach((cached, key) => {
+    bytes += key.length * 2
+    bytes += cached.fileName.length * 2
+    bytes += cached.text?.length ? cached.text.length * 2 : 0
+    bytes += cached.blob.size
+  })
+
+  return bytes
+}
+
+const formatBytes = (bytes: number) => {
+  if (bytes < 1024) {
+    return `${bytes} B`
+  }
+
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} KB`
+  }
+
+  return `${(bytes / (1024 * 1024)).toFixed(2)}`
+}
+
 const getAppInfo = async () => {
   if (cachedAppInfo) {
     return cachedAppInfo
   }
   const info = await invoke('app_info')
-  cachedAppInfo = info
-  return info
+  const appDataOverride = getAppDataOverride()
+  cachedAppInfo = appDataOverride
+    ? {
+        ...info,
+        appDataPath: appDataOverride,
+        configPath: appDataOverride,
+        filesPath: `${appDataOverride}/Files`,
+        logsPath: `${appDataOverride}/Logs`,
+        notesPath: `${appDataOverride}/Notes`,
+        statePath: `${appDataOverride}/state.json`
+      }
+    : info
+  return cachedAppInfo
 }
 
 const noOpAsync = async (..._args: any[]) => undefined
@@ -516,7 +721,11 @@ const api = {
   resolvePath: async (value: string) => value,
   isPathInside: async (childPath: string, parentPath: string) =>
     childPath === parentPath || childPath.startsWith(parentPath),
-  setAppDataPath: noOpAsync,
+  setAppDataPath: async (path: string) => {
+    if (!path) return
+    localStorage.setItem('tauri:app-data-path', path)
+    cachedAppInfo = null
+  },
   getDataPathFromArgs: async () => null,
   copy: async () => true,
   setStopQuitApp: noOpAsync,
@@ -541,8 +750,10 @@ const api = {
     window.open(url, '_blank', 'noopener,noreferrer')
     return true
   },
-  getCacheSize: async () => '0 B',
-  clearCache: noOpAsync,
+  getCacheSize: async () => formatBytes(computeCacheSizeBytes()),
+  clearCache: async () => {
+    fileCache.clear()
+  },
   logToMain: noOpAsync,
   onThemeUpdated: (callback: (theme: 'light' | 'dark') => void) => {
     themeListeners.add(callback)
@@ -630,8 +841,13 @@ const api = {
     tokenUsage: noOpAsync,
     addStreamMessage: noOpAsync,
     cleanHistory: noOpAsync,
+    cleanLocalData: noOpAsync,
     openWindow: noOpAsync,
     getData: async () => []
+  },
+  obsidian: {
+    getVaults: async () => [],
+    getFiles: async () => []
   },
   searchService: {
     openUrlInSearchWindow: async (_uid: string, url: string) => {
@@ -803,61 +1019,94 @@ const api = {
     batchUploadMarkdown: async () => ({ success: [], failed: [] })
   },
   backup: {
+    onProgress: (callback: (data: ProgressPayload) => void) => {
+      backupProgressListeners.add(callback)
+      return () => {
+        backupProgressListeners.delete(callback)
+      }
+    },
+    onRestoreProgress: (callback: (data: ProgressPayload) => void) => {
+      restoreProgressListeners.add(callback)
+      return () => {
+        restoreProgressListeners.delete(callback)
+      }
+    },
     restore: async (filePath: string) => {
       const cached = await getCachedFile(filePath)
       if (!cached) return ''
-      if (invoke && cached.fileName.toLowerCase().endsWith('.zip')) {
-        const bytes = Array.from(await readBlobAsUint8Array(cached.blob))
-        return invoke('restore_backup_archive', { fileName: cached.fileName, bytes })
+      try {
+        emitRestoreProgress({ stage: 'preparing', progress: 5, total: 100 })
+        await waitForNextFrame()
+        if (invoke && cached.fileName.toLowerCase().endsWith('.zip')) {
+          emitRestoreProgress({ stage: 'extracting', progress: 35, total: 100 })
+          const bytes = Array.from(await readBlobAsUint8Array(cached.blob))
+          const result = await invoke('restore_backup_archive', { fileName: cached.fileName, bytes })
+          emitRestoreProgress({ stage: 'completed', progress: 100, total: 100 })
+          return result
+        }
+        emitRestoreProgress({ stage: 'reading_data', progress: 70, total: 100 })
+        const result = await readBlobAsText(cached.blob)
+        emitRestoreProgress({ stage: 'completed', progress: 100, total: 100 })
+        return result
+      } catch (error) {
+        emitRestoreProgress({ stage: 'completed', progress: 100, total: 100 })
+        throw error
       }
-      return readBlobAsText(cached.blob)
     },
     backup: async (fileName: string, destinationPath?: string, skipBackupFile: boolean = false) => {
-      const snapshot = await buildBackupSnapshot()
-      const payload = JSON.stringify(snapshot, null, 2)
-      if (invoke) {
-        await invoke('backup_to_local_dir', {
-          fileName,
-          localBackupDir: destinationPath || null,
-          payload,
-          skipBackupFile
-        })
+      try {
+        const snapshot = await buildBackupSnapshot()
+        emitBackupProgress({ stage: 'writing_data', progress: 74, total: 100 })
+        const payload = JSON.stringify(snapshot, null, 2)
+        emitBackupProgress({ stage: 'compressing', progress: 88, total: 100 })
+        if (invoke) {
+          await invoke('backup_to_local_dir', {
+            fileName,
+            localBackupDir: destinationPath || null,
+            payload,
+            skipBackupFile
+          })
+          emitBackupProgress({ stage: 'completed', progress: 100, total: 100 })
+          return true
+        }
+        const blob = new Blob([payload], { type: 'application/json' })
+        downloadBlob(fileName.replace(/\.zip$/i, '.json'), blob)
+        emitBackupProgress({ stage: 'completed', progress: 100, total: 100 })
         return true
+      } catch (error) {
+        emitBackupProgress({ stage: 'completed', progress: 100, total: 100 })
+        throw error
       }
-      const blob = new Blob([payload], { type: 'application/json' })
-      downloadBlob(fileName.replace(/\.zip$/i, '.json'), blob)
-      return true
     },
     backupToWebdav: async (webdavConfig: AnyRecord) => {
-      const snapshot = await buildBackupSnapshot()
-      const config = {
-        url: `${String(webdavConfig.webdavHost || '').replace(/\/$/, '')}${webdavConfig.webdavPath || ''}`,
-        username: webdavConfig.webdavUser || '',
-        password: webdavConfig.webdavPass || '',
-        fileName: webdavConfig.fileName || 'lich13studio-backup.zip',
-        skipBackupFile: Boolean(webdavConfig.skipBackupFile)
+      try {
+        const snapshot = await buildBackupSnapshot()
+        emitBackupProgress({ stage: 'compressing', progress: 82, total: 100 })
+        const config = mapWebdavConfig(webdavConfig)
+        await invoke('webdav_backup', { state: snapshot, config })
+        emitBackupProgress({ stage: 'completed', progress: 100, total: 100 })
+        return true
+      } catch (error) {
+        emitBackupProgress({ stage: 'completed', progress: 100, total: 100 })
+        throw error
       }
-      await invoke('webdav_backup', { state: snapshot, config })
-      return true
     },
     restoreFromWebdav: async (webdavConfig: AnyRecord) => {
-      const config = {
-        url: `${String(webdavConfig.webdavHost || '').replace(/\/$/, '')}${webdavConfig.webdavPath || ''}`,
-        username: webdavConfig.webdavUser || '',
-        password: webdavConfig.webdavPass || '',
-        fileName: webdavConfig.fileName || 'lich13studio-backup.zip'
+      try {
+        emitRestoreProgress({ stage: 'preparing', progress: 5, total: 100 })
+        const config = mapWebdavConfig(webdavConfig)
+        emitRestoreProgress({ stage: 'extracting', progress: 40, total: 100 })
+        const data = await invoke('webdav_restore', { config })
+        emitRestoreProgress({ stage: 'completed', progress: 100, total: 100 })
+        return JSON.stringify(data)
+      } catch (error) {
+        emitRestoreProgress({ stage: 'completed', progress: 100, total: 100 })
+        throw error
       }
-      const data = await invoke('webdav_restore', { config })
-      return JSON.stringify(data)
     },
     listWebdavFiles: async (webdavConfig: AnyRecord) => {
       if (!invoke) return []
-      const config = {
-        url: `${String(webdavConfig.webdavHost || '').replace(/\/$/, '')}${webdavConfig.webdavPath || ''}`,
-        username: webdavConfig.webdavUser || '',
-        password: webdavConfig.webdavPass || '',
-        fileName: webdavConfig.fileName || 'lich13studio-backup.zip'
-      }
+      const config = mapWebdavConfig(webdavConfig)
       const files = await invoke('list_webdav_files', { config })
       return files.map((file: AnyRecord) => ({
         fileName: file.fileName,
@@ -867,13 +1116,13 @@ const api = {
     },
     checkConnection: async (webdavConfig: AnyRecord) => {
       if (invoke) {
-        return invoke('check_webdav_connection', { config: webdavConfig })
+        return invoke('check_webdav_connection', { config: mapWebdavConfig(webdavConfig) })
       }
       return Boolean(webdavConfig?.webdavHost)
     },
     createDirectory: async (webdavConfig: AnyRecord, targetPath: string, options?: AnyRecord) => {
       if (invoke) {
-        return invoke('create_webdav_directory', { config: webdavConfig, path: targetPath, options })
+        return invoke('create_webdav_directory', { config: mapWebdavConfig(webdavConfig), path: targetPath, options })
       }
       return true
     },
@@ -888,23 +1137,40 @@ const api = {
       return invoke('delete_webdav_file', { fileName, config })
     },
     backupToLocalDir: async (fileName: string, localConfig?: AnyRecord) => {
-      const payload = JSON.stringify(await buildBackupSnapshot(), null, 2)
-      if (invoke) {
-        await invoke('backup_to_local_dir', {
-          fileName,
-          localBackupDir: localConfig?.localBackupDir || null,
-          payload,
-          skipBackupFile: Boolean(localConfig?.skipBackupFile)
-        })
+      try {
+        const payload = JSON.stringify(await buildBackupSnapshot(), null, 2)
+        emitBackupProgress({ stage: 'compressing', progress: 88, total: 100 })
+        if (invoke) {
+          await invoke('backup_to_local_dir', {
+            fileName,
+            localBackupDir: localConfig?.localBackupDir || null,
+            payload,
+            skipBackupFile: Boolean(localConfig?.skipBackupFile)
+          })
+          emitBackupProgress({ stage: 'completed', progress: 100, total: 100 })
+          return true
+        }
+        const blob = new Blob([payload], { type: 'application/json' })
+        downloadBlob(fileName.replace(/\.zip$/i, '.json'), blob)
+        emitBackupProgress({ stage: 'completed', progress: 100, total: 100 })
         return true
+      } catch (error) {
+        emitBackupProgress({ stage: 'completed', progress: 100, total: 100 })
+        throw error
       }
-      const blob = new Blob([payload], { type: 'application/json' })
-      downloadBlob(fileName.replace(/\.zip$/i, '.json'), blob)
-      return true
     },
     restoreFromLocalBackup: async (fileName: string, localBackupDir?: string) => {
       if (!invoke) return undefined
-      return invoke('restore_from_local_backup', { fileName, localBackupDir: localBackupDir || null })
+      try {
+        emitRestoreProgress({ stage: 'preparing', progress: 5, total: 100 })
+        emitRestoreProgress({ stage: 'extracting', progress: 40, total: 100 })
+        const result = await invoke('restore_from_local_backup', { fileName, localBackupDir: localBackupDir || null })
+        emitRestoreProgress({ stage: 'completed', progress: 100, total: 100 })
+        return result
+      } catch (error) {
+        emitRestoreProgress({ stage: 'completed', progress: 100, total: 100 })
+        throw error
+      }
     },
     listLocalBackupFiles: async (localBackupDir?: string) => {
       if (!invoke) return []
@@ -921,50 +1187,39 @@ const api = {
     },
     checkWebdavConnection: async (webdavConfig: AnyRecord) => {
       if (invoke) {
-        return invoke('check_webdav_connection', { config: webdavConfig })
+        return invoke('check_webdav_connection', { config: mapWebdavConfig(webdavConfig) })
       }
       return Boolean(webdavConfig?.webdavHost)
     },
     backupToS3: async (s3Config: AnyRecord) => {
-      const snapshot = await buildBackupSnapshot()
-      const config = {
-        endpoint: s3Config.endpoint || '',
-        region: s3Config.region || 'us-east-1',
-        bucket: s3Config.bucket || '',
-        accessKey: s3Config.accessKeyId || '',
-        secretKey: s3Config.secretAccessKey || '',
-        objectKey: [s3Config.root, s3Config.fileName || 'lich13studio-backup.zip'].filter(Boolean).join('/'),
-        pathStyle: true,
-        skipBackupFile: Boolean(s3Config.skipBackupFile)
+      try {
+        const snapshot = await buildBackupSnapshot()
+        emitBackupProgress({ stage: 'compressing', progress: 82, total: 100 })
+        const config = mapS3Config(s3Config)
+        await invoke('s3_backup', { state: snapshot, config })
+        emitBackupProgress({ stage: 'completed', progress: 100, total: 100 })
+        return true
+      } catch (error) {
+        emitBackupProgress({ stage: 'completed', progress: 100, total: 100 })
+        throw error
       }
-      await invoke('s3_backup', { state: snapshot, config })
-      return true
     },
     restoreFromS3: async (s3Config: AnyRecord) => {
-      const config = {
-        endpoint: s3Config.endpoint || '',
-        region: s3Config.region || 'us-east-1',
-        bucket: s3Config.bucket || '',
-        accessKey: s3Config.accessKeyId || '',
-        secretKey: s3Config.secretAccessKey || '',
-        objectKey: [s3Config.root, s3Config.fileName || 'lich13studio-backup.zip'].filter(Boolean).join('/'),
-        pathStyle: true
+      try {
+        emitRestoreProgress({ stage: 'preparing', progress: 5, total: 100 })
+        const config = mapS3Config(s3Config)
+        emitRestoreProgress({ stage: 'extracting', progress: 40, total: 100 })
+        const data = await invoke('s3_restore', { config })
+        emitRestoreProgress({ stage: 'completed', progress: 100, total: 100 })
+        return JSON.stringify(data)
+      } catch (error) {
+        emitRestoreProgress({ stage: 'completed', progress: 100, total: 100 })
+        throw error
       }
-      const data = await invoke('s3_restore', { config })
-      return JSON.stringify(data)
     },
     listS3Files: async (s3Config: AnyRecord) => {
       if (!invoke) return []
-      const config = {
-        endpoint: s3Config.endpoint || '',
-        region: s3Config.region || 'us-east-1',
-        bucket: s3Config.bucket || '',
-        accessKey: s3Config.accessKeyId || '',
-        secretKey: s3Config.secretAccessKey || '',
-        objectKey: s3Config.fileName || 'lich13studio-backup.zip',
-        root: s3Config.root || '',
-        pathStyle: true
-      }
+      const config = mapS3Config(s3Config)
       const files = await invoke('list_s3_files', { config })
       return files.map((file: AnyRecord) => ({
         fileName: file.fileName,
@@ -974,26 +1229,70 @@ const api = {
     },
     deleteS3File: async (fileName: string, s3Config: AnyRecord) => {
       if (!invoke) return true
-      const config = {
-        endpoint: s3Config.endpoint || '',
-        region: s3Config.region || 'us-east-1',
-        bucket: s3Config.bucket || '',
-        accessKey: s3Config.accessKeyId || '',
-        secretKey: s3Config.secretAccessKey || '',
-        objectKey: s3Config.fileName || 'lich13studio-backup.zip',
-        root: s3Config.root || '',
-        pathStyle: true
-      }
+      const config = mapS3Config(s3Config)
       return invoke('delete_s3_file', { fileName, config })
     },
     checkS3Connection: async (s3Config: AnyRecord) => {
       if (invoke) {
-        return invoke('check_s3_connection', { config: s3Config })
+        return invoke('check_s3_connection', { config: mapS3Config(s3Config) })
       }
       return Boolean(s3Config?.endpoint && s3Config?.bucket)
     },
     createLanTransferBackup: async () => '',
     deleteLanTransferBackup: async () => true
+  },
+  protocol: {
+    onReceiveData: (callback: (data: ProtocolPayload) => void) => {
+      protocolListeners.add(callback)
+      ensureDeepLinkListener()
+      return () => {
+        protocolListeners.delete(callback)
+      }
+    }
+  },
+  nutstore: {
+    getSSOUrl: async () => {
+      const { createOAuthUrl } = await loadNutstoreLib()
+      return createOAuthUrl({ app: 'cherrystudio' })
+    },
+    decryptToken: async (token: string) => {
+      if (!token) return null
+      try {
+        const { decryptSecret } = await loadNutstoreLib()
+        const payload = await decryptSecret({ app: 'cherrystudio', s: token })
+        return JSON.parse(payload)
+      } catch (error) {
+        console.warn('[tauri-shim] Failed to decrypt nutstore token', error)
+        return null
+      }
+    },
+    getDirectoryContents: async (token: string, target: string) => {
+      try {
+        const decoded = window.atob(token)
+        const delimiterIndex = decoded.indexOf(':')
+        const username = delimiterIndex >= 0 ? decoded.slice(0, delimiterIndex) : decoded
+        const accessToken = delimiterIndex >= 0 ? decoded.slice(delimiterIndex + 1) : ''
+        const files = await api.backup.listWebdavFiles({
+          webdavHost: 'https://dav.jianguoyun.com/dav',
+          webdavUser: username,
+          webdavPass: accessToken,
+          webdavPath: target
+        })
+
+        return files.map((file: AnyRecord) => ({
+          filename: `${String(target || '/').replace(/\/$/, '')}/${file.fileName}`.replace(/^$/, '/'),
+          basename: file.fileName,
+          lastmod: file.modifiedTime,
+          size: file.size,
+          type: 'file',
+          etag: null,
+          mime: 'application/octet-stream'
+        }))
+      } catch (error) {
+        console.warn('[tauri-shim] Failed to list nutstore directory contents', error)
+        return []
+      }
+    }
   },
   mcp: {
     listTools: async () => [],

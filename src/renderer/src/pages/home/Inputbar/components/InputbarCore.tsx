@@ -546,7 +546,7 @@ export const InputbarCore: FC<InputbarCoreProps> = ({
   const quickPanelElement = config.enableQuickPanel ? <QuickPanelView setInputText={setText} /> : null
 
   return (
-    <NarrowLayout style={{ width: '100%' }}>
+    <NarrowLayout style={{ width: '100%', maxWidth: '880px' }}>
       <Container
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
@@ -637,9 +637,9 @@ const Container = styled.div`
   flex-direction: column;
   position: relative;
   z-index: 2;
-  padding: 0 14px 12px 14px;
+  padding: 0 14px 0 14px;
   [navbar-position='top'] & {
-    padding: 0 14px 8px 14px;
+    padding: 0 14px 0 14px;
   }
 `
 

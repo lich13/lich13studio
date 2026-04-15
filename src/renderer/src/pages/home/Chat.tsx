@@ -166,7 +166,7 @@ const Chat: FC<Props> = (props) => {
             id="chat-main"
             vertical
             flex={1}
-            justify="space-between"
+            justify="flex-start"
             style={{ height: mainHeight, width: '100%' }}>
             <QuickPanelProvider>
               <ChatNavbar
@@ -176,7 +176,13 @@ const Chat: FC<Props> = (props) => {
                 setActiveAssistant={props.setActiveAssistant}
                 position="left"
               />
-              <div className="flex flex-1 flex-col" style={{ height: `calc(${mainHeight} - var(--navbar-height))` }}>
+              <div
+                className="flex flex-1 flex-col"
+                style={{
+                  flex: 1,
+                  minHeight: 0,
+                  height: isTopNavbar ? `calc(${mainHeight} - var(--navbar-height))` : '100%'
+                }}>
                 <Messages
                   key={props.activeTopic.id}
                   assistant={assistant}
