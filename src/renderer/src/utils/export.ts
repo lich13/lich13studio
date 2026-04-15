@@ -8,7 +8,6 @@ import { setExportState } from '@renderer/store/runtime'
 import type { Topic } from '@renderer/types'
 import type { Message } from '@renderer/types/newMessage'
 import { removeSpecialCharactersForFileName } from '@renderer/utils/file'
-import { captureScrollableAsBlob, captureScrollableAsDataURL } from '@renderer/utils/image'
 import { convertMathFormula, markdownToPlainText } from '@renderer/utils/markdown'
 import { getCitationContent, getMainTextContent, getThinkingContent } from '@renderer/utils/messageUtils/find'
 import dayjs from 'dayjs'
@@ -495,10 +494,10 @@ export const exportMessageAsMarkdown = async (
  * @param attributes.folder 选择的文件夹路径或文件路径
  * @param attributes.vault 选择的Vault名称
  */
-export const exportMarkdownToObsidian = async (attributes: any): Promise<void> => {
+export const exportMarkdownToObsidian = async (attributes: any): Promise<boolean> => {
   if (getExportState()) {
     window.toast.warning(i18n.t('message.warn.export.exporting'))
-    return
+    return false
   }
 
   setExportingState(true)
@@ -511,12 +510,12 @@ export const exportMarkdownToObsidian = async (attributes: any): Promise<void> =
 
     if (!obsidianVault) {
       window.toast.error(i18n.t('chat.topics.export.obsidian_no_vault_selected'))
-      return
+      return false
     }
 
     if (!attributes.title) {
       window.toast.error(i18n.t('chat.topics.export.obsidian_title_required'))
-      return
+      return false
     }
 
     // 检查是否选择了.md文件
@@ -551,11 +550,16 @@ export const exportMarkdownToObsidian = async (attributes: any): Promise<void> =
       obsidianUrl += '&append=true'
     }
 
-    window.open(obsidianUrl)
+    const opened = await window.api.openPath(obsidianUrl)
+    if (!opened) {
+      throw new Error('failed to open obsidian protocol')
+    }
     window.toast.success(i18n.t('chat.topics.export.obsidian_export_success'))
+    return true
   } catch (error) {
     logger.error('Failed to export to Obsidian:', error as Error)
     window.toast.error(i18n.t('chat.topics.export.obsidian_export_failed'))
+    return false
   } finally {
     setExportingState(false)
   }
@@ -654,57 +658,9 @@ const exportNoteAsMarkdown = async (noteName: string, content: string): Promise<
   }
 }
 
-const getScrollableElement = (): HTMLElement | null => {
-  const notesPage = document.querySelector('#notes-page')
-  if (!notesPage) return null
-
-  const allDivs = notesPage.querySelectorAll('div')
-  for (const div of Array.from(allDivs)) {
-    const style = window.getComputedStyle(div)
-    if (style.overflowY === 'auto' || style.overflowY === 'scroll') {
-      if (div.querySelector('.ProseMirror')) {
-        return div as HTMLElement
-      }
-    }
-  }
-  return null
-}
-
-const getScrollableRef = (): { current: HTMLElement } | null => {
-  const element = getScrollableElement()
-  if (!element) {
-    window.toast.warning(i18n.t('notes.no_content_to_copy'))
-    return null
-  }
-  return { current: element }
-}
-
-const exportNoteAsImageToClipboard = async (): Promise<void> => {
-  const scrollableRef = getScrollableRef()
-  if (!scrollableRef) return
-
-  await captureScrollableAsBlob(scrollableRef, async (blob) => {
-    if (blob) {
-      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
-      window.toast.success(i18n.t('common.copied'))
-    }
-  })
-}
-
-const exportNoteAsImageFile = async (noteName: string): Promise<void> => {
-  const scrollableRef = getScrollableRef()
-  if (!scrollableRef) return
-
-  const dataUrl = await captureScrollableAsDataURL(scrollableRef)
-  if (dataUrl) {
-    const fileName = removeSpecialCharactersForFileName(noteName)
-    await window.api.file.saveImage(fileName, dataUrl)
-  }
-}
-
 interface NoteExportOptions {
   node: { name: string; externalPath: string }
-  platform: 'markdown' | 'docx' | 'obsidian' | 'copyImage' | 'exportImage'
+  platform: 'markdown' | 'docx' | 'obsidian'
 }
 
 export const exportNote = async ({ node, platform }: NoteExportOptions): Promise<void> => {
@@ -712,10 +668,6 @@ export const exportNote = async ({ node, platform }: NoteExportOptions): Promise
     const content = await window.api.file.readExternal(node.externalPath)
 
     switch (platform) {
-      case 'copyImage':
-        return await exportNoteAsImageToClipboard()
-      case 'exportImage':
-        return await exportNoteAsImageFile(node.name)
       case 'markdown':
         return await exportNoteAsMarkdown(node.name, content)
       case 'docx':

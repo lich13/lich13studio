@@ -31,12 +31,6 @@ const ExportMenuOptions: FC = () => {
       <SettingDivider />
 
       <SettingRow>
-        <SettingRowTitle>{t('settings.data.export_menu.image')}</SettingRowTitle>
-        <Switch checked={exportMenuOptions.image} onChange={(checked) => handleToggleOption('image', checked)} />
-      </SettingRow>
-      <SettingDivider />
-
-      <SettingRow>
         <SettingRowTitle>{t('settings.data.export_menu.markdown')}</SettingRowTitle>
         <Switch checked={exportMenuOptions.markdown} onChange={(checked) => handleToggleOption('markdown', checked)} />
       </SettingRow>

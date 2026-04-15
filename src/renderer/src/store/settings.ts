@@ -184,7 +184,6 @@ export interface SettingsState {
   // 使用系统标题栏 (仅Linux)
   useSystemTitleBar: boolean
   exportMenuOptions: {
-    image: boolean
     markdown: boolean
     markdown_reason: boolean
     obsidian: boolean
@@ -352,7 +351,6 @@ export const initialState: SettingsState = {
   // 使用系统标题栏 (仅Linux)
   useSystemTitleBar: false,
   exportMenuOptions: {
-    image: true,
     markdown: true,
     markdown_reason: true,
     obsidian: true,

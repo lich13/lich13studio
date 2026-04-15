@@ -351,11 +351,6 @@ export const Topics: React.FC<Props> = ({ assistant: _assistant, activeTopic, se
         icon: <CopyIcon size={14} />,
         children: [
           {
-            label: t('chat.topics.copy.image'),
-            key: 'img',
-            onClick: () => EventEmitter.emit(EVENT_NAMES.COPY_TOPIC_IMAGE, topic)
-          },
-          {
             label: t('chat.topics.copy.md'),
             key: 'md',
             onClick: () => copyTopicAsMarkdown(topic)
@@ -372,11 +367,6 @@ export const Topics: React.FC<Props> = ({ assistant: _assistant, activeTopic, se
         key: 'export',
         icon: <UploadIcon size={14} />,
         children: [
-          exportMenuOptions.image && {
-            label: t('chat.topics.export.image'),
-            key: 'image',
-            onClick: () => EventEmitter.emit(EVENT_NAMES.EXPORT_TOPIC_IMAGE, topic)
-          },
           exportMenuOptions.markdown && {
             label: t('chat.topics.export.md.label'),
             key: 'markdown',
@@ -439,7 +429,6 @@ export const Topics: React.FC<Props> = ({ assistant: _assistant, activeTopic, se
     targetTopic,
     t,
     isRenaming,
-    exportMenuOptions.image,
     exportMenuOptions.markdown,
     exportMenuOptions.markdown_reason,
     exportMenuOptions.docx,

@@ -22,12 +22,7 @@ import { saveMessageAndBlocksToDB, updateMessageAndBlocksThunk } from '@renderer
 import type { Assistant, Topic } from '@renderer/types'
 import type { MessageBlock } from '@renderer/types/newMessage'
 import { type Message, MessageBlockType } from '@renderer/types/newMessage'
-import {
-  captureScrollableAsBlob,
-  captureScrollableAsDataURL,
-  removeSpecialCharactersForFileName,
-  runAsyncFunction
-} from '@renderer/utils'
+import { runAsyncFunction } from '@renderer/utils'
 import { updateCodeBlock } from '@renderer/utils/markdown'
 import { getMainTextContent } from '@renderer/utils/messageUtils/find'
 import { isTextLikeBlock } from '@renderer/utils/messageUtils/is'
@@ -125,28 +120,6 @@ const Messages: React.FC<MessagesProps> = ({ assistant, topic, setActiveTopic, o
           centered: true,
           onOk: () => clearTopic(data)
         })
-      }),
-      EventEmitter.on(EVENT_NAMES.COPY_TOPIC_IMAGE, async () => {
-        await captureScrollableAsBlob(scrollContainerRef, async (blob) => {
-          if (blob) {
-            await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
-          }
-        })
-      }),
-      EventEmitter.on(EVENT_NAMES.EXPORT_TOPIC_IMAGE, async () => {
-        try {
-          const imageData = await captureScrollableAsDataURL(scrollContainerRef)
-          if (!imageData) {
-            throw new Error('capture returned empty image data')
-          }
-          const success = await window.api.file.saveImage(removeSpecialCharactersForFileName(topic.name), imageData)
-          if (success) {
-            window.toast.success(t('chat.topics.export.image_saved'))
-          }
-        } catch (error) {
-          logger.error('Failed to export topic image:', error as Error)
-          window.toast.error(t('common.export_failed'))
-        }
       }),
       EventEmitter.on(EVENT_NAMES.NEW_CONTEXT, async () => {
         if (isProcessingContext) return

@@ -22,7 +22,7 @@ import { selectMessagesForTopic } from '@renderer/store/newMessage'
 import { TraceIcon } from '@renderer/trace/pages/Component'
 import type { Assistant, Model, Topic } from '@renderer/types'
 import { type Message, MessageBlockType } from '@renderer/types/newMessage'
-import { captureScrollableAsBlob, captureScrollableAsDataURL, classNames } from '@renderer/utils'
+import { classNames } from '@renderer/utils'
 import { copyMessageAsPlainText } from '@renderer/utils/copy'
 import { exportMessageAsMarkdown, exportMessageToNotes, messageToMarkdown } from '@renderer/utils/export'
 // import { withMessageThought } from '@renderer/utils/formats'
@@ -260,37 +260,6 @@ const MessageMenubar: FC<Props> = (props) => {
             key: 'copy_message_plain_text',
             onClick: () => copyMessageAsPlainText(message)
           },
-          exportMenuOptions.image && {
-            label: t('chat.topics.copy.image'),
-            key: 'img',
-            onClick: async () => {
-              await captureScrollableAsBlob(messageContainerRef, async (blob) => {
-                if (blob) {
-                  await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
-                }
-              })
-            }
-          },
-          exportMenuOptions.image && {
-            label: t('chat.topics.export.image'),
-            key: 'image',
-            onClick: async () => {
-              try {
-                const imageData = await captureScrollableAsDataURL(messageContainerRef)
-                const title = (await getMessageTitle(message)) || dayjs(message.createdAt).format('YYYYMMDDHHmm')
-                if (!imageData) {
-                  throw new Error('capture returned empty image data')
-                }
-                const success = await window.api.file.saveImage(title, imageData)
-                if (success) {
-                  window.toast.success(t('chat.topics.export.image_saved'))
-                }
-              } catch (error) {
-                logger.error('Failed to export message image:', error as Error)
-                window.toast.error(t('common.export_failed'))
-              }
-            }
-          },
           exportMenuOptions.markdown && {
             label: t('chat.topics.export.md.label'),
             key: 'markdown',
@@ -342,7 +311,6 @@ const MessageMenubar: FC<Props> = (props) => {
   }, [
     dropdownRootAllowKeys,
     exportMenuOptions.docx,
-    exportMenuOptions.image,
     exportMenuOptions.markdown,
     exportMenuOptions.markdown_reason,
     exportMenuOptions.obsidian,

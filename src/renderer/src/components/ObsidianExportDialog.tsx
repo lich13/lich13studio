@@ -252,14 +252,23 @@ const PopupContainer: React.FC<PopupContainerProps> = ({
       window.toast.error(i18n.t('chat.topics.export.obsidian_export_failed'))
       return
     }
-    await navigator.clipboard.writeText(content)
-    void exportMarkdownToObsidian({
-      ...state,
-      folder: state.folder,
-      vault: selectedVault
-    })
-    setOpen(false)
-    resolve(true)
+    try {
+      await navigator.clipboard.writeText(content)
+      const success = await exportMarkdownToObsidian({
+        ...state,
+        folder: state.folder,
+        vault: selectedVault
+      })
+      if (!success) {
+        setError(i18n.t('chat.topics.export.obsidian_export_failed'))
+        return
+      }
+      setOpen(false)
+      resolve(true)
+    } catch (error) {
+      logger.error('Failed to complete Obsidian export flow:', error as Error)
+      setError(i18n.t('chat.topics.export.obsidian_export_failed'))
+    }
   }
 
   const [openState, setOpen] = useState(open)

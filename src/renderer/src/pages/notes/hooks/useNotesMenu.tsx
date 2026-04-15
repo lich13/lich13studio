@@ -1,4 +1,3 @@
-import { loggerService } from '@logger'
 import { DeleteIcon } from '@renderer/components/Icons'
 import type { RootState } from '@renderer/store'
 import type { NotesTreeNode } from '@renderer/types/note'
@@ -9,8 +8,6 @@ import { Edit3, FilePlus, Folder, FolderOpen, Sparkles, Star, StarOff, UploadIco
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSelector } from 'react-redux'
-
-const logger = loggerService.withContext('UseNotesMenu')
 
 interface UseNotesMenuProps {
   renamingNodeIds: Set<string>
@@ -38,23 +35,6 @@ export const useNotesMenu = ({
 }: UseNotesMenuProps) => {
   const { t } = useTranslation()
   const exportMenuOptions = useSelector((state: RootState) => state.settings.exportMenuOptions)
-
-  const handleImageAction = useCallback(
-    async (node: NotesTreeNode, platform: 'copyImage' | 'exportImage') => {
-      try {
-        if (activeNode?.id !== node.id) {
-          onSelectNode(node)
-          await new Promise((resolve) => setTimeout(resolve, 500))
-        }
-
-        await exportNote({ node, platform })
-      } catch (error) {
-        logger.error(`Failed to ${platform === 'copyImage' ? 'copy' : 'export'} as image:`, error as Error)
-        window.toast.error(t('common.copy_failed'))
-      }
-    },
-    [activeNode, onSelectNode, t]
-  )
 
   const handleDeleteNodeWrapper = useCallback(
     (node: NotesTreeNode) => {
@@ -148,16 +128,6 @@ export const useNotesMenu = ({
             key: 'export',
             icon: <UploadIcon size={14} />,
             children: [
-              exportMenuOptions.image && {
-                label: t('chat.topics.copy.image'),
-                key: 'copy-image',
-                onClick: () => handleImageAction(node, 'copyImage')
-              },
-              exportMenuOptions.image && {
-                label: t('chat.topics.export.image'),
-                key: 'export-image',
-                onClick: () => handleImageAction(node, 'exportImage')
-              },
               exportMenuOptions.markdown && {
                 label: t('chat.topics.export.md.label'),
                 key: 'markdown',
@@ -196,7 +166,6 @@ export const useNotesMenu = ({
       t,
       handleStartEdit,
       onToggleStar,
-      handleImageAction,
       handleDeleteNodeWrapper,
       renamingNodeIds,
       handleAutoRename,
