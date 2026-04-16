@@ -38,7 +38,10 @@ export function useAppInit() {
   const { theme } = useTheme()
 
   useEffect(() => {
-    document.getElementById('spinner')?.remove()
+    void import('@renderer/init')
+  }, [])
+
+  useEffect(() => {
     // eslint-disable-next-line no-restricted-syntax
     console.timeEnd('init')
   }, [])
