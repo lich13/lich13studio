@@ -1197,11 +1197,6 @@ const api = {
       const config = mapWebdavConfig(webdavConfig)
       return invoke('delete_webdav_file', { fileName, config })
     },
-    writeWebdavTextFile: async (fileName: string, content: string, webdavConfig: AnyRecord) => {
-      if (!invoke) return true
-      const config = mapWebdavConfig({ ...webdavConfig, fileName })
-      return invoke('put_webdav_text_file', { fileName, content, config })
-    },
     backupToLocalDir: async (fileName: string, localConfig?: AnyRecord) => {
       try {
         const payload = JSON.stringify(await buildBackupSnapshot(), null, 2)

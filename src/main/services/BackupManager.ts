@@ -945,23 +945,6 @@ class BackupManager {
     }
   }
 
-  async writeWebdavTextFile(
-    _: Electron.IpcMainInvokeEvent,
-    fileName: string,
-    content: string,
-    webdavConfig: WebDavConfig
-  ) {
-    try {
-      const webdavClient = this.getWebDavInstance(webdavConfig)
-      return await webdavClient.putFileContents(fileName, content, {
-        overwrite: true
-      })
-    } catch (error: any) {
-      logger.error('Failed to write WebDAV text file:', error)
-      throw new Error(error.message || 'Failed to write WebDAV marker')
-    }
-  }
-
   // ==================== Local Backup Methods ====================
   // These methods handle backup operations with local directories.
 

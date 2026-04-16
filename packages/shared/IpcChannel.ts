@@ -237,7 +237,6 @@ export enum IpcChannel {
   Backup_CheckConnection = 'backup:checkConnection',
   Backup_CreateDirectory = 'backup:createDirectory',
   Backup_DeleteWebdavFile = 'backup:deleteWebdavFile',
-  Backup_WriteWebdavTextFile = 'backup:writeWebdavTextFile',
   Backup_BackupToLocalDir = 'backup:backupToLocalDir',
   Backup_RestoreFromLocalBackup = 'backup:restoreFromLocalBackup',
   Backup_ListLocalBackupFiles = 'backup:listLocalBackupFiles',
