@@ -16,7 +16,7 @@ use std::process::Command as StdCommand;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, Position, RunEvent, Size, Window, WindowEvent};
+use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, Position, RunEvent, Size, WebviewWindow, Window, WindowEvent};
 use tokio::process::Command;
 use uuid::Uuid;
 use walkdir::WalkDir;
@@ -245,7 +245,7 @@ fn native_http_abort_registry() -> &'static Mutex<HashMap<String, Arc<AtomicBool
   HTTP_REQUEST_ABORTS.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
-fn mark_main_window_shown(window: &Window) -> Result<(), String> {
+fn mark_main_window_shown(window: &WebviewWindow) -> Result<(), String> {
   if !MAIN_WINDOW_SHOWN.swap(true, Ordering::SeqCst) {
     window.show().map_err(|error| error.to_string())?;
     let _ = window.set_focus();
@@ -1961,8 +1961,11 @@ async fn start_chat(window: Window, request: ChatRequest) -> Result<String, Stri
 }
 
 #[tauri::command]
-fn show_main_window(window: Window) -> Result<(), String> {
-  mark_main_window_shown(&window)
+fn show_main_window(app: AppHandle) -> Result<(), String> {
+  let main_window = app
+    .get_webview_window("main")
+    .ok_or_else(|| String::from("Main window not found"))?;
+  mark_main_window_shown(&main_window)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
