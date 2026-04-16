@@ -16,6 +16,7 @@
         "title": "lich13studio",
         "width": 1420,
         "height": 920,
+        "visible": false,
         "minWidth": 1120,
         "minHeight": 720,
         "resizable": true,

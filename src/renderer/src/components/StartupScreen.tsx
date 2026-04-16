@@ -1,5 +1,6 @@
 import AppLogo from '@renderer/assets/images/logo.png'
 import type { CSSProperties, FC } from 'react'
+import { useEffect } from 'react'
 
 const getContainerStyle = (): CSSProperties => ({
   alignItems: 'center',
@@ -23,6 +24,10 @@ const logoStyle: CSSProperties = {
 }
 
 const StartupScreen: FC = () => {
+  useEffect(() => {
+    document.getElementById('spinner')?.remove()
+  }, [])
+
   return (
     <div style={getContainerStyle()}>
       <img src={AppLogo} alt="lich13studio" draggable={false} style={logoStyle} />

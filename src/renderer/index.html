@@ -39,6 +39,18 @@
     </div>
     <script>
       console.time('init')
+      const tryShowCurrentWindow = (remaining = 40) => {
+        const currentWindow = window.__TAURI__?.window?.getCurrentWindow?.()
+        if (currentWindow?.show) {
+          void currentWindow.show()
+          return
+        }
+
+        if (remaining > 0) {
+          window.setTimeout(() => tryShowCurrentWindow(remaining - 1), 50)
+        }
+      }
+
       const createCleanup = () => () => {}
       const createCallableProxy = (path = 'api') =>
         new Proxy(
@@ -80,6 +92,12 @@
       window.api.file.writeWithId = async (id, content) => {
         localStorage.setItem(`file:${id}`, content)
         return true
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => tryShowCurrentWindow(), { once: true })
+      } else {
+        tryShowCurrentWindow()
       }
     </script>
     <script type="module" src="/src/tauri-shim.ts"></script>
