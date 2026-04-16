@@ -37,9 +37,9 @@ export function useWebdavBackupModal({ backupMethod }: { backupMethod?: typeof b
   }
 
   const showBackupModal = useCallback(async () => {
-    const deviceType = await window.api.system.getDeviceType()
-    const hostname = await window.api.system.getHostname()
-    const defaultFileName = buildDefaultBackupFileName(hostname, deviceType)
+    const systemType = await window.api.system.getDeviceType()
+    const deviceName = await window.api.system.getHostname()
+    const defaultFileName = buildDefaultBackupFileName(deviceName, systemType)
     setCustomFileName(defaultFileName)
     setIsModalVisible(true)
   }, [])

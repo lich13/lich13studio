@@ -811,8 +811,18 @@ const api = {
     onClick: () => createCleanup()
   },
   system: {
-    getDeviceType: async () => 'desktop',
-    getHostname: async () => globalWindow.location.hostname || 'localhost',
+    getDeviceType: async () => {
+      if (invoke) {
+        return invoke('get_device_type')
+      }
+      return 'desktop'
+    },
+    getHostname: async () => {
+      if (invoke) {
+        return invoke('get_hostname')
+      }
+      return globalWindow.location.hostname || 'localhost'
+    },
     getCpuName: async () => navigator.userAgent,
     checkGitBash: async () => false,
     getGitBashPath: async () => null,

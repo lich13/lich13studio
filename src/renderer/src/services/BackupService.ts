@@ -8,7 +8,7 @@ import type { WebDavConfig } from '@renderer/types'
 import { uuid } from '@renderer/utils'
 import dayjs from 'dayjs'
 
-import { buildDefaultBackupFileName, ensureBackupFileName } from './BackupNaming'
+import { buildDefaultBackupFileName, ensureBackupFileName, isBackupOwnedByDevice } from './BackupNaming'
 import { NotificationService } from './NotificationService'
 
 const logger = loggerService.withContext('BackupService')
@@ -294,15 +294,16 @@ export async function backupToWebdav({
     webdavDisableStream
   } = store.getState().settings
   const userAgent = getWebdavUserAgent()
-  let deviceType = 'unknown'
-  let hostname = 'unknown'
+  let systemType = 'unknown'
+  let deviceName = 'unknown'
   try {
-    deviceType = (await window.api.system.getDeviceType()) || 'unknown'
-    hostname = (await window.api.system.getHostname()) || 'unknown'
+    systemType = (await window.api.system.getDeviceType()) || 'unknown'
+    deviceName = (await window.api.system.getHostname()) || 'unknown'
   } catch (error) {
-    logger.error('Failed to get device type or hostname:', error as Error)
+    logger.error('Failed to get device name or system type:', error as Error)
   }
-  const finalFileName = ensureBackupFileName(customFileName, buildDefaultBackupFileName(hostname, deviceType))
+  const finalFileName = ensureBackupFileName(customFileName, buildDefaultBackupFileName(deviceName, systemType))
+  const maxBackups = Number(webdavMaxBackups) || 0
   const webdavConfig: WebDavConfig = {
     webdavHost,
     webdavUser,
@@ -336,7 +337,7 @@ export async function backupToWebdav({
       showMessage && window.toast.success(i18n.t('message.backup.success'))
 
       // 清理旧备份文件
-      if (webdavMaxBackups > 0) {
+      if (maxBackups > 0) {
         try {
           // 获取所有备份文件
           const files = await window.api.backup.listWebdavFiles({
@@ -349,16 +350,13 @@ export async function backupToWebdav({
 
           // 筛选当前设备的备份文件
           const currentDeviceFiles = files
-            .filter((file) => {
-              // 检查文件名是否包含当前设备的标识信息
-              return file.fileName.includes(deviceType) && file.fileName.includes(hostname)
-            })
+            .filter((file) => isBackupOwnedByDevice(file.fileName, deviceName, systemType))
             .sort((a, b) => dayjs(b.modifiedTime).valueOf() - dayjs(a.modifiedTime).valueOf())
 
           // 如果当前设备的备份文件数量超过最大保留数量，删除最旧的文件
-          if (currentDeviceFiles.length > webdavMaxBackups) {
+          if (currentDeviceFiles.length > maxBackups) {
             // 文件已按修改时间降序排序，所以最旧的文件在末尾
-            const filesToDelete = currentDeviceFiles.slice(webdavMaxBackups)
+            const filesToDelete = currentDeviceFiles.slice(maxBackups)
 
             logger.verbose(`Cleaning up ${filesToDelete.length} old backup files`)
 
@@ -875,15 +873,16 @@ export async function backupToLocal({
     localBackupSkipBackupFile
   } = store.getState().settings
   const localBackupDir = await window.api.resolvePath(localBackupDirSetting)
-  let deviceType = 'unknown'
-  let hostname = 'unknown'
+  let systemType = 'unknown'
+  let deviceName = 'unknown'
   try {
-    deviceType = (await window.api.system.getDeviceType()) || 'unknown'
-    hostname = (await window.api.system.getHostname()) || 'unknown'
+    systemType = (await window.api.system.getDeviceType()) || 'unknown'
+    deviceName = (await window.api.system.getHostname()) || 'unknown'
   } catch (error) {
-    logger.error('Failed to get device type or hostname:', error as Error)
+    logger.error('Failed to get device name or system type:', error as Error)
   }
-  const finalFileName = ensureBackupFileName(customFileName, buildDefaultBackupFileName(hostname, deviceType))
+  const finalFileName = ensureBackupFileName(customFileName, buildDefaultBackupFileName(deviceName, systemType))
+  const maxBackups = Number(localBackupMaxBackups) || 0
 
   try {
     // Use direct backup method (copy IndexedDB/LocalStorage directories)
@@ -913,21 +912,21 @@ export async function backupToLocal({
       }
 
       // Clean up old backups if maxBackups is set
-      if (localBackupMaxBackups > 0) {
+      if (maxBackups > 0) {
         try {
           // Get all backup files
           const files = await window.api.backup.listLocalBackupFiles(localBackupDir)
 
           // Filter backups for current device
-          const currentDeviceFiles = files.filter((file) => {
-            return file.fileName.includes(deviceType) && file.fileName.includes(hostname)
-          })
+          const currentDeviceFiles = files.filter((file) =>
+            isBackupOwnedByDevice(file.fileName, deviceName, systemType)
+          )
 
-          if (currentDeviceFiles.length > localBackupMaxBackups) {
+          if (currentDeviceFiles.length > maxBackups) {
             // Sort by modified time (oldest first)
             const filesToDelete = currentDeviceFiles
               .sort((a, b) => new Date(a.modifiedTime).getTime() - new Date(b.modifiedTime).getTime())
-              .slice(0, currentDeviceFiles.length - localBackupMaxBackups)
+              .slice(0, currentDeviceFiles.length - maxBackups)
 
             // Delete older backups
             for (const file of filesToDelete) {

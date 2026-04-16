@@ -1284,6 +1284,31 @@ fn logs_dir() -> Result<PathBuf, String> {
   Ok(path)
 }
 
+fn system_device_type() -> &'static str {
+  #[cfg(target_os = "macos")]
+  {
+    "mac"
+  }
+
+  #[cfg(target_os = "windows")]
+  {
+    "windows"
+  }
+
+  #[cfg(all(not(target_os = "macos"), not(target_os = "windows")))]
+  {
+    "linux"
+  }
+}
+
+fn system_hostname() -> String {
+  std::env::var("COMPUTERNAME")
+    .or_else(|_| std::env::var("HOSTNAME"))
+    .ok()
+    .filter(|value| !value.trim().is_empty())
+    .unwrap_or_else(|| String::from("unknown"))
+}
+
 fn data_dir() -> Result<PathBuf, String> {
   let path = app_data_dir()?.join("Data");
   fs::create_dir_all(&path).map_err(|error| error.to_string())?;
@@ -1535,6 +1560,16 @@ fn app_info() -> Result<AppInfo, String> {
     platform: std::env::consts::OS,
     state_path: state_file.display().to_string(),
   })
+}
+
+#[tauri::command]
+fn get_device_type() -> String {
+  system_device_type().to_string()
+}
+
+#[tauri::command]
+fn get_hostname() -> String {
+  system_hostname()
 }
 
 #[tauri::command]
@@ -1918,6 +1953,8 @@ pub fn run() {
     })
     .invoke_handler(tauri::generate_handler![
       app_info,
+      get_device_type,
+      get_hostname,
       load_state,
       save_state,
       export_backup,
