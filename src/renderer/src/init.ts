@@ -9,7 +9,7 @@ import store from './store'
 loggerService.initWindowSource('mainWindow')
 
 function initKeyv() {
-  window.keyv = new KeyvStorage()
+  window.keyv = window.keyv || new KeyvStorage()
   void window.keyv.init()
 }
 
