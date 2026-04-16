@@ -225,6 +225,7 @@ struct PersistedWindowState {
 const NATIVE_HTTP_CHUNK_EVENT: &str = "native_http_chunk";
 
 static HTTP_REQUEST_ABORTS: OnceLock<Mutex<HashMap<String, Arc<AtomicBool>>>> = OnceLock::new();
+static MAIN_WINDOW_SHOWN: AtomicBool = AtomicBool::new(false);
 
 fn hidden_std_command<S: AsRef<OsStr>>(program: S) -> StdCommand {
   let mut command = StdCommand::new(program);
@@ -242,6 +243,15 @@ fn hidden_command<S: AsRef<OsStr>>(program: S) -> Command {
 
 fn native_http_abort_registry() -> &'static Mutex<HashMap<String, Arc<AtomicBool>>> {
   HTTP_REQUEST_ABORTS.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn mark_main_window_shown(window: &Window) -> Result<(), String> {
+  if !MAIN_WINDOW_SHOWN.swap(true, Ordering::SeqCst) {
+    window.show().map_err(|error| error.to_string())?;
+    let _ = window.set_focus();
+  }
+
+  Ok(())
 }
 
 fn register_native_http_abort(request_id: &str) -> Arc<AtomicBool> {
@@ -1950,12 +1960,25 @@ async fn start_chat(window: Window, request: ChatRequest) -> Result<String, Stri
   Ok(stream_id)
 }
 
+#[tauri::command]
+fn show_main_window(window: Window) -> Result<(), String> {
+  mark_main_window_shown(&window)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
     .plugin(tauri_plugin_notification::init())
     .setup(|app| {
+      MAIN_WINDOW_SHOWN.store(false, Ordering::SeqCst);
+
       if let Some(main_window) = app.get_webview_window("main") {
+        let fallback_window = main_window.clone();
+        tauri::async_runtime::spawn(async move {
+          tokio::time::sleep(Duration::from_secs(3)).await;
+          let _ = mark_main_window_shown(&fallback_window);
+        });
+
         if let Some(state) = load_window_state(main_window.label())? {
           if let (Some(width), Some(height)) = (state.width, state.height) {
             let _ = main_window.set_size(Size::Physical(PhysicalSize::new(width, height)));
@@ -2009,6 +2032,7 @@ pub fn run() {
       test_provider,
       test_mcp,
       check_mcp_connectivity,
+      show_main_window,
       start_chat,
       start_http_request,
       abort_http_request

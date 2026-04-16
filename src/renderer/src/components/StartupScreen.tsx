@@ -26,6 +26,9 @@ const logoStyle: CSSProperties = {
 const StartupScreen: FC = () => {
   useEffect(() => {
     document.getElementById('spinner')?.remove()
+    void (
+      window as { __TAURI__?: { core?: { invoke?: (command: string) => Promise<unknown> } } }
+    ).__TAURI__?.core?.invoke?.('show_main_window')
   }, [])
 
   return (
