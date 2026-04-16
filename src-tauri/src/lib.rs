@@ -7,10 +7,12 @@ use roxmltree::Document;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;
+use std::ffi::OsStr;
 use std::fs;
 use std::fs::File;
 use std::io::{Cursor, Read, Write};
 use std::path::{Path, PathBuf};
+use std::process::Command as StdCommand;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -29,10 +31,15 @@ unsafe extern "C" {
   fn CGRequestScreenCaptureAccess() -> bool;
 }
 
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+
 const APP_NAME: &str = "lich13studio";
 const BUNDLE_ID: &str = "com.lich13.studio";
 const DEFAULT_STATE_FILE: &str = "state.json";
 const WINDOW_STATE_KEY: &str = "windowState";
+#[cfg(target_os = "windows")]
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 #[cfg(target_os = "macos")]
 static APP_EXITING: AtomicBool = AtomicBool::new(false);
@@ -218,6 +225,20 @@ struct PersistedWindowState {
 const NATIVE_HTTP_CHUNK_EVENT: &str = "native_http_chunk";
 
 static HTTP_REQUEST_ABORTS: OnceLock<Mutex<HashMap<String, Arc<AtomicBool>>>> = OnceLock::new();
+
+fn hidden_std_command<S: AsRef<OsStr>>(program: S) -> StdCommand {
+  let mut command = StdCommand::new(program);
+  #[cfg(target_os = "windows")]
+  command.creation_flags(CREATE_NO_WINDOW);
+  command
+}
+
+fn hidden_command<S: AsRef<OsStr>>(program: S) -> Command {
+  let mut command = Command::new(program);
+  #[cfg(target_os = "windows")]
+  command.creation_flags(CREATE_NO_WINDOW);
+  command
+}
 
 fn native_http_abort_registry() -> &'static Mutex<HashMap<String, Arc<AtomicBool>>> {
   HTTP_REQUEST_ABORTS.get_or_init(|| Mutex::new(HashMap::new()))
@@ -1307,7 +1328,7 @@ fn system_hostname() -> String {
     .ok()
     .filter(|value| !value.trim().is_empty())
     .or_else(|| {
-      std::process::Command::new("hostname")
+      hidden_std_command("hostname")
         .output()
         .ok()
         .filter(|output| output.status.success())
@@ -1863,7 +1884,7 @@ async fn test_mcp(server: McpServerRequest) -> Result<OperationResult, String> {
         .filter(|command| !command.trim().is_empty())
         .ok_or_else(|| String::from("Local MCP command is required"))?;
       let args = server.args.clone().unwrap_or_default();
-      let output = Command::new(command)
+      let output = hidden_command(&command)
         .args(args)
         .arg("--help")
         .output()
