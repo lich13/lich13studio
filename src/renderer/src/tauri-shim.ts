@@ -529,6 +529,71 @@ const toBlobPart = (data: Uint8Array) => {
   return clone.buffer
 }
 
+const extensionFromMimeType = (mimeType?: string) => {
+  switch ((mimeType || '').trim().toLowerCase()) {
+    case 'image/jpeg':
+    case 'image/jpg':
+      return '.jpg'
+    case 'image/gif':
+      return '.gif'
+    case 'image/webp':
+      return '.webp'
+    case 'image/bmp':
+      return '.bmp'
+    case 'image/svg+xml':
+      return '.svg'
+    case 'image/png':
+    default:
+      return '.png'
+  }
+}
+
+const decodeBase64ToBytes = (payload: string) => {
+  const normalized = payload.replace(/\s/g, '')
+  if (!normalized) {
+    throw new Error('Base64 data is required')
+  }
+
+  const binary = atob(normalized)
+  const bytes = new Uint8Array(binary.length)
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index)
+  }
+  return bytes
+}
+
+const imageDataToBlob = (data: string) => {
+  const trimmed = data.trim()
+  if (!trimmed) {
+    throw new Error('Base64 data is required')
+  }
+
+  if (/^data:/i.test(trimmed)) {
+    const commaIndex = trimmed.indexOf(',')
+    if (commaIndex === -1) {
+      throw new Error('Invalid base64 image data URL')
+    }
+
+    const header = trimmed.slice(5, commaIndex)
+    if (!header.split(';').some((part) => part.toLowerCase() === 'base64')) {
+      throw new Error('Only base64 image data URLs are supported')
+    }
+
+    const mimeType = header.split(';')[0]?.trim() || 'image/png'
+    const bytes = decodeBase64ToBytes(trimmed.slice(commaIndex + 1))
+    return {
+      blob: new Blob([toBlobPart(bytes)], { type: mimeType }),
+      extension: extensionFromMimeType(mimeType)
+    }
+  }
+
+  const bytes = decodeBase64ToBytes(trimmed)
+  return {
+    blob: new Blob([toBlobPart(bytes)], { type: 'image/png' }),
+    extension: '.png'
+  }
+}
+
 const downloadBlob = (fileName: string, blob: Blob) => {
   const url = URL.createObjectURL(blob)
   const anchor = document.createElement('a')
@@ -1045,10 +1110,12 @@ const api = {
       }
     },
     saveBase64Image: async (data: string) => {
-      const blob = await (await fetch(data)).blob()
-      const meta = await registerBlob(blob, `image-${Date.now()}.png`)
-      downloadBlob(meta.origin_name, blob)
-      return meta
+      if (!previewMode && invoke) {
+        return invoke('save_base64_image', { data })
+      }
+
+      const { blob, extension } = imageDataToBlob(data)
+      return registerBlob(blob, `image-${Date.now()}${extension}`)
     },
     savePastedImage: async (imageData: Uint8Array, extension = 'png') => {
       const fileName = `pasted-${Date.now()}.${extension}`

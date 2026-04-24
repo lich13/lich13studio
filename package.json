@@ -1,6 +1,6 @@
 {
   "name": "lich13studio",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "private": true,
   "description": "A focused desktop AI workspace for assistants, MCP, models, and backup.",
   "desktopName": "lich13studio.desktop",
@@ -96,7 +96,7 @@
     "@ai-sdk/groq": "^3.0.32",
     "@ai-sdk/huggingface": "^1.0.37",
     "@ai-sdk/mistral": "^3.0.24",
-    "@ai-sdk/openai": "^3.0.49",
+    "@ai-sdk/openai": "^3.0.53",
     "@ai-sdk/openai-compatible": "^2.0.37",
     "@ai-sdk/perplexity": "^3.0.23",
     "@ai-sdk/provider": "^3.0.8",
@@ -435,7 +435,9 @@
       "@img/sharp-linux-x64": "0.34.5",
       "@img/sharp-win32-x64": "0.34.5",
       "@langchain/core": "1.0.2",
-      "@napi-rs/canvas": "0.1.97"
+      "@napi-rs/canvas": "0.1.97",
+      "@ai-sdk/provider-utils": "4.0.23",
+      "@ai-sdk/openai": "3.0.53"
     },
     "patchedDependencies": {
       "@napi-rs/system-ocr@1.0.2": "patches/@napi-rs-system-ocr-npm-1.0.2-59e7a78e8b.patch",
@@ -453,6 +455,7 @@
       "@openrouter/ai-sdk-provider": "patches/@openrouter__ai-sdk-provider.patch",
       "@opeoginni/github-copilot-openai-compatible@1.0.0": "patches/@opeoginni__github-copilot-openai-compatible@1.0.0.patch",
       "@ai-sdk/openai-compatible@2.0.37": "patches/@ai-sdk__openai-compatible@2.0.37.patch",
+      "@ai-sdk/openai@3.0.53": "patches/@ai-sdk__openai@3.0.53.patch",
       "@ai-sdk/google@3.0.55": "patches/@ai-sdk__google@3.0.55.patch"
     },
     "onlyBuiltDependencies": [

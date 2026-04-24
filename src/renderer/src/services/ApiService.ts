@@ -40,7 +40,7 @@ import {
 import { ConversationService } from './ConversationService'
 import FileManager from './FileManager'
 import type { BlockManager } from './messageStreaming'
-import type { StreamProcessorCallbacks } from './StreamProcessingService'
+import type { StreamProcessor, StreamProcessorCallbacks } from './StreamProcessingService'
 // import {
 //   filterContextMessages,
 //   filterEmptyMessages,
@@ -152,7 +152,7 @@ export async function transformMessagesAndFetch(
       headers?: Record<string, string>
     }
   },
-  onChunkReceived: (chunk: Chunk) => void
+  onChunkReceived: StreamProcessor
 ) {
   const { messages, assistant } = request
 
@@ -183,7 +183,7 @@ export async function transformMessagesAndFetch(
       onChunkReceived
     })
   } catch (error: any) {
-    onChunkReceived({ type: ChunkType.ERROR, error })
+    await onChunkReceived({ type: ChunkType.ERROR, error })
   }
 }
 
@@ -224,7 +224,7 @@ export async function fetchChatCompletion({
   const provider = AI.getActualProvider()
 
   const mcpTools: MCPTool[] = []
-  onChunkReceived({ type: ChunkType.LLM_RESPONSE_CREATED })
+  await onChunkReceived({ type: ChunkType.LLM_RESPONSE_CREATED })
 
   if (isPromptToolUse(assistant) || isSupportedToolUse(assistant)) {
     mcpTools.push(...(await fetchMcpTools(assistant)))
@@ -277,7 +277,7 @@ export async function fetchChatCompletion({
     if (chunk.type === ChunkType.BLOCK_COMPLETE) {
       trackTokenUsage({ usage: chunk.response?.usage, model: assistant?.model, source: 'chat' })
     }
-    originalOnChunk?.(chunk)
+    return originalOnChunk?.(chunk)
   }
 
   // --- Call AI Completions ---
@@ -331,7 +331,7 @@ export async function fetchImageGeneration({
 }: {
   messages: Message[]
   assistant: Assistant
-  onChunkReceived: (chunk: Chunk) => void
+  onChunkReceived: StreamProcessor
 }) {
   // 创建 AI provider
   const baseProvider = getProviderByModel(assistant.model || getDefaultModel())
@@ -341,8 +341,8 @@ export async function fetchImageGeneration({
   }
   const aiProvider = new AiProvider(assistant.model || getDefaultModel(), providerWithRotatedKey)
 
-  onChunkReceived({ type: ChunkType.LLM_RESPONSE_CREATED })
-  onChunkReceived({ type: ChunkType.IMAGE_CREATED })
+  await onChunkReceived({ type: ChunkType.LLM_RESPONSE_CREATED })
+  await onChunkReceived({ type: ChunkType.IMAGE_CREATED })
 
   const startTime = Date.now()
 
@@ -382,24 +382,31 @@ export async function fetchImageGeneration({
 
     // 发送结果 chunks
     const imageType = images[0]?.startsWith('data:') ? 'base64' : 'url'
-    onChunkReceived({
+    await onChunkReceived({
       type: ChunkType.IMAGE_COMPLETE,
       image: { type: imageType, images }
     })
 
-    onChunkReceived({
-      type: ChunkType.LLM_RESPONSE_COMPLETE,
-      response: {
-        usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
-        metrics: {
-          completion_tokens: 0,
-          time_first_token_millsec: 0,
-          time_completion_millsec: Date.now() - startTime
-        }
+    const response = {
+      usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+      metrics: {
+        completion_tokens: 0,
+        time_first_token_millsec: 0,
+        time_completion_millsec: Date.now() - startTime
       }
+    }
+
+    await onChunkReceived({
+      type: ChunkType.BLOCK_COMPLETE,
+      response
+    })
+
+    await onChunkReceived({
+      type: ChunkType.LLM_RESPONSE_COMPLETE,
+      response
     })
   } catch (error) {
-    onChunkReceived({ type: ChunkType.ERROR, error: error as Error })
+    await onChunkReceived({ type: ChunkType.ERROR, error: error as Error })
     throw error
   }
 }

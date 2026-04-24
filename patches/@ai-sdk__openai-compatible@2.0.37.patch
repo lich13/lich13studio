@@ -1,5 +1,5 @@
 diff --git a/dist/index.js b/dist/index.js
-index d73573b013e61903991cad2074187a3ade8921ab..919cbb2d14c0019716080c1bf041dde96c2b6cab 100644
+index d73573b013e61903991cad2074187a3ade8921ab..f0632aa0f2d5ce75eaf886ee945138be463eb402 100644
 --- a/dist/index.js
 +++ b/dist/index.js
 @@ -572,6 +572,17 @@ var OpenAICompatibleChatLanguageModel = class {
@@ -68,8 +68,54 @@ index d73573b013e61903991cad2074187a3ade8921ab..919cbb2d14c0019716080c1bf041dde9
          ).nullish()
        }).nullish(),
        finish_reason: import_v43.z.string().nullish()
+@@ -1529,6 +1567,18 @@ var openaiTextEmbeddingResponseSchema = import_v47.z.object({
+ // src/image/openai-compatible-image-model.ts
+ var import_provider_utils5 = require("@ai-sdk/provider-utils");
+ var import_v48 = require("zod/v4");
++var defaultResponseFormatPrefixes = [
++  "chatgpt-image-",
++  "gpt-image-1-mini",
++  "gpt-image-1.5",
++  "gpt-image-1",
++  "gpt-image-2"
++];
++function hasDefaultResponseFormat(modelId) {
++  return defaultResponseFormatPrefixes.some(
++    (prefix) => modelId.startsWith(prefix)
++  );
++}
+ var OpenAICompatibleImageModel = class {
+   constructor(modelId, config) {
+     this.modelId = modelId;
+@@ -1625,7 +1675,7 @@ var OpenAICompatibleImageModel = class {
+         n,
+         size,
+         ...args,
+-        response_format: "b64_json"
++        ...!hasDefaultResponseFormat(this.modelId) ? { response_format: "b64_json" } : {}
+       },
+       failedResponseHandler: (0, import_provider_utils5.createJsonErrorResponseHandler)(
+         (_e = this.config.errorStructure) != null ? _e : defaultOpenAICompatibleErrorStructure
+@@ -1648,7 +1698,16 @@ var OpenAICompatibleImageModel = class {
+   }
+ };
+ var openaiCompatibleImageResponseSchema = import_v48.z.object({
+-  data: import_v48.z.array(import_v48.z.object({ b64_json: import_v48.z.string() }))
++  data: import_v48.z.array(import_v48.z.object({
++    b64_json: import_v48.z.string(),
++    revised_prompt: import_v48.z.string().nullish()
++  })),
++  created: import_v48.z.number().nullish(),
++  background: import_v48.z.string().nullish(),
++  output_format: import_v48.z.string().nullish(),
++  quality: import_v48.z.string().nullish(),
++  size: import_v48.z.string().nullish(),
++  usage: import_v48.z.record(import_v48.z.string(), import_v48.z.any()).nullish()
+ });
+ async function fileToBlob(file) {
+   if (file.type === "url") {
 diff --git a/dist/index.mjs b/dist/index.mjs
-index 237c9e209da9da2d4d557eb309e1adc2157c1426..2e140f053bb9d7e88ed6b54238d355e7f5aae49b 100644
+index 237c9e209da9da2d4d557eb309e1adc2157c1426..f771b03020fbe6fafe1759b4b9c1c14221c6173d 100644
 --- a/dist/index.mjs
 +++ b/dist/index.mjs
 @@ -559,6 +559,17 @@ var OpenAICompatibleChatLanguageModel = class {
@@ -138,3 +184,49 @@ index 237c9e209da9da2d4d557eb309e1adc2157c1426..2e140f053bb9d7e88ed6b54238d355e7
          ).nullish()
        }).nullish(),
        finish_reason: z3.string().nullish()
+@@ -1543,6 +1581,18 @@ import {
+   postJsonToApi as postJsonToApi4
+ } from "@ai-sdk/provider-utils";
+ import { z as z8 } from "zod/v4";
++var defaultResponseFormatPrefixes = [
++  "chatgpt-image-",
++  "gpt-image-1-mini",
++  "gpt-image-1.5",
++  "gpt-image-1",
++  "gpt-image-2"
++];
++function hasDefaultResponseFormat(modelId) {
++  return defaultResponseFormatPrefixes.some(
++    (prefix) => modelId.startsWith(prefix)
++  );
++}
+ var OpenAICompatibleImageModel = class {
+   constructor(modelId, config) {
+     this.modelId = modelId;
+@@ -1639,7 +1689,7 @@ var OpenAICompatibleImageModel = class {
+         n,
+         size,
+         ...args,
+-        response_format: "b64_json"
++        ...!hasDefaultResponseFormat(this.modelId) ? { response_format: "b64_json" } : {}
+       },
+       failedResponseHandler: createJsonErrorResponseHandler4(
+         (_e = this.config.errorStructure) != null ? _e : defaultOpenAICompatibleErrorStructure
+@@ -1662,7 +1712,16 @@ var OpenAICompatibleImageModel = class {
+   }
+ };
+ var openaiCompatibleImageResponseSchema = z8.object({
+-  data: z8.array(z8.object({ b64_json: z8.string() }))
++  data: z8.array(z8.object({
++    b64_json: z8.string(),
++    revised_prompt: z8.string().nullish()
++  })),
++  created: z8.number().nullish(),
++  background: z8.string().nullish(),
++  output_format: z8.string().nullish(),
++  quality: z8.string().nullish(),
++  size: z8.string().nullish(),
++  usage: z8.record(z8.string(), z8.any()).nullish()
+ });
+ async function fileToBlob(file) {
+   if (file.type === "url") {

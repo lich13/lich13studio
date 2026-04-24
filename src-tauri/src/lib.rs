@@ -1,3 +1,4 @@
+use base64::{engine::general_purpose, Engine as _};
 use futures_util::StreamExt;
 use image::codecs::png::PngEncoder;
 use image::{ColorType, ImageEncoder};
@@ -63,6 +64,26 @@ struct AppInfo {
   runtime: &'static str,
   platform: &'static str,
   state_path: String,
+}
+
+#[derive(Debug)]
+struct DecodedBase64ImagePayload {
+  bytes: Vec<u8>,
+  extension: String,
+}
+
+#[derive(Serialize)]
+struct TauriFileMetadata {
+  id: String,
+  name: String,
+  origin_name: String,
+  path: String,
+  size: u64,
+  ext: String,
+  #[serde(rename = "type")]
+  file_type: String,
+  created_at: String,
+  count: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -452,6 +473,28 @@ async fn save_file(file_name: String, bytes: Vec<u8>) -> Result<String, String> 
   let file_path = file_handle.path().to_path_buf();
   fs::write(&file_path, bytes).map_err(|error| error.to_string())?;
   Ok(file_path.display().to_string())
+}
+
+#[tauri::command]
+fn save_base64_image(data: String) -> Result<TauriFileMetadata, String> {
+  let decoded = decode_base64_image_payload(&data)?;
+  let id = Uuid::new_v4().to_string();
+  let file_name = format!("{}{}", id, decoded.extension);
+  let path = files_dir()?.join(&file_name);
+
+  fs::write(&path, &decoded.bytes).map_err(|error| error.to_string())?;
+
+  Ok(TauriFileMetadata {
+    id,
+    name: file_name.clone(),
+    origin_name: file_name,
+    path: path.display().to_string(),
+    size: decoded.bytes.len() as u64,
+    ext: decoded.extension.clone(),
+    file_type: file_type_from_extension(&decoded.extension).to_string(),
+    created_at: chrono::Utc::now().to_rfc3339(),
+    count: 1,
+  })
 }
 
 fn normalize_base_url(url: &str) -> String {
@@ -1315,6 +1358,73 @@ fn logs_dir() -> Result<PathBuf, String> {
   Ok(path)
 }
 
+fn extension_from_mime_type(mime_type: Option<&str>) -> &'static str {
+  let Some(mime_type) = mime_type else {
+    return ".png";
+  };
+
+  match mime_type.trim().to_ascii_lowercase().as_str() {
+    "image/jpeg" | "image/jpg" => ".jpg",
+    "image/png" => ".png",
+    "image/gif" => ".gif",
+    "image/webp" => ".webp",
+    "image/bmp" => ".bmp",
+    "image/svg+xml" => ".svg",
+    _ => ".png",
+  }
+}
+
+fn file_type_from_extension(extension: &str) -> &'static str {
+  match extension.trim().to_ascii_lowercase().as_str() {
+    ".jpg" | ".jpeg" | ".png" | ".gif" | ".webp" | ".bmp" | ".svg" => "image",
+    ".txt" | ".md" | ".markdown" | ".json" | ".csv" | ".log" => "text",
+    ".pdf" | ".doc" | ".docx" | ".ppt" | ".pptx" | ".xls" | ".xlsx" => "document",
+    _ => "other",
+  }
+}
+
+fn decode_base64_payload(payload: &str) -> Result<Vec<u8>, String> {
+  let normalized: String = payload.chars().filter(|character| !character.is_ascii_whitespace()).collect();
+
+  if normalized.is_empty() {
+    return Err(String::from("Base64 data is required"));
+  }
+
+  general_purpose::STANDARD
+    .decode(normalized.as_bytes())
+    .or_else(|_| general_purpose::STANDARD_NO_PAD.decode(normalized.as_bytes()))
+    .map_err(|error| format!("Failed to decode base64 image: {error}"))
+}
+
+fn decode_base64_image_payload(data: &str) -> Result<DecodedBase64ImagePayload, String> {
+  let data = data.trim();
+
+  if data.is_empty() {
+    return Err(String::from("Base64 data is required"));
+  }
+
+  let (payload, extension) = if data.get(..5).is_some_and(|prefix| prefix.eq_ignore_ascii_case("data:")) {
+    let data_url_body = &data[5..];
+    let comma_index = data_url_body
+      .find(',')
+      .ok_or_else(|| String::from("Invalid base64 image data URL"))?;
+    let header = &data_url_body[..comma_index];
+
+    if !header.split(';').any(|part| part.eq_ignore_ascii_case("base64")) {
+      return Err(String::from("Only base64 image data URLs are supported"));
+    }
+
+    let media_type = header.split(';').next().filter(|value| !value.trim().is_empty());
+    (&data_url_body[comma_index + 1..], extension_from_mime_type(media_type).to_string())
+  } else {
+    (data, ".png".to_string())
+  };
+
+  let bytes = decode_base64_payload(payload)?;
+
+  Ok(DecodedBase64ImagePayload { bytes, extension })
+}
+
 fn system_device_type() -> &'static str {
   #[cfg(target_os = "macos")]
   {
@@ -2015,6 +2125,7 @@ pub fn run() {
       save_state,
       export_backup,
       save_file,
+      save_base64_image,
       pick_folder,
       get_obsidian_vaults,
       get_obsidian_files,
@@ -2045,4 +2156,24 @@ pub fn run() {
     .run(|app, event| {
       handle_run_event(app, &event);
     });
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn decodes_base64_image_data_url() {
+    let decoded = decode_base64_image_payload("data:image/png;base64,iVBORw0KGgo=").unwrap();
+
+    assert_eq!(decoded.extension, ".png");
+    assert_eq!(decoded.bytes, vec![137, 80, 78, 71, 13, 10, 26, 10]);
+  }
+
+  #[test]
+  fn rejects_non_base64_data_url() {
+    let error = decode_base64_image_payload("data:image/png,not-base64").unwrap_err();
+
+    assert!(error.contains("base64"));
+  }
 }
