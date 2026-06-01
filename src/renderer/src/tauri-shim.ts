@@ -279,6 +279,11 @@ const normalizeExt = (fileName: string) => {
   return match ? `.${match[1]}` : ''
 }
 
+const normalizeImageExtension = (extension?: string) => {
+  const cleanExtension = extension?.trim().replace(/^\.+/, '') || 'png'
+  return cleanExtension.toLowerCase()
+}
+
 const clampProgress = (value: number) => {
   if (!Number.isFinite(value)) {
     return 0
@@ -1118,8 +1123,10 @@ const api = {
       return registerBlob(blob, `image-${Date.now()}${extension}`)
     },
     savePastedImage: async (imageData: Uint8Array, extension = 'png') => {
-      const fileName = `pasted-${Date.now()}.${extension}`
-      const blob = new Blob([toBlobPart(imageData)], { type: `image/${extension}` })
+      const cleanExtension = normalizeImageExtension(extension)
+      const mimeExtension = cleanExtension === 'jpg' ? 'jpeg' : cleanExtension
+      const fileName = `pasted-${Date.now()}.${cleanExtension}`
+      const blob = new Blob([toBlobPart(imageData)], { type: `image/${mimeExtension}` })
       return registerBlob(blob, fileName)
     },
     download: async (url: string) => {
@@ -1142,7 +1149,7 @@ const api = {
       if (existing) return existing
       const pseudoPath = `memory://pending/${createId('file')}/${file.name}`
       fileObjectMap.set(file, pseudoPath)
-      void registerBrowserFile(file)
+      void registerBlob(file, file.name, pseudoPath)
       return pseudoPath
     },
     openFileWithRelativePath: async (file: AnyRecord) => api.file.openPath(file?.path || file?.filePath || ''),

@@ -33,6 +33,11 @@ import WordExtractor from 'word-extractor'
 
 const logger = loggerService.withContext('FileStorage')
 
+const normalizeImageExtension = (extension?: string): string => {
+  const cleanExtension = extension?.trim().replace(/^\.+/, '') || 'png'
+  return `.${cleanExtension.toLowerCase()}`
+}
+
 // Get ripgrep binary path
 const getRipgrepBinaryPath = (): string | null => {
   try {
@@ -713,7 +718,7 @@ class FileStorage {
   ): Promise<FileMetadata> => {
     try {
       const uuid = uuidv4()
-      const ext = extension || '.png'
+      const ext = normalizeImageExtension(extension)
       const destPath = path.join(this.storageDir, uuid + ext)
 
       logger.debug('Saving pasted image:', {

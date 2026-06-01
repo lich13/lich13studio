@@ -1,6 +1,6 @@
 {
   "name": "lich13studio",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "private": true,
   "description": "A focused desktop AI workspace for assistants, MCP, models, and backup.",
   "desktopName": "lich13studio.desktop",
@@ -52,7 +52,8 @@
     "prepare": "prek install",
     "claude": "dotenv -e .env -- claude",
     "ci:basic-check": "pnpm test:lint && pnpm format:check && pnpm typecheck && pnpm i18n:check && pnpm i18n:hardcoded:strict && pnpm openapi:check && pnpm skills:check",
-    "ci": "pnpm ci:basic-check"
+    "ci": "pnpm ci:basic-check",
+    "test:renderer": "vitest run --config vitest.renderer.config.ts src/renderer/src/services/PasteService.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "0.2.81",
@@ -396,6 +397,7 @@
     "unist-util-visit": "5.0.0",
     "uuid": "^13.0.0",
     "vite": "npm:rolldown-vite@7.3.0",
+    "vitest": "^3.2.4",
     "voyage-ai-provider": "^3.0.0",
     "webdav": "^5.9.0",
     "winston": "^3.17.0",

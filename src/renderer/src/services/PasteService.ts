@@ -3,6 +3,87 @@ import type { FileMetadata } from '@renderer/types'
 import { getFileExtension, isSupportedFile } from '@renderer/utils'
 
 const logger = loggerService.withContext('PasteService')
+const handledClipboardPasteEvents = new WeakSet<ClipboardEvent>()
+
+const imageMimeExtensionMap: Record<string, string> = {
+  'image/bmp': '.bmp',
+  'image/gif': '.gif',
+  'image/jpeg': '.jpg',
+  'image/jpg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp'
+}
+
+const getImageExtension = (file: File): string => {
+  const namedExtension = getFileExtension(file.name)
+  if (namedExtension !== '.') {
+    return namedExtension.toLowerCase()
+  }
+
+  return imageMimeExtensionMap[file.type.toLowerCase()] ?? '.png'
+}
+
+const saveClipboardImage = async (file: File, extension: string): Promise<FileMetadata | null> => {
+  const arrayBuffer = await file.arrayBuffer()
+  const uint8Array = new Uint8Array(arrayBuffer)
+  return await window.api.file.savePastedImage(uint8Array, extension)
+}
+
+const addClipboardFile = async (
+  file: File,
+  extensionSet: Set<string>,
+  setFiles: (updater: (prevFiles: FileMetadata[]) => FileMetadata[]) => void
+): Promise<boolean> => {
+  const filePath = window.api.file.getPathForFile(file)
+  const isAnonymousMemoryFile = filePath?.startsWith('memory://pending/') && getFileExtension(filePath) === '.'
+
+  if (filePath && !isAnonymousMemoryFile) {
+    if (!extensionSet.has(getFileExtension(filePath)) || !(await isSupportedFile(filePath, extensionSet))) {
+      return false
+    }
+
+    const selectedFile = await window.api.file.get(filePath)
+    if (selectedFile) {
+      setFiles((prevFiles) => [...prevFiles, selectedFile])
+      return true
+    }
+
+    return false
+  }
+
+  if (!file.type.startsWith('image/')) {
+    return false
+  }
+
+  const extension = getImageExtension(file)
+  if (!extensionSet.has(extension)) {
+    return false
+  }
+
+  const selectedFile = await saveClipboardImage(file, extension)
+  if (selectedFile) {
+    setFiles((prevFiles) => [...prevFiles, selectedFile])
+    return true
+  }
+
+  return false
+}
+
+const getFileClipboardItems = (items: DataTransferItemList | DataTransferItem[] | undefined): DataTransferItem[] => {
+  if (!items) {
+    return []
+  }
+
+  return Array.from(items).filter((item) => item.kind === 'file')
+}
+
+const getClipboardFileKey = (file: File): string => {
+  if (file.type.startsWith('image/')) {
+    return `image:${file.type}:${file.size}`
+  }
+
+  return `${file.name}:${file.type}:${file.size}:${file.lastModified}`
+}
 
 // Track last focused component
 type ComponentType = 'inputbar' | 'messageEditor' | 'TranslatePage' | null
@@ -36,6 +117,48 @@ export const handlePaste = async (
   t?: (key: string) => string
 ): Promise<boolean> => {
   try {
+    const clipboardFiles = Array.from(event.clipboardData?.files ?? [])
+    const clipboardItems = getFileClipboardItems(event.clipboardData?.items)
+
+    if (clipboardFiles.length > 0 || clipboardItems.length > 0) {
+      event.preventDefault()
+      if (handledClipboardPasteEvents.has(event)) {
+        return true
+      }
+      handledClipboardPasteEvents.add(event)
+      const extensionSet = new Set(supportExts)
+      const handledClipboardFileKeys = new Set<string>()
+      try {
+        for (const file of clipboardFiles) {
+          handledClipboardFileKeys.add(getClipboardFileKey(file))
+
+          const isFileHandled = await addClipboardFile(file, extensionSet, setFiles)
+          if (!isFileHandled) {
+            if (t) {
+              window.toast.info(t('chat.input.file_not_supported'))
+            }
+          }
+        }
+
+        for (const item of clipboardItems) {
+          const file = item.getAsFile()
+          if (!file || handledClipboardFileKeys.has(getClipboardFileKey(file))) {
+            continue
+          }
+
+          const isFileHandled = await addClipboardFile(file, extensionSet, setFiles)
+          if (!isFileHandled && t) {
+            window.toast.info(t('chat.input.file_not_supported'))
+          }
+        }
+      } catch (error) {
+        logger.error('onPaste:', error as Error)
+        if (t) {
+          window.toast.error(t('chat.input.file_error'))
+        }
+      }
+      return true
+    }
     // 优先处理文本粘贴
     const clipboardText = event.clipboardData?.getData('text')
     if (clipboardText) {
@@ -56,56 +179,6 @@ export const handlePaste = async (
       }
       // 短文本走默认粘贴行为，直接返回
       return false
-    }
-    // 2. 文件/图片粘贴（仅在无文本时处理）
-    if (event.clipboardData?.files && event.clipboardData.files.length > 0) {
-      event.preventDefault()
-      const extensionSet = new Set(supportExts)
-      try {
-        for (const file of event.clipboardData.files) {
-          // 使用新的API获取文件路径
-          const filePath = window.api.file.getPathForFile(file)
-
-          // 如果没有路径，可能是剪贴板中的图像数据
-          if (!filePath) {
-            // 图像生成也支持图像编辑
-            if (file.type.startsWith('image/') && supportExts.includes(getFileExtension(file.name))) {
-              const tempFilePath = await window.api.file.createTempFile(file.name)
-              const arrayBuffer = await file.arrayBuffer()
-              const uint8Array = new Uint8Array(arrayBuffer)
-              await window.api.file.write(tempFilePath, uint8Array)
-              const selectedFile = await window.api.file.get(tempFilePath)
-              if (selectedFile) {
-                setFiles((prevFiles) => [...prevFiles, selectedFile])
-                break
-              }
-            } else {
-              if (t) {
-                window.toast.info(t('chat.input.file_not_supported'))
-              }
-            }
-            continue
-          }
-
-          // 有路径的情况
-          if (await isSupportedFile(filePath, extensionSet)) {
-            const selectedFile = await window.api.file.get(filePath)
-            if (selectedFile) {
-              setFiles((prevFiles) => [...prevFiles, selectedFile])
-            }
-          } else {
-            if (t) {
-              window.toast.info(t('chat.input.file_not_supported'))
-            }
-          }
-        }
-      } catch (error) {
-        logger.error('onPaste:', error as Error)
-        if (t) {
-          window.toast.error(t('chat.input.file_error'))
-        }
-      }
-      return true
     }
     // 其他情况默认粘贴
     return false
@@ -170,6 +243,10 @@ export const unregisterHandler = (component: ComponentType) => {
  * 全局粘贴处理函数，根据最后聚焦的组件路由粘贴事件
  */
 const handleGlobalPaste = async (event: ClipboardEvent): Promise<boolean> => {
+  if (event.defaultPrevented) {
+    return false
+  }
+
   // 如果当前有活动元素且是输入区域，不执行全局处理
   const activeElement = document.activeElement
   if (
