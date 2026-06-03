@@ -2668,6 +2668,9 @@
       "esc_close": "關閉視窗",
       "esc_pause": "暫停"
     },
+    "header": {
+      "default_assistant": "預設助手"
+    },
     "input": {
       "placeholder": {
         "empty": "詢問 {{model}} 取得幫助...",

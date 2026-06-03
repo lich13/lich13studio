@@ -2668,6 +2668,9 @@
       "esc_close": "close",
       "esc_pause": "pause"
     },
+    "header": {
+      "default_assistant": "Default assistant"
+    },
     "input": {
       "placeholder": {
         "empty": "Ask {{model}} for help...",

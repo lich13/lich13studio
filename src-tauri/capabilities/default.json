@@ -1,6 +1,6 @@
 {
   "identifier": "main-capability",
   "description": "Default capability set for the lich13studio main window",
-  "windows": ["main"],
+  "windows": ["main", "mini"],
   "permissions": ["core:default", "notification:default"]
 }

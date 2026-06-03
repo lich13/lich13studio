@@ -17,9 +17,13 @@ use std::process::Command as StdCommand;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use tauri::image::Image;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, Position, RunEvent, Size, WebviewWindow, Window, WindowEvent};
+use tauri::{
+  AppHandle, Emitter, Manager, Monitor, PhysicalPosition, PhysicalSize, Position, RunEvent, Size, WebviewUrl,
+  WebviewWindow, WebviewWindowBuilder, Window, WindowEvent,
+};
 use tokio::process::Command;
 use uuid::Uuid;
 use walkdir::WalkDir;
@@ -41,6 +45,11 @@ const APP_NAME: &str = "lich13studio";
 const BUNDLE_ID: &str = "com.lich13.studio";
 const DEFAULT_STATE_FILE: &str = "state.json";
 const WINDOW_STATE_KEY: &str = "windowState";
+const MINI_WINDOW_LABEL: &str = "mini";
+const MINI_WINDOW_SHOW_EVENT: &str = "show-mini-window";
+const MINI_WINDOW_HIDE_EVENT: &str = "hide-mini-window";
+const MINI_WINDOW_WIDTH: u32 = 420;
+const MINI_WINDOW_HEIGHT: u32 = 620;
 #[cfg(target_os = "windows")]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
@@ -250,19 +259,30 @@ const FOCUS_CHAT_INPUT_EVENT: &str = "focus_chat_input";
 
 static HTTP_REQUEST_ABORTS: OnceLock<Mutex<HashMap<String, Arc<AtomicBool>>>> = OnceLock::new();
 static MAIN_WINDOW_SHOWN: AtomicBool = AtomicBool::new(false);
+static MINI_WINDOW_PINNED: AtomicBool = AtomicBool::new(false);
 
+#[cfg(target_os = "windows")]
 fn hidden_std_command<S: AsRef<OsStr>>(program: S) -> StdCommand {
   let mut command = StdCommand::new(program);
-  #[cfg(target_os = "windows")]
   command.creation_flags(CREATE_NO_WINDOW);
   command
 }
 
+#[cfg(not(target_os = "windows"))]
+fn hidden_std_command<S: AsRef<OsStr>>(program: S) -> StdCommand {
+  StdCommand::new(program)
+}
+
+#[cfg(target_os = "windows")]
 fn hidden_command<S: AsRef<OsStr>>(program: S) -> Command {
   let mut command = Command::new(program);
-  #[cfg(target_os = "windows")]
   command.creation_flags(CREATE_NO_WINDOW);
   command
+}
+
+#[cfg(not(target_os = "windows"))]
+fn hidden_command<S: AsRef<OsStr>>(program: S) -> Command {
+  Command::new(program)
 }
 
 fn native_http_abort_registry() -> &'static Mutex<HashMap<String, Arc<AtomicBool>>> {
@@ -291,33 +311,127 @@ fn show_and_focus_main_window(app: &AppHandle) -> Result<(), String> {
   Ok(())
 }
 
+fn clamp_i32(value: i32, min: i32, max: i32) -> i32 {
+  if max < min {
+    return min;
+  }
+  value.max(min).min(max)
+}
+
+fn monitor_contains_point(monitor: &Monitor, point: PhysicalPosition<f64>) -> bool {
+  let work_area = monitor.work_area();
+  let x = point.x.round() as i32;
+  let y = point.y.round() as i32;
+  x >= work_area.position.x
+    && y >= work_area.position.y
+    && x <= work_area.position.x + work_area.size.width as i32
+    && y <= work_area.position.y + work_area.size.height as i32
+}
+
+fn position_mini_window(window: &WebviewWindow, anchor: Option<PhysicalPosition<f64>>) -> Result<(), String> {
+  let size = window
+    .inner_size()
+    .unwrap_or_else(|_| PhysicalSize::new(MINI_WINDOW_WIDTH, MINI_WINDOW_HEIGHT));
+  let monitors = window.available_monitors().map_err(|error| error.to_string())?;
+  let monitor = anchor
+    .and_then(|point| monitors.iter().find(|monitor| monitor_contains_point(monitor, point)).cloned())
+    .or_else(|| window.current_monitor().ok().flatten())
+    .or_else(|| monitors.first().cloned());
+
+  let Some(monitor) = monitor else {
+    if anchor.is_none() {
+      let _ = window.center();
+    }
+    return Ok(());
+  };
+
+  let work_area = monitor.work_area();
+  let margin = 10;
+  let max_x = work_area.position.x + work_area.size.width as i32 - size.width as i32 - margin;
+  let max_y = work_area.position.y + work_area.size.height as i32 - size.height as i32 - margin;
+
+  let (target_x, target_y) = if let Some(point) = anchor {
+    (
+      clamp_i32(point.x.round() as i32 - size.width as i32 + 14, work_area.position.x + margin, max_x),
+      clamp_i32(point.y.round() as i32 + 10, work_area.position.y + margin, max_y),
+    )
+  } else {
+    (
+      clamp_i32(
+        work_area.position.x + work_area.size.width as i32 - size.width as i32 - 24,
+        work_area.position.x + margin,
+        max_x,
+      ),
+      clamp_i32(work_area.position.y + 24, work_area.position.y + margin, max_y),
+    )
+  };
+
+  window
+    .set_position(Position::Physical(PhysicalPosition::new(target_x, target_y)))
+    .map_err(|error| error.to_string())
+}
+
+fn get_or_create_mini_window(app: &AppHandle) -> Result<WebviewWindow, String> {
+  if let Some(window) = app.get_webview_window(MINI_WINDOW_LABEL) {
+    return Ok(window);
+  }
+
+  WebviewWindowBuilder::new(app, MINI_WINDOW_LABEL, WebviewUrl::App("miniWindow.html".into()))
+    .title("lich13studio")
+    .inner_size(MINI_WINDOW_WIDTH as f64, MINI_WINDOW_HEIGHT as f64)
+    .min_inner_size(360.0, 480.0)
+    .max_inner_size(720.0, 860.0)
+    .decorations(false)
+    .resizable(true)
+    .visible(false)
+    .always_on_top(true)
+    .skip_taskbar(true)
+    .build()
+    .map_err(|error| error.to_string())
+}
+
+fn show_mini_window_at(app: &AppHandle, anchor: Option<PhysicalPosition<f64>>) -> Result<(), String> {
+  let mini_window = get_or_create_mini_window(app)?;
+  position_mini_window(&mini_window, anchor)?;
+  mini_window.show().map_err(|error| error.to_string())?;
+  let _ = mini_window.set_focus();
+  let _ = mini_window.emit(MINI_WINDOW_SHOW_EVENT, ());
+  Ok(())
+}
+
+fn hide_mini_window_for_app(app: &AppHandle) -> Result<(), String> {
+  if let Some(mini_window) = app.get_webview_window(MINI_WINDOW_LABEL) {
+    mini_window.hide().map_err(|error| error.to_string())?;
+    let _ = mini_window.emit(MINI_WINDOW_HIDE_EVENT, ());
+  }
+  Ok(())
+}
+
 fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
   let show_item = MenuItem::with_id(app, "show", "Open lich13studio", true, None::<&str>)?;
   let quit_item = MenuItem::with_id(app, "quit", "Quit lich13studio", true, None::<&str>)?;
   let menu = Menu::with_items(app, &[&show_item, &quit_item])?;
 
-  let icon = app
-    .default_window_icon()
-    .cloned()
-    .ok_or_else(|| String::from("Default window icon is missing"))?;
+  let decoded_icon = image::load_from_memory(include_bytes!("../../build/tray_icon.png"))?.into_rgba8();
+  let (icon_width, icon_height) = decoded_icon.dimensions();
+  let icon = Image::new_owned(decoded_icon.into_raw(), icon_width, icon_height);
   let app_handle = app.handle().clone();
 
   TrayIconBuilder::with_id("main")
     .icon(icon)
-    .icon_as_template(true)
+    .icon_as_template(false)
     .tooltip("lich13studio")
     .show_menu_on_left_click(false)
     .menu(&menu)
     .on_tray_icon_event(move |_tray, event| {
-      if matches!(
-        event,
-        TrayIconEvent::Click {
-          button: MouseButton::Left,
-          button_state: MouseButtonState::Up,
-          ..
-        }
-      ) {
-        let _ = show_and_focus_main_window(&app_handle);
+      if let TrayIconEvent::Click {
+        button: MouseButton::Left,
+        button_state: MouseButtonState::Up,
+        position,
+        ..
+      } = event
+      {
+        let _ = show_mini_window_at(&app_handle, Some(position));
       }
     })
     .on_menu_event(|app, event| match event.id().as_ref() {
@@ -483,6 +597,17 @@ fn handle_main_window_close(_window: &Window, _event: &WindowEvent) {
       let _ = persist_window_state(_window);
       let _ = _window.hide();
     }
+  }
+}
+
+fn handle_mini_window_focus(window: &Window, event: &WindowEvent) {
+  if window.label() != MINI_WINDOW_LABEL {
+    return;
+  }
+
+  if matches!(event, WindowEvent::Focused(false)) && !MINI_WINDOW_PINNED.load(Ordering::Relaxed) {
+    let _ = window.hide();
+    let _ = window.emit(MINI_WINDOW_HIDE_EVENT, ());
   }
 }
 
@@ -2136,6 +2261,41 @@ fn show_main_window(app: AppHandle) -> Result<(), String> {
   show_and_focus_main_window(&app)
 }
 
+#[tauri::command]
+fn show_mini_window(app: AppHandle) -> Result<(), String> {
+  show_mini_window_at(&app, None)
+}
+
+#[tauri::command]
+fn hide_mini_window(app: AppHandle) -> Result<(), String> {
+  hide_mini_window_for_app(&app)
+}
+
+#[tauri::command]
+fn close_mini_window(app: AppHandle) -> Result<(), String> {
+  if let Some(mini_window) = app.get_webview_window(MINI_WINDOW_LABEL) {
+    mini_window.close().map_err(|error| error.to_string())?;
+  }
+  Ok(())
+}
+
+#[tauri::command]
+fn toggle_mini_window(app: AppHandle) -> Result<(), String> {
+  if let Some(mini_window) = app.get_webview_window(MINI_WINDOW_LABEL) {
+    if mini_window.is_visible().unwrap_or(false) {
+      return hide_mini_window_for_app(&app);
+    }
+  }
+
+  show_mini_window_at(&app, None)
+}
+
+#[tauri::command]
+fn set_mini_window_pin(is_pinned: bool) -> Result<(), String> {
+  MINI_WINDOW_PINNED.store(is_pinned, Ordering::Relaxed);
+  Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
@@ -2173,6 +2333,7 @@ pub fn run() {
     })
     .on_window_event(|window, event| {
       handle_main_window_close(window, event);
+      handle_mini_window_focus(window, event);
       if should_persist_window_event(event) {
         let _ = persist_window_state(window);
       }
@@ -2207,6 +2368,11 @@ pub fn run() {
       test_mcp,
       check_mcp_connectivity,
       show_main_window,
+      show_mini_window,
+      hide_mini_window,
+      close_mini_window,
+      toggle_mini_window,
+      set_mini_window_pin,
       start_chat,
       start_http_request,
       abort_http_request

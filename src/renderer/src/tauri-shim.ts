@@ -8,11 +8,14 @@ import {
 type AnyRecord = Record<string, any>
 const WORD_DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 const logger = loggerService.withContext('TauriShim')
+const STORE_SYNC_EVENT = 'store-sync'
 
 const globalWindow = window as AnyRecord
 globalWindow.__LICH13_TAURI_SHIM__ = true
 const tauri = globalWindow.__TAURI__
 const previewMode = new URL(window.location.href).searchParams.has('tauri-preview')
+const storeSyncSourceId =
+  globalWindow.crypto?.randomUUID?.() ?? `store-sync-${Date.now()}-${Math.random().toString(36).slice(2)}`
 const mockInvoke = async (command: string) => {
   if (command === 'app_info') {
     return {
@@ -928,8 +931,32 @@ const api = {
     }
   },
   storeSync: {
-    onUpdate: noOpAsync,
-    onBroadcast: () => createCleanup(),
+    onUpdate: async (action: AnyRecord) => {
+      if (!tauri?.event?.emit) return
+      await tauri.event.emit(STORE_SYNC_EVENT, { sourceId: storeSyncSourceId, action })
+    },
+    onBroadcast: (callback: (action: AnyRecord) => void) => {
+      let cleanup = createCleanup()
+      if (tauri?.event?.listen) {
+        void tauri.event
+          .listen(STORE_SYNC_EVENT, (event: { payload?: { sourceId?: string; action?: AnyRecord } }) => {
+            const payload = event.payload
+            if (!payload?.action || payload.sourceId === storeSyncSourceId) return
+            callback({
+              ...payload.action,
+              meta: {
+                ...payload.action.meta,
+                fromSync: true,
+                source: `tauri:${payload.sourceId || 'unknown'}`
+              }
+            })
+          })
+          .then((unlisten: () => void) => {
+            cleanup = unlisten
+          })
+      }
+      return () => cleanup()
+    },
     subscribe: noOpAsync,
     unsubscribe: noOpAsync
   },
@@ -945,6 +972,33 @@ const api = {
     maximize: async () => getCurrentWindow?.()?.maximize?.(),
     unmaximize: async () => getCurrentWindow?.()?.unmaximize?.(),
     close: async () => getCurrentWindow?.()?.close?.()
+  },
+  miniWindow: {
+    show: async () => {
+      if (invoke) return invoke('show_mini_window')
+    },
+    hide: async () => {
+      if (invoke) return invoke('hide_mini_window')
+    },
+    close: async () => {
+      if (invoke) return invoke('close_mini_window')
+    },
+    toggle: async () => {
+      if (invoke) return invoke('toggle_mini_window')
+    },
+    setPin: async (isPinned: boolean) => {
+      if (invoke) return invoke('set_mini_window_pin', { isPinned })
+    },
+    onShow: (callback: () => void) => {
+      if (tauri?.event?.listen) {
+        let cleanup = createCleanup()
+        void tauri.event.listen('show-mini-window', callback).then((unlisten: () => void) => {
+          cleanup = unlisten
+        })
+        return () => cleanup()
+      }
+      return createCleanup()
+    }
   },
   config: {
     set: async (key: string, value: any) => {

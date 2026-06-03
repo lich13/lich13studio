@@ -2370,7 +2370,7 @@ dependencies = [
 
 [[package]]
 name = "lich13studio"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "base64 0.22.1",
  "chrono",

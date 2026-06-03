@@ -2668,6 +2668,9 @@
       "esc_close": "关闭",
       "esc_pause": "暂停"
     },
+    "header": {
+      "default_assistant": "默认助手"
+    },
     "input": {
       "placeholder": {
         "empty": "询问 {{model}} 获取帮助...",

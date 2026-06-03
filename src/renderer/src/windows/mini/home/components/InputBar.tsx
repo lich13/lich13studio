@@ -14,6 +14,7 @@ interface InputBarProps {
   loading: boolean
   handleKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void
   handleChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+  handlePaste?: (e: React.ClipboardEvent<HTMLInputElement>) => void
 }
 
 const InputBar = ({
@@ -23,7 +24,8 @@ const InputBar = ({
   placeholder,
   loading,
   handleKeyDown,
-  handleChange
+  handleChange,
+  handlePaste
 }: InputBarProps & { ref?: React.RefObject<HTMLDivElement | null> }) => {
   const inputRef = useRef<InputRef>(null)
   const { setTimeoutTimer } = useTimer()
@@ -40,6 +42,7 @@ const InputBar = ({
         autoFocus
         onKeyDown={handleKeyDown}
         onChange={handleChange}
+        onPaste={handlePaste}
         ref={inputRef}
       />
     </InputWrapper>
@@ -51,13 +54,18 @@ const InputWrapper = styled.div`
   display: flex;
   align-items: center;
   margin-top: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-background-soft);
+  -webkit-app-region: none;
 `
 
 const Input = styled(AntdInput)`
   background: none;
   border: none;
   -webkit-app-region: none;
-  font-size: 18px;
+  font-size: 15px;
 `
 
 export default InputBar

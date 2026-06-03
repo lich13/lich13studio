@@ -1,6 +1,6 @@
 {
   "name": "lich13studio",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "private": true,
   "description": "A focused desktop AI workspace for assistants, MCP, models, and backup.",
   "desktopName": "lich13studio.desktop",
@@ -53,7 +53,7 @@
     "claude": "dotenv -e .env -- claude",
     "ci:basic-check": "pnpm test:lint && pnpm format:check && pnpm typecheck && pnpm i18n:check && pnpm i18n:hardcoded:strict && pnpm openapi:check && pnpm skills:check",
     "ci": "pnpm ci:basic-check",
-    "test:renderer": "vitest run --config vitest.renderer.config.ts src/renderer/src/services/PasteService.test.ts src/renderer/src/utils/input.test.ts src/renderer/src/store/thunk/messageThunk.test.ts src/renderer/src/pages/home/Tabs/components/TopicManageMode.test.ts src/renderer/src/services/messageStreaming/callbacks/baseCallbacks.test.ts"
+    "test:renderer": "vitest run --config vitest.renderer.config.ts src/renderer/src/services/PasteService.test.ts src/renderer/src/services/StoreSyncService.test.ts src/renderer/src/utils/input.test.ts src/renderer/src/store/thunk/messageThunk.test.ts src/renderer/src/windows/mini/home/miniWindowHelpers.test.ts src/renderer/src/pages/home/Tabs/components/TopicManageMode.test.ts src/renderer/src/services/messageStreaming/callbacks/baseCallbacks.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "0.2.81",

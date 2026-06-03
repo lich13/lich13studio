@@ -1,31 +1,47 @@
 import { loggerService } from '@logger'
+import ModelAvatar from '@renderer/components/Avatar/ModelAvatar'
+import ModelSelector from '@renderer/components/ModelSelector'
 import { isMac } from '@renderer/config/constant'
 import { useTheme } from '@renderer/context/ThemeProvider'
-import { useAssistant } from '@renderer/hooks/useAssistant'
+import db from '@renderer/databases'
+import { useDefaultAssistant, useDefaultModel } from '@renderer/hooks/useAssistant'
+import { useProviders } from '@renderer/hooks/useProvider'
 import { useSettings } from '@renderer/hooks/useSettings'
 import i18n from '@renderer/i18n'
 import { fetchChatCompletion } from '@renderer/services/ApiService'
 import { getDefaultTopic } from '@renderer/services/AssistantService'
 import { ConversationService } from '@renderer/services/ConversationService'
+import FileManager from '@renderer/services/FileManager'
 import { getAssistantMessage, getUserMessage } from '@renderer/services/MessagesService'
-import store, { useAppSelector } from '@renderer/store'
+import { getModelUniqId } from '@renderer/services/ModelService'
+import PasteService from '@renderer/services/PasteService'
+import store from '@renderer/store'
+import { addTopic } from '@renderer/store/assistants'
 import { updateOneBlock, upsertManyBlocks, upsertOneBlock } from '@renderer/store/messageBlock'
 import { newMessagesActions, selectMessagesForTopic } from '@renderer/store/newMessage'
-import { cancelThrottledBlockUpdate, throttledBlockUpdate } from '@renderer/store/thunk/messageThunk'
-import type { Topic } from '@renderer/types'
-import { ThemeMode } from '@renderer/types'
+import {
+  bulkAddBlocks,
+  cancelThrottledBlockUpdate,
+  saveMessageAndBlocksToDB,
+  throttledBlockUpdate,
+  updateMessage,
+  updateSingleBlock
+} from '@renderer/store/thunk/messageThunk'
+import type { FileMetadata, Topic } from '@renderer/types'
+import { FILE_TYPE, ThemeMode } from '@renderer/types'
 import type { Chunk } from '@renderer/types/chunk'
 import { ChunkType } from '@renderer/types/chunk'
-import { AssistantMessageStatus, type Message, MessageBlockStatus } from '@renderer/types/newMessage'
+import { AssistantMessageStatus, type Message, type MessageBlock, MessageBlockStatus } from '@renderer/types/newMessage'
 import { abortCompletion } from '@renderer/utils/abortController'
 import { isAbortError } from '@renderer/utils/error'
 import { createMainTextBlock, createThinkingBlock } from '@renderer/utils/messageUtils/create'
 import { getMainTextContent } from '@renderer/utils/messageUtils/find'
 import { replacePromptVariables } from '@renderer/utils/prompt'
 import { defaultLanguage } from '@shared/config/constant'
-import { Divider } from 'antd'
+import { Button, Divider, Tooltip } from 'antd'
 import { cloneDeep, isEmpty } from 'lodash'
 import { last } from 'lodash'
+import { Image as ImageIcon, X } from 'lucide-react'
 import type { FC } from 'react'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -37,6 +53,16 @@ import type { FeatureMenusRef } from './components/FeatureMenus'
 import FeatureMenus from './components/FeatureMenus'
 import Footer from './components/Footer'
 import InputBar from './components/InputBar'
+import {
+  getMiniWindowChatModels,
+  getMiniWindowMessageWithBlock,
+  getMiniWindowPersistedTopic,
+  getMiniWindowSupportExts,
+  isMiniWindowChatModel,
+  isMiniWindowComposingInput,
+  isMiniWindowSendKeyPressed,
+  updateMiniWindowDefaultAssistantModel
+} from './miniWindowHelpers'
 
 const logger = loggerService.withContext('HomeWindow')
 
@@ -49,6 +75,8 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
   const [isFirstMessage, setIsFirstMessage] = useState(true)
 
   const [userInputText, setUserInputText] = useState('')
+  const [files, setFiles] = useState<FileMetadata[]>([])
+  const [filePreviewUrls, setFilePreviewUrls] = useState<Record<string, string>>({})
 
   const [clipboardText, setClipboardText] = useState('')
   const lastClipboardTextRef = useRef<string | null>(null)
@@ -62,8 +90,18 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
 
   const [error, setError] = useState<string | null>(null)
 
-  const { quickAssistantId } = useAppSelector((state) => state.llm)
-  const { assistant: currentAssistant } = useAssistant(quickAssistantId)
+  const { defaultAssistant, updateDefaultAssistant } = useDefaultAssistant()
+  const { defaultModel } = useDefaultModel()
+  const { providers } = useProviders()
+  const currentAssistant = useMemo(
+    () => ({
+      ...defaultAssistant,
+      model: defaultAssistant.model ?? defaultAssistant.defaultModel ?? defaultModel
+    }),
+    [defaultAssistant, defaultModel]
+  )
+  const chatModels = useMemo(() => getMiniWindowChatModels(providers), [providers])
+  const supportedExts = useMemo(() => getMiniWindowSupportExts(currentAssistant), [currentAssistant])
 
   const currentTopic = useRef<Topic>(getDefaultTopic(currentAssistant.id))
   const currentAskId = useRef('')
@@ -79,6 +117,39 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
     }
     return userInputText.trim()
   }, [isFirstMessage, referenceText, userInputText])
+  const canSend = userContent.trim().length > 0 || files.length > 0
+
+  useEffect(() => {
+    currentTopic.current = getDefaultTopic(currentAssistant.id)
+  }, [currentAssistant.id])
+
+  useEffect(() => {
+    let isCancelled = false
+
+    const loadPreviewUrls = async () => {
+      const imageFiles = files.filter((file) => file.type === FILE_TYPE.IMAGE)
+      const previews = await Promise.all(
+        imageFiles.map(async (file) => {
+          try {
+            return [file.id, await FileManager.resolvePreviewUrl(file)] as const
+          } catch (error) {
+            logger.warn('Failed to resolve mini window attachment preview:', error as Error)
+            return null
+          }
+        })
+      )
+
+      if (!isCancelled) {
+        setFilePreviewUrls(Object.fromEntries(previews.filter((preview) => preview !== null)))
+      }
+    }
+
+    void loadPreviewUrls()
+
+    return () => {
+      isCancelled = true
+    }
+  }, [files])
 
   useEffect(() => {
     void i18n.changeLanguage(language || navigator.language || defaultLanguage)
@@ -145,25 +216,22 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
   const handleCloseWindow = useCallback(() => window.api.miniWindow.hide(), [])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    // 使用非直接输入法时（例如中文、日文输入法），存在输入法键入过程
-    // 键入过程不应有任何响应
-    // 例子，中文输入法候选词过程使用`Enter`直接上屏字母，日文输入法候选词过程使用`Enter`输入假名
-    // 输入法可以`Esc`终止候选词过程
-    // 这两个例子的`Enter`和`Esc`快捷助手都不应该响应
-    if (e.nativeEvent.isComposing || e.key === 'Process') {
-      return
-    }
-
     switch (e.code) {
       case 'Enter':
       case 'NumpadEnter':
         {
+          if (!isMiniWindowSendKeyPressed(e)) return
           if (isLoading) return
 
           e.preventDefault()
-          if (userContent) {
+          if (canSend) {
             if (route === 'home') {
-              featureMenusRef.current?.useFeature()
+              if (files.length > 0) {
+                setRoute('chat')
+                void handleSendMessage()
+              } else {
+                featureMenusRef.current?.useFeature()
+              }
             } else {
               // Currently text input is only available in 'chat' mode
               setRoute('chat')
@@ -198,11 +266,45 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
         break
       case 'Escape':
         {
+          if (isMiniWindowComposingInput(e)) return
           handleEsc()
         }
         break
     }
   }
+
+  const handlePaste = useCallback(
+    async (event: React.ClipboardEvent<HTMLInputElement>) => {
+      await PasteService.handlePaste(
+        event.nativeEvent,
+        supportedExts,
+        setFiles,
+        undefined,
+        false,
+        undefined,
+        undefined,
+        undefined,
+        t
+      )
+    },
+    [supportedExts, t]
+  )
+
+  const handleModelChange = useCallback(
+    (value: string) => {
+      const selectedModel = chatModels.find((model) => getModelUniqId(model) === value)
+      if (!selectedModel) return
+      updateDefaultAssistant(updateMiniWindowDefaultAssistantModel(defaultAssistant, selectedModel))
+      setFiles((prevFiles) =>
+        getMiniWindowSupportExts({ ...currentAssistant, model: selectedModel }).length ? prevFiles : []
+      )
+    },
+    [chatModels, currentAssistant, defaultAssistant, updateDefaultAssistant]
+  )
+
+  const removeFile = useCallback((fileId: string) => {
+    setFiles((prevFiles) => prevFiles.filter((file) => file.id !== fileId))
+  }, [])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUserInputText(e.target.value)
@@ -213,32 +315,96 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
     setError(error.message)
   }
 
+  const ensureMiniTopicPersisted = useCallback(
+    async (topic: Topic) => {
+      const topicInDb = await db.topics.get(topic.id)
+      if (!topicInDb) {
+        await db.topics.add({ id: topic.id, messages: [] })
+      }
+
+      const assistantInStore = store
+        .getState()
+        .assistants.assistants.find((assistant) => assistant.id === currentAssistant.id)
+      const topicInAssistant = assistantInStore?.topics?.some((item) => item.id === topic.id)
+
+      if (!topicInAssistant) {
+        store.dispatch(addTopic({ assistantId: currentAssistant.id, topic: getMiniWindowPersistedTopic(topic) }))
+      }
+    },
+    [currentAssistant.id]
+  )
+
   const handleSendMessage = useCallback(
     async (prompt?: string) => {
-      if (isEmpty(userContent) || !currentTopic.current) {
+      if ((isEmpty(userContent) && files.length === 0) || !currentTopic.current) {
         return
+      }
+
+      let persistQueue = Promise.resolve()
+      const queueMiniWindowPersist = (task: () => Promise<void>, label: string) => {
+        persistQueue = persistQueue
+          .then(task)
+          .catch((error) => {
+            logger.error(`Failed to persist mini window ${label}:`, error as Error)
+          })
+          .then(() => undefined)
       }
 
       try {
         const topicId = currentTopic.current.id
+        await ensureMiniTopicPersisted(currentTopic.current)
+
+        const uploadedFiles = files.length > 0 ? await FileManager.uploadFiles(files) : []
 
         const { message: userMessage, blocks } = getUserMessage({
           content: [prompt, userContent].filter(Boolean).join('\n\n'),
           assistant: currentAssistant,
-          topic: currentTopic.current
+          topic: currentTopic.current,
+          files: uploadedFiles
         })
 
+        await saveMessageAndBlocksToDB(topicId, userMessage, blocks)
         store.dispatch(newMessagesActions.addMessage({ topicId, message: userMessage }))
         store.dispatch(upsertManyBlocks(blocks))
 
-        const assistantMessage = getAssistantMessage({
+        let assistantMessage = getAssistantMessage({
           assistant: currentAssistant,
           topic: currentTopic.current
         })
         assistantMessage.askId = userMessage.id
         currentAskId.current = userMessage.id
 
+        await saveMessageAndBlocksToDB(topicId, assistantMessage, [])
         store.dispatch(newMessagesActions.addMessage({ topicId, message: assistantMessage }))
+
+        const persistAssistantMessageUpdate = (updates: Partial<Message>, label: string) => {
+          assistantMessage = { ...assistantMessage, ...updates }
+          queueMiniWindowPersist(() => updateMessage(topicId, assistantMessage.id, updates), label)
+        }
+
+        const updateAssistantMessageWithBlock = (block: MessageBlock) => {
+          assistantMessage = getMiniWindowMessageWithBlock(assistantMessage, block.id)
+          store.dispatch(
+            newMessagesActions.updateMessage({
+              topicId,
+              messageId: assistantMessage.id,
+              updates: { blockInstruction: { id: block.id } }
+            })
+          )
+          store.dispatch(upsertOneBlock(block))
+          queueMiniWindowPersist(
+            () =>
+              Promise.all([
+                bulkAddBlocks([block]),
+                updateMessage(topicId, assistantMessage.id, { blocks: assistantMessage.blocks })
+              ]).then(() => undefined),
+            'assistant block'
+          )
+        }
+
+        const persistBlockUpdate = (blockId: string, changes: Partial<MessageBlock>, label: string) => {
+          queueMiniWindowPersist(() => updateSingleBlock(blockId, changes), label)
+        }
 
         const allMessagesForTopic = selectMessagesForTopic(store.getState(), topicId)
         const userMessageIndex = allMessagesForTopic.findIndex((m) => m?.id === userMessage.id)
@@ -267,6 +433,7 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
 
         setIsFirstMessage(false)
         setUserInputText('')
+        setFiles([])
 
         const newAssistant = cloneDeep(currentAssistant)
         if (!newAssistant.settings) {
@@ -277,7 +444,10 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
         newAssistant.webSearchProviderId = undefined
         newAssistant.mcpServers = undefined
         // replace prompt vars
-        newAssistant.prompt = await replacePromptVariables(currentAssistant.prompt, currentAssistant?.model.name)
+        newAssistant.prompt = await replacePromptVariables(
+          currentAssistant.prompt,
+          currentAssistant.model?.name ?? currentAssistant.name
+        )
         // logger.debug('newAssistant', newAssistant)
 
         const { modelMessages, uiMessages } = await ConversationService.prepareMessagesForModel(
@@ -301,19 +471,13 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
                     store.dispatch(
                       updateOneBlock({ id: thinkingBlockId, changes: { status: MessageBlockStatus.STREAMING } })
                     )
+                    persistBlockUpdate(thinkingBlockId, { status: MessageBlockStatus.STREAMING }, 'thinking block')
                   } else {
                     const block = createThinkingBlock(assistantMessage.id, '', {
                       status: MessageBlockStatus.STREAMING
                     })
                     thinkingBlockId = block.id
-                    store.dispatch(
-                      newMessagesActions.updateMessage({
-                        topicId,
-                        messageId: assistantMessage.id,
-                        updates: { blockInstruction: { id: block.id } }
-                      })
-                    )
-                    store.dispatch(upsertOneBlock(block))
+                    updateAssistantMessageWithBlock(block)
                   }
                 }
                 break
@@ -340,8 +504,21 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
                     store.dispatch(
                       updateOneBlock({
                         id: thinkingBlockId,
-                        changes: { status: MessageBlockStatus.SUCCESS, thinking_millsec: thinkingDuration }
+                        changes: {
+                          content: chunk.text,
+                          status: MessageBlockStatus.SUCCESS,
+                          thinking_millsec: thinkingDuration
+                        }
                       })
+                    )
+                    persistBlockUpdate(
+                      thinkingBlockId,
+                      {
+                        content: chunk.text,
+                        status: MessageBlockStatus.SUCCESS,
+                        thinking_millsec: thinkingDuration
+                      },
+                      'thinking block complete'
                     )
                   }
                   thinkingStartTime = null
@@ -353,19 +530,13 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
                   setIsOutputted(true)
                   if (blockId) {
                     store.dispatch(updateOneBlock({ id: blockId, changes: { status: MessageBlockStatus.STREAMING } }))
+                    persistBlockUpdate(blockId, { status: MessageBlockStatus.STREAMING }, 'text block')
                   } else {
                     const block = createMainTextBlock(assistantMessage.id, '', {
                       status: MessageBlockStatus.STREAMING
                     })
                     blockId = block.id
-                    store.dispatch(
-                      newMessagesActions.updateMessage({
-                        topicId,
-                        messageId: assistantMessage.id,
-                        updates: { blockInstruction: { id: block.id } }
-                      })
-                    )
-                    store.dispatch(upsertOneBlock(block))
+                    updateAssistantMessageWithBlock(block)
                   }
                 }
                 break
@@ -388,6 +559,11 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
                         changes: { content: chunk.text, status: MessageBlockStatus.SUCCESS }
                       })
                     )
+                    persistBlockUpdate(
+                      blockId,
+                      { content: chunk.text, status: MessageBlockStatus.SUCCESS },
+                      'text block complete'
+                    )
                   }
                 }
                 break
@@ -404,15 +580,22 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
                       }
                     })
                   )
+                  persistBlockUpdate(
+                    possibleBlockId,
+                    { status: isAborted ? MessageBlockStatus.PAUSED : MessageBlockStatus.ERROR },
+                    'error block'
+                  )
+                  const nextStatus = isAborted ? AssistantMessageStatus.PAUSED : AssistantMessageStatus.SUCCESS
                   store.dispatch(
                     newMessagesActions.updateMessage({
                       topicId,
                       messageId: assistantMessage.id,
                       updates: {
-                        status: isAborted ? AssistantMessageStatus.PAUSED : AssistantMessageStatus.SUCCESS
+                        status: nextStatus
                       }
                     })
                   )
+                  persistAssistantMessageUpdate({ status: nextStatus }, 'assistant error status')
                 }
                 if (!isAborted) {
                   throw new Error(chunk.error.message)
@@ -432,21 +615,24 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
                     updates: { status: AssistantMessageStatus.SUCCESS }
                   })
                 )
+                persistAssistantMessageUpdate({ status: AssistantMessageStatus.SUCCESS }, 'assistant status')
                 break
             }
           }
         })
+        await persistQueue
       } catch (err) {
         if (isAbortError(err)) return
         handleError(err instanceof Error ? err : new Error('An error occurred'))
         logger.error('Error fetching result:', err as Error)
       } finally {
+        await persistQueue
         setIsLoading(false)
         setIsOutputted(true)
         currentAskId.current = ''
       }
     },
-    [userContent, currentAssistant]
+    [ensureMiniTopicPersisted, files, userContent, currentAssistant]
   )
 
   const handlePause = useCallback(() => {
@@ -478,6 +664,7 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
         setError(null)
         setRoute('home')
         setUserInputText('')
+        setFiles([])
       }
     }
   }, [isLoading, route, handleCloseWindow, currentAssistant.id, handlePause])
@@ -510,9 +697,9 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
       return t('miniwindow.input.placeholder.title')
     }
     return t('miniwindow.input.placeholder.empty', {
-      model: quickAssistantId ? currentAssistant.name : currentAssistant.model.name
+      model: currentAssistant.model?.name ?? currentAssistant.name
     })
-  }, [referenceText, route, t, quickAssistantId, currentAssistant])
+  }, [referenceText, route, t, currentAssistant])
 
   // Memoize footer props
   const baseFooterProps = useMemo(
@@ -526,12 +713,61 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
     [route, isLoading, handleEsc, isPinned]
   )
 
+  const header = (
+    <MiniHeader>
+      <BrandArea>
+        {currentAssistant.model ? <ModelAvatar model={currentAssistant.model} size={22} /> : <ImageIcon size={18} />}
+        <BrandText>
+          <BrandTitle>lich13studio</BrandTitle>
+          <BrandSubTitle>{t('miniwindow.header.default_assistant')}</BrandSubTitle>
+        </BrandText>
+      </BrandArea>
+      <ModelSelector
+        className="nodrag"
+        size="small"
+        style={{ width: 180 }}
+        providers={providers}
+        predicate={isMiniWindowChatModel}
+        grouped
+        showAvatar
+        showSuffix={false}
+        value={currentAssistant.model ? getModelUniqId(currentAssistant.model) : undefined}
+        onChange={handleModelChange}
+      />
+    </MiniHeader>
+  )
+
+  const attachments = files.length > 0 && (
+    <AttachmentStrip className="nodrag">
+      {files.map((file) => (
+        <AttachmentPill key={file.id}>
+          {file.type === FILE_TYPE.IMAGE && filePreviewUrls[file.id] ? (
+            <AttachmentPreviewImage src={filePreviewUrls[file.id]} alt="" />
+          ) : (
+            <ImageIcon size={14} />
+          )}
+          <span>{file.origin_name || file.name}</span>
+          <Tooltip title={t('common.delete')}>
+            <Button
+              aria-label={t('common.delete')}
+              size="small"
+              type="text"
+              icon={<X size={12} />}
+              onClick={() => removeFile(file.id)}
+            />
+          </Tooltip>
+        </AttachmentPill>
+      ))}
+    </AttachmentStrip>
+  )
+
   switch (route) {
     case 'chat':
     case 'summary':
     case 'explanation':
       return (
         <Container style={{ backgroundColor }} $draggable={draggable}>
+          {header}
           {route === 'chat' && (
             <>
               <InputBar
@@ -542,8 +778,10 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
                 loading={isLoading}
                 handleKeyDown={handleKeyDown}
                 handleChange={handleChange}
+                handlePaste={handlePaste}
                 ref={inputBarRef}
               />
+              {attachments}
               <Divider style={{ margin: '10px 0' }} />
             </>
           )}
@@ -569,6 +807,7 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
     default:
       return (
         <Container style={{ backgroundColor }} $draggable={draggable}>
+          {header}
           <InputBar
             text={userInputText}
             assistant={currentAssistant}
@@ -577,8 +816,10 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
             loading={isLoading}
             handleKeyDown={handleKeyDown}
             handleChange={handleChange}
+            handlePaste={handlePaste}
             ref={inputBarRef}
           />
+          {attachments}
           <Divider style={{ margin: '10px 0' }} />
           <ClipboardPreview referenceText={referenceText} clearClipboard={clearClipboard} t={t} />
           <Main>
@@ -609,6 +850,75 @@ const Container = styled.div<{ $draggable: boolean }>`
   flex-direction: column;
   -webkit-app-region: ${({ $draggable }) => ($draggable ? 'drag' : 'no-drag')};
   padding: 8px 10px;
+`
+
+const MiniHeader = styled.header`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 40px;
+  padding: 6px 2px 8px;
+`
+
+const BrandArea = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+`
+
+const BrandText = styled.div`
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  line-height: 1.15;
+`
+
+const BrandTitle = styled.div`
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 600;
+`
+
+const BrandSubTitle = styled.div`
+  color: var(--color-text-secondary);
+  font-size: 11px;
+`
+
+const AttachmentStrip = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+`
+
+const AttachmentPill = styled.div`
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  gap: 6px;
+  padding: 4px 4px 4px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-background-mute);
+  color: var(--color-text);
+  font-size: 12px;
+
+  span {
+    max-width: 260px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+`
+
+const AttachmentPreviewImage = styled.img`
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: var(--color-background);
 `
 
 const Main = styled.main`

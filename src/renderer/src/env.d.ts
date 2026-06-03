@@ -56,7 +56,11 @@ declare global {
     }
     __TAURI__?: {
       event?: {
-        listen?: (event: string, handler: () => void) => Promise<() => void>
+        emit?: <T>(event: string, payload?: T) => Promise<void>
+        listen?: <T>(
+          event: string,
+          handler: (event: { event: string; id: number; payload: T }) => void
+        ) => Promise<() => void>
       }
       core?: {
         invoke?: (command: string, args?: Record<string, unknown>) => Promise<unknown>

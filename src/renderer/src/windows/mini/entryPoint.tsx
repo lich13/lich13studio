@@ -1,6 +1,7 @@
 import '@renderer/assets/styles/index.css'
 import '@renderer/assets/styles/tailwind.css'
 import '@ant-design/v5-patch-for-react-19'
+import '@renderer/tauri-shim'
 
 import KeyvStorage from '@kangfenmao/keyv-storage'
 import { loggerService } from '@logger'
