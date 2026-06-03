@@ -103,18 +103,8 @@ type MessageMenubarButtonContext = {
 type MessageMenubarButtonRenderer = (ctx: MessageMenubarButtonContext) => ReactNode | null
 
 const MessageMenubar: FC<Props> = (props) => {
-  const {
-    message,
-    index,
-    isGrouped,
-    isLastMessage,
-    isAssistantMessage,
-    assistant,
-    topic,
-    model,
-    messageContainerRef,
-    onUpdateUseful
-  } = props
+  const { message, index, isGrouped, isLastMessage, isAssistantMessage, assistant, topic, model, onUpdateUseful } =
+    props
   const { t } = useTranslation()
   const { notesPath } = useNotesSettings()
   const { toggleMultiSelectMode } = useChatContext(props.topic)
@@ -318,7 +308,6 @@ const MessageMenubar: FC<Props> = (props) => {
     isEditable,
     mainTextContent,
     message,
-    messageContainerRef,
     onEdit,
     onNewBranch,
     t,

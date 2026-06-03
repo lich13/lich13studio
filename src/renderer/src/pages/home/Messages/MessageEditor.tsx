@@ -14,7 +14,7 @@ import { FILE_TYPE } from '@renderer/types'
 import type { Message, MessageBlock } from '@renderer/types/newMessage'
 import { MessageBlockStatus, MessageBlockType } from '@renderer/types/newMessage'
 import { classNames } from '@renderer/utils'
-import { getFilesFromDropEvent, isSendMessageKeyPressed } from '@renderer/utils/input'
+import { getFilesFromDropEvent, isComposingInputEvent, isSendMessageKeyPressed } from '@renderer/utils/input'
 import { createFileBlock, createImageBlock } from '@renderer/utils/messageUtils/create'
 import { findAllBlocks } from '@renderer/utils/messageUtils/find'
 import { documentExts, imageExts, textExts } from '@shared/config/constant'
@@ -234,7 +234,7 @@ const MessageBlockEditor: FC<Props> = ({ message, topicId, onSave, onResend, onC
     }
 
     // keep the same enter behavior as inputbar
-    const isEnterPressed = event.key === 'Enter' && !event.nativeEvent.isComposing
+    const isEnterPressed = event.key === 'Enter' && !isComposingInputEvent(event)
     if (isEnterPressed) {
       if (isSendMessageKeyPressed(event, sendMessageShortcut)) {
         void handleResend()
@@ -279,8 +279,7 @@ const MessageBlockEditor: FC<Props> = ({ message, topicId, onSave, onResend, onC
               autoSize={{ minRows: 1, maxRows: 15 }}
               style={{
                 fontSize
-              }}>
-            </TextArea>
+              }}></TextArea>
           ))}
         {(editedBlocks.some((block) => block.type === MessageBlockType.FILE || block.type === MessageBlockType.IMAGE) ||
           files.length > 0) && (

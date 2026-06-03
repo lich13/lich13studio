@@ -224,7 +224,7 @@ export async function fetchChatCompletion({
   const provider = AI.getActualProvider()
 
   const mcpTools: MCPTool[] = []
-  await onChunkReceived({ type: ChunkType.LLM_RESPONSE_CREATED })
+  onChunkReceived({ type: ChunkType.LLM_RESPONSE_CREATED })
 
   if (isPromptToolUse(assistant) || isSupportedToolUse(assistant)) {
     mcpTools.push(...(await fetchMcpTools(assistant)))

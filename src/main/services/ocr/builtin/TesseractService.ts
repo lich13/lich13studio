@@ -37,7 +37,7 @@ export class TesseractService extends OcrBaseService {
     let langsArray: LanguageCode[]
     if (options?.langs) {
       // TODO: use type safe objectKeys
-      langsArray = Object.keys(options.langs) as LanguageCode[]
+      langsArray = Object.keys(options.langs)
       if (langsArray.length === 0) {
         logger.warn('Empty langs option. Fallback to defaultLangs.')
         langsArray = defaultLangs

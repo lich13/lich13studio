@@ -1,5 +1,5 @@
 import { formatPrivateKey, hasProviderConfig, type StringKeys } from '@cherrystudio/ai-core/provider'
-import { appProviderIds, type AppProviderId, type AppProviderSettingsMap } from '@renderer/aiCore/types'
+import { type AppProviderId, appProviderIds, type AppProviderSettingsMap } from '@renderer/aiCore/types'
 import {
   getAwsBedrockAccessKeyId,
   getAwsBedrockApiKey,
@@ -12,7 +12,6 @@ import { getProviderByModel } from '@renderer/services/AssistantService'
 import { getProviderById } from '@renderer/services/ProviderService'
 import store from '@renderer/store'
 import { type Model, type Provider, SystemProviderIds } from '@renderer/types'
-import { getTauriNativeFetch } from '@renderer/utils/tauriNativeFetch'
 import {
   formatApiHost,
   formatOllamaApiHost,
@@ -30,6 +29,7 @@ import {
   isSupportStreamOptionsProvider,
   isVertexProvider
 } from '@renderer/utils/provider'
+import { getTauriNativeFetch } from '@renderer/utils/tauriNativeFetch'
 import { defaultAppHeaders } from '@shared/utils'
 import { cloneDeep, isEmpty } from 'lodash'
 

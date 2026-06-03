@@ -14,6 +14,7 @@ export default defineConfig({
     alias: {
       '@logger': path.resolve(__dirname, 'src/renderer/src/services/LoggerService'),
       '@renderer': path.resolve(__dirname, 'src/renderer/src'),
+      '@types': path.resolve(__dirname, 'src/renderer/src/types/index.ts'),
       '@shared': path.resolve(__dirname, 'packages/shared')
     }
   },

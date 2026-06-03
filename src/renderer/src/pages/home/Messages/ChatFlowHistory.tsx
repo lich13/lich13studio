@@ -323,16 +323,14 @@ const ChatFlowHistory: FC<ChatFlowHistoryProps> = ({ conversationId }) => {
           sourcePos = Position.Bottom
         }
 
-        const aMsgAny = aMsg as any
-
         // 获取模型名称
-        const modelName = (aMsgAny.model && aMsgAny.model.name) || t('chat.history.assistant_node')
+        const modelName = (aMsg.model && aMsg.model.name) || t('chat.history.assistant_node')
 
         // 获取模型ID
-        const modelId = (aMsgAny.model && aMsgAny.model.id) || ''
+        const modelId = (aMsg.model && aMsg.model.id) || ''
 
         // 完整的模型信息
-        const modelInfo = aMsgAny.model as Model | undefined
+        const modelInfo = aMsg.model as Model | undefined
 
         flowNodes.push({
           id: assistantNodeId,
@@ -412,18 +410,14 @@ const ChatFlowHistory: FC<ChatFlowHistoryProps> = ({ conversationId }) => {
       orphanAssistantMsgs.forEach((aMsg, index) => {
         const assistantNodeId = `orphan-assistant-${aMsg.id}`
 
-        // 获取模型数据
-        // FIXME: No any plz
-        const aMsgAny = aMsg as any
-
         // 获取模型名称
-        const modelName = (aMsgAny.model && aMsgAny.model.name) || t('chat.history.assistant_node')
+        const modelName = (aMsg.model && aMsg.model.name) || t('chat.history.assistant_node')
 
         // 获取模型ID
-        const modelId = (aMsgAny.model && aMsgAny.model.id) || ''
+        const modelId = (aMsg.model && aMsg.model.id) || ''
 
         // 完整的模型信息
-        const modelInfo = aMsgAny.model as Model | undefined
+        const modelInfo = aMsg.model as Model | undefined
 
         flowNodes.push({
           id: assistantNodeId,

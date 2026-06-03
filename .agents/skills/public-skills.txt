@@ -1,0 +1,2 @@
+# Public skill names, one per line.
+# Keep empty when the repository has no public skills.

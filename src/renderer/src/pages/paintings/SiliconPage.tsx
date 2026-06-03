@@ -285,7 +285,7 @@ const SiliconPage: FC<{ Options: string[] }> = ({ Options }) => {
     setCurrentImageIndex(0)
   }
 
-  const handleKeyDown = (_event: React.KeyboardEvent<HTMLTextAreaElement>) => {}
+  const handleKeyDown = () => {}
 
   const handleProviderChange = (providerId: string) => {
     const routeName = location.pathname.split('/').pop()

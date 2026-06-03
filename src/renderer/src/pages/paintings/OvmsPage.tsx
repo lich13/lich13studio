@@ -282,7 +282,7 @@ const OvmsPage: FC<{ Options: string[] }> = ({ Options }) => {
     void removePainting('ovms_paintings', paintingToDelete)
   }
 
-  const handleKeyDown = (_event: React.KeyboardEvent<HTMLTextAreaElement>) => {}
+  const handleKeyDown = () => {}
 
   const handleProviderChange = (providerId: string) => {
     const routeName = location.pathname.split('/').pop()

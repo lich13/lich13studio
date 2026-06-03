@@ -197,15 +197,15 @@ export const MB = 1024 * KB
 export const GB = 1024 * MB
 export const defaultLanguage = 'en-US'
 
-export enum FeedUrl {
-  PRODUCTION = 'https://github.com/lich13/lich13studio/releases/latest/download',
-  GITHUB_LATEST = 'https://github.com/lich13/lich13studio/releases/latest/download'
-}
+export const FeedUrl = {
+  PRODUCTION: 'https://github.com/lich13/lich13studio/releases/latest/download',
+  GITHUB_LATEST: 'https://github.com/lich13/lich13studio/releases/latest/download'
+} as const
 
-export enum UpdateConfigUrl {
-  GITHUB = 'https://raw.githubusercontent.com/lich13/lich13studio/refs/heads/main/app-upgrade-config.json',
-  GITCODE = 'https://raw.githubusercontent.com/lich13/lich13studio/refs/heads/main/app-upgrade-config.json'
-}
+export const UpdateConfigUrl = {
+  GITHUB: 'https://raw.githubusercontent.com/lich13/lich13studio/refs/heads/main/app-upgrade-config.json',
+  GITCODE: 'https://raw.githubusercontent.com/lich13/lich13studio/refs/heads/main/app-upgrade-config.json'
+} as const
 
 export enum UpgradeChannel {
   LATEST = 'latest', // 最新稳定版本

@@ -58,6 +58,7 @@ import {
 } from '@renderer/utils/messageUtils/create'
 import { getMainTextContent } from '@renderer/utils/messageUtils/find'
 import { getTopicQueue, hasTopicPendingRequests, waitForTopicQueue } from '@renderer/utils/queue'
+import { getTopicFulfilledActiveTopicId, shouldMarkTopicFulfilled } from '@renderer/utils/topicStatus'
 import { defaultAppHeaders } from '@shared/utils'
 import type { TextStreamPart } from 'ai'
 import { t } from 'i18next'
@@ -85,8 +86,18 @@ const logger = loggerService.withContext('MessageThunk')
 
 const finishTopicLoading = async (topicId: string) => {
   await waitForTopicQueue(topicId)
+  const state = store.getState()
+  const currentTopicId = getTopicFulfilledActiveTopicId(
+    state.runtime.chat.activeTopic?.id,
+    state.messages.currentTopicId
+  )
   store.dispatch(newMessagesActions.setTopicLoading({ topicId, loading: false }))
-  store.dispatch(newMessagesActions.setTopicFulfilled({ topicId, fulfilled: true }))
+  store.dispatch(
+    newMessagesActions.setTopicFulfilled({
+      topicId,
+      fulfilled: shouldMarkTopicFulfilled(topicId, currentTopicId)
+    })
+  )
 }
 
 const repairTerminalThinkingBlocks = (messages: Message[], blocks: MessageBlock[]) => {
@@ -754,7 +765,7 @@ const fetchAndProcessAgentResponseImpl = async (
     const streamProcessorCallbacks = createStreamProcessor(callbacks)
 
     // Emit initial chunk to mirror assistant behaviour and ensure pending UI state
-    streamProcessorCallbacks({ type: ChunkType.LLM_RESPONSE_CREATED })
+    await streamProcessorCallbacks({ type: ChunkType.LLM_RESPONSE_CREATED })
 
     const state = getState()
     const userMessageEntity = state.messages.entities[userMessageId]
@@ -871,7 +882,7 @@ const fetchAndProcessAgentResponseImpl = async (
   } catch (error: any) {
     logger.error('Error in fetchAndProcessAgentResponseImpl:', error)
     try {
-      callbacks.onError?.(error)
+      await callbacks.onError?.(error)
     } catch (callbackError) {
       logger.error('Error in agent onError callback:', callbackError as Error)
     }
@@ -1052,7 +1063,7 @@ const fetchAndProcessAssistantResponseImpl = async (
     })
     // 统一错误处理：确保 loading 状态被正确设置，避免队列任务卡住
     try {
-      callbacks.onError?.(error)
+      await callbacks.onError?.(error)
     } catch (callbackError) {
       logger.error('Error in onError callback:', callbackError as Error)
     } finally {
@@ -2033,7 +2044,9 @@ export const loadTopicMessagesThunk =
       })
 
       if (repairedMessages.length > 0) {
-        await Promise.all(repairedMessages.map((message) => updateMessage(topicId, message.id, { status: message.status })))
+        await Promise.all(
+          repairedMessages.map((message) => updateMessage(topicId, message.id, { status: message.status }))
+        )
       }
 
       if (blocksToPersist.length > 0) {
@@ -2348,7 +2361,7 @@ export const setupChannelStream = (
   })
 
   const streamProcessorCallbacks = createStreamProcessor(callbacks)
-  streamProcessorCallbacks({ type: ChunkType.LLM_RESPONSE_CREATED })
+  void streamProcessorCallbacks({ type: ChunkType.LLM_RESPONSE_CREATED })
 
   const adapter = new AiSdkToChunkAdapter(streamProcessorCallbacks, [], false, false)
   adapter

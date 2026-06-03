@@ -5,6 +5,34 @@ import type { FileMetadata } from '@renderer/types'
 
 const logger = loggerService.withContext('Utils:Input')
 
+type MaybeKeyboardEvent = {
+  isComposing?: boolean
+  keyCode?: number
+  which?: number
+  code?: string
+  nativeEvent?: {
+    isComposing?: boolean
+    keyCode?: number
+    which?: number
+    code?: string
+  }
+}
+
+export const isComposingInputEvent = (event: MaybeKeyboardEvent): boolean => {
+  const nativeEvent = event.nativeEvent
+
+  return (
+    event.isComposing === true ||
+    nativeEvent?.isComposing === true ||
+    event.keyCode === 229 ||
+    event.which === 229 ||
+    nativeEvent?.keyCode === 229 ||
+    nativeEvent?.which === 229 ||
+    event.code === 'Process' ||
+    nativeEvent?.code === 'Process'
+  )
+}
+
 export const getTextFromDropEvent = async (e: React.DragEvent<HTMLDivElement>): Promise<string> => {
   return e.dataTransfer.getData('text')
 }

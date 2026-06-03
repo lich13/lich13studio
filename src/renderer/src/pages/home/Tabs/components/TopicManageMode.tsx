@@ -9,6 +9,8 @@ import type { FC, PropsWithChildren, Ref } from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { getBatchTopicDeleteResult } from './TopicManageMode.helpers'
+
 export interface TopicManageModeState {
   isManageMode: boolean
   selectedIds: Set<string>
@@ -125,8 +127,8 @@ export const TopicManagePanel: React.FC<TopicManagePanelProps> = ({
   const handleDeleteSelected = useCallback(async () => {
     if (selectedIds.size === 0) return
 
-    const remainingTopics = assistant.topics.filter((topic) => !selectedIds.has(topic.id))
-    if (remainingTopics.length === 0) {
+    const deleteResult = getBatchTopicDeleteResult(assistant.topics, selectedIds, activeTopic.id)
+    if (!deleteResult.canDelete) {
       window.toast.error(t('chat.topics.manage.error.at_least_one'))
       return
     }
@@ -152,12 +154,18 @@ export const TopicManagePanel: React.FC<TopicManagePanelProps> = ({
       results.filter((r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled').map((r) => r.value)
     )
 
-    const actualRemainingTopics = assistant.topics.filter((topic) => !successfulIds.has(topic.id))
-    updateTopics(actualRemainingTopics)
+    const actualDeleteResult = getBatchTopicDeleteResult(assistant.topics, successfulIds, activeTopic.id)
+    if (!actualDeleteResult.canDelete) {
+      window.toast.error(t('chat.topics.manage.error.at_least_one'))
+      exitManageMode()
+      return
+    }
+
+    updateTopics(actualDeleteResult.remainingTopics)
 
     // Switch to first remaining topic if current topic was deleted
-    if (successfulIds.has(activeTopic.id) && actualRemainingTopics.length > 0) {
-      setActiveTopic(actualRemainingTopics[0])
+    if (actualDeleteResult.nextActiveTopic) {
+      setActiveTopic(actualDeleteResult.nextActiveTopic)
     }
 
     if (successfulIds.size === idsArray.length) {
@@ -345,7 +353,7 @@ export const TopicManagePanel: React.FC<TopicManagePanelProps> = ({
 
 // Tailwind components
 const ManagePanel: FC<PropsWithChildren> = ({ children }) => (
-  <div className="absolute bottom-[15px] left-[12px] z-[100] flex w-[calc(var(--assistants-width)-24px)] flex-row items-center rounded-xl bg-[var(--color-background)] px-3 py-2 shadow-[0_4px_12px_rgba(0,0,0,0.15),0_0_0_1px_var(--color-border)]">
+  <div className="absolute bottom-[15px] left-[12px] z-[100] flex w-[calc(var(--assistants-width)-24px)] flex-row items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 shadow-[0_10px_26px_rgba(0,0,0,0.14)]">
     {children}
   </div>
 )
@@ -373,8 +381,10 @@ const ManageIconButton: FC<PropsWithChildren<ManageIconButtonProps>> = ({
       'flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-none bg-transparent text-[var(--color-text-2)] transition-all duration-200',
       disabled ? 'cursor-not-allowed opacity-40' : 'cursor-pointer',
       !disabled && !danger && 'hover:bg-[var(--color-background-mute)] hover:text-[var(--color-text-1)]',
+      !disabled && !danger && 'active:scale-[0.96]',
       danger && 'text-[var(--color-error)]',
       danger && !disabled && 'hover:bg-[var(--color-error)] hover:text-white [&:hover>svg]:text-white',
+      danger && !disabled && 'active:scale-[0.96]',
       className
     )}>
     {children}

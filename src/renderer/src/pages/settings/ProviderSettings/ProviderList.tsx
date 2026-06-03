@@ -425,7 +425,9 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
                   provider={provider as Provider}
                   customLogos={providerLogos}
                 />
-                <ProviderItemName className="text-nowrap">{getFancyProviderName(provider as Provider)}</ProviderItemName>
+                <ProviderItemName className="text-nowrap">
+                  {getFancyProviderName(provider as Provider)}
+                </ProviderItemName>
                 {(provider as Provider).enabled && (
                   <Tag color="green" style={{ marginLeft: 'auto', marginRight: 0, borderRadius: 16 }}>
                     ON

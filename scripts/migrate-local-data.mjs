@@ -430,8 +430,8 @@ function mergePersistState(currentState, oldState, appSupport) {
     ...currentNote,
     ...oldNote,
     settings: {
-      ...(currentNote.settings || {}),
-      ...(oldNote.settings || {})
+      ...currentNote.settings,
+      ...oldNote.settings
     },
     notesPath: path.join(appSupport, 'Data', 'Notes')
   }

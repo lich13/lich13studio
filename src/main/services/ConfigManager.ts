@@ -62,7 +62,8 @@ export class ConfigManager {
     return 'zh-CN'
   }
 
-  setLanguage(_lang: LanguageVarious) {
+  setLanguage(lang: LanguageVarious) {
+    void lang
     this.setAndNotify(ConfigKeys.Language, 'zh-CN')
   }
 
@@ -173,7 +174,8 @@ export class ConfigManager {
     return false
   }
 
-  setEnableDataCollection(_value: boolean) {
+  setEnableDataCollection(value: boolean) {
+    void value
     this.set(ConfigKeys.EnableDataCollection, false)
   }
 

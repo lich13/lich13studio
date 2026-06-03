@@ -28,10 +28,8 @@ export const useNotesMenu = ({
   onCreateFolder,
   onToggleStar,
   onDeleteNode,
-  onSelectNode,
   handleStartEdit,
-  handleAutoRename,
-  activeNode
+  handleAutoRename
 }: UseNotesMenuProps) => {
   const { t } = useTranslation()
   const exportMenuOptions = useSelector((state: RootState) => state.settings.exportMenuOptions)

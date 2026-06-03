@@ -57,6 +57,7 @@ export default defineConfig([
       'build/**',
       'dist/**',
       'out/**',
+      'src-tauri/target/**',
       'local/**',
       'tests/**',
       '.yarn/**',

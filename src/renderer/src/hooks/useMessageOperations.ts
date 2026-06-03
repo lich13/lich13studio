@@ -9,6 +9,7 @@ import { messageBlocksSelectors } from '@renderer/store/messageBlock'
 import { newMessagesActions, selectMessagesForTopic } from '@renderer/store/newMessage'
 import {
   appendAssistantResponseThunk,
+  cancelThrottledBlockUpdate,
   clearTopicMessagesThunk,
   cloneMessagesToNewTopicThunk,
   deleteMessageGroupThunk,
@@ -18,6 +19,8 @@ import {
   removeBlocksThunk,
   resendMessageThunk,
   resendUserMessageWithEditThunk,
+  updateBlocks,
+  updateMessage,
   updateMessageAndBlocksThunk,
   updateTranslationBlockThunk
 } from '@renderer/store/thunk/messageThunk'
@@ -26,6 +29,7 @@ import type { Message, MessageBlock } from '@renderer/types/newMessage'
 import { AssistantMessageStatus, MessageBlockStatus, MessageBlockType } from '@renderer/types/newMessage'
 import { abortCompletion } from '@renderer/utils/abortController'
 import { isMessageProcessing } from '@renderer/utils/messageUtils/is'
+import { clearTopicQueue } from '@renderer/utils/queue'
 import { difference, throttle } from 'lodash'
 import { useCallback } from 'react'
 
@@ -140,12 +144,62 @@ export function useMessageOperations(topic: Topic) {
     const topicMessages = selectMessagesForTopic(state, topic.id)
     if (!topicMessages) return
 
-    const streamingMessages = topicMessages.filter((m) => m.status === 'processing' || m.status === 'pending')
+    const streamingMessages = topicMessages.filter((m) => m.role === 'assistant' && isMessageProcessing(m))
     const askIds = [...new Set(streamingMessages?.map((m) => m.askId).filter((id) => !!id) as string[])]
 
     for (const askId of askIds) {
       abortCompletion(askId)
     }
+    clearTopicQueue(topic.id)
+
+    const blockEntities = state.messageBlocks.entities
+    const blocksToPersist: MessageBlock[] = []
+    const persistTasks: Promise<unknown>[] = []
+    const pausedAt = new Date().toISOString()
+
+    for (const message of streamingMessages) {
+      const messageUpdates = {
+        status: AssistantMessageStatus.PAUSED,
+        updatedAt: pausedAt
+      }
+
+      dispatch(
+        newMessagesActions.updateMessage({
+          topicId: topic.id,
+          messageId: message.id,
+          updates: messageUpdates
+        })
+      )
+      persistTasks.push(updateMessage(topic.id, message.id, messageUpdates))
+
+      for (const blockId of message.blocks || []) {
+        const block = blockEntities[blockId]
+        if (
+          block &&
+          (block.status === MessageBlockStatus.PROCESSING ||
+            block.status === MessageBlockStatus.STREAMING ||
+            block.status === MessageBlockStatus.PENDING)
+        ) {
+          cancelThrottledBlockUpdate(blockId)
+          dispatch(updateOneBlock({ id: blockId, changes: { status: MessageBlockStatus.PAUSED } }))
+          blocksToPersist.push({ ...block, status: MessageBlockStatus.PAUSED })
+        }
+      }
+    }
+
+    if (blocksToPersist.length > 0) {
+      persistTasks.push(updateBlocks(blocksToPersist))
+    }
+
+    if (persistTasks.length > 0) {
+      void Promise.allSettled(persistTasks).then((results) => {
+        const failedCount = results.filter((result) => result.status === 'rejected').length
+        if (failedCount > 0) {
+          logger.warn('[pauseMessages] Failed to persist paused state', { topicId: topic.id, failedCount })
+        }
+      })
+    }
+
     void pauseTrace(topic.id)
     dispatch(newMessagesActions.setTopicLoading({ topicId: topic.id, loading: false }))
   }, [topic.id, dispatch])

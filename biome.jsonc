@@ -14,7 +14,14 @@
       }
     },
     "enabled": true,
-    "includes": ["**/*.json", "!**/package.json", "!coverage/**", "!config/app-upgrade-segments.json"]
+    "includes": [
+      "**/*.json",
+      "!**/package.json",
+      "!coverage/**",
+      "!config/app-upgrade-segments.json",
+      "!src-tauri/gen/schemas/**",
+      "!src-tauri/target/**"
+    ]
   },
   "css": {
     "formatter": {
@@ -23,7 +30,16 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "includes": ["**", "!**/.claude/**", "!**/.vscode/**", "!**/.conductor/**", "!resources/**", "!**/dist/**"],
+    "includes": [
+      "**",
+      "!**/.claude/**",
+      "!**/.vscode/**",
+      "!**/.conductor/**",
+      "!resources/**",
+      "!**/dist/**",
+      "!src-tauri/gen/schemas/**",
+      "!src-tauri/target/**"
+    ],
     "maxSize": 2097152
   },
   "formatter": {
@@ -37,6 +53,8 @@
       "**",
       "!out/**",
       "!**/dist/**",
+      "!src-tauri/gen/schemas/**",
+      "!src-tauri/target/**",
       "!build/**",
       "!.yarn/**",
       "!.github/**",

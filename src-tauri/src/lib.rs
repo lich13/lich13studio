@@ -17,6 +17,8 @@ use std::process::Command as StdCommand;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use tauri::menu::{Menu, MenuItem};
+use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, Position, RunEvent, Size, WebviewWindow, Window, WindowEvent};
 use tokio::process::Command;
 use uuid::Uuid;
@@ -244,6 +246,7 @@ struct PersistedWindowState {
 }
 
 const NATIVE_HTTP_CHUNK_EVENT: &str = "native_http_chunk";
+const FOCUS_CHAT_INPUT_EVENT: &str = "focus_chat_input";
 
 static HTTP_REQUEST_ABORTS: OnceLock<Mutex<HashMap<String, Arc<AtomicBool>>>> = OnceLock::new();
 static MAIN_WINDOW_SHOWN: AtomicBool = AtomicBool::new(false);
@@ -271,6 +274,64 @@ fn mark_main_window_shown(window: &WebviewWindow) -> Result<(), String> {
     window.show().map_err(|error| error.to_string())?;
     let _ = window.set_focus();
   }
+
+  Ok(())
+}
+
+fn show_and_focus_main_window(app: &AppHandle) -> Result<(), String> {
+  let main_window = app
+    .get_webview_window("main")
+    .ok_or_else(|| String::from("Main window not found"))?;
+
+  MAIN_WINDOW_SHOWN.store(true, Ordering::SeqCst);
+  main_window.show().map_err(|error| error.to_string())?;
+  let _ = main_window.unminimize();
+  let _ = main_window.set_focus();
+  let _ = main_window.emit(FOCUS_CHAT_INPUT_EVENT, ());
+  Ok(())
+}
+
+fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
+  let show_item = MenuItem::with_id(app, "show", "Open lich13studio", true, None::<&str>)?;
+  let quit_item = MenuItem::with_id(app, "quit", "Quit lich13studio", true, None::<&str>)?;
+  let menu = Menu::with_items(app, &[&show_item, &quit_item])?;
+
+  let icon = app
+    .default_window_icon()
+    .cloned()
+    .ok_or_else(|| String::from("Default window icon is missing"))?;
+  let app_handle = app.handle().clone();
+
+  TrayIconBuilder::with_id("main")
+    .icon(icon)
+    .icon_as_template(true)
+    .tooltip("lich13studio")
+    .show_menu_on_left_click(false)
+    .menu(&menu)
+    .on_tray_icon_event(move |_tray, event| {
+      if matches!(
+        event,
+        TrayIconEvent::Click {
+          button: MouseButton::Left,
+          button_state: MouseButtonState::Up,
+          ..
+        }
+      ) {
+        let _ = show_and_focus_main_window(&app_handle);
+      }
+    })
+    .on_menu_event(|app, event| match event.id().as_ref() {
+      "show" => {
+        let _ = show_and_focus_main_window(app);
+      }
+      "quit" => {
+        #[cfg(target_os = "macos")]
+        APP_EXITING.store(true, Ordering::Relaxed);
+        app.exit(0);
+      }
+      _ => {}
+    })
+    .build(app)?;
 
   Ok(())
 }
@@ -2072,10 +2133,7 @@ async fn start_chat(window: Window, request: ChatRequest) -> Result<String, Stri
 
 #[tauri::command]
 fn show_main_window(app: AppHandle) -> Result<(), String> {
-  let main_window = app
-    .get_webview_window("main")
-    .ok_or_else(|| String::from("Main window not found"))?;
-  mark_main_window_shown(&main_window)
+  show_and_focus_main_window(&app)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -2108,6 +2166,8 @@ pub fn run() {
           }
         }
       }
+
+      setup_tray(app)?;
 
       Ok(())
     })

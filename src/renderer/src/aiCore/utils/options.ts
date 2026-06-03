@@ -101,7 +101,7 @@ function getServiceTier<T extends Provider>(model: Model, provider: T): OpenAISe
 }
 
 function getVerbosity(model: Model): OpenAIVerbosity {
-  if (!isSupportVerbosityModel(model) || !isSupportVerbosityProvider(getProviderById(model.provider)!)) {
+  if (!isSupportVerbosityModel(model) || !isSupportVerbosityProvider(getProviderById(model.provider))) {
     return undefined
   }
   const openAI = getStoreSetting('openAI')

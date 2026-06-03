@@ -26,8 +26,7 @@ const ALLOWED_ROUTES = [
 
 const NAVIGATE_TOOL: Tool = {
   name: 'navigate',
-  description:
-    'Navigate lich13studio to a specific page. Refer to the route table in your skills for available paths.',
+  description: 'Navigate lich13studio to a specific page. Refer to the route table in your skills for available paths.',
   inputSchema: {
     type: 'object',
     properties: {

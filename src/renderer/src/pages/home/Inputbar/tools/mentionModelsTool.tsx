@@ -1,4 +1,5 @@
 import { defineTool, registerTool, TopicType } from '@renderer/pages/home/Inputbar/types'
+
 import MentionModelsQuickPanelManager from './components/MentionModelsQuickPanelManager'
 
 /**

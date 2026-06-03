@@ -11,7 +11,7 @@ import { setSearching } from '@renderer/store/runtime'
 import type { FileMetadata } from '@renderer/types'
 import { classNames } from '@renderer/utils'
 import { formatQuotedText } from '@renderer/utils/formats'
-import { isSendMessageKeyPressed } from '@renderer/utils/input'
+import { isComposingInputEvent, isSendMessageKeyPressed } from '@renderer/utils/input'
 import TextArea from 'antd/es/input/TextArea'
 import type { TextAreaRef } from 'antd/lib/input/TextArea'
 import type { CSSProperties, FC } from 'react'
@@ -261,7 +261,7 @@ export const InputbarCore: FC<InputbarCoreProps> = ({
         return
       }
 
-      const isEnterPressed = event.key === 'Enter' && !event.nativeEvent.isComposing
+      const isEnterPressed = event.key === 'Enter' && !isComposingInputEvent(event)
       if (isEnterPressed) {
         if (isSendMessageKeyPressed(event, sendMessageShortcut) && !isSendDisabled) {
           handleSendMessage()

@@ -102,7 +102,9 @@ export const Topics: React.FC<Props> = ({ assistant: _assistant, activeTopic, se
   const dispatch = useDispatch()
 
   useEffect(() => {
-    dispatch(newMessagesActions.setTopicFulfilled({ topicId: activeTopic.id, fulfilled: false }))
+    if (topicFulfilledQuery[activeTopic.id]) {
+      dispatch(newMessagesActions.setTopicFulfilled({ topicId: activeTopic.id, fulfilled: false }))
+    }
   }, [activeTopic.id, dispatch, topicFulfilledQuery])
 
   const isRenaming = useCallback(
@@ -669,7 +671,9 @@ const TopicListItem = styled.div`
 
   &.active {
     background-color: var(--color-list-item);
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    box-shadow:
+      inset 2px 0 0 var(--color-primary),
+      0 1px 2px 0 rgba(0, 0, 0, 0.05);
     .menu {
       opacity: 1;
 
@@ -690,7 +694,9 @@ const TopicListItem = styled.div`
 
   &.selected {
     background-color: var(--color-primary-bg);
-    box-shadow: inset 0 0 0 1px var(--color-primary);
+    box-shadow:
+      inset 0 0 0 1px var(--color-primary),
+      0 2px 8px rgba(0, 0, 0, 0.04);
   }
 
   &.disabled {
@@ -741,10 +747,11 @@ const PendingIndicator = styled.div.attrs({
   width: 5px;
   height: 5px;
   position: absolute;
-  left: 3px;
+  left: 5px;
   top: 15px;
   border-radius: 50%;
   background-color: var(--color-status-warning);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-status-warning) 18%, transparent);
 `
 
 const FulfilledIndicator = styled.div.attrs({
@@ -754,10 +761,11 @@ const FulfilledIndicator = styled.div.attrs({
   width: 5px;
   height: 5px;
   position: absolute;
-  left: 3px;
+  left: 5px;
   top: 15px;
   border-radius: 50%;
-  background-color: var(--color-status-success);
+  background-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 16%, transparent);
 `
 
 const TopicPromptText = styled.div`
@@ -811,17 +819,21 @@ const HeaderIconButton = styled.div`
   cursor: pointer;
   color: var(--color-text-2);
   transition: all 0.2s;
+  border: 1px solid transparent;
 
   &:hover {
     background-color: var(--color-background-mute);
     color: var(--color-text-1);
+    border-color: var(--color-border);
   }
 
   &.active {
     color: var(--color-primary);
+    background-color: var(--color-primary-bg);
+    border-color: color-mix(in srgb, var(--color-primary) 22%, transparent);
 
     &:hover {
-      background-color: var(--color-background-mute);
+      background-color: var(--color-primary-bg);
     }
   }
 `

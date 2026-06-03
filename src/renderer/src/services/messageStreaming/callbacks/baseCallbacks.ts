@@ -299,7 +299,7 @@ export const createBaseCallbacks = (deps: BaseCallbacksDependencies) => {
       const errorBlock = createErrorBlock(assistantMsgId, serializableError, { status: MessageBlockStatus.SUCCESS })
       await blockManager.handleBlockTransition(errorBlock, MessageBlockType.ERROR)
       const messageErrorUpdate = {
-        status: isErrorTypeAbort ? AssistantMessageStatus.SUCCESS : AssistantMessageStatus.ERROR
+        status: isErrorTypeAbort ? AssistantMessageStatus.PAUSED : AssistantMessageStatus.ERROR
       }
       dispatch(
         newMessagesActions.updateMessage({
@@ -326,6 +326,19 @@ export const createBaseCallbacks = (deps: BaseCallbacksDependencies) => {
     onComplete: async (status: AssistantMessageStatus, response?: Response) => {
       const finalStateOnComplete = getState()
       const finalAssistantMsg = finalStateOnComplete.messages.entities[assistantMsgId]
+
+      if (status === AssistantMessageStatus.SUCCESS && finalAssistantMsg?.status === AssistantMessageStatus.PAUSED) {
+        logger.debug('Skip success completion because assistant message is already paused', {
+          topicId,
+          assistantMsgId
+        })
+        void EventEmitter.emit(EVENT_NAMES.MESSAGE_COMPLETE, {
+          id: assistantMsgId,
+          topicId,
+          status: AssistantMessageStatus.PAUSED
+        })
+        return
+      }
 
       if (status === 'success' && finalAssistantMsg) {
         const userMsgId = finalAssistantMsg.askId

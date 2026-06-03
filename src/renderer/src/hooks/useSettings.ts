@@ -20,17 +20,17 @@ import type { AssistantIconType, SendMessageShortcut, SettingsState } from '@ren
 import {
   setAssistantIconType,
   setAutoCheckUpdate as _setAutoCheckUpdate,
-  setLaunchToTray,
   setLaunchOnBoot,
+  setLaunchToTray,
   setNavbarPosition,
-  setTray as _setTray,
-  setTrayOnClose,
   setSendMessageShortcut as _setSendMessageShortcut,
   setTargetLanguage,
   setTestChannel as _setTestChannel,
   setTestPlan as _setTestPlan,
   setTheme,
   setTopicPosition,
+  setTray as _setTray,
+  setTrayOnClose,
   setUseSystemTitleBar as _setUseSystemTitleBar,
   setWindowStyle
 } from '@renderer/store/settings'

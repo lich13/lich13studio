@@ -2583,8 +2583,8 @@ const migrateConfig = {
     try {
       const knowledgeBases = (state as any).knowledge?.bases ?? []
       knowledgeBases.forEach((base) => {
-        if ((base as any).framework) {
-          delete (base as any).framework
+        if (base.framework) {
+          delete base.framework
         }
       })
       return state
@@ -2606,8 +2606,8 @@ const migrateConfig = {
     try {
       const knowledgeBases = (state as any).knowledge?.bases ?? []
       knowledgeBases.forEach((base) => {
-        if ((base as any).framework) {
-          delete (base as any).framework
+        if (base.framework) {
+          delete base.framework
         }
       })
       return state
@@ -2676,8 +2676,8 @@ const migrateConfig = {
     try {
       const knowledgeBases = (state as any).knowledge?.bases ?? []
       knowledgeBases.forEach((base) => {
-        if ((base as any).framework) {
-          delete (base as any).framework
+        if (base.framework) {
+          delete base.framework
         }
       })
       return state

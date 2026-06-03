@@ -620,7 +620,7 @@ const AihubmixPage: FC<{ Options: string[] }> = ({ Options }) => {
     void removePainting(mode, paintingToDelete)
   }
 
-  const handleKeyDown = (_event: React.KeyboardEvent<HTMLTextAreaElement>) => {}
+  const handleKeyDown = () => {}
 
   const handleProviderChange = (providerId: string) => {
     const routeName = location.pathname.split('/').pop()

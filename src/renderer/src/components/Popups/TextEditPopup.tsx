@@ -21,13 +21,7 @@ interface Props extends ShowParams {
   resolve: (data: any) => void
 }
 
-const PopupContainer: React.FC<Props> = ({
-  text,
-  textareaProps,
-  modalProps,
-  resolve,
-  children
-}) => {
+const PopupContainer: React.FC<Props> = ({ text, textareaProps, modalProps, resolve, children }) => {
   const [open, setOpen] = useState(true)
   const { t } = useTranslation()
   const [textValue, setTextValue] = useState(text)

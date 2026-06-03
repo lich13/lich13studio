@@ -372,6 +372,7 @@ const InputbarInner: FC<InputbarInnerProps> = ({ assistant: initialAssistant, se
   useEffect(() => {
     const _setEstimateTokenCount = debounce(setEstimateTokenCount, 100, { leading: false, trailing: true })
     const unsubscribes = [
+      EventEmitter.on(EVENT_NAMES.FOCUS_CHAT_INPUT, focusTextarea),
       EventEmitter.on(EVENT_NAMES.ESTIMATED_TOKEN_COUNT, ({ tokensCount, contextCount }) => {
         _setEstimateTokenCount(tokensCount)
         setContextCount({ current: contextCount.current, max: contextCount.max })
@@ -382,7 +383,32 @@ const InputbarInner: FC<InputbarInnerProps> = ({ assistant: initialAssistant, se
     return () => {
       unsubscribes.forEach((unsubscribe) => unsubscribe())
     }
-  }, [addNewTopic])
+  }, [addNewTopic, focusTextarea])
+
+  useEffect(() => {
+    const listen = window.__TAURI__?.event?.listen
+    if (!listen) {
+      return
+    }
+
+    let disposed = false
+    let unlisten: (() => void) | undefined
+
+    void listen('focus_chat_input', () => {
+      void EventEmitter.emit(EVENT_NAMES.FOCUS_CHAT_INPUT)
+    }).then((cleanup) => {
+      if (disposed) {
+        cleanup()
+      } else {
+        unlisten = cleanup
+      }
+    })
+
+    return () => {
+      disposed = true
+      unlisten?.()
+    }
+  }, [])
 
   useEffect(() => {
     const debouncedEstimate = debounce((value: string) => {

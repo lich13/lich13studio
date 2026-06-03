@@ -1,6 +1,6 @@
 [package]
 name = "lich13studio"
-version = "0.1.4"
+version = "0.1.5"
 description = "lich13studio Tauri Lite runtime"
 authors = ["lich13studio"]
 edition = "2021"
@@ -24,7 +24,7 @@ rfd = "0.15"
 roxmltree = "0.20"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-notification = "2.3.3"
 tokio = { version = "1", features = ["process", "time"] }
 url = "2"

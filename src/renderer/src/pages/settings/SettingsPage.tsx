@@ -3,15 +3,7 @@ import { McpLogo } from '@renderer/components/Icons'
 import Scrollbar from '@renderer/components/Scrollbar'
 import ModelSettings from '@renderer/pages/settings/ModelSettings/ModelSettings'
 import { Divider as AntDivider } from 'antd'
-import {
-  Cloud,
-  HardDrive,
-  MonitorCog,
-  Package,
-  Search,
-  Settings2,
-  Zap
-} from 'lucide-react'
+import { Cloud, HardDrive, MonitorCog, Package, Search, Settings2, Zap } from 'lucide-react'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom'

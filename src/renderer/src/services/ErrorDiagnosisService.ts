@@ -34,7 +34,10 @@ async function buildModelsToTry(context?: DiagnosisContext): Promise<Model[]> {
   }
 
   // Fallback to the first model of any enabled provider, then any configured provider.
-  for (const provider of [...providers.filter((provider) => provider.enabled), ...providers.filter((provider) => !provider.enabled)]) {
+  for (const provider of [
+    ...providers.filter((provider) => provider.enabled),
+    ...providers.filter((provider) => !provider.enabled)
+  ]) {
     const model = provider.models[0]
     if (!model) {
       continue

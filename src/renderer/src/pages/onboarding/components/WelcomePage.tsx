@@ -23,7 +23,9 @@ const WelcomePage: FC<WelcomePageProps> = ({ setStep, setProviderConfigured }) =
   const handleConfigureProviders = useCallback(async () => {
     try {
       await ProviderPopup.show()
-      const hasAvailableProvider = store.getState().llm.providers.some((provider) => provider.enabled && provider.models.length > 0)
+      const hasAvailableProvider = store
+        .getState()
+        .llm.providers.some((provider) => provider.enabled && provider.models.length > 0)
       if (hasAvailableProvider) {
         setProviderConfigured(true)
         window.toast.success(t('onboarding.toast.connected'))

@@ -1,3 +1,4 @@
+import { loggerService } from '@logger'
 import {
   isPermissionGranted as isNotificationPermissionGranted,
   requestPermission as requestNotificationPermission,
@@ -6,6 +7,7 @@ import {
 
 type AnyRecord = Record<string, any>
 const WORD_DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+const logger = loggerService.withContext('TauriShim')
 
 const globalWindow = window as AnyRecord
 globalWindow.__LICH13_TAURI_SHIM__ = true
@@ -66,7 +68,7 @@ if (!globalWindow.navigate) {
 }
 
 if (!globalWindow.toast) {
-  const log = (level: 'log' | 'warn' | 'error', payload: any) => console[level]('[tauri-shim:toast]', payload)
+  const log = (level: 'debug' | 'warn' | 'error', payload: any) => logger[level]('Toast fallback', payload)
   globalWindow.toast = {
     getToastQueue: () => [],
     addToast: () => undefined,
@@ -74,10 +76,10 @@ if (!globalWindow.toast) {
     closeAll: () => undefined,
     isToastClosing: () => false,
     error: (payload: any) => log('error', payload),
-    success: (payload: any) => log('log', payload),
+    success: (payload: any) => log('debug', payload),
     warning: (payload: any) => log('warn', payload),
-    info: (payload: any) => log('log', payload),
-    loading: (payload: any) => log('log', payload)
+    info: (payload: any) => log('debug', payload),
+    loading: (payload: any) => log('debug', payload)
   }
 }
 
@@ -303,7 +305,7 @@ const emitProgress = (listeners: Set<(data: ProgressPayload) => void>, payload: 
     try {
       listener(nextPayload)
     } catch (error) {
-      console.error('[tauri-shim] Progress listener failed', error)
+      logger.error('Progress listener failed', error as Error)
     }
   })
 }
@@ -339,7 +341,7 @@ const emitProtocolPayload = (url: string) => {
     try {
       listener(payload)
     } catch (error) {
-      console.error('[tauri-shim] Protocol listener failed', error)
+      logger.error('Protocol listener failed', error as Error)
     }
   })
 }
@@ -369,7 +371,7 @@ const ensureDeepLinkListener = () => {
       urls.forEach((url) => emitProtocolPayload(url))
     })
   ).catch((error) => {
-    console.warn('[tauri-shim] Failed to register deep-link listener', error)
+    logger.warn('Failed to register deep-link listener', error)
     deepLinkUnlistenPromise = null
   })
 }
@@ -428,7 +430,7 @@ const serializeIndexedDb = async (onProgress?: (progress: number) => void) => {
     db.close()
     return snapshot
   } catch (error) {
-    console.warn('[tauri-shim] Failed to serialize IndexedDB backup snapshot', error)
+    logger.warn('Failed to serialize IndexedDB backup snapshot', error as Error)
     return {}
   }
 }
@@ -719,10 +721,16 @@ const getAppInfo = async () => {
   return cachedAppInfo
 }
 
-const noOpAsync = async (..._args: any[]) => undefined
+const noOpAsync = async (...args: any[]) => {
+  void args
+  return undefined
+}
 
 const fallbackCallable = (path = 'api') => {
-  const fn = (..._args: any[]) => Promise.resolve(undefined)
+  const fn = (...args: any[]) => {
+    void args
+    return Promise.resolve(undefined)
+  }
   return new Proxy(fn, {
     get(_target, prop: string) {
       if (prop === 'then') return undefined

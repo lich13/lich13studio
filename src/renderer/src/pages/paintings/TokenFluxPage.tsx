@@ -220,7 +220,7 @@ const TokenFluxPage: FC<{ Options: string[] }> = ({ Options }) => {
     void removePainting('tokenflux_paintings', paintingToDelete)
   }
 
-  const handleKeyDown = (_event: React.KeyboardEvent<HTMLTextAreaElement>) => {}
+  const handleKeyDown = () => {}
 
   const handleProviderChange = (providerId: string) => {
     const routeName = location.pathname.split('/').pop()

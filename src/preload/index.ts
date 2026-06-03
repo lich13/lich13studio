@@ -91,7 +91,10 @@ const removedFeatureError = (feature: string) =>
   Promise.reject(new Error(`${feature} has been removed in lich13studio`))
 
 const addIpcListener = <T extends any[]>(channel: string, callback: (...args: T) => void) => {
-  const listener = (_event: Electron.IpcRendererEvent, ...args: T) => callback(...args)
+  const listener = (event: Electron.IpcRendererEvent, ...args: T) => {
+    void event
+    callback(...args)
+  }
   ipcRenderer.on(channel, listener)
   return () => {
     ipcRenderer.off(channel, listener)
@@ -166,7 +169,10 @@ const api = {
     listCaptureWindows: (): Promise<
       Array<{ id: number; appName: string; title: string; width: number; height: number; isFocused: boolean }>
     > => removedFeatureError('Window capture'),
-    captureWindow: (_windowId: number): Promise<number[]> => removedFeatureError('Window capture')
+    captureWindow: (windowId: number): Promise<number[]> => {
+      void windowId
+      return removedFeatureError('Window capture')
+    }
   },
   devTools: {
     toggle: () => ipcRenderer.invoke(IpcChannel.System_ToggleDevTools)
@@ -748,9 +754,10 @@ const api = {
     start: (): Promise<StartApiServerStatusResult> => removedFeatureError('API server'),
     restart: (): Promise<RestartApiServerStatusResult> => removedFeatureError('API server'),
     stop: (): Promise<StopApiServerStatusResult> => removedFeatureError('API server'),
-    onReady:
-      (_callback: () => void): (() => void) =>
-      () => {}
+    onReady: (callback: () => void): (() => void) => {
+      void callback
+      return () => {}
+    }
   },
   skill: {
     list: (): Promise<SkillResult<InstalledSkill[]>> => ipcRenderer.invoke(IpcChannel.Skill_List),

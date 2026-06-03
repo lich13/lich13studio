@@ -69,8 +69,7 @@ const AttachmentButton: FC<Props> = ({ quickPanel, couldAddImageFile, extensions
         description: '',
         icon: <Upload />,
         action: () => openFileSelectDialog()
-      },
-      
+      }
     ]
   }, [openFileSelectDialog, t])
 

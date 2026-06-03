@@ -54,5 +54,13 @@ declare global {
         updatedPermissions?: PermissionUpdate[]
       }) => Promise<{ success: boolean }>
     }
+    __TAURI__?: {
+      event?: {
+        listen?: (event: string, handler: () => void) => Promise<() => void>
+      }
+      core?: {
+        invoke?: (command: string, args?: Record<string, unknown>) => Promise<unknown>
+      }
+    }
   }
 }
