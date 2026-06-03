@@ -79,7 +79,9 @@ const WindowFooter = styled.div`
   display: flex;
   flex-direction: row;
   justify-content: space-between;
-  padding: 5px 0;
+  margin-top: 6px;
+  padding: 6px 1px 0;
+  border-top: 1px solid var(--color-border);
   color: var(--color-text-secondary);
   font-size: 12px;
 `
@@ -104,6 +106,8 @@ const Tag = styled(AntdTag)`
   display: flex;
   align-items: center;
   gap: 5px;
+  margin-inline-end: 4px;
+  border-radius: 8px;
   transition: all 0.2s ease-in-out;
 
   &:hover {

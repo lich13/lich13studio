@@ -78,16 +78,17 @@ const InputWrapper = styled.div`
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 8px;
-  padding: 8px;
+  margin-top: 6px;
+  padding: 7px;
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: var(--color-background-soft);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.08);
+  background: var(--color-background);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.1);
   -webkit-app-region: none;
 
   &:focus-within {
     border-color: var(--color-primary);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
   }
 `
 

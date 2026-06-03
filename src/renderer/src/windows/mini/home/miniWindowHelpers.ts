@@ -36,6 +36,39 @@ export type MiniWindowCaptureNotice = 'image-required' | 'unavailable' | 'succes
 
 type CaptureResult = Uint8Array | ArrayBuffer | number[]
 
+export const shouldShowMiniWindowPendingSpinner = ({
+  isLoading,
+  isOutputted,
+  messageCount
+}: {
+  isLoading: boolean
+  isOutputted: boolean
+  messageCount: number
+}): boolean => {
+  return isLoading && !isOutputted && messageCount > 0
+}
+
+export const shouldShowMiniWindowEmptyState = ({
+  isLoading,
+  messageCount,
+  hasError
+}: {
+  isLoading: boolean
+  messageCount: number
+  hasError: boolean
+}): boolean => {
+  return !isLoading && messageCount === 0 && !hasError
+}
+
+export const sortMiniCaptureWindows = (windows: MiniCaptureWindowInfo[]): MiniCaptureWindowInfo[] => {
+  return [...windows].sort(
+    (left, right) =>
+      Number(right.isFocused) - Number(left.isFocused) ||
+      left.appName.localeCompare(right.appName) ||
+      left.title.localeCompare(right.title)
+  )
+}
+
 const toUint8Array = (result: CaptureResult): Uint8Array => {
   if (result instanceof Uint8Array) {
     return result

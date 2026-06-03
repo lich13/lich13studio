@@ -8,14 +8,22 @@ interface Props {
   assistant: Assistant | null
   topic: Topic | null
   isOutputted: boolean
+  isLoading: boolean
+  hasError: boolean
 }
 
-const ChatWindow: FC<Props> = ({ assistant, topic, isOutputted }) => {
+const ChatWindow: FC<Props> = ({ assistant, topic, isOutputted, isLoading, hasError }) => {
   if (!assistant || !topic) return null
 
   return (
     <Main className="bubble">
-      <Messages assistant={assistant} topic={topic} isOutputted={isOutputted} />
+      <Messages
+        assistant={assistant}
+        topic={topic}
+        isOutputted={isOutputted}
+        isLoading={isLoading}
+        hasError={hasError}
+      />
     </Main>
   )
 }

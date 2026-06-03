@@ -1,6 +1,6 @@
 {
   "name": "lich13studio",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "private": true,
   "description": "A focused desktop AI workspace for assistants, MCP, models, and backup.",
   "desktopName": "lich13studio.desktop",

@@ -49,6 +49,9 @@ import {
   getMiniWindowSupportExts,
   isMiniWindowComposingInput,
   isMiniWindowSendKeyPressed,
+  shouldShowMiniWindowEmptyState,
+  shouldShowMiniWindowPendingSpinner,
+  sortMiniCaptureWindows,
   updateMiniWindowDefaultAssistantModel
 } from './miniWindowHelpers'
 
@@ -320,5 +323,91 @@ describe('mini window helpers', () => {
     expect(captureWindow).not.toHaveBeenCalled()
     expect(savePastedImage).not.toHaveBeenCalled()
     expect(notify).toHaveBeenCalledWith('image-required')
+  })
+
+  it('does not show the mini window pending spinner for an empty idle chat', () => {
+    expect(
+      shouldShowMiniWindowPendingSpinner({
+        isLoading: false,
+        isOutputted: false,
+        messageCount: 0
+      })
+    ).toBe(false)
+  })
+
+  it('shows the mini window pending spinner only while a chat response is actually pending', () => {
+    expect(
+      shouldShowMiniWindowPendingSpinner({
+        isLoading: true,
+        isOutputted: false,
+        messageCount: 2
+      })
+    ).toBe(true)
+
+    expect(
+      shouldShowMiniWindowPendingSpinner({
+        isLoading: true,
+        isOutputted: true,
+        messageCount: 2
+      })
+    ).toBe(false)
+  })
+
+  it('shows the mini window empty state only when there are no messages or active errors', () => {
+    expect(
+      shouldShowMiniWindowEmptyState({
+        isLoading: false,
+        messageCount: 0,
+        hasError: false
+      })
+    ).toBe(true)
+
+    expect(
+      shouldShowMiniWindowEmptyState({
+        isLoading: true,
+        messageCount: 0,
+        hasError: false
+      })
+    ).toBe(false)
+
+    expect(
+      shouldShowMiniWindowEmptyState({
+        isLoading: false,
+        messageCount: 0,
+        hasError: true
+      })
+    ).toBe(false)
+  })
+
+  it('sorts mini capture windows with the focused window first, then app and title', () => {
+    const windows = [
+      {
+        id: 3,
+        appName: 'Safari',
+        title: 'Zebra',
+        width: 1280,
+        height: 720,
+        isFocused: false
+      },
+      {
+        id: 2,
+        appName: 'Finder',
+        title: 'Downloads',
+        width: 900,
+        height: 600,
+        isFocused: true
+      },
+      {
+        id: 1,
+        appName: 'Safari',
+        title: 'Docs',
+        width: 1280,
+        height: 720,
+        isFocused: false
+      }
+    ]
+
+    expect(sortMiniCaptureWindows(windows).map((windowInfo) => windowInfo.id)).toEqual([2, 1, 3])
+    expect(windows.map((windowInfo) => windowInfo.id)).toEqual([3, 2, 1])
   })
 })

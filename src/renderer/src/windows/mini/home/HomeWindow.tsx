@@ -38,7 +38,7 @@ import { createMainTextBlock, createThinkingBlock } from '@renderer/utils/messag
 import { getMainTextContent } from '@renderer/utils/messageUtils/find'
 import { replacePromptVariables } from '@renderer/utils/prompt'
 import { defaultLanguage } from '@shared/config/constant'
-import { Button, Divider, Tooltip } from 'antd'
+import { Button, Tooltip } from 'antd'
 import { cloneDeep, isEmpty } from 'lodash'
 import { last } from 'lodash'
 import { Image as ImageIcon, X } from 'lucide-react'
@@ -48,11 +48,14 @@ import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
 import ChatWindow from '../chat/ChatWindow'
+import CapturePanel from './components/CapturePanel'
 import ClipboardPreview from './components/ClipboardPreview'
 import Footer from './components/Footer'
 import InputBar from './components/InputBar'
 import MiniWindowCaptureButton from './components/MiniWindowCaptureButton'
 import {
+  captureMiniWindowScreenshot,
+  captureMiniWindowSelectedWindow,
   getMiniWindowChatModels,
   getMiniWindowMessageWithBlock,
   getMiniWindowPersistedTopic,
@@ -60,6 +63,8 @@ import {
   isMiniWindowChatModel,
   isMiniWindowComposingInput,
   isMiniWindowSendKeyPressed,
+  type MiniCaptureWindowInfo,
+  type MiniWindowCaptureNotice,
   updateMiniWindowDefaultAssistantModel
 } from './miniWindowHelpers'
 
@@ -75,6 +80,8 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
   const [userInputText, setUserInputText] = useState('')
   const [files, setFiles] = useState<FileMetadata[]>([])
   const [filePreviewUrls, setFilePreviewUrls] = useState<Record<string, string>>({})
+  const [captureWindows, setCaptureWindows] = useState<MiniCaptureWindowInfo[]>([])
+  const [capturingWindow, setCapturingWindow] = useState(false)
 
   const [clipboardText, setClipboardText] = useState('')
   const lastClipboardTextRef = useRef<string | null>(null)
@@ -100,6 +107,7 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
   )
   const chatModels = useMemo(() => getMiniWindowChatModels(providers), [providers])
   const supportedExts = useMemo(() => getMiniWindowSupportExts(currentAssistant), [currentAssistant])
+  const canCaptureImage = supportedExts.length > 0
 
   const currentTopic = useRef<Topic>(getDefaultTopic(currentAssistant.id))
   const currentAskId = useRef('')
@@ -119,6 +127,12 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
   useEffect(() => {
     currentTopic.current = getDefaultTopic(currentAssistant.id)
   }, [currentAssistant.id])
+
+  useEffect(() => {
+    if (!canCaptureImage) {
+      setCaptureWindows([])
+    }
+  }, [canCaptureImage])
 
   useEffect(() => {
     let isCancelled = false
@@ -251,6 +265,72 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
     },
     [supportedExts, t]
   )
+
+  const notifyCapture = useCallback(
+    (notice: MiniWindowCaptureNotice, error?: unknown) => {
+      switch (notice) {
+        case 'image-required':
+          window.toast.warning(t('chat.input.capture.image_required'))
+          break
+        case 'unavailable':
+          window.toast.error(t('chat.input.capture.unavailable'))
+          break
+        case 'success':
+          window.toast.success(t('chat.input.capture.success'))
+          break
+        case 'failed': {
+          const message = error instanceof Error ? error.message : t('chat.input.capture.failed')
+          window.toast.error(`${t('chat.input.capture.failed')}: ${message}`)
+          break
+        }
+      }
+    },
+    [t]
+  )
+
+  const addCapturedFile = useCallback((file: FileMetadata) => {
+    setFiles((previousFiles) => [...previousFiles, file])
+  }, [])
+
+  const handleSelectCaptureWindow = useCallback(
+    async (target: MiniCaptureWindowInfo) => {
+      if (capturingWindow) return
+
+      setCapturingWindow(true)
+      setCaptureWindows([])
+      try {
+        await captureMiniWindowSelectedWindow({
+          target,
+          captureWindow: window.api.system.captureWindow,
+          savePastedImage: window.api.file.savePastedImage,
+          onAddFile: addCapturedFile,
+          notify: notifyCapture
+        })
+      } finally {
+        setCapturingWindow(false)
+      }
+    },
+    [addCapturedFile, capturingWindow, notifyCapture]
+  )
+
+  const handleOpenCapturePicker = useCallback(async () => {
+    if (capturingWindow) return
+
+    setCapturingWindow(true)
+    try {
+      await captureMiniWindowScreenshot({
+        canCaptureImage,
+        listCaptureWindows: window.api.system.listCaptureWindows,
+        captureWindow: window.api.system.captureWindow,
+        savePastedImage: window.api.file.savePastedImage,
+        onSelectWindow: setCaptureWindows,
+        onAddFile: addCapturedFile,
+        notify: notifyCapture
+      })
+    } finally {
+      setCapturingWindow(false)
+    }
+  }, [addCapturedFile, canCaptureImage, capturingWindow, notifyCapture])
 
   const handleModelChange = useCallback(
     (value: string) => {
@@ -724,16 +804,33 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
         canSend={canSend}
         onSend={sendCurrentMessage}
         onPause={handlePause}
-        actions={<MiniWindowCaptureButton canCaptureImage={supportedExts.length > 0} setFiles={setFiles} />}
+        actions={
+          <MiniWindowCaptureButton
+            canCaptureImage={canCaptureImage}
+            capturing={capturingWindow}
+            onClick={() => void handleOpenCapturePicker()}
+          />
+        }
         ref={inputBarRef}
+      />
+      <CapturePanel
+        windows={captureWindows}
+        capturing={capturingWindow}
+        onSelectWindow={(windowInfo) => void handleSelectCaptureWindow(windowInfo)}
+        onClose={() => setCaptureWindows([])}
       />
       {attachments}
       <ClipboardPreview referenceText={clipboardText} clearClipboard={clearClipboard} t={t} />
       <ContentArea>
-        <ChatWindow assistant={currentAssistant} topic={currentTopic.current} isOutputted={isOutputted} />
+        <ChatWindow
+          assistant={currentAssistant}
+          topic={currentTopic.current}
+          isOutputted={isOutputted}
+          isLoading={isLoading}
+          hasError={Boolean(error)}
+        />
         {error && <ErrorMsg>{error}</ErrorMsg>}
       </ContentArea>
-      <Divider style={{ margin: '8px 0 6px' }} />
       <Footer key="footer" {...baseFooterProps} onCopy={handleCopy} />
     </Container>
   )
@@ -744,8 +841,10 @@ const Container = styled.div<{ $draggable: boolean }>`
   flex: 1;
   height: 100%;
   width: 100%;
+  min-width: 0;
   flex-direction: column;
   -webkit-app-region: ${({ $draggable }) => ($draggable ? 'drag' : 'no-drag')};
+  overflow: hidden;
   padding: 8px 10px 6px;
   color: var(--color-text);
 `
@@ -755,8 +854,8 @@ const MiniHeader = styled.header`
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  min-height: 38px;
-  padding: 3px 2px 6px;
+  min-height: 36px;
+  padding: 2px 2px 5px;
 `
 
 const BrandArea = styled.div`
@@ -788,7 +887,9 @@ const AttachmentStrip = styled.div`
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-top: 8px;
+  max-height: 74px;
+  margin-top: 7px;
+  overflow-y: auto;
   -webkit-app-region: none;
 `
 
@@ -805,7 +906,7 @@ const AttachmentPill = styled.div`
   font-size: 12px;
 
   span {
-    max-width: 260px;
+    max-width: 252px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -829,7 +930,7 @@ const ContentArea = styled.main`
   overflow: hidden;
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: var(--color-background-opacity);
+  background: color-mix(in srgb, var(--color-background-soft) 70%, transparent);
   -webkit-app-region: none;
 `
 
