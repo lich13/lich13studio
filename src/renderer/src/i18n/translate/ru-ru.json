@@ -2654,24 +2654,15 @@
     "clipboard": {
       "empty": "Буфер обмена пуст"
     },
-    "feature": {
-      "chat": "Ответить на этот вопрос",
-      "explanation": "Объяснение",
-      "summary": "Содержание",
-      "translate": "Текст перевод"
-    },
     "footer": {
-      "backspace_clear": "Нажмите Backspace, чтобы очистить",
       "copy_last_message": "Нажмите C для копирования",
       "esc": "Нажмите ESC {{action}}",
-      "esc_back": "возвращения",
       "esc_close": "закрытия окна",
       "esc_pause": "пауза"
     },
     "input": {
       "placeholder": {
-        "empty": "Задайте вопрос {{model}}...",
-        "title": "Что вы хотите сделать с этим текстом?"
+        "empty": "Задайте вопрос {{model}}..."
       }
     },
     "tooltip": {

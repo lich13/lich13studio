@@ -42,6 +42,7 @@ vi.mock('@renderer/config/models/vision', () => ({
 
 import {
   buildMiniWindowUserMessage,
+  captureMiniWindowScreenshot,
   getMiniWindowChatModels,
   getMiniWindowMessageWithBlock,
   getMiniWindowPersistedTopic,
@@ -222,5 +223,102 @@ describe('mini window helpers', () => {
     ]
 
     expect(getMiniWindowChatModels(providers)).toEqual([enabledModel])
+  })
+
+  it('captures a selected app window as a png attachment when image input is supported', async () => {
+    const file = createImageFile({ id: 'captured-window', origin_name: 'captured-window.png' })
+    const listCaptureWindows = vi.fn(async () => [
+      {
+        id: 42,
+        appName: 'Safari',
+        title: 'Docs',
+        width: 1280,
+        height: 720,
+        isFocused: false
+      }
+    ])
+    const captureWindow = vi.fn(async () => [137, 80, 78, 71])
+    const savePastedImage = vi.fn(async () => file)
+    const onSelectWindow = vi.fn()
+    const onAddFile = vi.fn()
+    const notify = vi.fn()
+
+    await captureMiniWindowScreenshot({
+      canCaptureImage: true,
+      listCaptureWindows,
+      captureWindow,
+      savePastedImage,
+      onSelectWindow,
+      onAddFile,
+      notify
+    })
+
+    expect(listCaptureWindows).toHaveBeenCalledTimes(1)
+    expect(captureWindow).toHaveBeenCalledWith(42)
+    expect(savePastedImage).toHaveBeenCalledWith(new Uint8Array([137, 80, 78, 71]), 'png')
+    expect(onAddFile).toHaveBeenCalledWith(file)
+    expect(onSelectWindow).not.toHaveBeenCalled()
+    expect(notify).toHaveBeenCalledWith('success')
+  })
+
+  it('opens a mini window picker instead of immediately capturing when multiple windows are available', async () => {
+    const windows = [
+      {
+        id: 1,
+        appName: 'Safari',
+        title: 'Docs',
+        width: 1280,
+        height: 720,
+        isFocused: false
+      },
+      {
+        id: 2,
+        appName: 'Finder',
+        title: 'Downloads',
+        width: 900,
+        height: 600,
+        isFocused: true
+      }
+    ]
+    const listCaptureWindows = vi.fn(async () => windows)
+    const captureWindow = vi.fn()
+    const savePastedImage = vi.fn()
+    const onSelectWindow = vi.fn()
+
+    await captureMiniWindowScreenshot({
+      canCaptureImage: true,
+      listCaptureWindows,
+      captureWindow,
+      savePastedImage,
+      onSelectWindow,
+      onAddFile: vi.fn(),
+      notify: vi.fn()
+    })
+
+    expect(onSelectWindow).toHaveBeenCalledWith(windows)
+    expect(captureWindow).not.toHaveBeenCalled()
+    expect(savePastedImage).not.toHaveBeenCalled()
+  })
+
+  it('does not call window capture APIs when image input is unsupported', async () => {
+    const listCaptureWindows = vi.fn()
+    const captureWindow = vi.fn()
+    const savePastedImage = vi.fn()
+    const notify = vi.fn()
+
+    await captureMiniWindowScreenshot({
+      canCaptureImage: false,
+      listCaptureWindows,
+      captureWindow,
+      savePastedImage,
+      onSelectWindow: vi.fn(),
+      onAddFile: vi.fn(),
+      notify
+    })
+
+    expect(listCaptureWindows).not.toHaveBeenCalled()
+    expect(captureWindow).not.toHaveBeenCalled()
+    expect(savePastedImage).not.toHaveBeenCalled()
+    expect(notify).toHaveBeenCalledWith('image-required')
   })
 })

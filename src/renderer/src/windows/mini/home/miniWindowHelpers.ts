@@ -23,6 +23,31 @@ type MiniKeyboardEvent = Parameters<typeof isComposingInputEvent>[0] & {
   altKey?: boolean
 }
 
+export type MiniCaptureWindowInfo = {
+  id: number
+  appName: string
+  title: string
+  width: number
+  height: number
+  isFocused: boolean
+}
+
+export type MiniWindowCaptureNotice = 'image-required' | 'unavailable' | 'success' | 'failed'
+
+type CaptureResult = Uint8Array | ArrayBuffer | number[]
+
+const toUint8Array = (result: CaptureResult): Uint8Array => {
+  if (result instanceof Uint8Array) {
+    return result
+  }
+
+  if (result instanceof ArrayBuffer) {
+    return new Uint8Array(result)
+  }
+
+  return new Uint8Array(result)
+}
+
 export const isMiniWindowChatModel = (model: Model): boolean => {
   return !isEmbeddingModel(model) && !isRerankModel(model)
 }
@@ -70,6 +95,79 @@ export const isMiniWindowSendKeyPressed = (event: MiniKeyboardEvent): boolean =>
 }
 
 export const isMiniWindowComposingInput = (event: MiniKeyboardEvent): boolean => isComposingInputEvent(event)
+
+export const captureMiniWindowSelectedWindow = async ({
+  target,
+  captureWindow,
+  savePastedImage,
+  onAddFile,
+  notify
+}: {
+  target: MiniCaptureWindowInfo
+  captureWindow: (windowId: number) => Promise<CaptureResult>
+  savePastedImage: (bytes: Uint8Array, extension: string) => Promise<FileMetadata | null>
+  onAddFile: (file: FileMetadata) => void
+  notify: (notice: MiniWindowCaptureNotice, error?: unknown) => void
+}) => {
+  try {
+    const bytes = toUint8Array(await captureWindow(target.id))
+    const file = await savePastedImage(bytes, 'png')
+
+    if (file) {
+      onAddFile(file)
+      notify('success')
+    }
+  } catch (error) {
+    notify('failed', error)
+  }
+}
+
+export const captureMiniWindowScreenshot = async ({
+  canCaptureImage,
+  listCaptureWindows,
+  captureWindow,
+  savePastedImage,
+  onSelectWindow,
+  onAddFile,
+  notify
+}: {
+  canCaptureImage: boolean
+  listCaptureWindows: () => Promise<MiniCaptureWindowInfo[]>
+  captureWindow: (windowId: number) => Promise<CaptureResult>
+  savePastedImage: (bytes: Uint8Array, extension: string) => Promise<FileMetadata | null>
+  onSelectWindow: (windows: MiniCaptureWindowInfo[]) => void
+  onAddFile: (file: FileMetadata) => void
+  notify: (notice: MiniWindowCaptureNotice, error?: unknown) => void
+}) => {
+  if (!canCaptureImage) {
+    notify('image-required')
+    return
+  }
+
+  try {
+    const windows = await listCaptureWindows()
+
+    if (!windows.length) {
+      notify('unavailable')
+      return
+    }
+
+    if (windows.length === 1) {
+      await captureMiniWindowSelectedWindow({
+        target: windows[0],
+        captureWindow,
+        savePastedImage,
+        onAddFile,
+        notify
+      })
+      return
+    }
+
+    onSelectWindow(windows)
+  } catch (error) {
+    notify('failed', error)
+  }
+}
 
 export const buildMiniWindowUserMessage = ({
   assistant,

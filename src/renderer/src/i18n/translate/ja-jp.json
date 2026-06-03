@@ -2654,24 +2654,15 @@
     "clipboard": {
       "empty": "クリップボードが空です"
     },
-    "feature": {
-      "chat": "この質問に回答",
-      "explanation": "説明",
-      "summary": "内容要約",
-      "translate": "テキスト翻訳"
-    },
     "footer": {
-      "backspace_clear": "バックスペースを押してクリアします",
       "copy_last_message": "C キーを押してコピー",
       "esc": "ESC キーを押して{{action}}",
-      "esc_back": "戻る",
       "esc_close": "ウィンドウを閉じる",
       "esc_pause": "一時停止"
     },
     "input": {
       "placeholder": {
-        "empty": "{{model}} に質問してください...",
-        "title": "下のテキストに対して何をしますか？"
+        "empty": "{{model}} に質問してください..."
       }
     },
     "tooltip": {

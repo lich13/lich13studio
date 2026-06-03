@@ -2654,24 +2654,15 @@
     "clipboard": {
       "empty": "Zwischenablage ist leer"
     },
-    "feature": {
-      "chat": "Diese Frage beantworten",
-      "explanation": "Erklärung",
-      "summary": "Zusammenfassung",
-      "translate": "Textübersetzung"
-    },
     "footer": {
-      "backspace_clear": "Backspace zum Löschen",
       "copy_last_message": "C zum Kopieren",
       "esc": "ESC zum {{action}}",
-      "esc_back": "Zurück",
       "esc_close": "Schließen",
       "esc_pause": "Pausieren"
     },
     "input": {
       "placeholder": {
-        "empty": "{{model}} um Hilfe fragen...",
-        "title": "Was möchten Sie mit dem folgenden Text tun"
+        "empty": "{{model}} um Hilfe fragen..."
       }
     },
     "tooltip": {

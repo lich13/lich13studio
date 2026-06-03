@@ -49,10 +49,9 @@ import styled from 'styled-components'
 
 import ChatWindow from '../chat/ChatWindow'
 import ClipboardPreview from './components/ClipboardPreview'
-import type { FeatureMenusRef } from './components/FeatureMenus'
-import FeatureMenus from './components/FeatureMenus'
 import Footer from './components/Footer'
 import InputBar from './components/InputBar'
+import MiniWindowCaptureButton from './components/MiniWindowCaptureButton'
 import {
   getMiniWindowChatModels,
   getMiniWindowMessageWithBlock,
@@ -71,7 +70,6 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
   const { theme } = useTheme()
   const { t } = useTranslation()
 
-  const [route, setRoute] = useState<'home' | 'chat' | 'summary' | 'explanation'>('home')
   const [isFirstMessage, setIsFirstMessage] = useState(true)
 
   const [userInputText, setUserInputText] = useState('')
@@ -107,7 +105,6 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
   const currentAskId = useRef('')
 
   const inputBarRef = useRef<HTMLDivElement>(null)
-  const featureMenusRef = useRef<FeatureMenusRef>(null)
 
   const referenceText = useMemo(() => clipboardText || userInputText, [clipboardText, userInputText])
 
@@ -154,14 +151,6 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
   useEffect(() => {
     void i18n.changeLanguage(language || navigator.language || defaultLanguage)
   }, [language])
-
-  // Reset state when switching to home route
-  useEffect(() => {
-    if (route === 'home') {
-      setIsFirstMessage(true)
-      setError(null)
-    }
-  }, [route])
 
   const focusInput = useCallback(() => {
     if (inputBarRef.current) {
@@ -225,19 +214,8 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
 
           e.preventDefault()
           if (canSend) {
-            if (route === 'home') {
-              if (files.length > 0) {
-                setRoute('chat')
-                void handleSendMessage()
-              } else {
-                featureMenusRef.current?.useFeature()
-              }
-            } else {
-              // Currently text input is only available in 'chat' mode
-              setRoute('chat')
-              void handleSendMessage()
-              focusInput()
-            }
+            void handleSendMessage()
+            focusInput()
           }
         }
         break
@@ -245,22 +223,6 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
         {
           if (userInputText.length === 0) {
             void clearClipboard()
-          }
-        }
-        break
-      case 'ArrowUp':
-        {
-          if (route === 'home') {
-            e.preventDefault()
-            featureMenusRef.current?.prevFeature()
-          }
-        }
-        break
-      case 'ArrowDown':
-        {
-          if (route === 'home') {
-            e.preventDefault()
-            featureMenusRef.current?.nextFeature()
           }
         }
         break
@@ -635,6 +597,13 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
     [ensureMiniTopicPersisted, files, userContent, currentAssistant]
   )
 
+  const sendCurrentMessage = useCallback(() => {
+    if (!isLoading && canSend) {
+      void handleSendMessage()
+      focusInput()
+    }
+  }, [canSend, focusInput, handleSendMessage, isLoading])
+
   const handlePause = useCallback(() => {
     if (currentAskId.current) {
       abortCompletion(currentAskId.current)
@@ -648,26 +617,9 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
     if (isLoading) {
       handlePause()
     } else {
-      if (route === 'home') {
-        void handleCloseWindow()
-      } else {
-        // Clear the topic messages to reduce memory usage
-        if (currentTopic.current) {
-          store.dispatch(newMessagesActions.clearTopicMessages(currentTopic.current.id))
-        }
-
-        // Reset the topic
-        currentTopic.current = getDefaultTopic(currentAssistant.id)
-
-        // Reset selection only after using a feature and returning to home.
-        featureMenusRef.current?.resetSelectedIndex()
-        setError(null)
-        setRoute('home')
-        setUserInputText('')
-        setFiles([])
-      }
+      void handleCloseWindow()
     }
-  }, [isLoading, route, handleCloseWindow, currentAssistant.id, handlePause])
+  }, [isLoading, handleCloseWindow, handlePause])
 
   const handleCopy = useCallback(() => {
     if (!currentTopic.current) return
@@ -693,24 +645,20 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
 
   // Memoize placeholder text
   const inputPlaceholder = useMemo(() => {
-    if (referenceText && route === 'home') {
-      return t('miniwindow.input.placeholder.title')
-    }
     return t('miniwindow.input.placeholder.empty', {
       model: currentAssistant.model?.name ?? currentAssistant.name
     })
-  }, [referenceText, route, t, currentAssistant])
+  }, [t, currentAssistant])
 
   // Memoize footer props
   const baseFooterProps = useMemo(
     () => ({
-      route,
       loading: isLoading,
       onEsc: handleEsc,
       setIsPinned,
       isPinned
     }),
-    [route, isLoading, handleEsc, isPinned]
+    [isLoading, handleEsc, isPinned]
   )
 
   const header = (
@@ -761,85 +709,34 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
     </AttachmentStrip>
   )
 
-  switch (route) {
-    case 'chat':
-    case 'summary':
-    case 'explanation':
-      return (
-        <Container style={{ backgroundColor }} $draggable={draggable}>
-          {header}
-          {route === 'chat' && (
-            <>
-              <InputBar
-                text={userInputText}
-                assistant={currentAssistant}
-                referenceText={referenceText}
-                placeholder={inputPlaceholder}
-                loading={isLoading}
-                handleKeyDown={handleKeyDown}
-                handleChange={handleChange}
-                handlePaste={handlePaste}
-                ref={inputBarRef}
-              />
-              {attachments}
-              <Divider style={{ margin: '10px 0' }} />
-            </>
-          )}
-          {['summary', 'explanation'].includes(route) && (
-            <div style={{ marginTop: 10 }}>
-              <ClipboardPreview referenceText={referenceText} clearClipboard={clearClipboard} t={t} />
-            </div>
-          )}
-          <ChatWindow
-            route={route}
-            assistant={currentAssistant}
-            topic={currentTopic.current}
-            isOutputted={isOutputted}
-          />
-          {error && <ErrorMsg>{error}</ErrorMsg>}
-
-          <Divider style={{ margin: '10px 0' }} />
-          <Footer key="footer" {...baseFooterProps} onCopy={handleCopy} />
-        </Container>
-      )
-
-    // Home
-    default:
-      return (
-        <Container style={{ backgroundColor }} $draggable={draggable}>
-          {header}
-          <InputBar
-            text={userInputText}
-            assistant={currentAssistant}
-            referenceText={referenceText}
-            placeholder={inputPlaceholder}
-            loading={isLoading}
-            handleKeyDown={handleKeyDown}
-            handleChange={handleChange}
-            handlePaste={handlePaste}
-            ref={inputBarRef}
-          />
-          {attachments}
-          <Divider style={{ margin: '10px 0' }} />
-          <ClipboardPreview referenceText={referenceText} clearClipboard={clearClipboard} t={t} />
-          <Main>
-            <FeatureMenus
-              setRoute={setRoute}
-              onSendMessage={handleSendMessage}
-              text={userContent}
-              ref={featureMenusRef}
-            />
-          </Main>
-          <Divider style={{ margin: '10px 0' }} />
-          <Footer
-            key="footer"
-            {...baseFooterProps}
-            canUseBackspace={userInputText.length > 0 || clipboardText.length === 0}
-            clearClipboard={clearClipboard}
-          />
-        </Container>
-      )
-  }
+  return (
+    <Container style={{ backgroundColor }} $draggable={draggable}>
+      {header}
+      <InputBar
+        text={userInputText}
+        assistant={currentAssistant}
+        referenceText={referenceText}
+        placeholder={inputPlaceholder}
+        loading={isLoading}
+        handleKeyDown={handleKeyDown}
+        handleChange={handleChange}
+        handlePaste={handlePaste}
+        canSend={canSend}
+        onSend={sendCurrentMessage}
+        onPause={handlePause}
+        actions={<MiniWindowCaptureButton canCaptureImage={supportedExts.length > 0} setFiles={setFiles} />}
+        ref={inputBarRef}
+      />
+      {attachments}
+      <ClipboardPreview referenceText={clipboardText} clearClipboard={clearClipboard} t={t} />
+      <ContentArea>
+        <ChatWindow assistant={currentAssistant} topic={currentTopic.current} isOutputted={isOutputted} />
+        {error && <ErrorMsg>{error}</ErrorMsg>}
+      </ContentArea>
+      <Divider style={{ margin: '8px 0 6px' }} />
+      <Footer key="footer" {...baseFooterProps} onCopy={handleCopy} />
+    </Container>
+  )
 }
 
 const Container = styled.div<{ $draggable: boolean }>`
@@ -849,7 +746,8 @@ const Container = styled.div<{ $draggable: boolean }>`
   width: 100%;
   flex-direction: column;
   -webkit-app-region: ${({ $draggable }) => ($draggable ? 'drag' : 'no-drag')};
-  padding: 8px 10px;
+  padding: 8px 10px 6px;
+  color: var(--color-text);
 `
 
 const MiniHeader = styled.header`
@@ -857,8 +755,8 @@ const MiniHeader = styled.header`
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  min-height: 40px;
-  padding: 6px 2px 8px;
+  min-height: 38px;
+  padding: 3px 2px 6px;
 `
 
 const BrandArea = styled.div`
@@ -891,6 +789,7 @@ const AttachmentStrip = styled.div`
   flex-wrap: wrap;
   gap: 6px;
   margin-top: 8px;
+  -webkit-app-region: none;
 `
 
 const AttachmentPill = styled.div`
@@ -901,7 +800,7 @@ const AttachmentPill = styled.div`
   padding: 4px 4px 4px 8px;
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: var(--color-background-mute);
+  background: var(--color-background-soft);
   color: var(--color-text);
   font-size: 12px;
 
@@ -921,21 +820,26 @@ const AttachmentPreviewImage = styled.img`
   background: var(--color-background);
 `
 
-const Main = styled.main`
+const ContentArea = styled.main`
   display: flex;
   flex-direction: column;
-
   flex: 1;
+  min-height: 0;
+  margin-top: 8px;
   overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-background-opacity);
+  -webkit-app-region: none;
 `
 
 const ErrorMsg = styled.div`
   color: var(--color-error);
   background: rgba(255, 0, 0, 0.15);
   border: 1px solid var(--color-error);
-  padding: 8px 12px;
-  border-radius: 4px;
-  margin-bottom: 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  margin: 8px;
   font-size: 13px;
   word-break: break-all;
 `

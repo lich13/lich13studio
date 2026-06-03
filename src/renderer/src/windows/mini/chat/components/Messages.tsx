@@ -10,7 +10,6 @@ import MessageItem from './Message'
 interface Props {
   assistant: Assistant
   topic: Topic
-  route: string
   isOutputted: boolean
 }
 
@@ -18,14 +17,14 @@ interface ContainerProps {
   right?: boolean
 }
 
-const Messages: FC<Props> = ({ assistant, topic, route, isOutputted }) => {
+const Messages: FC<Props> = ({ assistant, topic, isOutputted }) => {
   const messages = useTopicMessages(topic.id)
 
   return (
     <Container id="messages" key={assistant.id}>
       {!isOutputted && <LoadingOutlined style={{ fontSize: 16 }} spin />}
-      {[...messages].reverse().map((message, index) => (
-        <MessageItem key={message.id} message={message} index={index} total={messages.length} route={route} />
+      {[...messages].reverse().map((message) => (
+        <MessageItem key={message.id} message={message} />
       ))}
     </Container>
   )

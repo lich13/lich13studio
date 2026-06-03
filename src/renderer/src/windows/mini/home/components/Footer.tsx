@@ -1,4 +1,4 @@
-import { ArrowLeftOutlined, LoadingOutlined } from '@ant-design/icons'
+import { LoadingOutlined } from '@ant-design/icons'
 import { Tag as AntdTag, Tooltip } from 'antd'
 import { CircleArrowLeft, Copy, Pin } from 'lucide-react'
 import type { FC } from 'react'
@@ -7,26 +7,14 @@ import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
 interface FooterProps {
-  route: string
-  canUseBackspace?: boolean
   loading?: boolean
   setIsPinned: (isPinned: boolean) => void
   isPinned: boolean
-  clearClipboard?: () => void
   onEsc: () => void
   onCopy?: () => void
 }
 
-const Footer: FC<FooterProps> = ({
-  route,
-  canUseBackspace,
-  loading,
-  clearClipboard,
-  onEsc,
-  setIsPinned,
-  isPinned,
-  onCopy
-}) => {
+const Footer: FC<FooterProps> = ({ loading, onEsc, setIsPinned, isPinned, onCopy }) => {
   const { t } = useTranslation()
 
   useHotkeys('esc', () => {
@@ -57,24 +45,10 @@ const Footer: FC<FooterProps> = ({
           className="nodrag"
           onClick={onEsc}>
           {t('miniwindow.footer.esc', {
-            action: loading
-              ? t('miniwindow.footer.esc_pause')
-              : route === 'home'
-                ? t('miniwindow.footer.esc_close')
-                : t('miniwindow.footer.esc_back')
+            action: loading ? t('miniwindow.footer.esc_pause') : t('miniwindow.footer.esc_close')
           })}
         </Tag>
-        {route === 'home' && !canUseBackspace && (
-          <Tag
-            bordered={false}
-            icon={<ArrowLeftOutlined />}
-            style={{ cursor: 'pointer' }}
-            className="nodrag"
-            onClick={() => clearClipboard!()}>
-            {t('miniwindow.footer.backspace_clear')}
-          </Tag>
-        )}
-        {route !== 'home' && !loading && (
+        {!loading && (
           <Tag
             bordered={false}
             icon={<Copy size={14} color="var(--color-text)" />}

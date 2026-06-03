@@ -2654,24 +2654,15 @@
     "clipboard": {
       "empty": "Clipboardul este gol"
     },
-    "feature": {
-      "chat": "Răspunde la această întrebare",
-      "explanation": "Explicație",
-      "summary": "Rezumat conținut",
-      "translate": "Traducere text"
-    },
     "footer": {
-      "backspace_clear": "Backspace pentru a șterge",
       "copy_last_message": "Apasă C pentru a copia",
       "esc": "ESC pentru a {{action}}",
-      "esc_back": "reveni",
       "esc_close": "închide",
       "esc_pause": "pune pauză"
     },
     "input": {
       "placeholder": {
-        "empty": "Cere ajutor de la {{model}}...",
-        "title": "Ce vrei să faci cu acest text?"
+        "empty": "Cere ajutor de la {{model}}..."
       }
     },
     "tooltip": {

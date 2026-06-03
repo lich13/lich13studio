@@ -2654,24 +2654,15 @@
     "clipboard": {
       "empty": "Presse-papiers vide"
     },
-    "feature": {
-      "chat": "Répondre à cette question",
-      "explanation": "Explication",
-      "summary": "Résumé du contenu",
-      "translate": "Traduction de texte"
-    },
     "footer": {
-      "backspace_clear": "Appuyez sur Retour arrière pour effacer",
       "copy_last_message": "Appuyez sur C pour copier",
       "esc": "Appuyez sur ESC {{action}}",
-      "esc_back": "Revenir en arrière",
       "esc_close": "Fermer la fenêtre",
       "esc_pause": "Pause"
     },
     "input": {
       "placeholder": {
-        "empty": "Demander à {{model}} pour obtenir de l'aide...",
-        "title": "Que souhaitez-vous faire avec le texte ci-dessous"
+        "empty": "Demander à {{model}} pour obtenir de l'aide..."
       }
     },
     "tooltip": {
