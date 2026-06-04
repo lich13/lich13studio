@@ -78,17 +78,17 @@ const InputWrapper = styled.div`
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 6px;
-  padding: 7px;
+  margin-top: 5px;
+  padding: 6px;
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: var(--color-background);
-  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.1);
+  background: color-mix(in srgb, var(--color-background) 92%, var(--color-background-soft));
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.09);
   -webkit-app-region: none;
 
   &:focus-within {
     border-color: var(--color-primary);
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
   }
 `
 
@@ -117,7 +117,7 @@ const ActionGroup = styled.div`
   display: inline-flex;
   flex-shrink: 0;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
 `
 
 const SendButton = styled(Button)<{ $primary: boolean }>`
@@ -126,8 +126,10 @@ const SendButton = styled(Button)<{ $primary: boolean }>`
   height: 30px;
   align-items: center;
   justify-content: center;
+  border: 1px solid ${({ $primary }) => ($primary ? 'color-mix(in srgb, var(--color-primary) 44%, var(--color-border))' : 'transparent')};
   border-radius: 8px;
   color: ${({ $primary }) => ($primary ? 'var(--color-primary)' : 'var(--color-text-secondary)')};
+  background: ${({ $primary }) => ($primary ? 'color-mix(in srgb, var(--color-primary) 10%, transparent)' : 'transparent')};
 
   &:hover {
     color: ${({ $primary }) => ($primary ? 'var(--color-primary)' : 'var(--color-text)')};

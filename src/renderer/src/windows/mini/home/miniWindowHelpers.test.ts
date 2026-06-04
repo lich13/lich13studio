@@ -46,8 +46,10 @@ import {
   getMiniWindowChatModels,
   getMiniWindowMessageWithBlock,
   getMiniWindowPersistedTopic,
+  getMiniWindowResetState,
   getMiniWindowSupportExts,
   isMiniWindowComposingInput,
+  isMiniWindowRequestCurrent,
   isMiniWindowSendKeyPressed,
   shouldShowMiniWindowEmptyState,
   shouldShowMiniWindowPendingSpinner,
@@ -150,6 +152,27 @@ describe('mini window helpers', () => {
       ...topic,
       messages: []
     })
+  })
+
+  it('resets volatile mini window state when starting a new topic', () => {
+    expect(getMiniWindowResetState()).toEqual({
+      isFirstMessage: true,
+      userInputText: '',
+      clipboardText: '',
+      files: [],
+      filePreviewUrls: {},
+      captureWindows: [],
+      isLoading: false,
+      isOutputted: false,
+      error: null
+    })
+  })
+
+  it('only lets the active mini request update shared loading state', () => {
+    expect(isMiniWindowRequestCurrent('ask-2', 'ask-1')).toBe(false)
+    expect(isMiniWindowRequestCurrent('', 'ask-1')).toBe(false)
+    expect(isMiniWindowRequestCurrent('ask-1', '')).toBe(false)
+    expect(isMiniWindowRequestCurrent('ask-1', 'ask-1')).toBe(true)
   })
 
   it('adds a streamed block reference to an assistant message only once', () => {

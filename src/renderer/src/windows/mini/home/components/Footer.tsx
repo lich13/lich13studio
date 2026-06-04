@@ -79,6 +79,7 @@ const WindowFooter = styled.div`
   display: flex;
   flex-direction: row;
   justify-content: space-between;
+  gap: 8px;
   margin-top: 6px;
   padding: 6px 1px 0;
   border-top: 1px solid var(--color-border);
@@ -89,7 +90,9 @@ const WindowFooter = styled.div`
 const FooterText = styled.div`
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
+  min-width: 0;
+  gap: 4px;
   color: var(--color-text-secondary);
   font-size: 12px;
 `
@@ -97,18 +100,35 @@ const FooterText = styled.div`
 const PinButtonArea = styled.div`
   cursor: pointer;
   display: flex;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
   align-items: center;
-  margin-right: 5px;
+  justify-content: center;
+  border-radius: 8px;
+
+  &:hover {
+    background: var(--color-background-mute);
+  }
 `
 
 const Tag = styled(AntdTag)`
   cursor: pointer;
   display: flex;
+  min-width: 0;
+  max-width: 188px;
+  height: 26px;
   align-items: center;
   gap: 5px;
-  margin-inline-end: 4px;
+  margin-inline-end: 0;
   border-radius: 8px;
+  overflow: hidden;
   transition: all 0.2s ease-in-out;
+
+  .ant-tag-icon {
+    display: inline-flex;
+    flex-shrink: 0;
+  }
 
   &:hover {
     background-color: var(--color-background-soft);

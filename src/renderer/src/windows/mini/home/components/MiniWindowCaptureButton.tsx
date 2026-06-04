@@ -43,12 +43,14 @@ const CaptureButton = styled(Button)<{ $canCaptureImage: boolean }>`
   align-items: center;
   justify-content: center;
   color: var(--color-text-secondary);
+  border: 1px solid transparent;
   border-radius: 8px;
   opacity: ${({ $canCaptureImage }) => ($canCaptureImage ? 1 : 0.68)};
 
   &:hover {
     color: var(--color-text);
     background: var(--color-background-mute);
+    border-color: var(--color-border);
   }
 `
 

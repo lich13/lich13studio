@@ -41,7 +41,7 @@ import { defaultLanguage } from '@shared/config/constant'
 import { Button, Tooltip } from 'antd'
 import { cloneDeep, isEmpty } from 'lodash'
 import { last } from 'lodash'
-import { Image as ImageIcon, X } from 'lucide-react'
+import { Image as ImageIcon, MessageSquareDiff, X } from 'lucide-react'
 import type { FC } from 'react'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -59,9 +59,11 @@ import {
   getMiniWindowChatModels,
   getMiniWindowMessageWithBlock,
   getMiniWindowPersistedTopic,
+  getMiniWindowResetState,
   getMiniWindowSupportExts,
   isMiniWindowChatModel,
   isMiniWindowComposingInput,
+  isMiniWindowRequestCurrent,
   isMiniWindowSendKeyPressed,
   type MiniCaptureWindowInfo,
   type MiniWindowCaptureNotice,
@@ -110,6 +112,7 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
   const canCaptureImage = supportedExts.length > 0
 
   const currentTopic = useRef<Topic>(getDefaultTopic(currentAssistant.id))
+  const [activeTopic, setActiveTopic] = useState<Topic>(() => currentTopic.current)
   const currentAskId = useRef('')
 
   const inputBarRef = useRef<HTMLDivElement>(null)
@@ -125,7 +128,9 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
   const canSend = userContent.trim().length > 0 || files.length > 0
 
   useEffect(() => {
-    currentTopic.current = getDefaultTopic(currentAssistant.id)
+    const nextTopic = getDefaultTopic(currentAssistant.id)
+    currentTopic.current = nextTopic
+    setActiveTopic(nextTopic)
   }, [currentAssistant.id])
 
   useEffect(() => {
@@ -383,6 +388,8 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
       }
 
       let persistQueue = Promise.resolve()
+      let isCurrentRequest = () => false
+      let finishCurrentRequest = () => undefined
       const queueMiniWindowPersist = (task: () => Promise<void>, label: string) => {
         persistQueue = persistQueue
           .then(task)
@@ -414,7 +421,21 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
           topic: currentTopic.current
         })
         assistantMessage.askId = userMessage.id
-        currentAskId.current = userMessage.id
+        const requestAskId = userMessage.id
+        currentAskId.current = requestAskId
+
+        isCurrentRequest = () => isMiniWindowRequestCurrent(currentAskId.current, requestAskId)
+        const markCurrentRequestOutputted = () => {
+          if (isCurrentRequest()) {
+            setIsOutputted(true)
+          }
+        }
+        finishCurrentRequest = () => {
+          if (!isCurrentRequest()) return
+          setIsLoading(false)
+          setIsOutputted(true)
+          currentAskId.current = ''
+        }
 
         await saveMessageAndBlocksToDB(topicId, assistantMessage, [])
         store.dispatch(newMessagesActions.addMessage({ topicId, message: assistantMessage }))
@@ -507,7 +528,7 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
             switch (chunk.type) {
               case ChunkType.THINKING_START:
                 {
-                  setIsOutputted(true)
+                  markCurrentRequestOutputted()
                   thinkingStartTime = performance.now()
                   if (thinkingBlockId) {
                     store.dispatch(
@@ -525,7 +546,7 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
                 break
               case ChunkType.THINKING_DELTA:
                 {
-                  setIsOutputted(true)
+                  markCurrentRequestOutputted()
                   if (thinkingBlockId) {
                     if (thinkingStartTime === null) {
                       thinkingStartTime = performance.now()
@@ -569,7 +590,7 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
                 break
               case ChunkType.TEXT_START:
                 {
-                  setIsOutputted(true)
+                  markCurrentRequestOutputted()
                   if (blockId) {
                     store.dispatch(updateOneBlock({ id: blockId, changes: { status: MessageBlockStatus.STREAMING } }))
                     persistBlockUpdate(blockId, { status: MessageBlockStatus.STREAMING }, 'text block')
@@ -584,7 +605,7 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
                 break
               case ChunkType.TEXT_DELTA:
                 {
-                  setIsOutputted(true)
+                  markCurrentRequestOutputted()
                   if (blockId) {
                     throttledBlockUpdate(blockId, { content: chunk.text })
                   }
@@ -644,12 +665,11 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
                 }
                 thinkingStartTime = null
                 thinkingBlockId = null
+                finishCurrentRequest()
+                break
               }
-              //fall through
               case ChunkType.BLOCK_COMPLETE:
-                setIsLoading(false)
-                setIsOutputted(true)
-                currentAskId.current = ''
+                finishCurrentRequest()
                 store.dispatch(
                   newMessagesActions.updateMessage({
                     topicId,
@@ -664,17 +684,20 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
         })
         await persistQueue
       } catch (err) {
-        if (isAbortError(err)) return
-        handleError(err instanceof Error ? err : new Error('An error occurred'))
+        if (isAbortError(err)) {
+          finishCurrentRequest()
+          return
+        }
+        if (isCurrentRequest()) {
+          handleError(err instanceof Error ? err : new Error(t('message.error.unknown')))
+        }
         logger.error('Error fetching result:', err as Error)
       } finally {
         await persistQueue
-        setIsLoading(false)
-        setIsOutputted(true)
-        currentAskId.current = ''
+        finishCurrentRequest()
       }
     },
-    [ensureMiniTopicPersisted, files, userContent, currentAssistant]
+    [ensureMiniTopicPersisted, files, userContent, currentAssistant, t]
   )
 
   const sendCurrentMessage = useCallback(() => {
@@ -692,6 +715,40 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
       currentAskId.current = ''
     }
   }, [])
+
+  const handleNewTopic = useCallback(async () => {
+    if (isLoading) {
+      handlePause()
+    }
+
+    const newTopic = getDefaultTopic(currentAssistant.id)
+
+    try {
+      await db.topics.add({ id: newTopic.id, messages: [] })
+      store.dispatch(addTopic({ assistantId: currentAssistant.id, topic: getMiniWindowPersistedTopic(newTopic) }))
+
+      const resetState = getMiniWindowResetState()
+      currentTopic.current = newTopic
+      currentAskId.current = ''
+      lastClipboardTextRef.current = null
+      setActiveTopic(newTopic)
+      setIsFirstMessage(resetState.isFirstMessage)
+      setUserInputText(resetState.userInputText)
+      setClipboardText(resetState.clipboardText)
+      setFiles(resetState.files)
+      setFilePreviewUrls(resetState.filePreviewUrls)
+      setCaptureWindows(resetState.captureWindows)
+      setIsLoading(resetState.isLoading)
+      setIsOutputted(resetState.isOutputted)
+      setError(resetState.error)
+      focusInput()
+    } catch (error) {
+      logger.error('Failed to create mini window topic:', error as Error)
+      const message = error instanceof Error ? error.message : t('message.error.unknown')
+      setError(message)
+      window.toast.error(message)
+    }
+  }, [currentAssistant.id, focusInput, handlePause, isLoading, t])
 
   const handleEsc = useCallback(() => {
     if (isLoading) {
@@ -729,6 +786,7 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
       model: currentAssistant.model?.name ?? currentAssistant.name
     })
   }, [t, currentAssistant])
+  const newTopicLabel = useMemo(() => t('chat.input.new_topic', { Command: '' }).trim(), [t])
 
   // Memoize footer props
   const baseFooterProps = useMemo(
@@ -750,18 +808,24 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
           <BrandSubTitle>{t('miniwindow.header.default_assistant')}</BrandSubTitle>
         </BrandText>
       </BrandArea>
-      <ModelSelector
-        className="nodrag"
-        size="small"
-        style={{ width: 180 }}
-        providers={providers}
-        predicate={isMiniWindowChatModel}
-        grouped
-        showAvatar
-        showSuffix={false}
-        value={currentAssistant.model ? getModelUniqId(currentAssistant.model) : undefined}
-        onChange={handleModelChange}
-      />
+      <HeaderActions className="nodrag">
+        <ModelSelector
+          size="small"
+          style={{ width: 'clamp(132px, 42vw, 180px)' }}
+          providers={providers}
+          predicate={isMiniWindowChatModel}
+          grouped
+          showAvatar
+          showSuffix={false}
+          value={currentAssistant.model ? getModelUniqId(currentAssistant.model) : undefined}
+          onChange={handleModelChange}
+        />
+        <Tooltip placement="bottomRight" title={newTopicLabel} mouseLeaveDelay={0} arrow>
+          <HeaderIconButton type="text" aria-label={newTopicLabel} onClick={() => void handleNewTopic()}>
+            <MessageSquareDiff size={16} />
+          </HeaderIconButton>
+        </Tooltip>
+      </HeaderActions>
     </MiniHeader>
   )
 
@@ -824,7 +888,7 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
       <ContentArea>
         <ChatWindow
           assistant={currentAssistant}
-          topic={currentTopic.current}
+          topic={activeTopic}
           isOutputted={isOutputted}
           isLoading={isLoading}
           hasError={Boolean(error)}
@@ -853,9 +917,9 @@ const MiniHeader = styled.header`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
   min-height: 36px;
-  padding: 2px 2px 5px;
+  padding: 2px 0 5px;
 `
 
 const BrandArea = styled.div`
@@ -863,6 +927,7 @@ const BrandArea = styled.div`
   align-items: center;
   gap: 8px;
   min-width: 0;
+  flex: 1;
 `
 
 const BrandText = styled.div`
@@ -873,14 +938,54 @@ const BrandText = styled.div`
 `
 
 const BrandTitle = styled.div`
+  overflow: hidden;
   color: var(--color-text);
   font-size: 13px;
   font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 `
 
 const BrandSubTitle = styled.div`
+  overflow: hidden;
   color: var(--color-text-secondary);
   font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`
+
+const HeaderActions = styled.div`
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  -webkit-app-region: none;
+
+  .ant-select {
+    min-width: 132px;
+    max-width: 180px;
+  }
+`
+
+const HeaderIconButton = styled(Button)`
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text-secondary);
+  background: var(--color-background);
+
+  &:hover,
+  &:focus-visible {
+    color: var(--color-primary);
+    background: var(--color-background-mute);
+    border-color: color-mix(in srgb, var(--color-primary) 38%, var(--color-border));
+  }
 `
 
 const AttachmentStrip = styled.div`

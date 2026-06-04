@@ -36,6 +36,34 @@ export type MiniWindowCaptureNotice = 'image-required' | 'unavailable' | 'succes
 
 type CaptureResult = Uint8Array | ArrayBuffer | number[]
 
+export type MiniWindowResetState = {
+  isFirstMessage: boolean
+  userInputText: string
+  clipboardText: string
+  files: FileMetadata[]
+  filePreviewUrls: Record<string, string>
+  captureWindows: MiniCaptureWindowInfo[]
+  isLoading: boolean
+  isOutputted: boolean
+  error: string | null
+}
+
+export const getMiniWindowResetState = (): MiniWindowResetState => ({
+  isFirstMessage: true,
+  userInputText: '',
+  clipboardText: '',
+  files: [],
+  filePreviewUrls: {},
+  captureWindows: [],
+  isLoading: false,
+  isOutputted: false,
+  error: null
+})
+
+export const isMiniWindowRequestCurrent = (currentAskId: string, requestAskId: string): boolean => {
+  return Boolean(requestAskId && currentAskId === requestAskId)
+}
+
 export const shouldShowMiniWindowPendingSpinner = ({
   isLoading,
   isOutputted,
