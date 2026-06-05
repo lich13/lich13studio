@@ -4,12 +4,11 @@ import { ConfigKeys } from './ConfigManager'
 import {
   buildLinuxAutostartDesktop,
   buildLoginItemSettings,
-  buildMacOSLaunchAgentPath,
-  buildMacOSLaunchAgentPlist,
-  buildMacOSLaunchAgentProgramArguments,
+  buildMacOSLegacyLaunchAgentPath,
+  buildMacOSLoginItemSettings,
   getMacOSAppBundlePath,
   LOGIN_STARTUP_ARG,
-  MACOS_LAUNCH_AGENT_LABEL,
+  MACOS_LOGIN_ITEM_ARG,
   shouldIgnoreLoginStartupSecondInstance,
   shouldStartSilentlyFromArgs
 } from './startupBehavior'
@@ -22,7 +21,7 @@ describe('startup behavior helpers', () => {
     expect(shouldStartSilentlyFromArgs(['--lich13studio-login-startup=1'], true)).toBe(false)
   })
 
-  it('builds login item settings with the login startup arg', () => {
+  it('builds Windows login item settings with the login startup arg', () => {
     expect(buildLoginItemSettings(true)).toEqual({
       openAtLogin: true,
       args: [LOGIN_STARTUP_ARG]
@@ -30,6 +29,17 @@ describe('startup behavior helpers', () => {
     expect(buildLoginItemSettings(false)).toEqual({
       openAtLogin: false,
       args: [LOGIN_STARTUP_ARG]
+    })
+  })
+
+  it('builds macOS login item settings without LaunchAgent-only startup args', () => {
+    expect(buildMacOSLoginItemSettings(true)).toEqual({
+      openAtLogin: true,
+      args: [MACOS_LOGIN_ITEM_ARG]
+    })
+    expect(buildMacOSLoginItemSettings(false)).toEqual({
+      openAtLogin: false,
+      args: [MACOS_LOGIN_ITEM_ARG]
     })
   })
 
@@ -42,31 +52,10 @@ describe('startup behavior helpers', () => {
     )
   })
 
-  it('builds macOS LaunchAgent program arguments with a hidden app open', () => {
-    expect(buildMacOSLaunchAgentProgramArguments('/Applications/lich13studio.app')).toEqual([
-      '/usr/bin/open',
-      '-g',
-      '/Applications/lich13studio.app',
-      '--args',
-      LOGIN_STARTUP_ARG
-    ])
-    expect(buildMacOSLaunchAgentProgramArguments('/tmp/lich13studio')).toEqual(['/tmp/lich13studio', LOGIN_STARTUP_ARG])
-  })
-
-  it('builds a macOS LaunchAgent plist with escaped values and the startup arg', () => {
-    const plist = buildMacOSLaunchAgentPlist('/Applications/lich&13"studio.app')
-
-    expect(plist).toContain(`<string>${MACOS_LAUNCH_AGENT_LABEL}</string>`)
-    expect(plist).toContain('<string>/usr/bin/open</string>')
-    expect(plist).toContain('<string>-g</string>')
-    expect(plist).toContain('<string>/Applications/lich&amp;13&quot;studio.app</string>')
-    expect(plist).toContain('<string>--args</string>')
-    expect(plist).toContain(`<string>${LOGIN_STARTUP_ARG}</string>`)
-    expect(plist).toContain('<key>RunAtLoad</key>')
-  })
-
-  it('builds the stable macOS LaunchAgent path', () => {
-    expect(buildMacOSLaunchAgentPath('/Users/gosu')).toBe('/Users/gosu/Library/LaunchAgents/com.lich13.studio.plist')
+  it('builds only the legacy macOS LaunchAgent cleanup path', () => {
+    expect(buildMacOSLegacyLaunchAgentPath('/Users/gosu')).toBe(
+      '/Users/gosu/Library/LaunchAgents/com.lich13.studio.plist'
+    )
   })
 
   it('ignores only login-startup second instances without protocol URLs', () => {

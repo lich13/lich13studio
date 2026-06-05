@@ -1,5 +1,6 @@
 export const LOGIN_STARTUP_ARG = '--lich13studio-login-startup'
-export const MACOS_LAUNCH_AGENT_LABEL = 'com.lich13.studio'
+export const MACOS_LOGIN_ITEM_ARG = '--hidden'
+export const MACOS_LEGACY_LAUNCH_AGENT_LABEL = 'com.lich13.studio'
 
 export function hasLoginStartupArg(args: readonly string[] = []): boolean {
   return args.includes(LOGIN_STARTUP_ARG)
@@ -20,6 +21,13 @@ export function buildLoginItemSettings(openAtLogin: boolean): Electron.Settings 
   }
 }
 
+export function buildMacOSLoginItemSettings(openAtLogin: boolean): Electron.Settings {
+  return {
+    openAtLogin,
+    args: [MACOS_LOGIN_ITEM_ARG]
+  }
+}
+
 export function getMacOSAppBundlePath(executablePath: string): string {
   const appContentsMarker = '.app/Contents/MacOS/'
   const appContentsIndex = executablePath.indexOf(appContentsMarker)
@@ -31,47 +39,8 @@ export function getMacOSAppBundlePath(executablePath: string): string {
   return executablePath.slice(0, appContentsIndex + '.app'.length)
 }
 
-export function buildMacOSLaunchAgentPath(homeDir: string): string {
-  return `${homeDir}/Library/LaunchAgents/${MACOS_LAUNCH_AGENT_LABEL}.plist`
-}
-
-function escapePlistValue(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;')
-}
-
-export function buildMacOSLaunchAgentProgramArguments(appPath: string): string[] {
-  if (appPath.endsWith('.app')) {
-    return ['/usr/bin/open', '-g', appPath, '--args', LOGIN_STARTUP_ARG]
-  }
-
-  return [appPath, LOGIN_STARTUP_ARG]
-}
-
-export function buildMacOSLaunchAgentPlist(appPath: string): string {
-  const args = buildMacOSLaunchAgentProgramArguments(appPath)
-    .map((arg) => `        <string>${escapePlistValue(arg)}</string>`)
-    .join('\n')
-
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>Label</key>
-    <string>${escapePlistValue(MACOS_LAUNCH_AGENT_LABEL)}</string>
-    <key>ProgramArguments</key>
-    <array>
-${args}
-    </array>
-    <key>RunAtLoad</key>
-    <true/>
-</dict>
-</plist>
-`
+export function buildMacOSLegacyLaunchAgentPath(homeDir: string): string {
+  return `${homeDir}/Library/LaunchAgents/${MACOS_LEGACY_LAUNCH_AGENT_LABEL}.plist`
 }
 
 function quoteDesktopExecPath(path: string): string {

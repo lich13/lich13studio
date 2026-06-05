@@ -1,4 +1,3 @@
-#[cfg(not(target_os = "macos"))]
 use auto_launch::{AutoLaunch, AutoLaunchBuilder};
 use base64::{engine::general_purpose, Engine as _};
 use futures_util::StreamExt;
@@ -58,11 +57,12 @@ const MINI_WINDOW_HEIGHT: u32 = 620;
 const GITHUB_LATEST_RELEASE_API_URL: &str = "https://api.github.com/repos/lich13/lich13studio/releases/latest";
 const GITHUB_RELEASES_URL: &str = "https://github.com/lich13/lich13studio/releases";
 const LOGIN_STARTUP_ARG: &str = "--lich13studio-login-startup";
+#[cfg(any(target_os = "macos", test))]
+const MACOS_LOGIN_ITEM_ARG: &str = "--hidden";
 const RUNTIME_SETTINGS_KEY: &str = "runtimeSettings";
 const SETTING_LAUNCH_TO_TRAY: &str = "launchToTray";
 const SETTING_TRAY: &str = "tray";
 const SETTING_TRAY_ON_CLOSE: &str = "trayOnClose";
-const MACOS_LAUNCH_AGENT_LABEL: &str = "com.lich13.studio";
 const TRAY_SHOW_MENU_ID: &str = "show";
 const TRAY_CHECK_UPDATE_MENU_ID: &str = "check_update";
 const TRAY_QUIT_MENU_ID: &str = "quit";
@@ -333,6 +333,24 @@ enum DockVisibility {
   Hidden,
 }
 
+#[cfg(any(target_os = "macos", test))]
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct MacOSLoginItemConfig {
+  app_name: String,
+  app_path: String,
+  use_launch_agent: bool,
+  args: Vec<String>,
+}
+
+#[cfg(not(target_os = "macos"))]
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct AutoLaunchConfig {
+  app_name: String,
+  app_path: String,
+  use_launch_agent: bool,
+  args: Vec<String>,
+}
+
 const NATIVE_HTTP_CHUNK_EVENT: &str = "native_http_chunk";
 const FOCUS_CHAT_INPUT_EVENT: &str = "focus_chat_input";
 
@@ -457,6 +475,42 @@ fn should_start_silently_from_args(args: &[String], settings: RuntimeSettings) -
   settings.launch_to_tray && has_login_startup_arg(args)
 }
 
+#[cfg(any(target_os = "macos", test))]
+fn should_start_silently_from_macos_login_item(is_hidden_login_item: bool, settings: RuntimeSettings) -> bool {
+  settings.launch_to_tray && is_hidden_login_item
+}
+
+#[cfg(target_os = "macos")]
+fn is_current_macos_app_hidden() -> bool {
+  use objc2::MainThreadMarker;
+  use objc2_app_kit::NSApplication;
+
+  MainThreadMarker::new()
+    .map(|marker| NSApplication::sharedApplication(marker).isHidden())
+    .unwrap_or(false)
+}
+
+#[cfg(target_os = "macos")]
+fn unhide_current_macos_app() {
+  use objc2::MainThreadMarker;
+  use objc2_app_kit::NSApplication;
+
+  if let Some(marker) = MainThreadMarker::new() {
+    NSApplication::sharedApplication(marker).unhide(None);
+  }
+}
+
+#[cfg(target_os = "macos")]
+fn should_start_silently(args: &[String], settings: RuntimeSettings) -> bool {
+  should_start_silently_from_args(args, settings)
+    || should_start_silently_from_macos_login_item(is_current_macos_app_hidden(), settings)
+}
+
+#[cfg(not(target_os = "macos"))]
+fn should_start_silently(args: &[String], settings: RuntimeSettings) -> bool {
+  should_start_silently_from_args(args, settings)
+}
+
 fn dock_visibility_for_main_window_show() -> DockVisibility {
   DockVisibility::Visible
 }
@@ -477,6 +531,9 @@ fn apply_dock_visibility(_app: &AppHandle, _visibility: DockVisibility) {
 
     let _ = _app.set_dock_visibility(dock_visible);
     let _ = _app.set_activation_policy(activation_policy);
+    if matches!(_visibility, DockVisibility::Visible) {
+      unhide_current_macos_app();
+    }
   }
 }
 
@@ -503,7 +560,6 @@ fn current_auto_launch_path() -> Result<PathBuf, String> {
   }
 }
 
-#[cfg(not(target_os = "macos"))]
 fn app_name_for_auto_launch(app_path: &Path) -> String {
   app_path
     .file_stem()
@@ -522,132 +578,90 @@ fn with_auto_launch_lock<T>(operation: impl FnOnce() -> Result<T, String>) -> Re
 }
 
 #[cfg(any(target_os = "macos", test))]
-fn macos_launch_agent_file() -> Result<PathBuf, String> {
+fn macos_legacy_launch_agent_file(home: &Path) -> PathBuf {
+  home
+    .join("Library")
+    .join("LaunchAgents")
+    .join(format!("{BUNDLE_ID}.plist"))
+}
+
+#[cfg(target_os = "macos")]
+fn current_macos_legacy_launch_agent_file() -> Result<PathBuf, String> {
   dirs::home_dir()
     .ok_or_else(|| String::from("Unable to resolve home directory"))
-    .map(|home| {
-      home
-        .join("Library")
-        .join("LaunchAgents")
-        .join(format!("{MACOS_LAUNCH_AGENT_LABEL}.plist"))
-    })
+    .map(|home| macos_legacy_launch_agent_file(&home))
 }
 
 #[cfg(any(target_os = "macos", test))]
-fn macos_launch_agent_program_arguments(app_path: &Path) -> Vec<String> {
-  if app_path.extension().and_then(|extension| extension.to_str()) == Some("app") {
-    return vec![
-      "/usr/bin/open".to_string(),
-      "-g".to_string(),
-      app_path.to_string_lossy().to_string(),
-      "--args".to_string(),
-      LOGIN_STARTUP_ARG.to_string(),
-    ];
-  }
-
-  vec![app_path.to_string_lossy().to_string(), LOGIN_STARTUP_ARG.to_string()]
-}
-
-#[cfg(any(target_os = "macos", test))]
-fn plist_escape(value: &str) -> String {
-  value
-    .replace('&', "&amp;")
-    .replace('<', "&lt;")
-    .replace('>', "&gt;")
-    .replace('"', "&quot;")
-    .replace('\'', "&apos;")
-}
-
-#[cfg(any(target_os = "macos", test))]
-fn macos_launch_agent_plist(app_path: &Path) -> String {
-  let args = macos_launch_agent_program_arguments(app_path)
-    .into_iter()
-    .map(|arg| format!("        <string>{}</string>", plist_escape(&arg)))
-    .collect::<Vec<_>>()
-    .join("\n");
-
-  format!(
-    r#"<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>Label</key>
-    <string>{}</string>
-    <key>ProgramArguments</key>
-    <array>
-{}
-    </array>
-    <key>RunAtLoad</key>
-    <true/>
-</dict>
-</plist>
-"#,
-    plist_escape(MACOS_LAUNCH_AGENT_LABEL),
-    args
-  )
-}
-
-#[cfg(target_os = "macos")]
-fn macos_launch_agent_matches_app(app_path: &Path) -> Result<bool, String> {
-  let file = macos_launch_agent_file()?;
-  let expected = macos_launch_agent_plist(app_path);
-
-  match fs::read_to_string(&file) {
-    Ok(existing) => Ok(existing == expected),
-    Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(false),
-    Err(error) => Err(format!("Failed to read macOS LaunchAgent {}: {error}", file.display())),
-  }
-}
-
-#[cfg(target_os = "macos")]
-fn ensure_macos_launch_agent_for_app(app_path: &Path) -> Result<(), String> {
-  if macos_launch_agent_matches_app(app_path)? {
-    return Ok(());
-  }
-
-  let file = macos_launch_agent_file()?;
-  let dir = file
-    .parent()
-    .ok_or_else(|| format!("Invalid LaunchAgent path: {}", file.display()))?;
-  fs::create_dir_all(dir).map_err(|error| format!("Failed to create LaunchAgent directory: {error}"))?;
-
-  let temp_file = file.with_extension("plist.tmp");
-  fs::write(&temp_file, macos_launch_agent_plist(app_path))
-    .map_err(|error| format!("Failed to write LaunchAgent {}: {error}", temp_file.display()))?;
-
-  #[cfg(unix)]
-  {
-    use std::os::unix::fs::PermissionsExt;
-    fs::set_permissions(&temp_file, fs::Permissions::from_mode(0o644))
-      .map_err(|error| format!("Failed to chmod LaunchAgent {}: {error}", temp_file.display()))?;
-  }
-
-  fs::rename(&temp_file, &file).map_err(|error| {
-    let _ = fs::remove_file(&temp_file);
-    format!(
-      "Failed to replace LaunchAgent {} -> {}: {error}",
-      temp_file.display(),
-      file.display()
-    )
-  })?;
-  Ok(())
-}
-
-#[cfg(target_os = "macos")]
-fn remove_macos_launch_agent() -> Result<(), String> {
-  let file = macos_launch_agent_file()?;
-  match fs::remove_file(&file) {
-    Ok(()) => Ok(()),
-    Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
-    Err(error) => Err(format!("Failed to remove LaunchAgent {}: {error}", file.display())),
+fn macos_login_item_config_for_path(app_path: &Path) -> MacOSLoginItemConfig {
+  MacOSLoginItemConfig {
+    app_name: app_name_for_auto_launch(app_path),
+    app_path: app_path.to_string_lossy().to_string(),
+    use_launch_agent: false,
+    args: vec![MACOS_LOGIN_ITEM_ARG.to_string()],
   }
 }
 
 #[cfg(not(target_os = "macos"))]
+fn auto_launch_config_for_path(app_path: &Path) -> AutoLaunchConfig {
+  AutoLaunchConfig {
+    app_name: app_name_for_auto_launch(app_path),
+    app_path: app_path.to_string_lossy().to_string(),
+    use_launch_agent: false,
+    args: vec![LOGIN_STARTUP_ARG.to_string()],
+  }
+}
+
+#[cfg(target_os = "macos")]
+fn remove_macos_legacy_launch_agent() -> Result<(), String> {
+  let file = current_macos_legacy_launch_agent_file()?;
+  match fs::remove_file(&file) {
+    Ok(()) => Ok(()),
+    Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+    Err(error) => Err(format!("Failed to remove legacy LaunchAgent {}: {error}", file.display())),
+  }
+}
+
+#[cfg(target_os = "macos")]
+fn applescript_string(value: &str) -> String {
+  format!("\"{}\"", value.replace('\\', "\\\\").replace('"', "\\\""))
+}
+
+#[cfg(target_os = "macos")]
+fn remove_macos_login_item_if_exists(app_name: &str) -> Result<(), String> {
+  let quoted_name = applescript_string(app_name);
+  let script = format!(
+    "tell application \"System Events\" to if exists login item {quoted_name} then delete login item {quoted_name}"
+  );
+  let output = hidden_std_command("osascript")
+    .arg("-e")
+    .arg(script)
+    .output()
+    .map_err(|error| format!("Failed to run osascript: {error}"))?;
+
+  if output.status.success() {
+    Ok(())
+  } else {
+    Err(format!(
+      "Failed to remove macOS login item {}: {}",
+      app_name,
+      String::from_utf8_lossy(&output.stderr).trim()
+    ))
+  }
+}
+
 fn build_auto_launch(app_path: &Path) -> Result<AutoLaunch, String> {
+  #[cfg(target_os = "macos")]
+  let config = macos_login_item_config_for_path(app_path);
+
+  #[cfg(not(target_os = "macos"))]
+  let config = auto_launch_config_for_path(app_path);
+
   AutoLaunchBuilder::new()
-    .set_app_name(&app_name_for_auto_launch(app_path))
-    .set_app_path(&app_path.to_string_lossy())
+    .set_app_name(&config.app_name)
+    .set_app_path(&config.app_path)
+    .set_use_launch_agent(config.use_launch_agent)
+    .set_args(&config.args)
     .build()
     .map_err(|error| format!("Failed to create auto-launch config: {error}"))
 }
@@ -658,7 +672,11 @@ fn enable_auto_launch() -> Result<(), String> {
 
     #[cfg(target_os = "macos")]
     {
-      ensure_macos_launch_agent_for_app(&app_path)
+      remove_macos_login_item_if_exists(&app_name_for_auto_launch(&app_path))?;
+      build_auto_launch(&app_path)?
+        .enable()
+        .map_err(|error| format!("Failed to enable macOS login item: {error}"))?;
+      remove_macos_legacy_launch_agent()
     }
 
     #[cfg(not(target_os = "macos"))]
@@ -676,8 +694,8 @@ fn disable_auto_launch() -> Result<(), String> {
 
     #[cfg(target_os = "macos")]
     {
-      let _ = app_path;
-      remove_macos_launch_agent()
+      remove_macos_login_item_if_exists(&app_name_for_auto_launch(&app_path))?;
+      remove_macos_legacy_launch_agent()
     }
 
     #[cfg(not(target_os = "macos"))]
@@ -695,7 +713,9 @@ fn is_auto_launch_enabled() -> Result<bool, String> {
 
     #[cfg(target_os = "macos")]
     {
-      macos_launch_agent_matches_app(&app_path)
+      build_auto_launch(&app_path)?
+        .is_enabled()
+        .map_err(|error| format!("Failed to check macOS login item: {error}"))
     }
 
     #[cfg(not(target_os = "macos"))]
@@ -2980,7 +3000,7 @@ pub fn run() {
       let runtime_settings = load_runtime_settings_from_state().unwrap_or_default();
       replace_runtime_settings(runtime_settings);
       let launch_args = std::env::args().collect::<Vec<_>>();
-      let start_silently = should_start_silently_from_args(&launch_args, runtime_settings);
+      let start_silently = should_start_silently(&launch_args, runtime_settings);
       STARTED_SILENTLY.store(start_silently, Ordering::SeqCst);
       MAIN_WINDOW_SHOWN.store(start_silently, Ordering::SeqCst);
 
@@ -3185,6 +3205,60 @@ mod tests {
   }
 
   #[test]
+  fn macos_login_item_uses_manageable_hidden_app_mode() {
+    let config = macos_login_item_config_for_path(Path::new("/Applications/lich13studio.app"));
+
+    assert_eq!(
+      config,
+      MacOSLoginItemConfig {
+        app_name: "lich13studio".to_string(),
+        app_path: "/Applications/lich13studio.app".to_string(),
+        use_launch_agent: false,
+        args: vec!["--hidden".to_string()]
+      }
+    );
+  }
+
+  #[test]
+  fn macos_legacy_launch_agent_cleanup_path_is_stable() {
+    assert_eq!(
+      macos_legacy_launch_agent_file(Path::new("/Users/gosu")),
+      PathBuf::from("/Users/gosu/Library/LaunchAgents/com.lich13.studio.plist")
+    );
+  }
+
+  #[test]
+  fn macos_applescript_strings_are_escaped() {
+    assert_eq!(applescript_string("lich13studio"), "\"lich13studio\"");
+    assert_eq!(applescript_string("lich\\13\"studio"), "\"lich\\\\13\\\"studio\"");
+  }
+
+  #[test]
+  fn macos_silent_start_uses_hidden_login_item_and_setting() {
+    assert!(should_start_silently_from_macos_login_item(
+      true,
+      RuntimeSettings {
+        launch_to_tray: true,
+        ..RuntimeSettings::default()
+      }
+    ));
+    assert!(!should_start_silently_from_macos_login_item(
+      true,
+      RuntimeSettings {
+        launch_to_tray: false,
+        ..RuntimeSettings::default()
+      }
+    ));
+    assert!(!should_start_silently_from_macos_login_item(
+      false,
+      RuntimeSettings {
+        launch_to_tray: true,
+        ..RuntimeSettings::default()
+      }
+    ));
+  }
+
+  #[test]
   fn startup_silent_command_reflects_recorded_launch_mode() {
     STARTED_SILENTLY.store(false, Ordering::SeqCst);
     assert!(!is_startup_silent());
@@ -3236,32 +3310,6 @@ mod tests {
     apply_runtime_setting(&mut settings, SETTING_LAUNCH_TO_TRAY, true).unwrap();
     assert!(settings.tray);
     assert!(settings.launch_to_tray);
-  }
-
-  #[test]
-  fn macos_launch_agent_program_arguments_use_hidden_open_with_startup_arg() {
-    let args = macos_launch_agent_program_arguments(Path::new("/Applications/lich13studio.app"));
-
-    assert_eq!(
-      args,
-      vec![
-        "/usr/bin/open".to_string(),
-        "-g".to_string(),
-        "/Applications/lich13studio.app".to_string(),
-        "--args".to_string(),
-        LOGIN_STARTUP_ARG.to_string()
-      ]
-    );
-  }
-
-  #[test]
-  fn macos_launch_agent_plist_contains_stable_label_and_bundle_path() {
-    let plist = macos_launch_agent_plist(Path::new("/Applications/lich13studio.app"));
-
-    assert!(plist.contains("<string>com.lich13.studio</string>"));
-    assert!(plist.contains("<string>/Applications/lich13studio.app</string>"));
-    assert!(plist.contains(&format!("<string>{LOGIN_STARTUP_ARG}</string>")));
-    assert!(plist.contains("<key>RunAtLoad</key>"));
   }
 
   #[test]

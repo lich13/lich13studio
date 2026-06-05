@@ -2401,7 +2401,7 @@ dependencies = [
 
 [[package]]
 name = "lich13studio"
-version = "0.1.13"
+version = "0.1.14"
 dependencies = [
  "auto-launch",
  "base64 0.22.1",
@@ -2409,6 +2409,8 @@ dependencies = [
  "dirs 6.0.0",
  "futures-util",
  "image",
+ "objc2",
+ "objc2-app-kit",
  "reqwest 0.12.28",
  "rfd",
  "roxmltree",

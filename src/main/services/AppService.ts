@@ -8,9 +8,8 @@ import path from 'path'
 import {
   buildLinuxAutostartDesktop,
   buildLoginItemSettings,
-  buildMacOSLaunchAgentPath,
-  buildMacOSLaunchAgentPlist,
-  getMacOSAppBundlePath
+  buildMacOSLegacyLaunchAgentPath,
+  buildMacOSLoginItemSettings
 } from './startupBehavior'
 
 const logger = loggerService.withContext('AppService')
@@ -34,24 +33,14 @@ export class AppService {
       app.setLoginItemSettings(buildLoginItemSettings(isLaunchOnBoot))
     } else if (isMac) {
       try {
-        app.setLoginItemSettings({ openAtLogin: false })
-        const launchAgentFile = buildMacOSLaunchAgentPath(os.homedir())
+        app.setLoginItemSettings(buildMacOSLoginItemSettings(isLaunchOnBoot))
 
-        if (isLaunchOnBoot) {
-          const launchAgentDir = path.dirname(launchAgentFile)
-          await fs.promises.mkdir(launchAgentDir, { recursive: true })
-          const appPath = getMacOSAppBundlePath(app.getPath('exe'))
-          await fs.promises.writeFile(launchAgentFile, buildMacOSLaunchAgentPlist(appPath))
-          await fs.promises.chmod(launchAgentFile, 0o644)
-          logger.info('Created macOS LaunchAgent for login startup')
-        } else {
-          try {
-            await fs.promises.unlink(launchAgentFile)
-            logger.info('Removed macOS LaunchAgent for login startup')
-          } catch (error: any) {
-            if (error?.code !== 'ENOENT') {
-              throw error
-            }
+        try {
+          await fs.promises.unlink(buildMacOSLegacyLaunchAgentPath(os.homedir()))
+          logger.info('Removed legacy macOS LaunchAgent for login startup')
+        } catch (error: any) {
+          if (error?.code !== 'ENOENT') {
+            throw error
           }
         }
       } catch (error) {
