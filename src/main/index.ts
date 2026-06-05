@@ -35,6 +35,7 @@ import {
   setupAppImageDeepLink
 } from './services/ProtocolClient'
 import selectionService, { initSelectionService } from './services/SelectionService'
+import { shouldIgnoreLoginStartupSecondInstance, shouldStartSilentlyFromArgs } from './services/startupBehavior'
 import { TrayService } from './services/TrayService'
 import { versionService } from './services/VersionService'
 import { windowService } from './services/WindowService'
@@ -145,9 +146,8 @@ if (!app.requestSingleInstanceLock()) {
     // Set app user model id for windows
     electronApp.setAppUserModelId(import.meta.env.VITE_MAIN_BUNDLE_ID || 'com.lich13.studio')
 
-    // Mac: Hide dock icon before window creation when launch to tray is set
-    const isLaunchToTray = configManager.getLaunchToTray()
-    if (isLaunchToTray) {
+    const shouldStartSilently = shouldStartSilentlyFromArgs(process.argv, configManager.getLaunchToTray())
+    if (shouldStartSilently) {
       app.dock?.hide()
     }
 
@@ -155,7 +155,7 @@ if (!app.requestSingleInstanceLock()) {
     const { BackupManager } = await import('./services/BackupManager')
     await BackupManager.handleStartupRestore()
 
-    const mainWindow = windowService.createMainWindow()
+    const mainWindow = windowService.createMainWindow({ isSilentStart: shouldStartSilently })
 
     new TrayService()
 
@@ -220,11 +220,17 @@ if (!app.requestSingleInstanceLock()) {
   app.on('open-url', (event, url) => {
     event.preventDefault()
     handleProtocolUrl(url)
+    windowService.showMainWindow()
   })
 
-  const handleOpenUrl = (args: string[]) => {
+  const handleOpenUrl = (args: string[]): boolean => {
     const url = args.find((arg) => arg.startsWith(CHERRY_STUDIO_PROTOCOL + '://'))
-    if (url) handleProtocolUrl(url)
+    if (!url) {
+      return false
+    }
+
+    handleProtocolUrl(url)
+    return true
   }
 
   // for windows to start with url
@@ -232,11 +238,12 @@ if (!app.requestSingleInstanceLock()) {
 
   // Listen for second instance
   app.on('second-instance', (_event, argv) => {
-    windowService.showMainWindow()
+    const hasProtocolUrl = handleOpenUrl(argv)
+    if (shouldIgnoreLoginStartupSecondInstance(argv, hasProtocolUrl)) {
+      return
+    }
 
-    // Protocol handler for Windows/Linux
-    // The commandLine is an array of strings where the last item might be the URL
-    handleOpenUrl(argv)
+    windowService.showMainWindow()
   })
 
   app.on('browser-window-created', (_, window) => {

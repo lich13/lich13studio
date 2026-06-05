@@ -4554,6 +4554,7 @@
     },
     "launch": {
       "onboot": "開機自動啟動",
+      "silent_onboot": "自動啟動時靜默啟動",
       "title": "啟動",
       "totray": "啟動時最小化到系統匣"
     },
@@ -5665,6 +5666,7 @@
       "title": "翻譯設定"
     },
     "tray": {
+      "keep_background_on_close": "關閉主介面時保留背景執行",
       "onclose": "關閉時最小化到系統匣",
       "show": "顯示系統匣圖示",
       "title": "系統匣"

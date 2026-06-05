@@ -76,15 +76,15 @@ export class ConfigManager {
   }
 
   getLaunchToTray(): boolean {
-    return false
+    return this.get<boolean>(ConfigKeys.LaunchToTray, false)
   }
 
   getTray(): boolean {
-    return false
+    return this.get<boolean>(ConfigKeys.Tray, true)
   }
 
   getTrayOnClose(): boolean {
-    return false
+    return this.get<boolean>(ConfigKeys.TrayOnClose, true)
   }
 
   getZoomFactor(): number {

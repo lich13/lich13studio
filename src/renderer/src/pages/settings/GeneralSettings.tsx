@@ -23,9 +23,12 @@ const GeneralSettings: FC = () => {
     proxyUrl: storeProxyUrl,
     proxyBypassRules: storeProxyBypassRules,
     setLaunch,
+    setTray,
     launchOnBoot,
+    launchToTray,
     notification,
-    proxyMode: storeProxyMode
+    proxyMode: storeProxyMode,
+    trayOnClose
   } = useSettings()
   const [proxyUrl, setProxyUrl] = useState<string | undefined>(storeProxyUrl)
   const [proxyBypassRules, setProxyBypassRules] = useState<string | undefined>(storeProxyBypassRules)
@@ -35,6 +38,14 @@ const GeneralSettings: FC = () => {
 
   const updateLaunchOnBoot = (isLaunchOnBoot: boolean) => {
     setLaunch(isLaunchOnBoot)
+  }
+
+  const updateLaunchToTray = (isLaunchToTray: boolean) => {
+    setLaunch(undefined, isLaunchToTray)
+  }
+
+  const updateTrayOnClose = (isTrayOnClose: boolean) => {
+    setTray(isTrayOnClose ? true : undefined, isTrayOnClose)
   }
 
   const onSetProxyUrl = () => {
@@ -122,6 +133,19 @@ const GeneralSettings: FC = () => {
         <SettingRow>
           <SettingRowTitle>{t('settings.launch.onboot')}</SettingRowTitle>
           <Switch checked={launchOnBoot} onChange={updateLaunchOnBoot} />
+        </SettingRow>
+        <SettingDivider />
+        <SettingRow>
+          <SettingRowTitle>{t('settings.launch.silent_onboot')}</SettingRowTitle>
+          <Switch checked={launchToTray} onChange={updateLaunchToTray} />
+        </SettingRow>
+      </SettingGroup>
+      <SettingGroup theme={theme}>
+        <SettingTitle>{t('settings.tray.title')}</SettingTitle>
+        <SettingDivider />
+        <SettingRow>
+          <SettingRowTitle>{t('settings.tray.keep_background_on_close')}</SettingRowTitle>
+          <Switch checked={trayOnClose} onChange={updateTrayOnClose} />
         </SettingRow>
       </SettingGroup>
     </SettingContainer>

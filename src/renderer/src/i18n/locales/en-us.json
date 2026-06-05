@@ -4554,6 +4554,7 @@
     },
     "launch": {
       "onboot": "Start Automatically on Boot",
+      "silent_onboot": "Start Silently on Login",
       "title": "Launch",
       "totray": "Minimize to Tray on Launch"
     },
@@ -5665,6 +5666,7 @@
       "title": "Translation settings"
     },
     "tray": {
+      "keep_background_on_close": "Keep Running in Background on Close",
       "onclose": "Minimize to Tray on Close",
       "show": "Show Tray Icon",
       "title": "Tray"

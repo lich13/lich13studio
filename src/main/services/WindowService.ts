@@ -22,6 +22,10 @@ import { initSessionUserAgent } from './WebviewService'
 const DEFAULT_MINIWINDOW_WIDTH = 550
 const DEFAULT_MINIWINDOW_HEIGHT = 400
 
+type CreateMainWindowOptions = {
+  isSilentStart?: boolean
+}
+
 // const logger = loggerService.withContext('WindowService')
 const logger = loggerService.withContext('WindowService')
 
@@ -45,10 +49,11 @@ export class WindowService {
     return WindowService.instance
   }
 
-  public createMainWindow(): BrowserWindow {
+  public createMainWindow(options: CreateMainWindowOptions = {}): BrowserWindow {
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-      this.mainWindow.show()
-      this.mainWindow.focus()
+      if (!options.isSilentStart) {
+        this.showMainWindow()
+      }
       return this.mainWindow
     }
 
@@ -104,7 +109,7 @@ export class WindowService {
       }
     })
 
-    this.setupMainWindow(this.mainWindow, mainWindowState)
+    this.setupMainWindow(this.mainWindow, mainWindowState, options)
 
     //preload miniWindow to resolve series of issues about miniWindow in Mac
     const enableQuickAssistant = configManager.getEnableQuickAssistant()
@@ -118,13 +123,13 @@ export class WindowService {
     return this.mainWindow
   }
 
-  private setupMainWindow(mainWindow: BrowserWindow, mainWindowState: any) {
+  private setupMainWindow(mainWindow: BrowserWindow, mainWindowState: any, options: CreateMainWindowOptions) {
     mainWindowState.manage(mainWindow)
 
-    this.setupMaximize(mainWindow, mainWindowState.isMaximized)
+    this.setupMaximize(mainWindow, mainWindowState.isMaximized, options.isSilentStart === true)
     this.setupContextMenu(mainWindow)
     this.setupSpellCheck(mainWindow)
-    this.setupWindowEvents(mainWindow)
+    this.setupWindowEvents(mainWindow, options)
     this.setupWebContentsHandlers(mainWindow)
     this.setupWindowLifecycleEvents(mainWindow)
     this.setupMainWindowMonitor(mainWindow)
@@ -151,10 +156,10 @@ export class WindowService {
     })
   }
 
-  private setupMaximize(mainWindow: BrowserWindow, isMaximized: boolean) {
+  private setupMaximize(mainWindow: BrowserWindow, isMaximized: boolean, isSilentStart: boolean) {
     if (isMaximized) {
       // 如果是从托盘启动，则需要延迟最大化，否则显示的就不是重启前的最大化窗口了
-      configManager.getLaunchToTray()
+      isSilentStart
         ? mainWindow.once('show', () => {
             mainWindow.maximize()
           })
@@ -177,13 +182,11 @@ export class WindowService {
     }
   }
 
-  private setupWindowEvents(mainWindow: BrowserWindow) {
+  private setupWindowEvents(mainWindow: BrowserWindow, options: CreateMainWindowOptions) {
     mainWindow.once('ready-to-show', () => {
       mainWindow.webContents.setZoomFactor(configManager.getZoomFactor())
 
-      // show window only when laucn to tray not set
-      const isLaunchToTray = configManager.getLaunchToTray()
-      if (!isLaunchToTray) {
+      if (!options.isSilentStart) {
         //[mac]hacky-fix: miniWindow set visibleOnFullScreen:true will cause dock icon disappeared
         void app.dock?.show()
         mainWindow.show()
@@ -376,40 +379,23 @@ export class WindowService {
         return app.quit()
       }
 
-      // 托盘及关闭行为设置
       const isShowTray = configManager.getTray()
       const isTrayOnClose = configManager.getTrayOnClose()
+      const shouldKeepBackground = isShowTray && isTrayOnClose
 
-      // 没有开启托盘，或者开启了托盘，但设置了直接关闭，应执行直接退出
-      if (!isShowTray || (isShowTray && !isTrayOnClose)) {
-        // 如果是Windows或Linux，直接退出
-        // mac按照系统默认行为，不退出
+      if (!shouldKeepBackground) {
         if (isWin || isLinux) {
           return app.quit()
         }
+        return
       }
 
-      /**
-       * 上述逻辑以下:
-       * win/linux: 是"开启托盘+设置关闭时最小化到托盘"的情况
-       * mac: 任何情况都会到这里，因此需要单独处理mac
-       */
-
-      if (!mainWindow.isFullScreen()) {
-        event.preventDefault()
-      }
-
+      event.preventDefault()
       mainWindow.hide()
 
       //for mac users, should hide dock icon if close to tray
-      if (isMac && isTrayOnClose) {
+      if (isMac) {
         app.dock?.hide()
-
-        mainWindow.once('show', () => {
-          //restore the window can hide by cmd+h when the window is shown again
-          // https://github.com/electron/electron/pull/47970
-          void app.dock?.show()
-        })
       }
     })
 
@@ -429,9 +415,12 @@ export class WindowService {
       this.miniWindow.hide()
     }
 
+    void app.dock?.show()
+
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
       if (this.mainWindow.isMinimized()) {
         this.mainWindow.restore()
+        this.mainWindow.focus()
         return
       }
 

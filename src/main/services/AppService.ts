@@ -5,6 +5,14 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 
+import {
+  buildLinuxAutostartDesktop,
+  buildLoginItemSettings,
+  buildMacOSLaunchAgentPath,
+  buildMacOSLaunchAgentPlist,
+  getMacOSAppBundlePath
+} from './startupBehavior'
+
 const logger = loggerService.withContext('AppService')
 
 export class AppService {
@@ -22,10 +30,33 @@ export class AppService {
   }
 
   public async setAppLaunchOnBoot(isLaunchOnBoot: boolean): Promise<void> {
-    // Set login item settings for windows and mac
-    // linux is not supported because it requires more file operations
-    if (isWin || isMac) {
-      app.setLoginItemSettings({ openAtLogin: isLaunchOnBoot })
+    if (isWin) {
+      app.setLoginItemSettings(buildLoginItemSettings(isLaunchOnBoot))
+    } else if (isMac) {
+      try {
+        app.setLoginItemSettings({ openAtLogin: false })
+        const launchAgentFile = buildMacOSLaunchAgentPath(os.homedir())
+
+        if (isLaunchOnBoot) {
+          const launchAgentDir = path.dirname(launchAgentFile)
+          await fs.promises.mkdir(launchAgentDir, { recursive: true })
+          const appPath = getMacOSAppBundlePath(app.getPath('exe'))
+          await fs.promises.writeFile(launchAgentFile, buildMacOSLaunchAgentPlist(appPath))
+          await fs.promises.chmod(launchAgentFile, 0o644)
+          logger.info('Created macOS LaunchAgent for login startup')
+        } else {
+          try {
+            await fs.promises.unlink(launchAgentFile)
+            logger.info('Removed macOS LaunchAgent for login startup')
+          } catch (error: any) {
+            if (error?.code !== 'ENOENT') {
+              throw error
+            }
+          }
+        }
+      } catch (error) {
+        logger.error('Failed to set launch on boot for macOS:', error as Error)
+      }
     } else if (isLinux) {
       try {
         const autostartDir = path.join(os.homedir(), '.config', 'autostart')
@@ -46,18 +77,7 @@ export class AppService {
             executablePath = process.env.APPIMAGE
           }
 
-          // Create desktop file content
-          const desktopContent = `[Desktop Entry]
-  Type=Application
-  Name=lich13studio
-  Comment=A focused desktop AI workspace.
-  Exec=${executablePath}
-  Icon=lich13studio
-  Terminal=false
-  StartupNotify=false
-  Categories=Development;Utility;
-  X-GNOME-Autostart-enabled=true
-  Hidden=false`
+          const desktopContent = buildLinuxAutostartDesktop(executablePath, isDev)
 
           // Write desktop file
           await fs.promises.writeFile(desktopFile, desktopContent)

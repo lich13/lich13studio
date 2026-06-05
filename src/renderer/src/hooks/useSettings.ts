@@ -37,9 +37,17 @@ import {
 import type { SidebarIcon, ThemeMode, TranslateLanguageCode } from '@renderer/types'
 import type { UpgradeChannel } from '@shared/config/constant'
 
+import { getMainProcessSettingUpdates } from './settingsSync'
+
 const RETIRED_SIDEBAR_ICONS = new Set<SidebarIcon>(['store', 'translate', 'knowledge'])
 
 const sanitizeSidebarIcons = (icons: SidebarIcon[]) => icons.filter((icon) => !RETIRED_SIDEBAR_ICONS.has(icon))
+
+function syncMainProcessSettings(updates: { launchToTray?: boolean; tray?: boolean; trayOnClose?: boolean }) {
+  for (const [key, value] of getMainProcessSettingUpdates(updates)) {
+    void window.api.config.set(key, value, true)
+  }
+}
 
 export function useSettings() {
   const settings = useAppSelector((state) => state.settings)
@@ -71,6 +79,10 @@ export function useSettings() {
 
       if (isLaunchToTray !== undefined) {
         dispatch(setLaunchToTray(isLaunchToTray))
+        if (isLaunchToTray) {
+          dispatch(_setTray(true))
+        }
+        syncMainProcessSettings({ launchToTray: isLaunchToTray })
       }
     },
 
@@ -80,7 +92,11 @@ export function useSettings() {
       }
       if (isTrayOnClose !== undefined) {
         dispatch(setTrayOnClose(isTrayOnClose))
+        if (isTrayOnClose) {
+          dispatch(_setTray(true))
+        }
       }
+      syncMainProcessSettings({ tray: isShowTray, trayOnClose: isTrayOnClose })
     },
 
     setAutoCheckUpdate(isAutoUpdate: boolean) {

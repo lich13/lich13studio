@@ -4554,6 +4554,7 @@
     },
     "launch": {
       "onboot": "开机自动启动",
+      "silent_onboot": "自启动时静默启动",
       "title": "启动",
       "totray": "启动时最小化到托盘"
     },
@@ -5665,6 +5666,7 @@
       "title": "翻译设置"
     },
     "tray": {
+      "keep_background_on_close": "关闭主界面时保留后台",
       "onclose": "关闭时最小化到托盘",
       "show": "显示托盘图标",
       "title": "托盘"

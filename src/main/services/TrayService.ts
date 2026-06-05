@@ -105,7 +105,7 @@ export class TrayService {
   }
 
   private updateTray() {
-    const showTray = configManager.getTray()
+    const showTray = configManager.getTray() || configManager.getLaunchToTray() || configManager.getTrayOnClose()
     if (showTray) {
       this.createTray()
     } else {
@@ -122,6 +122,8 @@ export class TrayService {
 
   private watchConfigChanges() {
     configManager.subscribe(ConfigKeys.Tray, () => this.updateTray())
+    configManager.subscribe(ConfigKeys.LaunchToTray, () => this.updateTray())
+    configManager.subscribe(ConfigKeys.TrayOnClose, () => this.updateTray())
 
     configManager.subscribe(ConfigKeys.Language, () => {
       this.updateContextMenu()
@@ -137,6 +139,7 @@ export class TrayService {
   }
 
   private quit() {
+    app.isQuitting = true
     app.quit()
   }
 }
