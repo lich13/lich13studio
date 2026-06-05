@@ -51,6 +51,15 @@ describe('remarkCjkAutolinkLiteral', () => {
     ])
   })
 
+  it('keeps GitHub release paths and stops before Chinese suffix text', () => {
+    expect(getLinks('下载：https://github.com/electerm/electerm/releases（GitHub）')).toEqual([
+      {
+        url: 'https://github.com/electerm/electerm/releases',
+        text: 'https://github.com/electerm/electerm/releases'
+      }
+    ])
+  })
+
   it('keeps explicit markdown links unchanged', () => {
     expect(getLinks('[官网](https://cyberduck.io/)')).toEqual([{ url: 'https://cyberduck.io/', text: '官网' }])
   })

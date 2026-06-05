@@ -58,6 +58,19 @@ const invoke = tauri?.core?.invoke ?? (previewMode ? mockInvoke : undefined)
 const getCurrentWindow = tauri?.window?.getCurrentWindow ? () => tauri.window.getCurrentWindow() : null
 
 const isTauriRuntime = typeof invoke === 'function'
+const isExternalUrl = (value: string) => /^(?:https?:|mailto:|tel:)/i.test(value.trim())
+const openExternalUrl = async (url: string) => {
+  const normalizedUrl = url.trim()
+  if (!normalizedUrl) {
+    return false
+  }
+
+  if (invoke) {
+    return invoke('open_external_url', { url: normalizedUrl })
+  }
+
+  throw new Error('External URL opening is unavailable outside the Tauri runtime')
+}
 
 if (!globalWindow.root) {
   globalWindow.root = document.documentElement
@@ -811,18 +824,16 @@ const api = {
     location.reload()
   },
   openWebsite: async (url: string) => {
-    if (invoke) {
-      await invoke('open_path', { path: url })
-      return
-    }
-    window.open(url, '_blank', 'noopener,noreferrer')
+    return openExternalUrl(url)
   },
   openPath: async (url: string) => {
     if (invoke) {
+      if (isExternalUrl(url)) {
+        return openExternalUrl(url)
+      }
       return invoke('open_path', { path: url })
     }
-    window.open(url, '_blank', 'noopener,noreferrer')
-    return true
+    throw new Error('Path opening is unavailable outside the Tauri runtime')
   },
   getCacheSize: async () => formatBytes(computeCacheSizeBytes()),
   clearCache: async () => {
@@ -847,7 +858,7 @@ const api = {
   getSystemFonts,
   getIpCountry: async () => 'us',
   shell: {
-    openExternal: async (url: string) => window.open(url, '_blank', 'noopener,noreferrer')
+    openExternal: openExternalUrl
   },
   notification: {
     send: async (notification: AnyRecord) => {
@@ -1058,7 +1069,7 @@ const api = {
   },
   searchService: {
     openUrlInSearchWindow: async (_uid: string, url: string) => {
-      window.open(url, '_blank', 'noopener,noreferrer')
+      await openExternalUrl(url)
       return url
     },
     closeSearchWindow: noOpAsync

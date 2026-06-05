@@ -3900,6 +3900,7 @@
   },
   "settings": {
     "about": {
+      "appVersion": "目前版本",
       "careers": {
         "button": "查看",
         "title": "加入我們"
@@ -3918,6 +3919,7 @@
         "title": "除錯面板"
       },
       "description": "一款為創作者而生的強大 AI 助手",
+      "development": "開發版",
       "downloading": "正在下載...",
       "enterprise": {
         "title": "企業版"
@@ -3926,7 +3928,15 @@
         "button": "回饋",
         "title": "回饋"
       },
+      "github": {
+        "button": "GitHub",
+        "title": "專案地址"
+      },
+      "installType": "安裝類型",
       "label": "關於與回饋",
+      "latestVersion": "最新版本",
+      "openExternalFailed": "無法開啟外部連結",
+      "packaged": "安裝版",
       "releases": {
         "button": "檢視",
         "title": "更新日誌"
@@ -3938,6 +3948,7 @@
       "updateAvailable": "發現新版本 {{version}}",
       "updateError": "更新錯誤",
       "updateNotAvailable": "您正在使用最新版本",
+      "updateTo": "更新到 {{version}}",
       "website": {
         "button": "網站",
         "title": "官方網站"

@@ -1,7 +1,13 @@
-import { InfoCircleOutlined } from '@ant-design/icons'
+import { GithubOutlined, InfoCircleOutlined, ReloadOutlined } from '@ant-design/icons'
 import Selector from '@renderer/components/Selector'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import { useSettings } from '@renderer/hooks/useSettings'
+import {
+  type AppReleaseInfo,
+  checkLatestRelease,
+  GITHUB_RELEASES_URL,
+  GITHUB_REPO_URL
+} from '@renderer/services/appUpdate'
 import { useAppDispatch } from '@renderer/store'
 import {
   setNotificationSettings,
@@ -9,11 +15,12 @@ import {
   setProxyMode,
   setProxyUrl as _setProxyUrl
 } from '@renderer/store/settings'
+import type { AppInfo } from '@renderer/types'
 import { isValidProxyUrl } from '@renderer/utils'
 import { defaultByPassRules } from '@shared/config/constant'
-import { Input, Switch, Tooltip } from 'antd'
+import { Button, Input, Space, Switch, Tooltip, Typography } from 'antd'
 import type { FC } from 'react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { SettingContainer, SettingDivider, SettingGroup, SettingRow, SettingRowTitle, SettingTitle } from '.'
@@ -32,9 +39,19 @@ const GeneralSettings: FC = () => {
   } = useSettings()
   const [proxyUrl, setProxyUrl] = useState<string | undefined>(storeProxyUrl)
   const [proxyBypassRules, setProxyBypassRules] = useState<string | undefined>(storeProxyBypassRules)
+  const [appInfo, setAppInfo] = useState<AppInfo>()
+  const [checkingUpdate, setCheckingUpdate] = useState(false)
+  const [releaseInfo, setReleaseInfo] = useState<AppReleaseInfo | null>(null)
   const { theme } = useTheme()
   const dispatch = useAppDispatch()
   const { t } = useTranslation()
+
+  useEffect(() => {
+    void window.api
+      .getAppInfo()
+      .then(setAppInfo)
+      .catch(() => undefined)
+  }, [])
 
   const updateLaunchOnBoot = (isLaunchOnBoot: boolean) => {
     setLaunch(isLaunchOnBoot)
@@ -74,6 +91,43 @@ const GeneralSettings: FC = () => {
   const handleNotificationChange = (value: boolean) => {
     dispatch(setNotificationSettings({ assistant: value, backup: false }))
   }
+
+  const openExternal = async (url: string) => {
+    try {
+      await window.api.shell.openExternal(url)
+    } catch {
+      window.toast.error(t('settings.about.openExternalFailed'))
+    }
+  }
+
+  const handleCheckUpdate = async () => {
+    if (releaseInfo?.hasUpdate) {
+      await openExternal(releaseInfo.asset?.url || releaseInfo.releaseUrl)
+      return
+    }
+
+    const currentVersion = appInfo?.version || '0.0.0'
+    setCheckingUpdate(true)
+    const nextReleaseInfo = await checkLatestRelease(currentVersion, appInfo?.platform)
+    setReleaseInfo(nextReleaseInfo)
+    setCheckingUpdate(false)
+
+    if (nextReleaseInfo.error) {
+      window.toast.error(t('settings.about.updateError'))
+      return
+    }
+
+    if (nextReleaseInfo.hasUpdate) {
+      window.toast.success(t('settings.about.updateAvailable', { version: nextReleaseInfo.latestVersion }))
+      return
+    }
+
+    window.toast.success(t('settings.about.updateNotAvailable'))
+  }
+
+  const checkUpdateLabel = releaseInfo?.hasUpdate
+    ? t('settings.about.updateTo', { version: releaseInfo.latestVersion })
+    : t('settings.about.checkUpdate.label')
 
   return (
     <SettingContainer theme={theme}>
@@ -146,6 +200,49 @@ const GeneralSettings: FC = () => {
         <SettingRow>
           <SettingRowTitle>{t('settings.tray.keep_background_on_close')}</SettingRowTitle>
           <Switch checked={trayOnClose} onChange={updateTrayOnClose} />
+        </SettingRow>
+      </SettingGroup>
+      <SettingGroup theme={theme}>
+        <SettingTitle>{t('settings.about.title')}</SettingTitle>
+        <SettingDivider />
+        <SettingRow>
+          <SettingRowTitle>{t('settings.about.appVersion')}</SettingRowTitle>
+          <Typography.Text type="secondary">{appInfo?.version || '-'}</Typography.Text>
+        </SettingRow>
+        <SettingDivider />
+        <SettingRow>
+          <SettingRowTitle>{t('settings.about.installType')}</SettingRowTitle>
+          <Typography.Text type="secondary">
+            {appInfo?.isPackaged ? t('settings.about.packaged') : t('settings.about.development')}
+          </Typography.Text>
+        </SettingRow>
+        {releaseInfo?.hasUpdate && (
+          <>
+            <SettingDivider />
+            <SettingRow>
+              <SettingRowTitle>{t('settings.about.latestVersion')}</SettingRowTitle>
+              <Typography.Text type="success">{releaseInfo.latestVersion}</Typography.Text>
+            </SettingRow>
+          </>
+        )}
+        <SettingDivider />
+        <SettingRow>
+          <SettingRowTitle>{t('settings.about.github.title')}</SettingRowTitle>
+          <Button size="small" icon={<GithubOutlined />} onClick={() => openExternal(GITHUB_REPO_URL)}>
+            {t('settings.about.github.button')}
+          </Button>
+        </SettingRow>
+        <SettingDivider />
+        <SettingRow>
+          <SettingRowTitle>{t('settings.about.releases.title')}</SettingRowTitle>
+          <Space>
+            <Button size="small" onClick={() => openExternal(releaseInfo?.releaseUrl || GITHUB_RELEASES_URL)}>
+              {t('settings.about.releases.button')}
+            </Button>
+            <Button size="small" icon={<ReloadOutlined />} loading={checkingUpdate} onClick={handleCheckUpdate}>
+              {checkingUpdate ? t('settings.about.checkingUpdate') : checkUpdateLabel}
+            </Button>
+          </Space>
         </SettingRow>
       </SettingGroup>
     </SettingContainer>

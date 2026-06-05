@@ -25,6 +25,7 @@ use tauri::{
   WebviewWindow, WebviewWindowBuilder, Window, WindowEvent,
 };
 use tokio::process::Command;
+use url::Url;
 use uuid::Uuid;
 use walkdir::WalkDir;
 use xcap::Window as CaptureWindow;
@@ -1645,6 +1646,19 @@ fn system_hostname() -> String {
     .unwrap_or_else(|| String::from("unknown"))
 }
 
+fn normalize_external_url(value: &str) -> Result<String, String> {
+  let trimmed = value.trim();
+  if trimmed.is_empty() {
+    return Err(String::from("External URL is required"));
+  }
+
+  let parsed = Url::parse(trimmed).map_err(|_| String::from("Invalid external URL"))?;
+  match parsed.scheme() {
+    "http" | "https" | "mailto" | "tel" => Ok(trimmed.to_string()),
+    scheme => Err(format!("Blocked external URL scheme: {scheme}")),
+  }
+}
+
 fn data_dir() -> Result<PathBuf, String> {
   let path = app_data_dir()?.join("Data");
   fs::create_dir_all(&path).map_err(|error| error.to_string())?;
@@ -1963,8 +1977,36 @@ async fn open_path(path: String) -> Result<bool, String> {
 
   let status = if cfg!(target_os = "macos") {
     Command::new("open").arg(&path).status().await
+  } else if cfg!(target_os = "windows") {
+    hidden_command("cmd")
+      .arg("/C")
+      .arg("start")
+      .arg("")
+      .arg(&path)
+      .status()
+      .await
   } else {
     Command::new("xdg-open").arg(&path).status().await
+  }
+  .map_err(|error| error.to_string())?;
+
+  Ok(status.success())
+}
+
+#[tauri::command]
+async fn open_external_url(url: String) -> Result<bool, String> {
+  let normalized_url = normalize_external_url(&url)?;
+
+  let status = if cfg!(target_os = "macos") {
+    Command::new("open").arg(&normalized_url).status().await
+  } else if cfg!(target_os = "windows") {
+    hidden_command("rundll32")
+      .arg("url.dll,FileProtocolHandler")
+      .arg(&normalized_url)
+      .status()
+      .await
+  } else {
+    Command::new("xdg-open").arg(&normalized_url).status().await
   }
   .map_err(|error| error.to_string())?;
 
@@ -2351,6 +2393,7 @@ pub fn run() {
       get_obsidian_vaults,
       get_obsidian_files,
       open_path,
+      open_external_url,
       list_capture_windows,
       capture_window,
       backup_to_local_dir,
@@ -2401,5 +2444,30 @@ mod tests {
     let error = decode_base64_image_payload("data:image/png,not-base64").unwrap_err();
 
     assert!(error.contains("base64"));
+  }
+
+  #[test]
+  fn allows_safe_external_url_schemes() {
+    for url in [
+      "https://github.com/lich13/lich13studio",
+      "http://example.com",
+      "mailto:support@example.com",
+      "tel:+15551234567",
+    ] {
+      assert_eq!(normalize_external_url(url).unwrap(), url);
+    }
+  }
+
+  #[test]
+  fn rejects_unsafe_external_url_schemes() {
+    for url in [
+      "",
+      "file:///etc/passwd",
+      "javascript:alert(1)",
+      "tauri://localhost/#/",
+      "x-apple.systempreferences:com.apple.preference.security",
+    ] {
+      assert!(normalize_external_url(url).is_err(), "{url} should be rejected");
+    }
   }
 }

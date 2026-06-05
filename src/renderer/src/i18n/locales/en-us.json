@@ -3900,6 +3900,7 @@
   },
   "settings": {
     "about": {
+      "appVersion": "Current Version",
       "careers": {
         "button": "View",
         "title": "Careers"
@@ -3918,6 +3919,7 @@
         "title": "Debug"
       },
       "description": "A powerful AI assistant for producer",
+      "development": "Development",
       "downloading": "Downloading...",
       "enterprise": {
         "title": "Enterprise"
@@ -3926,7 +3928,15 @@
         "button": "Feedback",
         "title": "Feedback"
       },
+      "github": {
+        "button": "GitHub",
+        "title": "Repository"
+      },
+      "installType": "Install Type",
       "label": "About & Feedback",
+      "latestVersion": "Latest Version",
+      "openExternalFailed": "Failed to open external link",
+      "packaged": "Packaged",
       "releases": {
         "button": "Releases",
         "title": "Release Notes"
@@ -3938,6 +3948,7 @@
       "updateAvailable": "Found new version {{version}}",
       "updateError": "Update error",
       "updateNotAvailable": "You are using the latest version",
+      "updateTo": "Update to {{version}}",
       "website": {
         "button": "Website",
         "title": "Official Website"

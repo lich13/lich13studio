@@ -11,11 +11,24 @@ interface LinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement> {
   node?: Omit<Node, 'type'>
 }
 
+export const normalizeMarkdownHref = (href: string | undefined) => {
+  const trimmedHref = href?.trim()
+  if (!trimmedHref) return trimmedHref
+  if (/^(?:https?:|mailto:|tel:|#)/i.test(trimmedHref)) {
+    return trimmedHref
+  }
+  if (/^[a-z0-9][a-z0-9-]*(?:\.[a-z0-9][a-z0-9-]*)+(?::\d+)?(?:[/?#].*)?$/i.test(trimmedHref)) {
+    return `https://${trimmedHref}`
+  }
+  return trimmedHref
+}
+
 export const openMarkdownLinkExternally = (href: string | undefined, event: React.MouseEvent<HTMLAnchorElement>) => {
-  if (!href || href.startsWith('#')) return
+  const normalizedHref = normalizeMarkdownHref(href)
+  if (!normalizedHref || normalizedHref.startsWith('#')) return
   event.preventDefault()
   event.stopPropagation()
-  window.api.shell.openExternal(href).catch(() => undefined)
+  window.api.shell.openExternal(normalizedHref).catch(() => undefined)
 }
 
 const Link: React.FC<LinkProps> = (props) => {

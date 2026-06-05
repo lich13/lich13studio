@@ -571,9 +571,14 @@ export type AppInfo = {
   resourcesPath: string
   filesPath: string
   logsPath: string
+  notesPath?: string
   arch: string
   isPortable: boolean
   installPath: string
+  bundleId?: string
+  runtime?: string
+  platform?: string
+  statePath?: string
 }
 
 export interface Shortcut {

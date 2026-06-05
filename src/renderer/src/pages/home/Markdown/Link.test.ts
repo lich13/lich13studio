@@ -27,6 +27,32 @@ describe('openMarkdownLinkExternally', () => {
     expect(window.api.shell.openExternal).toHaveBeenCalledWith('https://cyberduck.io/')
   })
 
+  it('normalizes bare host markdown links before opening externally', () => {
+    const event = {
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn()
+    } as unknown as React.MouseEvent<HTMLAnchorElement>
+
+    openMarkdownLinkExternally('github.com/electerm/electerm/releases', event)
+
+    expect(event.preventDefault).toHaveBeenCalledTimes(1)
+    expect(event.stopPropagation).toHaveBeenCalledTimes(1)
+    expect(window.api.shell.openExternal).toHaveBeenCalledWith('https://github.com/electerm/electerm/releases')
+  })
+
+  it('opens electerm release links through the external shell bridge', () => {
+    const event = {
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn()
+    } as unknown as React.MouseEvent<HTMLAnchorElement>
+
+    openMarkdownLinkExternally('https://github.com/electerm/electerm/releases', event)
+
+    expect(event.preventDefault).toHaveBeenCalledTimes(1)
+    expect(event.stopPropagation).toHaveBeenCalledTimes(1)
+    expect(window.api.shell.openExternal).toHaveBeenCalledWith('https://github.com/electerm/electerm/releases')
+  })
+
   it('does not intercept internal anchors', () => {
     const event = {
       preventDefault: vi.fn(),
