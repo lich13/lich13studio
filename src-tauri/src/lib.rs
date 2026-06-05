@@ -7,6 +7,7 @@ use reqwest::{Client, Method};
 use roxmltree::Document;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use std::cmp::Ordering as CmpOrdering;
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs;
@@ -24,6 +25,7 @@ use tauri::{
   AppHandle, Emitter, Manager, Monitor, PhysicalPosition, PhysicalSize, Position, RunEvent, Size, WebviewUrl,
   WebviewWindow, WebviewWindowBuilder, Window, WindowEvent,
 };
+use tauri_plugin_notification::NotificationExt;
 use tokio::process::Command;
 use url::Url;
 use uuid::Uuid;
@@ -51,6 +53,11 @@ const MINI_WINDOW_SHOW_EVENT: &str = "show-mini-window";
 const MINI_WINDOW_HIDE_EVENT: &str = "hide-mini-window";
 const MINI_WINDOW_WIDTH: u32 = 420;
 const MINI_WINDOW_HEIGHT: u32 = 620;
+const GITHUB_LATEST_RELEASE_API_URL: &str = "https://api.github.com/repos/lich13/lich13studio/releases/latest";
+const GITHUB_RELEASES_URL: &str = "https://github.com/lich13/lich13studio/releases";
+const TRAY_SHOW_MENU_ID: &str = "show";
+const TRAY_CHECK_UPDATE_MENU_ID: &str = "check_update";
+const TRAY_QUIT_MENU_ID: &str = "quit";
 #[cfg(target_os = "windows")]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
@@ -76,6 +83,39 @@ struct AppInfo {
   runtime: &'static str,
   platform: &'static str,
   state_path: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct GitHubReleaseAsset {
+  name: Option<String>,
+  browser_download_url: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct GitHubLatestRelease {
+  tag_name: Option<String>,
+  html_url: Option<String>,
+  body: Option<String>,
+  #[serde(default)]
+  assets: Vec<GitHubReleaseAsset>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct AppUpdateAsset {
+  name: String,
+  url: String,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct AppUpdateInfo {
+  has_update: bool,
+  current_version: String,
+  latest_version: Option<String>,
+  release_url: String,
+  release_notes: String,
+  asset: Option<AppUpdateAsset>,
 }
 
 #[derive(Debug)]
@@ -409,9 +449,11 @@ fn hide_mini_window_for_app(app: &AppHandle) -> Result<(), String> {
 }
 
 fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
-  let show_item = MenuItem::with_id(app, "show", "Open lich13studio", true, None::<&str>)?;
-  let quit_item = MenuItem::with_id(app, "quit", "Quit lich13studio", true, None::<&str>)?;
-  let menu = Menu::with_items(app, &[&show_item, &quit_item])?;
+  let [show_id, check_update_id, quit_id] = tray_menu_item_ids();
+  let show_item = MenuItem::with_id(app, show_id, "打开主界面", true, None::<&str>)?;
+  let check_update_item = MenuItem::with_id(app, check_update_id, "检测更新", true, None::<&str>)?;
+  let quit_item = MenuItem::with_id(app, quit_id, "退出", true, None::<&str>)?;
+  let menu = Menu::with_items(app, &[&show_item, &check_update_item, &quit_item])?;
 
   let decoded_icon = image::load_from_memory(include_bytes!("../../build/tray_icon.png"))?.into_rgba8();
   let (icon_width, icon_height) = decoded_icon.dimensions();
@@ -436,10 +478,32 @@ fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
       }
     })
     .on_menu_event(|app, event| match event.id().as_ref() {
-      "show" => {
+      TRAY_SHOW_MENU_ID => {
         let _ = show_and_focus_main_window(app);
       }
-      "quit" => {
+      TRAY_CHECK_UPDATE_MENU_ID => {
+        let app_handle = app.clone();
+        tauri::async_runtime::spawn(async move {
+          match fetch_latest_update_info(env!("CARGO_PKG_VERSION"), std::env::consts::OS).await {
+            Ok(update_info) if update_info.has_update => {
+              let version = update_info.latest_version.as_deref().unwrap_or("latest");
+              let _ = notify_update_result(
+                &app_handle,
+                "发现新版本",
+                &format!("lich13studio {version} 已发布，正在打开下载页面。"),
+              );
+              let _ = open_update_url(&update_info).await;
+            }
+            Ok(_) => {
+              let _ = notify_update_result(&app_handle, "已是最新版本", "当前 lich13studio 已是最新版本。");
+            }
+            Err(error) => {
+              let _ = notify_update_result(&app_handle, "检查更新失败", &format!("无法检查更新：{error}"));
+            }
+          }
+        });
+      }
+      TRAY_QUIT_MENU_ID => {
         #[cfg(target_os = "macos")]
         APP_EXITING.store(true, Ordering::Relaxed);
         app.exit(0);
@@ -1659,6 +1723,161 @@ fn normalize_external_url(value: &str) -> Result<String, String> {
   }
 }
 
+fn tray_menu_item_ids() -> [&'static str; 3] {
+  [TRAY_SHOW_MENU_ID, TRAY_CHECK_UPDATE_MENU_ID, TRAY_QUIT_MENU_ID]
+}
+
+fn normalize_update_version(version: &str) -> String {
+  version
+    .trim()
+    .trim_start_matches(|value| value == 'v' || value == 'V')
+    .split(['+', '-'])
+    .next()
+    .filter(|value| !value.is_empty())
+    .unwrap_or("0")
+    .to_string()
+}
+
+fn parse_update_version(version: &str) -> Vec<u64> {
+  normalize_update_version(version)
+    .split('.')
+    .map(|part| part.parse::<u64>().unwrap_or(0))
+    .collect()
+}
+
+fn compare_update_versions(left_version: &str, right_version: &str) -> CmpOrdering {
+  let left = parse_update_version(left_version);
+  let right = parse_update_version(right_version);
+  let length = left.len().max(right.len());
+
+  for index in 0..length {
+    let left_part = left.get(index).copied().unwrap_or(0);
+    let right_part = right.get(index).copied().unwrap_or(0);
+    match left_part.cmp(&right_part) {
+      CmpOrdering::Equal => {}
+      ordering => return ordering,
+    }
+  }
+
+  CmpOrdering::Equal
+}
+
+fn release_asset_to_app_asset(asset: Option<&GitHubReleaseAsset>) -> Option<AppUpdateAsset> {
+  let asset = asset?;
+  let name = asset.name.as_deref()?.trim();
+  let url = asset.browser_download_url.as_deref()?.trim();
+  if name.is_empty() || url.is_empty() {
+    return None;
+  }
+
+  Some(AppUpdateAsset {
+    name: name.to_string(),
+    url: url.to_string(),
+  })
+}
+
+fn select_platform_update_asset(assets: &[GitHubReleaseAsset], platform: &str) -> Option<AppUpdateAsset> {
+  let normalized_platform = platform.to_ascii_lowercase();
+  let candidates: Vec<&GitHubReleaseAsset> = assets
+    .iter()
+    .filter(|asset| {
+      asset.name.as_deref().is_some_and(|name| !name.trim().is_empty())
+        && asset
+          .browser_download_url
+          .as_deref()
+          .is_some_and(|url| !url.trim().is_empty())
+    })
+    .collect();
+
+  let preferred = if normalized_platform == "macos" || normalized_platform == "darwin" {
+    candidates.iter().copied().find(|asset| {
+      asset
+        .name
+        .as_deref()
+        .unwrap_or_default()
+        .to_ascii_lowercase()
+        .ends_with(".dmg")
+    })
+  } else if normalized_platform == "windows" || normalized_platform == "win32" {
+    candidates.iter().copied().find(|asset| {
+      let name = asset.name.as_deref().unwrap_or_default().to_ascii_lowercase();
+      name.ends_with(".exe") || name.contains("setup")
+    })
+  } else {
+    candidates.iter().copied().find(|asset| {
+      let name = asset.name.as_deref().unwrap_or_default().to_ascii_lowercase();
+      name.ends_with(".appimage") || name.ends_with(".deb")
+    })
+  };
+
+  release_asset_to_app_asset(preferred.or_else(|| candidates.first().copied()))
+}
+
+fn build_app_update_info(current_version: &str, platform: &str, release: GitHubLatestRelease) -> AppUpdateInfo {
+  let latest_version = release
+    .tag_name
+    .as_deref()
+    .map(normalize_update_version)
+    .filter(|version| !version.is_empty());
+  let release_url = release
+    .html_url
+    .as_deref()
+    .map(str::trim)
+    .filter(|url| !url.is_empty())
+    .unwrap_or(GITHUB_RELEASES_URL)
+    .to_string();
+  let has_update = latest_version
+    .as_deref()
+    .is_some_and(|version| compare_update_versions(version, current_version) == CmpOrdering::Greater);
+
+  AppUpdateInfo {
+    has_update,
+    current_version: current_version.to_string(),
+    latest_version,
+    release_url,
+    release_notes: release.body.unwrap_or_default(),
+    asset: select_platform_update_asset(&release.assets, platform),
+  }
+}
+
+async fn fetch_latest_update_info(current_version: &str, platform: &str) -> Result<AppUpdateInfo, String> {
+  let release = Client::new()
+    .get(GITHUB_LATEST_RELEASE_API_URL)
+    .header(USER_AGENT, "lich13studio")
+    .send()
+    .await
+    .map_err(|error| error.to_string())?
+    .error_for_status()
+    .map_err(|error| error.to_string())?
+    .json::<GitHubLatestRelease>()
+    .await
+    .map_err(|error| error.to_string())?;
+
+  Ok(build_app_update_info(current_version, platform, release))
+}
+
+fn update_download_url(update_info: &AppUpdateInfo) -> String {
+  update_info
+    .asset
+    .as_ref()
+    .map(|asset| asset.url.clone())
+    .unwrap_or_else(|| update_info.release_url.clone())
+}
+
+async fn open_update_url(update_info: &AppUpdateInfo) -> Result<bool, String> {
+  open_external_url(update_download_url(update_info)).await
+}
+
+fn notify_update_result(app: &AppHandle, title: &str, body: &str) -> Result<(), String> {
+  app
+    .notification()
+    .builder()
+    .title(title)
+    .body(body)
+    .show()
+    .map_err(|error| error.to_string())
+}
+
 fn data_dir() -> Result<PathBuf, String> {
   let path = app_data_dir()?.join("Data");
   fs::create_dir_all(&path).map_err(|error| error.to_string())?;
@@ -2469,5 +2688,45 @@ mod tests {
     ] {
       assert!(normalize_external_url(url).is_err(), "{url} should be rejected");
     }
+  }
+
+  #[test]
+  fn update_version_comparison_handles_tag_prefixes() {
+    assert_eq!(compare_update_versions("v0.1.12", "0.1.11"), CmpOrdering::Greater);
+    assert_eq!(compare_update_versions("0.1.12", "v0.1.12"), CmpOrdering::Equal);
+    assert_eq!(compare_update_versions("0.1.9", "0.1.10"), CmpOrdering::Less);
+  }
+
+  #[test]
+  fn update_asset_selection_prefers_platform_artifacts() {
+    let release = GitHubLatestRelease {
+      tag_name: Some("v0.1.12".to_string()),
+      html_url: Some("https://github.com/lich13/lich13studio/releases/tag/v0.1.12".to_string()),
+      body: None,
+      assets: vec![
+        GitHubReleaseAsset {
+          name: Some("lich13studio_0.1.12_x64-setup.exe".to_string()),
+          browser_download_url: Some("https://example.com/setup.exe".to_string()),
+        },
+        GitHubReleaseAsset {
+          name: Some("lich13studio_0.1.12_aarch64.dmg".to_string()),
+          browser_download_url: Some("https://example.com/app.dmg".to_string()),
+        },
+      ],
+    };
+
+    assert_eq!(
+      build_app_update_info("0.1.11", "macos", release.clone()).asset.unwrap().url,
+      "https://example.com/app.dmg"
+    );
+    assert_eq!(
+      build_app_update_info("0.1.11", "windows", release).asset.unwrap().url,
+      "https://example.com/setup.exe"
+    );
+  }
+
+  #[test]
+  fn update_tray_menu_item_ids_are_stable() {
+    assert_eq!(tray_menu_item_ids(), ["show", "check_update", "quit"]);
   }
 }

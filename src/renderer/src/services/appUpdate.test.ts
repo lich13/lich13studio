@@ -22,6 +22,30 @@ describe('getPlatformAsset', () => {
       )
     ).toEqual({ name: 'lich13studio_0.1.11_aarch64.dmg', url: 'https://example.com/app.dmg' })
   })
+
+  it('prefers the Windows setup executable on win32', () => {
+    expect(
+      getPlatformAsset(
+        [
+          { name: 'lich13studio_0.1.12_aarch64.dmg', browser_download_url: 'https://example.com/app.dmg' },
+          { name: 'lich13studio_0.1.12_x64-setup.exe', browser_download_url: 'https://example.com/setup.exe' }
+        ],
+        'win32'
+      )
+    ).toEqual({ name: 'lich13studio_0.1.12_x64-setup.exe', url: 'https://example.com/setup.exe' })
+  })
+
+  it('falls back to the first usable asset for unknown platforms', () => {
+    expect(
+      getPlatformAsset(
+        [
+          { name: 'lich13studio_0.1.12_aarch64.dmg', browser_download_url: 'https://example.com/app.dmg' },
+          { name: '', browser_download_url: 'https://example.com/ignored' }
+        ],
+        'freebsd'
+      )
+    ).toEqual({ name: 'lich13studio_0.1.12_aarch64.dmg', url: 'https://example.com/app.dmg' })
+  })
 })
 
 describe('checkLatestRelease', () => {

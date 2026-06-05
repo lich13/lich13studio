@@ -1,8 +1,8 @@
 import { loggerService } from '@logger'
 import {
   isPermissionGranted as isNotificationPermissionGranted,
-  requestPermission as requestNotificationPermission,
-  sendNotification as sendSystemNotification
+  onAction as onNotificationAction,
+  requestPermission as requestNotificationPermission
 } from '@tauri-apps/plugin-notification'
 
 type AnyRecord = Record<string, any>
@@ -59,6 +59,7 @@ const getCurrentWindow = tauri?.window?.getCurrentWindow ? () => tauri.window.ge
 
 const isTauriRuntime = typeof invoke === 'function'
 const isExternalUrl = (value: string) => /^(?:https?:|mailto:|tel:)/i.test(value.trim())
+const notificationClickCallbacks = new Set<(notification: AnyRecord) => void>()
 const openExternalUrl = async (url: string) => {
   const normalizedUrl = url.trim()
   if (!normalizedUrl) {
@@ -70,6 +71,27 @@ const openExternalUrl = async (url: string) => {
   }
 
   throw new Error('External URL opening is unavailable outside the Tauri runtime')
+}
+
+const handleNotificationClick = async (notification: AnyRecord) => {
+  const payload = notification?.notification || notification
+  const url = payload?.extra?.url
+
+  if (typeof url === 'string' && url.trim()) {
+    try {
+      await openExternalUrl(url)
+    } catch (error) {
+      logger.error('Failed to open notification URL', error as Error)
+    }
+  }
+
+  notificationClickCallbacks.forEach((callback) => callback(payload))
+}
+
+if (isTauriRuntime) {
+  void onNotificationAction(handleNotificationClick).catch((error) => {
+    logger.warn('Failed to register Tauri notification action listener', error as Error)
+  })
 }
 
 if (!globalWindow.root) {
@@ -893,14 +915,25 @@ const api = {
         return false
       }
 
-      sendSystemNotification({
-        title: title || 'lich13studio',
-        body: message
+      const systemNotification = new window.Notification(title || 'lich13studio', {
+        body: message,
+        data: notification,
+        silent: Boolean(notification?.silent),
+        tag: notification?.id ? String(notification.id) : undefined
       })
+
+      systemNotification.onclick = () => {
+        void handleNotificationClick(notification)
+      }
 
       return true
     },
-    onClick: () => createCleanup()
+    onClick: (callback: (notification: AnyRecord) => void) => {
+      notificationClickCallbacks.add(callback)
+      return () => {
+        notificationClickCallbacks.delete(callback)
+      }
+    }
   },
   system: {
     getDeviceType: async () => {

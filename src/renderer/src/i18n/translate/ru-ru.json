@@ -2660,6 +2660,9 @@
       "esc_close": "закрытия окна",
       "esc_pause": "пауза"
     },
+    "header": {
+      "default_assistant": "[to be translated]:Default assistant"
+    },
     "input": {
       "placeholder": {
         "empty": "Задайте вопрос {{model}}..."
@@ -3897,6 +3900,7 @@
   },
   "settings": {
     "about": {
+      "appVersion": "[to be translated]:Current Version",
       "careers": {
         "button": "Вид",
         "title": "Карьера"
@@ -3915,6 +3919,7 @@
         "title": "Отладка"
       },
       "description": "Мощный AI-ассистент для созидания",
+      "development": "[to be translated]:Development",
       "downloading": "Загрузка...",
       "enterprise": {
         "title": "Предприятие"
@@ -3923,7 +3928,15 @@
         "button": "Обратная связь",
         "title": "Обратная связь"
       },
+      "github": {
+        "button": "[to be translated]:GitHub",
+        "title": "[to be translated]:Repository"
+      },
+      "installType": "[to be translated]:Install Type",
       "label": "О программе и обратная связь",
+      "latestVersion": "[to be translated]:Latest Version",
+      "openExternalFailed": "[to be translated]:Failed to open external link",
+      "packaged": "[to be translated]:Packaged",
       "releases": {
         "button": "Релизы",
         "title": "Заметки о релизах"
@@ -3935,6 +3948,8 @@
       "updateAvailable": "Найдено новое обновление {{version}}",
       "updateError": "Ошибка обновления",
       "updateNotAvailable": "Вы используете последнюю версию",
+      "updateNotificationMessage": "[to be translated]:Click the notification to open the download page",
+      "updateTo": "[to be translated]:Update to {{version}}",
       "website": {
         "button": "Сайт",
         "title": "Официальный сайт"
@@ -4551,6 +4566,7 @@
     },
     "launch": {
       "onboot": "Автозапуск при включении",
+      "silent_onboot": "[to be translated]:Start Silently on Login",
       "title": "Запуск",
       "totray": "Свернуть в трей при запуске"
     },
@@ -5662,6 +5678,7 @@
       "title": "Настройки перевода"
     },
     "tray": {
+      "keep_background_on_close": "[to be translated]:Keep Running in Background on Close",
       "onclose": "Свернуть в трей при закрытии",
       "show": "Показать значок в трее",
       "title": "Трей"
@@ -5843,6 +5860,8 @@
     }
   },
   "tray": {
+    "check_update": "[to be translated]:Check for Updates",
+    "open_main_window": "[to be translated]:Open Main Window",
     "quit": "Выйти",
     "show_mini_window": "Быстрый помощник",
     "show_window": "Показать окно"

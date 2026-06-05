@@ -16,6 +16,8 @@ export interface Notification<T = any> {
   progress?: number
   /** 附加元数据，T 可定制各种业务字段 */
   meta?: T
+  /** 系统通知插件透传字段，用于点击通知后恢复上下文 */
+  extra?: Record<string, unknown>
   /** 点击或操作回调标识，前端可根据此字段触发路由或函数 */
   actionKey?: string
   /** 声音/声音开关标识，结合用户偏好决定是否播放 */

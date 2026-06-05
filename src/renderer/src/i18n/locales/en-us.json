@@ -3948,6 +3948,7 @@
       "updateAvailable": "Found new version {{version}}",
       "updateError": "Update error",
       "updateNotAvailable": "You are using the latest version",
+      "updateNotificationMessage": "Click the notification to open the download page",
       "updateTo": "Update to {{version}}",
       "website": {
         "button": "Website",
@@ -4492,7 +4493,7 @@
     },
     "general": {
       "auto_check_update": {
-        "title": "Auto Update"
+        "title": "Check for updates on startup"
       },
       "avatar": {
         "builtin": "Builtin avatar",
@@ -5859,6 +5860,8 @@
     }
   },
   "tray": {
+    "check_update": "Check for Updates",
+    "open_main_window": "Open Main Window",
     "quit": "Quit",
     "show_mini_window": "Quick Assistant",
     "show_window": "Show Window"

@@ -2660,6 +2660,9 @@
       "esc_close": "Cerrar ventana",
       "esc_pause": "Pausa"
     },
+    "header": {
+      "default_assistant": "[to be translated]:Default assistant"
+    },
     "input": {
       "placeholder": {
         "empty": "Pregunta a {{model}} para obtener ayuda..."
@@ -3897,6 +3900,7 @@
   },
   "settings": {
     "about": {
+      "appVersion": "[to be translated]:Current Version",
       "careers": {
         "button": "Vista",
         "title": "Carreras"
@@ -3915,6 +3919,7 @@
         "title": "Panel de depuración"
       },
       "description": "Una asistente de IA creada para los creadores",
+      "development": "[to be translated]:Development",
       "downloading": "Descargando actualización...",
       "enterprise": {
         "title": "Empresa"
@@ -3923,7 +3928,15 @@
         "button": "Enviar feedback",
         "title": "Enviar comentarios"
       },
+      "github": {
+        "button": "[to be translated]:GitHub",
+        "title": "[to be translated]:Repository"
+      },
+      "installType": "[to be translated]:Install Type",
       "label": "Acerca de nosotros",
+      "latestVersion": "[to be translated]:Latest Version",
+      "openExternalFailed": "[to be translated]:Failed to open external link",
+      "packaged": "[to be translated]:Packaged",
       "releases": {
         "button": "Ver",
         "title": "Registro de cambios"
@@ -3935,6 +3948,8 @@
       "updateAvailable": "Versión nueva disponible {{version}}",
       "updateError": "Error de actualización",
       "updateNotAvailable": "Tu software ya está actualizado",
+      "updateNotificationMessage": "[to be translated]:Click the notification to open the download page",
+      "updateTo": "[to be translated]:Update to {{version}}",
       "website": {
         "button": "Ver",
         "title": "Sitio web oficial"
@@ -4551,6 +4566,7 @@
     },
     "launch": {
       "onboot": "Iniciar automáticamente al encender",
+      "silent_onboot": "[to be translated]:Start Silently on Login",
       "title": "Inicio",
       "totray": "Minimizar a la bandeja al iniciar"
     },
@@ -5662,6 +5678,7 @@
       "title": "Configuración de traducción"
     },
     "tray": {
+      "keep_background_on_close": "[to be translated]:Keep Running in Background on Close",
       "onclose": "Minimizar a la bandeja al cerrar",
       "show": "Mostrar bandera del sistema",
       "title": "Bandera"
@@ -5843,6 +5860,8 @@
     }
   },
   "tray": {
+    "check_update": "[to be translated]:Check for Updates",
+    "open_main_window": "[to be translated]:Open Main Window",
     "quit": "Salir",
     "show_mini_window": "Asistente rápido",
     "show_window": "Mostrar ventana"

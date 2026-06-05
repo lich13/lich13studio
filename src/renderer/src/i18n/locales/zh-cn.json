@@ -3948,6 +3948,7 @@
       "updateAvailable": "发现新版本 {{version}}",
       "updateError": "更新出错",
       "updateNotAvailable": "你的软件已是最新版本",
+      "updateNotificationMessage": "点击通知打开下载页面",
       "updateTo": "更新到 {{version}}",
       "website": {
         "button": "查看",
@@ -4492,7 +4493,7 @@
     },
     "general": {
       "auto_check_update": {
-        "title": "自动更新"
+        "title": "启动时自动检查更新"
       },
       "avatar": {
         "builtin": "内置头像",
@@ -5859,6 +5860,8 @@
     }
   },
   "tray": {
+    "check_update": "检测更新",
+    "open_main_window": "打开主界面",
     "quit": "退出",
     "show_mini_window": "快捷助手",
     "show_window": "显示窗口"

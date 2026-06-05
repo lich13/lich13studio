@@ -66,5 +66,6 @@ declare global {
         invoke?: (command: string, args?: Record<string, unknown>) => Promise<unknown>
       }
     }
+    __LICH13_TAURI_SHIM__?: boolean
   }
 }

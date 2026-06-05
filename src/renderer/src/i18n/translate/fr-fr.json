@@ -2660,6 +2660,9 @@
       "esc_close": "Fermer la fenêtre",
       "esc_pause": "Pause"
     },
+    "header": {
+      "default_assistant": "[to be translated]:Default assistant"
+    },
     "input": {
       "placeholder": {
         "empty": "Demander à {{model}} pour obtenir de l'aide..."
@@ -3897,6 +3900,7 @@
   },
   "settings": {
     "about": {
+      "appVersion": "[to be translated]:Current Version",
       "careers": {
         "button": "Vue",
         "title": "Carrières"
@@ -3915,6 +3919,7 @@
         "title": "Panneau de débogage"
       },
       "description": "Un assistant IA conçu pour les créateurs",
+      "development": "[to be translated]:Development",
       "downloading": "Téléchargement de la mise à jour en cours...",
       "enterprise": {
         "title": "Entreprise"
@@ -3923,7 +3928,15 @@
         "button": "Faire un retour",
         "title": "Retour d'information"
       },
+      "github": {
+        "button": "[to be translated]:GitHub",
+        "title": "[to be translated]:Repository"
+      },
+      "installType": "[to be translated]:Install Type",
       "label": "À propos de nous",
+      "latestVersion": "[to be translated]:Latest Version",
+      "openExternalFailed": "[to be translated]:Failed to open external link",
+      "packaged": "[to be translated]:Packaged",
       "releases": {
         "button": "Afficher",
         "title": "Journal des mises à jour"
@@ -3935,6 +3948,8 @@
       "updateAvailable": "Nouvelle version disponible {{version}}",
       "updateError": "Erreur lors de la mise à jour",
       "updateNotAvailable": "Votre logiciel est déjà à jour",
+      "updateNotificationMessage": "[to be translated]:Click the notification to open the download page",
+      "updateTo": "[to be translated]:Update to {{version}}",
       "website": {
         "button": "Visiter le site web",
         "title": "Site web officiel"
@@ -4551,6 +4566,7 @@
     },
     "launch": {
       "onboot": "Démarrer automatiquement au démarrage",
+      "silent_onboot": "[to be translated]:Start Silently on Login",
       "title": "Démarrage",
       "totray": "Minimiser dans la barre d'état système au démarrage"
     },
@@ -5662,6 +5678,7 @@
       "title": "Paramètres de traduction"
     },
     "tray": {
+      "keep_background_on_close": "[to be translated]:Keep Running in Background on Close",
       "onclose": "Minimiser dans la barre d'état système lors de la fermeture",
       "show": "Afficher l'icône dans la barre d'état système",
       "title": "Barre d'état système"
@@ -5843,6 +5860,8 @@
     }
   },
   "tray": {
+    "check_update": "[to be translated]:Check for Updates",
+    "open_main_window": "[to be translated]:Open Main Window",
     "quit": "Quitter",
     "show_mini_window": "Assistant Rapide",
     "show_window": "Afficher la fenêtre"

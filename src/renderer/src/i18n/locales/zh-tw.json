@@ -3948,6 +3948,7 @@
       "updateAvailable": "發現新版本 {{version}}",
       "updateError": "更新錯誤",
       "updateNotAvailable": "您正在使用最新版本",
+      "updateNotificationMessage": "點選通知開啟下載頁面",
       "updateTo": "更新到 {{version}}",
       "website": {
         "button": "網站",
@@ -4492,7 +4493,7 @@
     },
     "general": {
       "auto_check_update": {
-        "title": "自動更新"
+        "title": "啟動時自動檢查更新"
       },
       "avatar": {
         "builtin": "內建頭像",
@@ -5859,6 +5860,8 @@
     }
   },
   "tray": {
+    "check_update": "檢查更新",
+    "open_main_window": "開啟主介面",
     "quit": "結束",
     "show_mini_window": "快捷助手",
     "show_window": "顯示視窗"

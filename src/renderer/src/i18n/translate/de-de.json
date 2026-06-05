@@ -2660,6 +2660,9 @@
       "esc_close": "Schließen",
       "esc_pause": "Pausieren"
     },
+    "header": {
+      "default_assistant": "[to be translated]:Default assistant"
+    },
     "input": {
       "placeholder": {
         "empty": "{{model}} um Hilfe fragen..."
@@ -3897,6 +3900,7 @@
   },
   "settings": {
     "about": {
+      "appVersion": "[to be translated]:Current Version",
       "careers": {
         "button": "Ansicht",
         "title": "Karriere"
@@ -3915,6 +3919,7 @@
         "title": "Debug-Panel"
       },
       "description": "Ein KI-Assistent für Kreative",
+      "development": "[to be translated]:Development",
       "downloading": "Update wird heruntergeladen...",
       "enterprise": {
         "title": "Unternehmen"
@@ -3923,7 +3928,15 @@
         "button": "Feedback",
         "title": "Feedback"
       },
+      "github": {
+        "button": "[to be translated]:GitHub",
+        "title": "[to be translated]:Repository"
+      },
+      "installType": "[to be translated]:Install Type",
       "label": "Über uns",
+      "latestVersion": "[to be translated]:Latest Version",
+      "openExternalFailed": "[to be translated]:Failed to open external link",
+      "packaged": "[to be translated]:Packaged",
       "releases": {
         "button": "Anzeigen",
         "title": "Changelog"
@@ -3935,6 +3948,8 @@
       "updateAvailable": "Neue Version {{version}} gefunden",
       "updateError": "Aktualisierungsfehler",
       "updateNotAvailable": "Ihre Software ist bereits auf dem neuesten Stand",
+      "updateNotificationMessage": "[to be translated]:Click the notification to open the download page",
+      "updateTo": "[to be translated]:Update to {{version}}",
       "website": {
         "button": "Anzeigen",
         "title": "Offizielle Website"
@@ -4551,6 +4566,7 @@
     },
     "launch": {
       "onboot": "Beim Systemstart automatisch starten",
+      "silent_onboot": "[to be translated]:Start Silently on Login",
       "title": "Starten",
       "totray": "Beim Start ins Tray minimieren"
     },
@@ -5662,6 +5678,7 @@
       "title": "Übersetzungseinstellungen"
     },
     "tray": {
+      "keep_background_on_close": "[to be translated]:Keep Running in Background on Close",
       "onclose": "Bei Schließen ins Tray minimieren",
       "show": "Tray-Symbol anzeigen",
       "title": "Tray"
@@ -5843,6 +5860,8 @@
     }
   },
   "tray": {
+    "check_update": "[to be translated]:Check for Updates",
+    "open_main_window": "[to be translated]:Open Main Window",
     "quit": "Beenden",
     "show_mini_window": "Schnellassistent",
     "show_window": "Fenster anzeigen"

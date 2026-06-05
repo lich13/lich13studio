@@ -30,7 +30,9 @@ const GeneralSettings: FC = () => {
     proxyUrl: storeProxyUrl,
     proxyBypassRules: storeProxyBypassRules,
     setLaunch,
+    setAutoCheckUpdate,
     setTray,
+    autoCheckUpdate,
     launchOnBoot,
     launchToTray,
     notification,
@@ -63,6 +65,10 @@ const GeneralSettings: FC = () => {
 
   const updateTrayOnClose = (isTrayOnClose: boolean) => {
     setTray(isTrayOnClose ? true : undefined, isTrayOnClose)
+  }
+
+  const updateAutoCheckUpdate = (isAutoCheckUpdate: boolean) => {
+    setAutoCheckUpdate(isAutoCheckUpdate)
   }
 
   const onSetProxyUrl = () => {
@@ -192,6 +198,11 @@ const GeneralSettings: FC = () => {
         <SettingRow>
           <SettingRowTitle>{t('settings.launch.silent_onboot')}</SettingRowTitle>
           <Switch checked={launchToTray} onChange={updateLaunchToTray} />
+        </SettingRow>
+        <SettingDivider />
+        <SettingRow>
+          <SettingRowTitle>{t('settings.general.auto_check_update.title')}</SettingRowTitle>
+          <Switch checked={autoCheckUpdate} onChange={updateAutoCheckUpdate} />
         </SettingRow>
       </SettingGroup>
       <SettingGroup theme={theme}>

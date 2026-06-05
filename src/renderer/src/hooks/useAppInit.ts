@@ -4,6 +4,7 @@ import { isLocalAi } from '@renderer/config/env'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import db from '@renderer/databases'
 import i18n, { setDayjsLocale } from '@renderer/i18n'
+import { notifyLatestReleaseIfAvailable } from '@renderer/services/appUpdateNotification'
 import { handleSaveData, useAppDispatch } from '@renderer/store'
 import { setAvatar, setFilesPath, setResourcesPath, setUpdateState } from '@renderer/store/runtime'
 import {
@@ -71,7 +72,7 @@ export function useAppInit() {
     const checkForUpdates = async () => {
       const { isPackaged } = await window.api.getAppInfo()
 
-      if (!isPackaged || !autoCheckUpdate) {
+      if (!isPackaged || !autoCheckUpdate || window.__LICH13_TAURI_SHIM__) {
         return
       }
 
@@ -94,6 +95,24 @@ export function useAppInit() {
 
     return () => clearInterval(intervalId)
   }, [dispatch, autoCheckUpdate])
+
+  useEffect(() => {
+    if (!autoCheckUpdate || !window.__LICH13_TAURI_SHIM__) {
+      return
+    }
+
+    const timer = window.setTimeout(() => {
+      void runAsyncFunction(async () => {
+        const appInfo = await window.api.getAppInfo()
+        if (!appInfo.isPackaged) {
+          return
+        }
+        await notifyLatestReleaseIfAvailable(appInfo.version, appInfo.platform)
+      })
+    }, 2000)
+
+    return () => window.clearTimeout(timer)
+  }, [autoCheckUpdate])
 
   useEffect(() => {
     if (proxyMode === 'system') {
