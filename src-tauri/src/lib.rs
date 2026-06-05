@@ -1,3 +1,5 @@
+#[cfg(not(target_os = "macos"))]
+use auto_launch::{AutoLaunch, AutoLaunchBuilder};
 use base64::{engine::general_purpose, Engine as _};
 use futures_util::StreamExt;
 use image::codecs::png::PngEncoder;
@@ -55,6 +57,12 @@ const MINI_WINDOW_WIDTH: u32 = 420;
 const MINI_WINDOW_HEIGHT: u32 = 620;
 const GITHUB_LATEST_RELEASE_API_URL: &str = "https://api.github.com/repos/lich13/lich13studio/releases/latest";
 const GITHUB_RELEASES_URL: &str = "https://github.com/lich13/lich13studio/releases";
+const LOGIN_STARTUP_ARG: &str = "--lich13studio-login-startup";
+const RUNTIME_SETTINGS_KEY: &str = "runtimeSettings";
+const SETTING_LAUNCH_TO_TRAY: &str = "launchToTray";
+const SETTING_TRAY: &str = "tray";
+const SETTING_TRAY_ON_CLOSE: &str = "trayOnClose";
+const MACOS_LAUNCH_AGENT_LABEL: &str = "com.lich13.studio";
 const TRAY_SHOW_MENU_ID: &str = "show";
 const TRAY_CHECK_UPDATE_MENU_ID: &str = "check_update";
 const TRAY_QUIT_MENU_ID: &str = "quit";
@@ -295,12 +303,45 @@ struct PersistedWindowState {
   fullscreen: bool,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(default, rename_all = "camelCase")]
+struct RuntimeSettings {
+  launch_to_tray: bool,
+  tray: bool,
+  tray_on_close: bool,
+}
+
+impl Default for RuntimeSettings {
+  fn default() -> Self {
+    Self {
+      launch_to_tray: false,
+      tray: true,
+      tray_on_close: true,
+    }
+  }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum MainWindowCloseAction {
+  KeepBackground,
+  Quit,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum DockVisibility {
+  Visible,
+  Hidden,
+}
+
 const NATIVE_HTTP_CHUNK_EVENT: &str = "native_http_chunk";
 const FOCUS_CHAT_INPUT_EVENT: &str = "focus_chat_input";
 
 static HTTP_REQUEST_ABORTS: OnceLock<Mutex<HashMap<String, Arc<AtomicBool>>>> = OnceLock::new();
 static MAIN_WINDOW_SHOWN: AtomicBool = AtomicBool::new(false);
 static MINI_WINDOW_PINNED: AtomicBool = AtomicBool::new(false);
+static STARTED_SILENTLY: AtomicBool = AtomicBool::new(false);
+static RUNTIME_SETTINGS: OnceLock<Mutex<RuntimeSettings>> = OnceLock::new();
+static AUTO_LAUNCH_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 
 #[cfg(target_os = "windows")]
 fn hidden_std_command<S: AsRef<OsStr>>(program: S) -> StdCommand {
@@ -330,8 +371,345 @@ fn native_http_abort_registry() -> &'static Mutex<HashMap<String, Arc<AtomicBool
   HTTP_REQUEST_ABORTS.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
+fn runtime_settings_lock() -> &'static Mutex<RuntimeSettings> {
+  RUNTIME_SETTINGS.get_or_init(|| Mutex::new(RuntimeSettings::default()))
+}
+
+fn current_runtime_settings() -> RuntimeSettings {
+  runtime_settings_lock()
+    .lock()
+    .map(|settings| *settings)
+    .unwrap_or_default()
+}
+
+fn replace_runtime_settings(settings: RuntimeSettings) {
+  if let Ok(mut current) = runtime_settings_lock().lock() {
+    *current = settings;
+  }
+}
+
+fn load_runtime_settings_from_state() -> Result<RuntimeSettings, String> {
+  let state = load_state_file()?;
+  state
+    .get(RUNTIME_SETTINGS_KEY)
+    .cloned()
+    .map(serde_json::from_value)
+    .transpose()
+    .map_err(|error| error.to_string())
+    .map(|settings| settings.unwrap_or_default())
+}
+
+fn save_runtime_settings_to_state(settings: RuntimeSettings) -> Result<(), String> {
+  let mut state = load_state_file().unwrap_or_else(|_| json!({}));
+
+  if !state.is_object() {
+    state = json!({});
+  }
+
+  let root = state
+    .as_object_mut()
+    .ok_or_else(|| String::from("Invalid state payload: root must be an object"))?;
+
+  root.insert(
+    RUNTIME_SETTINGS_KEY.to_string(),
+    serde_json::to_value(settings).map_err(|error| error.to_string())?,
+  );
+  save_state_file(&state)?;
+  Ok(())
+}
+
+fn apply_runtime_setting(settings: &mut RuntimeSettings, key: &str, value: bool) -> Result<(), String> {
+  match key {
+    SETTING_LAUNCH_TO_TRAY => {
+      settings.launch_to_tray = value;
+      if value {
+        settings.tray = true;
+      }
+    }
+    SETTING_TRAY => {
+      settings.tray = value;
+    }
+    SETTING_TRAY_ON_CLOSE => {
+      settings.tray_on_close = value;
+      if value {
+        settings.tray = true;
+      }
+    }
+    _ => return Err(format!("Unsupported runtime setting: {key}")),
+  }
+
+  Ok(())
+}
+
+fn main_window_close_action(settings: RuntimeSettings) -> MainWindowCloseAction {
+  if settings.tray && settings.tray_on_close {
+    MainWindowCloseAction::KeepBackground
+  } else {
+    MainWindowCloseAction::Quit
+  }
+}
+
+fn has_login_startup_arg(args: &[String]) -> bool {
+  args.iter().any(|arg| arg == LOGIN_STARTUP_ARG)
+}
+
+fn should_start_silently_from_args(args: &[String], settings: RuntimeSettings) -> bool {
+  settings.launch_to_tray && has_login_startup_arg(args)
+}
+
+fn dock_visibility_for_main_window_show() -> DockVisibility {
+  DockVisibility::Visible
+}
+
+fn dock_visibility_for_background_keepalive() -> DockVisibility {
+  DockVisibility::Hidden
+}
+
+fn apply_dock_visibility(_app: &AppHandle, _visibility: DockVisibility) {
+  #[cfg(target_os = "macos")]
+  {
+    use tauri::ActivationPolicy;
+
+    let (dock_visible, activation_policy) = match _visibility {
+      DockVisibility::Visible => (true, ActivationPolicy::Regular),
+      DockVisibility::Hidden => (false, ActivationPolicy::Accessory),
+    };
+
+    let _ = _app.set_dock_visibility(dock_visible);
+    let _ = _app.set_activation_policy(activation_policy);
+  }
+}
+
+#[cfg(any(target_os = "macos", test))]
+fn macos_app_bundle_path(executable_path: &Path) -> Option<PathBuf> {
+  let path = executable_path.to_string_lossy();
+  path
+    .find(".app/Contents/MacOS/")
+    .map(|index| PathBuf::from(&path[..index + ".app".len()]))
+}
+
+fn current_auto_launch_path() -> Result<PathBuf, String> {
+  let executable_path =
+    std::env::current_exe().map_err(|error| format!("Unable to resolve current exe: {error}"))?;
+
+  #[cfg(target_os = "macos")]
+  {
+    Ok(macos_app_bundle_path(&executable_path).unwrap_or(executable_path))
+  }
+
+  #[cfg(not(target_os = "macos"))]
+  {
+    Ok(executable_path)
+  }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn app_name_for_auto_launch(app_path: &Path) -> String {
+  app_path
+    .file_stem()
+    .and_then(|name| name.to_str())
+    .filter(|name| !name.trim().is_empty())
+    .unwrap_or(APP_NAME)
+    .to_string()
+}
+
+fn with_auto_launch_lock<T>(operation: impl FnOnce() -> Result<T, String>) -> Result<T, String> {
+  let _guard = AUTO_LAUNCH_LOCK
+    .get_or_init(|| Mutex::new(()))
+    .lock()
+    .map_err(|_| String::from("auto-launch lock poisoned"))?;
+  operation()
+}
+
+#[cfg(any(target_os = "macos", test))]
+fn macos_launch_agent_file() -> Result<PathBuf, String> {
+  dirs::home_dir()
+    .ok_or_else(|| String::from("Unable to resolve home directory"))
+    .map(|home| {
+      home
+        .join("Library")
+        .join("LaunchAgents")
+        .join(format!("{MACOS_LAUNCH_AGENT_LABEL}.plist"))
+    })
+}
+
+#[cfg(any(target_os = "macos", test))]
+fn macos_launch_agent_program_arguments(app_path: &Path) -> Vec<String> {
+  if app_path.extension().and_then(|extension| extension.to_str()) == Some("app") {
+    return vec![
+      "/usr/bin/open".to_string(),
+      "-g".to_string(),
+      app_path.to_string_lossy().to_string(),
+      "--args".to_string(),
+      LOGIN_STARTUP_ARG.to_string(),
+    ];
+  }
+
+  vec![app_path.to_string_lossy().to_string(), LOGIN_STARTUP_ARG.to_string()]
+}
+
+#[cfg(any(target_os = "macos", test))]
+fn plist_escape(value: &str) -> String {
+  value
+    .replace('&', "&amp;")
+    .replace('<', "&lt;")
+    .replace('>', "&gt;")
+    .replace('"', "&quot;")
+    .replace('\'', "&apos;")
+}
+
+#[cfg(any(target_os = "macos", test))]
+fn macos_launch_agent_plist(app_path: &Path) -> String {
+  let args = macos_launch_agent_program_arguments(app_path)
+    .into_iter()
+    .map(|arg| format!("        <string>{}</string>", plist_escape(&arg)))
+    .collect::<Vec<_>>()
+    .join("\n");
+
+  format!(
+    r#"<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>{}</string>
+    <key>ProgramArguments</key>
+    <array>
+{}
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+</dict>
+</plist>
+"#,
+    plist_escape(MACOS_LAUNCH_AGENT_LABEL),
+    args
+  )
+}
+
+#[cfg(target_os = "macos")]
+fn macos_launch_agent_matches_app(app_path: &Path) -> Result<bool, String> {
+  let file = macos_launch_agent_file()?;
+  let expected = macos_launch_agent_plist(app_path);
+
+  match fs::read_to_string(&file) {
+    Ok(existing) => Ok(existing == expected),
+    Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(false),
+    Err(error) => Err(format!("Failed to read macOS LaunchAgent {}: {error}", file.display())),
+  }
+}
+
+#[cfg(target_os = "macos")]
+fn ensure_macos_launch_agent_for_app(app_path: &Path) -> Result<(), String> {
+  if macos_launch_agent_matches_app(app_path)? {
+    return Ok(());
+  }
+
+  let file = macos_launch_agent_file()?;
+  let dir = file
+    .parent()
+    .ok_or_else(|| format!("Invalid LaunchAgent path: {}", file.display()))?;
+  fs::create_dir_all(dir).map_err(|error| format!("Failed to create LaunchAgent directory: {error}"))?;
+
+  let temp_file = file.with_extension("plist.tmp");
+  fs::write(&temp_file, macos_launch_agent_plist(app_path))
+    .map_err(|error| format!("Failed to write LaunchAgent {}: {error}", temp_file.display()))?;
+
+  #[cfg(unix)]
+  {
+    use std::os::unix::fs::PermissionsExt;
+    fs::set_permissions(&temp_file, fs::Permissions::from_mode(0o644))
+      .map_err(|error| format!("Failed to chmod LaunchAgent {}: {error}", temp_file.display()))?;
+  }
+
+  fs::rename(&temp_file, &file).map_err(|error| {
+    let _ = fs::remove_file(&temp_file);
+    format!(
+      "Failed to replace LaunchAgent {} -> {}: {error}",
+      temp_file.display(),
+      file.display()
+    )
+  })?;
+  Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn remove_macos_launch_agent() -> Result<(), String> {
+  let file = macos_launch_agent_file()?;
+  match fs::remove_file(&file) {
+    Ok(()) => Ok(()),
+    Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+    Err(error) => Err(format!("Failed to remove LaunchAgent {}: {error}", file.display())),
+  }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn build_auto_launch(app_path: &Path) -> Result<AutoLaunch, String> {
+  AutoLaunchBuilder::new()
+    .set_app_name(&app_name_for_auto_launch(app_path))
+    .set_app_path(&app_path.to_string_lossy())
+    .build()
+    .map_err(|error| format!("Failed to create auto-launch config: {error}"))
+}
+
+fn enable_auto_launch() -> Result<(), String> {
+  with_auto_launch_lock(|| {
+    let app_path = current_auto_launch_path()?;
+
+    #[cfg(target_os = "macos")]
+    {
+      ensure_macos_launch_agent_for_app(&app_path)
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+      build_auto_launch(&app_path)?
+        .enable()
+        .map_err(|error| format!("Failed to enable auto launch: {error}"))
+    }
+  })
+}
+
+fn disable_auto_launch() -> Result<(), String> {
+  with_auto_launch_lock(|| {
+    let app_path = current_auto_launch_path()?;
+
+    #[cfg(target_os = "macos")]
+    {
+      let _ = app_path;
+      remove_macos_launch_agent()
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+      build_auto_launch(&app_path)?
+        .disable()
+        .map_err(|error| format!("Failed to disable auto launch: {error}"))
+    }
+  })
+}
+
+fn is_auto_launch_enabled() -> Result<bool, String> {
+  with_auto_launch_lock(|| {
+    let app_path = current_auto_launch_path()?;
+
+    #[cfg(target_os = "macos")]
+    {
+      macos_launch_agent_matches_app(&app_path)
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+      build_auto_launch(&app_path)?
+        .is_enabled()
+        .map_err(|error| format!("Failed to check auto launch: {error}"))
+    }
+  })
+}
+
 fn mark_main_window_shown(window: &WebviewWindow) -> Result<(), String> {
   if !MAIN_WINDOW_SHOWN.swap(true, Ordering::SeqCst) {
+    apply_dock_visibility(window.app_handle(), dock_visibility_for_main_window_show());
     window.show().map_err(|error| error.to_string())?;
     let _ = window.set_focus();
   }
@@ -345,6 +723,7 @@ fn show_and_focus_main_window(app: &AppHandle) -> Result<(), String> {
     .ok_or_else(|| String::from("Main window not found"))?;
 
   MAIN_WINDOW_SHOWN.store(true, Ordering::SeqCst);
+  apply_dock_visibility(app, dock_visibility_for_main_window_show());
   main_window.show().map_err(|error| error.to_string())?;
   let _ = main_window.unminimize();
   let _ = main_window.set_focus();
@@ -660,7 +1039,16 @@ fn handle_main_window_close(_window: &Window, _event: &WindowEvent) {
 
       api.prevent_close();
       let _ = persist_window_state(_window);
-      let _ = _window.hide();
+      match main_window_close_action(current_runtime_settings()) {
+        MainWindowCloseAction::KeepBackground => {
+          let _ = _window.hide();
+          apply_dock_visibility(_window.app_handle(), dock_visibility_for_background_keepalive());
+        }
+        MainWindowCloseAction::Quit => {
+          APP_EXITING.store(true, Ordering::Relaxed);
+          _window.app_handle().exit(0);
+        }
+      }
     }
   }
 }
@@ -686,10 +1074,7 @@ fn handle_run_event(_app: &AppHandle, _event: &RunEvent) {
       has_visible_windows, ..
     } => {
       if !has_visible_windows {
-        if let Some(main_window) = _app.get_webview_window("main") {
-          let _ = main_window.show();
-          let _ = main_window.set_focus();
-        }
+        let _ = show_and_focus_main_window(_app);
       }
     }
     _ => {}
@@ -2152,6 +2537,36 @@ fn save_state(state: Value) -> Result<String, String> {
 }
 
 #[tauri::command]
+fn set_runtime_setting(key: String, value: bool) -> Result<RuntimeSettings, String> {
+  let mut settings = current_runtime_settings();
+  apply_runtime_setting(&mut settings, &key, value)?;
+  save_runtime_settings_to_state(settings)?;
+  replace_runtime_settings(settings);
+  Ok(settings)
+}
+
+#[tauri::command]
+fn set_launch_on_boot(enabled: bool) -> Result<bool, String> {
+  if enabled {
+    enable_auto_launch()?;
+  } else {
+    disable_auto_launch()?;
+  }
+
+  Ok(enabled)
+}
+
+#[tauri::command]
+fn is_launch_on_boot_enabled() -> Result<bool, String> {
+  is_auto_launch_enabled()
+}
+
+#[tauri::command]
+fn is_startup_silent() -> bool {
+  STARTED_SILENTLY.load(Ordering::SeqCst)
+}
+
+#[tauri::command]
 fn export_backup(state: Value) -> Result<String, String> {
   let path = downloads_dir()?.join(format!("lich13studio-backup-{}.zip", timestamp_tag()));
   let payload = create_backup_archive_bytes(&state, true)?;
@@ -2562,14 +2977,24 @@ pub fn run() {
   tauri::Builder::default()
     .plugin(tauri_plugin_notification::init())
     .setup(|app| {
-      MAIN_WINDOW_SHOWN.store(false, Ordering::SeqCst);
+      let runtime_settings = load_runtime_settings_from_state().unwrap_or_default();
+      replace_runtime_settings(runtime_settings);
+      let launch_args = std::env::args().collect::<Vec<_>>();
+      let start_silently = should_start_silently_from_args(&launch_args, runtime_settings);
+      STARTED_SILENTLY.store(start_silently, Ordering::SeqCst);
+      MAIN_WINDOW_SHOWN.store(start_silently, Ordering::SeqCst);
 
       if let Some(main_window) = app.get_webview_window("main") {
-        let fallback_window = main_window.clone();
-        tauri::async_runtime::spawn(async move {
-          tokio::time::sleep(Duration::from_secs(3)).await;
-          let _ = mark_main_window_shown(&fallback_window);
-        });
+        if start_silently {
+          let _ = main_window.hide();
+          apply_dock_visibility(app.handle(), dock_visibility_for_background_keepalive());
+        } else {
+          let fallback_window = main_window.clone();
+          tauri::async_runtime::spawn(async move {
+            tokio::time::sleep(Duration::from_secs(3)).await;
+            let _ = mark_main_window_shown(&fallback_window);
+          });
+        }
 
         if let Some(state) = load_window_state(main_window.label())? {
           if let (Some(width), Some(height)) = (state.width, state.height) {
@@ -2605,6 +3030,10 @@ pub fn run() {
       get_hostname,
       load_state,
       save_state,
+      set_runtime_setting,
+      set_launch_on_boot,
+      is_launch_on_boot_enabled,
+      is_startup_silent,
       export_backup,
       save_file,
       save_base64_image,
@@ -2728,5 +3157,119 @@ mod tests {
   #[test]
   fn update_tray_menu_item_ids_are_stable() {
     assert_eq!(tray_menu_item_ids(), ["show", "check_update", "quit"]);
+  }
+
+  #[test]
+  fn startup_detects_only_login_arg_with_silent_setting() {
+    assert!(should_start_silently_from_args(
+      &[LOGIN_STARTUP_ARG.to_string()],
+      RuntimeSettings {
+        launch_to_tray: true,
+        ..RuntimeSettings::default()
+      }
+    ));
+    assert!(!should_start_silently_from_args(
+      &[LOGIN_STARTUP_ARG.to_string()],
+      RuntimeSettings {
+        launch_to_tray: false,
+        ..RuntimeSettings::default()
+      }
+    ));
+    assert!(!should_start_silently_from_args(
+      &["--lich13studio-login-startup=1".to_string()],
+      RuntimeSettings {
+        launch_to_tray: true,
+        ..RuntimeSettings::default()
+      }
+    ));
+  }
+
+  #[test]
+  fn startup_silent_command_reflects_recorded_launch_mode() {
+    STARTED_SILENTLY.store(false, Ordering::SeqCst);
+    assert!(!is_startup_silent());
+
+    STARTED_SILENTLY.store(true, Ordering::SeqCst);
+    assert!(is_startup_silent());
+    STARTED_SILENTLY.store(false, Ordering::SeqCst);
+  }
+
+  #[test]
+  fn close_action_requires_tray_and_tray_on_close() {
+    assert_eq!(
+      main_window_close_action(RuntimeSettings {
+        tray: true,
+        tray_on_close: true,
+        ..RuntimeSettings::default()
+      }),
+      MainWindowCloseAction::KeepBackground
+    );
+    assert_eq!(
+      main_window_close_action(RuntimeSettings {
+        tray: false,
+        tray_on_close: true,
+        ..RuntimeSettings::default()
+      }),
+      MainWindowCloseAction::Quit
+    );
+    assert_eq!(
+      main_window_close_action(RuntimeSettings {
+        tray: true,
+        tray_on_close: false,
+        ..RuntimeSettings::default()
+      }),
+      MainWindowCloseAction::Quit
+    );
+  }
+
+  #[test]
+  fn runtime_settings_update_forces_tray_when_background_modes_need_it() {
+    let mut settings = RuntimeSettings::default();
+    apply_runtime_setting(&mut settings, SETTING_TRAY, false).unwrap();
+    assert!(!settings.tray);
+
+    apply_runtime_setting(&mut settings, SETTING_TRAY_ON_CLOSE, true).unwrap();
+    assert!(settings.tray);
+    assert!(settings.tray_on_close);
+
+    apply_runtime_setting(&mut settings, SETTING_TRAY, false).unwrap();
+    apply_runtime_setting(&mut settings, SETTING_LAUNCH_TO_TRAY, true).unwrap();
+    assert!(settings.tray);
+    assert!(settings.launch_to_tray);
+  }
+
+  #[test]
+  fn macos_launch_agent_program_arguments_use_hidden_open_with_startup_arg() {
+    let args = macos_launch_agent_program_arguments(Path::new("/Applications/lich13studio.app"));
+
+    assert_eq!(
+      args,
+      vec![
+        "/usr/bin/open".to_string(),
+        "-g".to_string(),
+        "/Applications/lich13studio.app".to_string(),
+        "--args".to_string(),
+        LOGIN_STARTUP_ARG.to_string()
+      ]
+    );
+  }
+
+  #[test]
+  fn macos_launch_agent_plist_contains_stable_label_and_bundle_path() {
+    let plist = macos_launch_agent_plist(Path::new("/Applications/lich13studio.app"));
+
+    assert!(plist.contains("<string>com.lich13.studio</string>"));
+    assert!(plist.contains("<string>/Applications/lich13studio.app</string>"));
+    assert!(plist.contains(&format!("<string>{LOGIN_STARTUP_ARG}</string>")));
+    assert!(plist.contains("<key>RunAtLoad</key>"));
+  }
+
+  #[test]
+  fn dock_visibility_for_window_actions_matches_background_state() {
+    assert_eq!(dock_visibility_for_main_window_show(), DockVisibility::Visible);
+    assert_eq!(
+      dock_visibility_for_background_keepalive(),
+      DockVisibility::Hidden
+    );
   }
 }

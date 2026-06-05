@@ -2,6 +2,8 @@ import AppLogo from '@renderer/assets/images/logo.png'
 import type { CSSProperties, FC } from 'react'
 import { useEffect } from 'react'
 
+import { shouldShowStartupWindow } from './startupWindow'
+
 const getContainerStyle = (): CSSProperties => ({
   alignItems: 'center',
   backgroundColor:
@@ -26,9 +28,13 @@ const logoStyle: CSSProperties = {
 const StartupScreen: FC = () => {
   useEffect(() => {
     document.getElementById('spinner')?.remove()
-    void (
-      window as { __TAURI__?: { core?: { invoke?: (command: string) => Promise<unknown> } } }
-    ).__TAURI__?.core?.invoke?.('show_main_window')
+    void shouldShowStartupWindow().then((shouldShow) => {
+      if (shouldShow) {
+        void (
+          window as { __TAURI__?: { core?: { invoke?: (command: string) => Promise<unknown> } } }
+        ).__TAURI__?.core?.invoke?.('show_main_window')
+      }
+    })
   }, [])
 
   return (

@@ -1,5 +1,11 @@
 type MainProcessSettingUpdate = [key: string, value: boolean]
 
+const MAIN_PROCESS_SETTING_KEYS = new Set(['launchToTray', 'tray', 'trayOnClose'])
+
+export function isMainProcessSettingKey(key: string): boolean {
+  return MAIN_PROCESS_SETTING_KEYS.has(key)
+}
+
 export function getMainProcessSettingUpdates(updates: {
   launchToTray?: boolean
   tray?: boolean

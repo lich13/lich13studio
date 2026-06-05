@@ -1,4 +1,5 @@
 import { loggerService } from '@logger'
+import { isMainProcessSettingKey } from '@renderer/hooks/settingsSync'
 import {
   isPermissionGranted as isNotificationPermissionGranted,
   onAction as onNotificationAction,
@@ -797,7 +798,12 @@ const api = {
   setLanguage: async (lang: string) => {
     localStorage.setItem('tauri:language', lang)
   },
-  setLaunchOnBoot: noOpAsync,
+  setLaunchOnBoot: async (enabled: boolean) => {
+    if (invoke) {
+      return invoke('set_launch_on_boot', { enabled })
+    }
+    return undefined
+  },
   setTestPlan: noOpAsync,
   setTestChannel: noOpAsync,
   setTheme: async (theme: string) => {
@@ -1047,6 +1053,9 @@ const api = {
   config: {
     set: async (key: string, value: any) => {
       localStorage.setItem(`config:${key}`, JSON.stringify(value))
+      if (invoke && typeof value === 'boolean' && isMainProcessSettingKey(key)) {
+        await invoke('set_runtime_setting', { key, value })
+      }
     },
     get: async (key: string) => {
       const raw = localStorage.getItem(`config:${key}`)

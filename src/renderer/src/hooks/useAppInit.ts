@@ -30,8 +30,19 @@ const logger = loggerService.withContext('useAppInit')
 export function useAppInit() {
   const { t } = useTranslation()
   const dispatch = useAppDispatch()
-  const { proxyUrl, proxyBypassRules, language, windowStyle, autoCheckUpdate, proxyMode, enableDataCollection } =
-    useSettings()
+  const {
+    proxyUrl,
+    proxyBypassRules,
+    language,
+    windowStyle,
+    autoCheckUpdate,
+    proxyMode,
+    enableDataCollection,
+    launchOnBoot,
+    launchToTray,
+    tray,
+    trayOnClose
+  } = useSettings()
   const { isLeftNavbar } = useNavbarPosition()
   const { minappShow } = useRuntime()
   const { setDefaultModel, setQuickModel, setTranslateModel } = useDefaultModel()
@@ -63,6 +74,21 @@ export function useAppInit() {
 
   useUpdateHandler()
   useFullScreenNotice()
+
+  useEffect(() => {
+    if (!window.__LICH13_TAURI_SHIM__) {
+      return
+    }
+
+    void runAsyncFunction(async () => {
+      await window.api.setLaunchOnBoot(launchOnBoot)
+      await window.api.config.set('launchToTray', launchToTray, true)
+      await window.api.config.set('tray', tray, true)
+      await window.api.config.set('trayOnClose', trayOnClose, true)
+    }).catch((error) => {
+      logger.warn('Failed to sync Tauri background settings', error as Error)
+    })
+  }, [launchOnBoot, launchToTray, tray, trayOnClose])
 
   useEffect(() => {
     avatar?.value && dispatch(setAvatar(avatar.value))
