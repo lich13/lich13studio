@@ -11,6 +11,13 @@ interface LinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement> {
   node?: Omit<Node, 'type'>
 }
 
+export const openMarkdownLinkExternally = (href: string | undefined, event: React.MouseEvent<HTMLAnchorElement>) => {
+  if (!href || href.startsWith('#')) return
+  event.preventDefault()
+  event.stopPropagation()
+  window.api.shell.openExternal(href).catch(() => undefined)
+}
+
 const Link: React.FC<LinkProps> = (props) => {
   const citationData = useMemo(() => {
     const raw = parseJSON(findCitationInChildren(props.children))
@@ -40,7 +47,7 @@ const Link: React.FC<LinkProps> = (props) => {
           href={isEmpty(props.href) ? undefined : props.href}
           target="_blank"
           rel="noreferrer"
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e) => openMarkdownLinkExternally(props.href, e)}
         />
       </CitationTooltip>
     )
@@ -53,7 +60,7 @@ const Link: React.FC<LinkProps> = (props) => {
         {...omit(props, ['node', 'citationData'])}
         target="_blank"
         rel="noreferrer"
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) => openMarkdownLinkExternally(props.href, e)}
       />
     </Hyperlink>
   )

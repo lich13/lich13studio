@@ -34,6 +34,7 @@ import Link from './Link'
 import MarkdownSvgRenderer from './MarkdownSvgRenderer'
 import rehypeHeadingIds from './plugins/rehypeHeadingIds'
 import rehypeScalableSvg from './plugins/rehypeScalableSvg'
+import remarkCjkAutolinkLiteral from './plugins/remarkCjkAutolinkLiteral'
 import remarkDisableConstructs from './plugins/remarkDisableConstructs'
 import Table from './Table'
 
@@ -99,6 +100,7 @@ const Markdown: FC<Props> = ({ block, postProcess }) => {
       [remarkGfm, { singleTilde: false }] as Pluggable,
       [remarkAlert] as Pluggable,
       remarkCjkFriendly,
+      remarkCjkAutolinkLiteral,
       remarkDisableConstructs(['codeIndented'])
     ]
     if (mathEngine !== 'none') {
