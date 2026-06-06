@@ -56,6 +56,7 @@ const MINI_WINDOW_WIDTH: u32 = 420;
 const MINI_WINDOW_HEIGHT: u32 = 620;
 const GITHUB_LATEST_RELEASE_API_URL: &str = "https://api.github.com/repos/lich13/lich13studio/releases/latest";
 const GITHUB_RELEASES_URL: &str = "https://github.com/lich13/lich13studio/releases";
+#[cfg(any(not(target_os = "macos"), test))]
 const LOGIN_STARTUP_ARG: &str = "--lich13studio-login-startup";
 #[cfg(any(target_os = "macos", test))]
 const MACOS_LOGIN_ITEM_ARG: &str = "--hidden";
@@ -333,6 +334,14 @@ enum DockVisibility {
   Hidden,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum StartupSource {
+  Normal,
+  #[cfg(any(not(target_os = "macos"), test))]
+  LoginStartupArg,
+  MacOSHiddenLoginItem,
+}
+
 #[cfg(any(target_os = "macos", test))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct MacOSLoginItemConfig {
@@ -467,17 +476,50 @@ fn main_window_close_action(settings: RuntimeSettings) -> MainWindowCloseAction 
   }
 }
 
+fn should_prevent_implicit_exit(exit_code_present: bool, app_exiting: bool, settings: RuntimeSettings) -> bool {
+  !exit_code_present && !app_exiting && matches!(main_window_close_action(settings), MainWindowCloseAction::KeepBackground)
+}
+
+#[cfg(any(not(target_os = "macos"), test))]
 fn has_login_startup_arg(args: &[String]) -> bool {
   args.iter().any(|arg| arg == LOGIN_STARTUP_ARG)
 }
 
+fn should_start_silently_for_source(source: StartupSource, settings: RuntimeSettings) -> bool {
+  if !settings.launch_to_tray {
+    return false;
+  }
+
+  match source {
+    #[cfg(any(not(target_os = "macos"), test))]
+    StartupSource::LoginStartupArg => true,
+    StartupSource::MacOSHiddenLoginItem => true,
+    StartupSource::Normal => false,
+  }
+}
+
+#[cfg(any(not(target_os = "macos"), test))]
 fn should_start_silently_from_args(args: &[String], settings: RuntimeSettings) -> bool {
-  settings.launch_to_tray && has_login_startup_arg(args)
+  should_start_silently_for_source(
+    if has_login_startup_arg(args) {
+      StartupSource::LoginStartupArg
+    } else {
+      StartupSource::Normal
+    },
+    settings,
+  )
 }
 
 #[cfg(any(target_os = "macos", test))]
 fn should_start_silently_from_macos_login_item(is_hidden_login_item: bool, settings: RuntimeSettings) -> bool {
-  settings.launch_to_tray && is_hidden_login_item
+  should_start_silently_for_source(
+    if is_hidden_login_item {
+      StartupSource::MacOSHiddenLoginItem
+    } else {
+      StartupSource::Normal
+    },
+    settings,
+  )
 }
 
 #[cfg(target_os = "macos")]
@@ -502,8 +544,8 @@ fn unhide_current_macos_app() {
 
 #[cfg(target_os = "macos")]
 fn should_start_silently(args: &[String], settings: RuntimeSettings) -> bool {
-  should_start_silently_from_args(args, settings)
-    || should_start_silently_from_macos_login_item(is_current_macos_app_hidden(), settings)
+  let _ = args;
+  should_start_silently_from_macos_login_item(is_current_macos_app_hidden(), settings)
 }
 
 #[cfg(not(target_os = "macos"))]
@@ -622,34 +664,6 @@ fn remove_macos_legacy_launch_agent() -> Result<(), String> {
   }
 }
 
-#[cfg(target_os = "macos")]
-fn applescript_string(value: &str) -> String {
-  format!("\"{}\"", value.replace('\\', "\\\\").replace('"', "\\\""))
-}
-
-#[cfg(target_os = "macos")]
-fn remove_macos_login_item_if_exists(app_name: &str) -> Result<(), String> {
-  let quoted_name = applescript_string(app_name);
-  let script = format!(
-    "tell application \"System Events\" to if exists login item {quoted_name} then delete login item {quoted_name}"
-  );
-  let output = hidden_std_command("osascript")
-    .arg("-e")
-    .arg(script)
-    .output()
-    .map_err(|error| format!("Failed to run osascript: {error}"))?;
-
-  if output.status.success() {
-    Ok(())
-  } else {
-    Err(format!(
-      "Failed to remove macOS login item {}: {}",
-      app_name,
-      String::from_utf8_lossy(&output.stderr).trim()
-    ))
-  }
-}
-
 fn build_auto_launch(app_path: &Path) -> Result<AutoLaunch, String> {
   #[cfg(target_os = "macos")]
   let config = macos_login_item_config_for_path(app_path);
@@ -672,8 +686,9 @@ fn enable_auto_launch() -> Result<(), String> {
 
     #[cfg(target_os = "macos")]
     {
-      remove_macos_login_item_if_exists(&app_name_for_auto_launch(&app_path))?;
-      build_auto_launch(&app_path)?
+      let auto_launch = build_auto_launch(&app_path)?;
+      let _ = auto_launch.disable();
+      auto_launch
         .enable()
         .map_err(|error| format!("Failed to enable macOS login item: {error}"))?;
       remove_macos_legacy_launch_agent()
@@ -694,7 +709,9 @@ fn disable_auto_launch() -> Result<(), String> {
 
     #[cfg(target_os = "macos")]
     {
-      remove_macos_login_item_if_exists(&app_name_for_auto_launch(&app_path))?;
+      build_auto_launch(&app_path)?
+        .disable()
+        .map_err(|error| format!("Failed to disable macOS login item: {error}"))?;
       remove_macos_legacy_launch_agent()
     }
 
@@ -1087,7 +1104,13 @@ fn handle_mini_window_focus(window: &Window, event: &WindowEvent) {
 fn handle_run_event(_app: &AppHandle, _event: &RunEvent) {
   #[cfg(target_os = "macos")]
   match _event {
-    RunEvent::ExitRequested { .. } => {
+    RunEvent::ExitRequested { api, code, .. } => {
+      if should_prevent_implicit_exit(code.is_some(), APP_EXITING.load(Ordering::Relaxed), current_runtime_settings()) {
+        api.prevent_exit();
+        apply_dock_visibility(_app, dock_visibility_for_background_keepalive());
+        return;
+      }
+
       APP_EXITING.store(true, Ordering::Relaxed);
     }
     RunEvent::Reopen {
@@ -3180,7 +3203,7 @@ mod tests {
   }
 
   #[test]
-  fn startup_detects_only_login_arg_with_silent_setting() {
+  fn non_macos_startup_arg_uses_silent_setting() {
     assert!(should_start_silently_from_args(
       &[LOGIN_STARTUP_ARG.to_string()],
       RuntimeSettings {
@@ -3205,6 +3228,29 @@ mod tests {
   }
 
   #[test]
+  fn startup_source_silent_policy_requires_background_setting() {
+    let silent_settings = RuntimeSettings {
+      launch_to_tray: true,
+      ..RuntimeSettings::default()
+    };
+    let visible_settings = RuntimeSettings {
+      launch_to_tray: false,
+      ..RuntimeSettings::default()
+    };
+
+    assert!(should_start_silently_for_source(StartupSource::LoginStartupArg, silent_settings));
+    assert!(should_start_silently_for_source(
+      StartupSource::MacOSHiddenLoginItem,
+      silent_settings
+    ));
+    assert!(!should_start_silently_for_source(StartupSource::Normal, silent_settings));
+    assert!(!should_start_silently_for_source(
+      StartupSource::MacOSHiddenLoginItem,
+      visible_settings
+    ));
+  }
+
+  #[test]
   fn macos_login_item_uses_manageable_hidden_app_mode() {
     let config = macos_login_item_config_for_path(Path::new("/Applications/lich13studio.app"));
 
@@ -3225,12 +3271,6 @@ mod tests {
       macos_legacy_launch_agent_file(Path::new("/Users/gosu")),
       PathBuf::from("/Users/gosu/Library/LaunchAgents/com.lich13.studio.plist")
     );
-  }
-
-  #[test]
-  fn macos_applescript_strings_are_escaped() {
-    assert_eq!(applescript_string("lich13studio"), "\"lich13studio\"");
-    assert_eq!(applescript_string("lich\\13\"studio"), "\"lich\\\\13\\\"studio\"");
   }
 
   #[test]
@@ -3294,6 +3334,25 @@ mod tests {
       }),
       MainWindowCloseAction::Quit
     );
+  }
+
+  #[test]
+  fn implicit_exit_is_blocked_only_for_background_keepalive() {
+    let keep_background = RuntimeSettings {
+      tray: true,
+      tray_on_close: true,
+      ..RuntimeSettings::default()
+    };
+    let quit_on_close = RuntimeSettings {
+      tray: true,
+      tray_on_close: false,
+      ..RuntimeSettings::default()
+    };
+
+    assert!(should_prevent_implicit_exit(false, false, keep_background));
+    assert!(!should_prevent_implicit_exit(true, false, keep_background));
+    assert!(!should_prevent_implicit_exit(false, true, keep_background));
+    assert!(!should_prevent_implicit_exit(false, false, quit_on_close));
   }
 
   #[test]

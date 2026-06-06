@@ -19,6 +19,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { getMainProcessSettingUpdates } from './settingsSync'
 import { useDefaultModel } from './useAssistant'
 import useFullScreenNotice from './useFullScreenNotice'
 import { useRuntime } from './useRuntime'
@@ -38,7 +39,6 @@ export function useAppInit() {
     autoCheckUpdate,
     proxyMode,
     enableDataCollection,
-    launchOnBoot,
     launchToTray,
     tray,
     trayOnClose
@@ -81,14 +81,13 @@ export function useAppInit() {
     }
 
     void runAsyncFunction(async () => {
-      await window.api.setLaunchOnBoot(launchOnBoot)
-      await window.api.config.set('launchToTray', launchToTray, true)
-      await window.api.config.set('tray', tray, true)
-      await window.api.config.set('trayOnClose', trayOnClose, true)
+      for (const [key, value] of getMainProcessSettingUpdates({ launchToTray, tray, trayOnClose })) {
+        await window.api.config.set(key, value, true)
+      }
     }).catch((error) => {
       logger.warn('Failed to sync Tauri background settings', error as Error)
     })
-  }, [launchOnBoot, launchToTray, tray, trayOnClose])
+  }, [launchToTray, tray, trayOnClose])
 
   useEffect(() => {
     avatar?.value && dispatch(setAvatar(avatar.value))

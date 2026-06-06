@@ -51,6 +51,7 @@ describe('useSettings startup/background sync helpers', () => {
     expect(isMainProcessSettingKey('launchToTray')).toBe(true)
     expect(isMainProcessSettingKey('tray')).toBe(true)
     expect(isMainProcessSettingKey('trayOnClose')).toBe(true)
+    expect(isMainProcessSettingKey('launchOnBoot')).toBe(false)
     expect(isMainProcessSettingKey('proxyUrl')).toBe(false)
   })
 
