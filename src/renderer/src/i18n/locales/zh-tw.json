@@ -504,13 +504,6 @@
         "title": "自主模式"
       },
       "tooling": {
-        "mcp": {
-          "description": "連線 MCP 伺服器即可解鎖更多可在上方預先授權的工具。",
-          "empty": "尚未偵測到 MCP 伺服器，請前往 MCP 設定頁新增。",
-          "inactiveTooltip": "此 MCP 伺服器未啟用，請先啟動它。",
-          "manageHint": "需要進階設定？前往 設定 → MCP 伺服器。",
-          "toggle": "切換 {{name}}"
-        },
         "permissionMode": {
           "acceptEdits": {
             "description": "檔案編輯與檔案系統操作會自動核准。",
@@ -542,7 +535,6 @@
           "autoDescription": "此工具由目前的權限模式自動預先授權。",
           "autoDisabledTooltip": "由「{{mode}}」自動授權，無法停用。",
           "empty": "沒有符合篩選條件的工具。",
-          "mcpBadge": "MCP 工具",
           "requiresApproval": "停用時需要人工核准",
           "search": "搜尋工具",
           "title": "預授權工具",
@@ -897,27 +889,6 @@
         "label": "最大工具呼叫次數",
         "tip": "單次對話中允許的最大工具呼叫次數。較高的值支援更複雜的多步操作，但可能增加 Token 消耗和回應時間。"
       },
-      "mcp": {
-        "description": "預設啟用的 MCP 伺服器",
-        "enableFirst": "請先在 MCP 設定中啟用此伺服器",
-        "label": "MCP 伺服器",
-        "mode": {
-          "auto": {
-            "description": "AI 自動發現和使用工具",
-            "label": "自動"
-          },
-          "disabled": {
-            "description": "不使用 MCP 工具",
-            "label": "停用"
-          },
-          "manual": {
-            "description": "選擇特定的 MCP 伺服器",
-            "label": "手動"
-          }
-        },
-        "noServersAvailable": "無可用 MCP 伺服器。請在設定中新增伺服器",
-        "title": "MCP 設定"
-      },
       "model": "模型設定",
       "more": "助手設定",
       "prompt": "提示詞設定",
@@ -1190,17 +1161,6 @@
           "label": "關閉網路搜尋"
         },
         "settings": "網路搜尋設定"
-      }
-    },
-    "mcp": {
-      "error": {
-        "parse_tool_call": "無法轉換為有效的工具呼叫格式：{{toolCall}}"
-      },
-      "warning": {
-        "gemini_web_search": "Gemini 不支援同時使用原生網路搜尋工具與函式呼叫",
-        "multiple_tools": "找到多個相符的 MCP 工具，已選擇 {{tool}}",
-        "no_tool": "找不到符合需求的 MCP 工具：{{tool}}",
-        "url_context": "Gemini 不支援同時使用網頁內容與函式呼叫"
       }
     },
     "message": {
@@ -1748,10 +1708,7 @@
         "message": "似乎出現了一些問題...",
         "reload": "重新載入"
       },
-      "details": "詳細資訊",
-      "mcp": {
-        "invalid": "無效的 MCP 伺服器"
-      }
+      "details": "詳細資訊"
     },
     "cause": "錯誤原因",
     "chat": {
@@ -1778,7 +1735,6 @@
       "deprecated": "此模型已停用，請切換至其他模型",
       "go_to_settings": "前往設定",
       "knowledge": "知識庫向量化失敗",
-      "mcp": "MCP 伺服器連線失敗，請檢查服務是否已啟動",
       "model": "模型不存在或你沒有存取權限",
       "model_conflict": "診斷模型與出錯模型相同，無法進行診斷",
       "network": "無法連線到伺服器，請檢查網路或代理設定",
@@ -2499,7 +2455,6 @@
         "exitPlanMode": "退出計畫模式",
         "glob": "檔案匹配",
         "grep": "搜尋",
-        "mcpServerTool": "MCP 伺服器工具",
         "multiEdit": "批次編輯",
         "notebookEdit": "筆記本編輯",
         "readFile": "讀取檔案",
@@ -5452,7 +5407,6 @@
     "home": "首頁",
     "knowledge": "知識庫",
     "launchpad": "啟動台",
-    "mcp-servers": "MCP 伺服器",
     "memories": "記憶",
     "notes": "筆記",
     "openclaw": "OpenClaw",

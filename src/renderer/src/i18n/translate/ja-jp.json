@@ -504,13 +504,6 @@
         "title": "自律モード"
       },
       "tooling": {
-        "mcp": {
-          "description": "MCPサーバーを接続して、上で承認できる追加ツールを解放します。",
-          "empty": "MCPサーバーが検出されませんでした。MCP設定ページから追加してください。",
-          "inactiveTooltip": "このMCPサーバーはアクティブではありません。まず起動してください。",
-          "manageHint": "高度な設定が必要ですか？設定 → MCPサーバーにアクセスしてください。",
-          "toggle": "{{name}}を切り替え"
-        },
         "permissionMode": {
           "acceptEdits": {
             "description": "ファイルの編集とファイルシステムの操作は自動的に承認されます。",
@@ -542,7 +535,6 @@
           "autoDescription": "このツールは現在の権限モードによって自動承認されています。",
           "autoDisabledTooltip": "「{{mode}}」によって自動承認されており、無効化できません。",
           "empty": "フィルターに一致するツールはありません。",
-          "mcpBadge": "MCPツール",
           "requiresApproval": "無効にするには承認が必要",
           "search": "検索ツール",
           "toggle": "{{name}}を切り替える"
@@ -556,16 +548,6 @@
         "tab": "事前承認済みツール",
         "title": "ツール",
         "toggle": "{{defaultValue}}"
-      },
-      "toolsMcp": {
-        "mcp": {
-          "tab": "MCP",
-          "title": "MCPサーバー"
-        },
-        "tab": "ツール",
-        "tools": {
-          "title": "事前承認済みツール"
-        }
       }
     },
     "sidebar_title": "エージェント",
@@ -906,27 +888,6 @@
         "label": "最大ツール呼び出し数",
         "tip": "1回の会話で許可される最大のツール呼び出し回数。高い値に設定すると、より複雑な多段階操作が可能になりますが、トークン使用量と応答時間が増加する可能性があります。"
       },
-      "mcp": {
-        "description": "デフォルトで有効な MCP サーバー",
-        "enableFirst": "まず MCP 設定でこのサーバーを有効にしてください",
-        "label": "MCP サーバー",
-        "mode": {
-          "auto": {
-            "description": "AIはツールを自動的に発見し、使用する",
-            "label": "オート"
-          },
-          "disabled": {
-            "description": "MCPツールなし",
-            "label": "無効"
-          },
-          "manual": {
-            "description": "特定のMCPサーバーを選択",
-            "label": "マニュアル"
-          }
-        },
-        "noServersAvailable": "利用可能な MCP サーバーがありません。設定でサーバーを追加してください",
-        "title": "MCP 設定"
-      },
       "model": "モデル設定",
       "more": "アシスタント設定",
       "prompt": "プロンプト設定",
@@ -1195,17 +1156,6 @@
           "label": "ウェブ検索を無効にする"
         },
         "settings": "ウェブ検索設定"
-      }
-    },
-    "mcp": {
-      "error": {
-        "parse_tool_call": "有効なツール呼び出し形式に変換できません：{{toolCall}}"
-      },
-      "warning": {
-        "gemini_web_search": "Geminiは、ネイティブのネットワーク検索ツールと関数呼び出しを同時に使用することをサポートしていません。",
-        "multiple_tools": "複数の一致するMCPツールが存在するため、{{tool}} が選択されました",
-        "no_tool": "必要なMCPツール {{tool}} が見つかりません",
-        "url_context": "Geminiは、URLコンテキストと関数呼び出しを同時に使用することをサポートしていません。"
       }
     },
     "message": {
@@ -1751,10 +1701,7 @@
         "message": "何か問題が発生したようです...",
         "reload": "再読み込み"
       },
-      "details": "詳細情報",
-      "mcp": {
-        "invalid": "無効なMCPサーバー"
-      }
+      "details": "詳細情報"
     },
     "cause": "エラーの原因",
     "chat": {
@@ -1781,7 +1728,6 @@
       "deprecated": "このモデルは廃止されました。別のモデルに切り替えてください。",
       "go_to_settings": "設定へ移動",
       "knowledge": "ナレッジベースのベクトル化に失敗しました",
-      "mcp": "MCP サーバーへの接続に失敗しました。サービスが実行中か確認してください",
       "model": "モデルが見つからないか、アクセス権がありません",
       "model_conflict": "診断モデルとエラーモデルが同一のため、診断できません",
       "network": "サーバーに接続できません。ネットワークまたはプロキシの設定を確認してください",
@@ -2501,7 +2447,6 @@
         "exitPlanMode": "ExitPlanMode",
         "glob": "グローブ",
         "grep": "グレップ",
-        "mcpServerTool": "MCPサーバーツール",
         "multiEdit": "マルチエディット",
         "notebookEdit": "ノートブック編集",
         "readFile": "ファイルを読む",
@@ -4581,259 +4526,6 @@
       },
       "title": "数式設定"
     },
-    "mcp": {
-      "actions": "操作",
-      "active": "有効",
-      "addError": "サーバーの追加に失敗しました",
-      "addServer": {
-        "create": "クイック作成",
-        "importFrom": {
-          "connectionFailed": "接続に失敗しました",
-          "dxt": "DXTパッケージをインポート",
-          "dxtFile": "DXTパッケージファイル",
-          "dxtHelp": "MCPサーバーパッケージを含む.dxtファイルを選択",
-          "dxtProcessFailed": "DXTファイルの処理に失敗しました",
-          "error": {
-            "multipleServers": "複数のサーバーからインポートすることはできません"
-          },
-          "invalid": "無効な入力です。JSON形式を確認してください。",
-          "json": "JSONからインポート",
-          "method": "インポート方法",
-          "nameExists": "サーバーはすでに存在します: {{name}}",
-          "noDxtFile": "DXTファイルを選択してください",
-          "oneServer": "一度に1つのMCPサーバー設定のみを保存できます",
-          "placeholder": "MCPサーバーJSON設定を貼り付け",
-          "selectDxtFile": "DXT ファイルを選択してください",
-          "tooltip": "MCPサーバー紹介ページから設定JSON（NPXまたはUVX設定を優先）をコピーし、入力ボックスに貼り付けてください。"
-        },
-        "label": "サーバーを追加"
-      },
-      "addSuccess": "サーバーが正常に追加されました",
-      "advancedSettings": "詳細設定",
-      "args": "引数",
-      "argsTooltip": "1行に1つの引数を入力してください",
-      "baseUrlTooltip": "リモートURLアドレス",
-      "builtinServers": "組み込みサーバー",
-      "builtinServersDescriptions": {
-        "brave_search": "Brave検索APIを統合したMCPサーバーの実装で、ウェブ検索とローカル検索の両機能を提供します。BRAVE_API_KEY環境変数の設定が必要です",
-        "browser": "Chrome DevTools Protocolを介してheadless Electronウィンドウを制御します。ツール：URLを開く、単一行JSを実行、セッションをリセット。",
-        "didi_mcp": "DiDi MCPサーバーは、地図検索、料金見積もり、注文管理、ドライバー追跡を含むライドシェアサービスを提供します。中国本土でのみ利用可能です。DIDI_API_KEY環境変数の設定が必要です",
-        "dify_knowledge": "DifyのMCPサーバー実装は、Difyと対話するためのシンプルなAPIを提供します。Dify Keyの設定が必要です。",
-        "fetch": "URLのウェブページコンテンツを取得するためのMCPサーバー",
-        "filesystem": "Node.jsサーバーによるファイルシステム操作を実現するモデルコンテキストプロトコル（MCP）。アクセスを許可するディレクトリの設定が必要です",
-        "flomo": "flomoに接続して、AIを通じてメモやアイデアを素早くキャプチャします。flomoアカウントの認可が必要です。",
-        "mcp_auto_install": "MCPサービスの自動インストール（ベータ版）",
-        "memory": "ローカルのナレッジグラフに基づく永続的なメモリの基本的な実装です。これにより、モデルは異なる会話間でユーザーの関連情報を記憶できるようになります。MEMORY_FILE_PATH 環境変数の設定が必要です。",
-        "no": "説明なし",
-        "nowledge_mem": "Nowledge Mem アプリをローカルで実行する必要があります。AI チャット、ツール、ノート、エージェント、ファイルをコンピューター上のプライベートメモリに保存します。https://mem.nowledge.co/ からダウンロードしてください",
-        "python": "安全なサンドボックス環境でPythonコードを実行します。Pyodideを使用してPythonを実行し、ほとんどの標準ライブラリと科学計算パッケージをサポートしています。",
-        "sequentialthinking": "構造化された思考プロセスを通じて動的かつ反省的な問題解決を行うためのツールを提供するMCPサーバーの実装"
-      },
-      "command": "コマンド",
-      "config_description": "モデルコンテキストプロトコルサーバーの設定",
-      "customRegistryPlaceholder": "プライベート倉庫のアドレスを入力してください（例：https://npm.company.com）",
-      "deleteError": "サーバーの削除に失敗しました",
-      "deleteServer": "サーバーを削除",
-      "deleteServerConfirm": "このサーバーを削除してもよろしいですか？",
-      "deleteSuccess": "サーバーが正常に削除されました",
-      "dependenciesInstall": "依存関係をインストール",
-      "dependenciesInstalling": "依存関係をインストール中...",
-      "description": "説明",
-      "disable": {
-        "description": "MCP機能を有効にしない",
-        "label": "MCPサーバーを無効にする"
-      },
-      "discover": "発見",
-      "duplicateName": "同じ名前のサーバーが既に存在します",
-      "editJson": "JSONを編集",
-      "editMcpJson": "MCP 設定を編集",
-      "editServer": "サーバーを編集",
-      "env": "環境変数",
-      "envTooltip": "形式: KEY=value, 1行に1つ",
-      "errors": {
-        "32000": "MCP サーバーが起動しませんでした。パラメーターを確認してください",
-        "toolNotFound": "ツール {{name}} が見つかりません"
-      },
-      "fetch": {
-        "button": "サーバーを取得",
-        "success": "MCPサーバーの取得に成功しました"
-      },
-      "findMore": "MCP を見つける",
-      "headers": "ヘッダー",
-      "headersTooltip": "HTTP リクエストのカスタムヘッダー",
-      "inMemory": "メモリ",
-      "install": "インストール",
-      "installError": "依存関係のインストールに失敗しました",
-      "installHelp": "インストールヘルプを取得",
-      "installSuccess": "依存関係のインストールに成功しました",
-      "jsonFormatError": "JSONフォーマットエラー",
-      "jsonModeHint": "MCPサーバー設定のJSON表現を編集します。保存する前に、フォーマットが正しいことを確認してください。",
-      "jsonSaveError": "JSON設定の保存に失敗しました",
-      "jsonSaveSuccess": "JSON設定が保存されました。",
-      "lanyun": {
-        "description": "Lanyun Technology Cloud Platform MCP Service",
-        "name": "ランユン・テクノロジー"
-      },
-      "logoUrl": "ロゴURL",
-      "logs": "ログ",
-      "longRunning": "長時間運行モード",
-      "longRunningTooltip": "このオプションを有効にすると、サーバーは長時間のタスクをサポートします。進行状況通知を受信すると、タイムアウトがリセットされ、最大実行時間が10分に延長されます。",
-      "marketplaces": "マーケットプレイス",
-      "missingDependencies": "が不足しています。続行するにはインストールしてください。",
-      "more": {
-        "awesome": "厳選された MCP サーバーリスト",
-        "composio": "Composio MCP 開発ツール",
-        "glama": "Glama MCP サーバーディレクトリ",
-        "higress": "Higress MCP サーバー",
-        "mcpso": "MCP サーバー発見プラットフォーム",
-        "mcpworld": "Baidu傘下のMCPアグリゲーションプラットフォーム",
-        "modelscope": "魔搭コミュニティ MCP サーバー",
-        "official": "公式 MCP サーバーコレクション",
-        "pulsemcp": "Pulse MCP サーバー",
-        "smithery": "Smithery MCP ツール",
-        "zhipu": "厳選MCP、高速統合"
-      },
-      "name": "名前",
-      "newServer": "MCP サーバー",
-      "noDescriptionAvailable": "説明がありません",
-      "noLogs": "ログはまだありません",
-      "noServers": "サーバーが設定されていません",
-      "not_support": "モデルはサポートされていません",
-      "npx_list": {
-        "actions": "アクション",
-        "description": "説明",
-        "no_packages": "パッケージが見つかりません",
-        "npm": "NPM",
-        "package_name": "パッケージ名",
-        "scope_placeholder": "npm スコープを入力 (例: @your-org)",
-        "scope_required": "npm スコープを入力してください",
-        "search": "検索",
-        "search_error": "パッケージの検索に失敗しました",
-        "usage": "使用法",
-        "version": "バージョン"
-      },
-      "oauth": {
-        "callback": {
-          "message": "このページを閉じてCherry Studioに戻ることができます",
-          "title": "認証成功"
-        }
-      },
-      "prompts": {
-        "arguments": "引数",
-        "availablePrompts": "利用可能なプロンプト",
-        "genericError": "プロンプト取得エラー",
-        "loadError": "プロンプト取得エラー",
-        "noPromptsAvailable": "利用可能なプロンプトはありません",
-        "requiredField": "必須フィールド"
-      },
-      "protocolInstallWarning": {
-        "command": "起動コマンド",
-        "message": "このMCPは外部ソースからプロトコル経由でインストールされました。不明なツールを実行すると、コンピューターに危害を及ぼす可能性があります。",
-        "run": "走る",
-        "title": "外部のMCPを実行しますか？"
-      },
-      "provider": "プロバイダー",
-      "providerPlaceholder": "プロバイダー名",
-      "providerUrl": "プロバイダーURL",
-      "providers": "プロバイダー",
-      "registry": "パッケージ管理レジストリ",
-      "registryDefault": "デフォルト",
-      "registryTooltip": "デフォルトのレジストリでネットワークの問題が発生した場合、パッケージインストールに使用するレジストリを選択してください。",
-      "requiresConfig": "設定が必要",
-      "resources": {
-        "availableResources": "利用可能なリソース",
-        "blob": "バイナリデータ",
-        "blobInvisible": "バイナリデータを非表示",
-        "genericError": "リソースの取得エラー",
-        "mimeType": "MIMEタイプ",
-        "noResourcesAvailable": "利用可能なリソースはありません",
-        "size": "サイズ",
-        "text": "テキスト",
-        "uri": "URI"
-      },
-      "search": {
-        "placeholder": "MCP サーバーを検索...",
-        "tooltip": "MCP サーバーを検索"
-      },
-      "searchNpx": "MCP を検索",
-      "serverPlural": "サーバー",
-      "serverSingular": "サーバー",
-      "servers": "MCPサーバー",
-      "sse": "サーバー送信イベント (sse)",
-      "startError": "起動に失敗しました",
-      "stdio": "標準入力/出力 (stdio)",
-      "streamableHttp": "ストリーミング可能なHTTP (streamable)",
-      "sync": {
-        "button": "同期する",
-        "discoverMcpServers": "MCPサーバーを発見",
-        "discoverMcpServersDescription": "プラットフォームを訪れて利用可能なMCPサーバーを発見",
-        "error": "MCPサーバーの同期エラー",
-        "getToken": "API トークンを取得する",
-        "getTokenDescription": "アカウントから個人用 API トークンを取得します",
-        "noServersAvailable": "利用可能な MCP サーバーがありません",
-        "providerDescriptions": {
-          "302ai": "302.AIプラットフォームMCPサービス",
-          "bailian": "Alibaba Cloud Bailian Platform MCP Service",
-          "lanyun": "Lanyun Technology Cloud Platform MCP Service",
-          "mcprouter": "MCPルータープラットフォーム MCPサービス",
-          "modelscope": "ModelScopeプラットフォームMCPサービス",
-          "tokenflux": "TokenFlux Platform MCP Service"
-        },
-        "selectProvider": "プロバイダーを選択：",
-        "setToken": "トークンを入力してください",
-        "success": "MCPサーバーの同期成功",
-        "title": "サーバーの同期",
-        "tokenPlaceholder": "ここに API トークンを入力してください",
-        "tokenRequired": "API トークンは必須です",
-        "unauthorized": "同期が許可されていません"
-      },
-      "system": "システム",
-      "tabs": {
-        "description": "説明",
-        "general": "一般",
-        "prompts": "プロンプト",
-        "resources": "リソース",
-        "tools": "ツール"
-      },
-      "tags": "タグ",
-      "tagsPlaceholder": "タグを入力",
-      "timeout": "タイムアウト",
-      "timeoutTooltip": "このサーバーへのリクエストのタイムアウト時間（秒）、デフォルトは60秒です",
-      "title": "MCP",
-      "tools": {
-        "autoApprove": {
-          "label": "自動承認",
-          "tooltip": {
-            "confirm": "このMCPツールを実行してもよろしいですか？",
-            "disabled": "ツールは実行前に手動承認が必要です",
-            "enabled": "ツールは承認なしで自動実行されます",
-            "howToEnable": "ツールを有効にしてから自動承認を使用できます"
-          }
-        },
-        "availableTools": "利用可能なツール",
-        "enable": "ツールを有効にする",
-        "inputSchema": {
-          "enum": {
-            "allowedValues": "許可された値"
-          },
-          "label": "入力スキーマ"
-        },
-        "loadError": "ツール取得エラー",
-        "noToolsAvailable": "利用可能なツールなし",
-        "run": "実行"
-      },
-      "type": "タイプ",
-      "types": {
-        "inMemory": "組み込み",
-        "sse": "SSE",
-        "stdio": "STDIO",
-        "streamableHttp": "ストリーミング"
-      },
-      "updateError": "サーバーの更新に失敗しました",
-      "updateSuccess": "サーバーが正常に更新されました",
-      "url": "URL",
-      "user": "ユーザー"
-    },
     "messages": {
       "divider": {
         "label": "メッセージ間に区切り線を表示",
@@ -5702,7 +5394,6 @@
     "home": "ホーム",
     "knowledge": "ナレッジベース",
     "launchpad": "ランチパッド",
-    "mcp-servers": "MCP サーバー",
     "memories": "メモリ",
     "notes": "ノート",
     "openclaw": "オープンクロー",

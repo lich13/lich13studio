@@ -504,13 +504,6 @@
         "title": "Autonomer Modus"
       },
       "tooling": {
-        "mcp": {
-          "description": "Verbinden Sie MCP-Server, um weitere Tools freizuschalten, die oben vorab autorisiert werden können.",
-          "empty": "Keine MCP-Server erkannt. Bitte fügen Sie welche auf der MCP-Einstellungsseite hinzu.",
-          "inactiveTooltip": "Dieser MCP-Server ist nicht aktiv. Bitte starten Sie ihn zuerst.",
-          "manageHint": "Benötigen Sie weitere Konfigurationen? Gehen Sie zu Einstellungen → MCP-Server.",
-          "toggle": "{{name}} umschalten"
-        },
         "permissionMode": {
           "acceptEdits": {
             "description": "Dateibearbeitungen und Dateisystemoperationen werden automatisch genehmigt.",
@@ -542,7 +535,6 @@
           "autoDescription": "Dieses Tool wird vom aktuellen Berechtigungsmodus automatisch vorab autorisiert.",
           "autoDisabledTooltip": "Automatisch genehmigt durch „{{mode}}“ und kann nicht deaktiviert werden.",
           "empty": "Keine Tools entsprechen den Filterkriterien.",
-          "mcpBadge": "MCP-Tool",
           "requiresApproval": "Erfordert bei Deaktivierung manuelle Genehmigung",
           "search": "Tools suchen",
           "toggle": "{{name}} umschalten"
@@ -556,16 +548,6 @@
         "tab": "Vorab autorisierte Tools",
         "title": "Vorab autorisierte Tools",
         "toggle": "{{defaultValue}}"
-      },
-      "toolsMcp": {
-        "mcp": {
-          "tab": "MCP",
-          "title": "MCP-Server"
-        },
-        "tab": "Tools",
-        "tools": {
-          "title": "Vorab genehmigte Tools"
-        }
       }
     },
     "sidebar_title": "Agenten",
@@ -906,27 +888,6 @@
         "label": "Maximale Werkzeugaufrufe",
         "tip": "Maximale Anzahl von Tool-Aufrufen, die in einer einzelnen Konversation erlaubt sind. Höhere Werte ermöglichen komplexere, mehrstufige Operationen, können aber den Token-Verbrauch und die Antwortzeit erhöhen."
       },
-      "mcp": {
-        "description": "Standardmäßig aktivierte MCP-Server",
-        "enableFirst": "Bitte aktivieren Sie diesen Server zuerst in den MCP-Einstellungen",
-        "label": "MCP-Server",
-        "mode": {
-          "auto": {
-            "description": "KI entdeckt und nutzt Werkzeuge automatisch",
-            "label": "Auto"
-          },
-          "disabled": {
-            "description": "Keine MCP-Tools",
-            "label": "Deaktiviert"
-          },
-          "manual": {
-            "description": "Wählen Sie spezifische MCP-Server",
-            "label": "Handbuch"
-          }
-        },
-        "noServersAvailable": "Keine MCP-Server verfügbar. Bitte fügen Sie Server in den Einstellungen hinzu",
-        "title": "MCP-Server"
-      },
       "model": "Modelleinstellungen",
       "more": "Assistenteneinstellungen",
       "prompt": "Prompt-Einstellungen",
@@ -1195,17 +1156,6 @@
           "label": "Keine Websuche"
         },
         "settings": "Websuch-Einstellungen"
-      }
-    },
-    "mcp": {
-      "error": {
-        "parse_tool_call": "Kann nicht in gültiges Tool-Aufrufformat konvertiert werden: {{toolCall}}"
-      },
-      "warning": {
-        "gemini_web_search": "Gemini unterstützt nicht die gleichzeitige Verwendung von nativer Websuche und Funktionsaufrufen",
-        "multiple_tools": "Mehrere übereinstimmende MCP-Tools gefunden, {{tool}} wurde ausgewählt",
-        "no_tool": "Erforderliches MCP-Tool {{tool}} nicht gefunden",
-        "url_context": "Gemini unterstützt nicht die gleichzeitige Verwendung von Webseiten-Kontext und Funktionsaufrufen"
       }
     },
     "message": {
@@ -1751,10 +1701,7 @@
         "message": "Es scheint ein Problem aufgetreten zu sein...",
         "reload": "Neu laden"
       },
-      "details": "Details",
-      "mcp": {
-        "invalid": "Ungültiger MCP-Server"
-      }
+      "details": "Details"
     },
     "cause": "Fehlerursache",
     "chat": {
@@ -1781,7 +1728,6 @@
       "deprecated": "Dieses Modell wurde außer Betrieb genommen, bitte wechseln Sie zu einem anderen Modell",
       "go_to_settings": "Zu Einstellungen",
       "knowledge": "Vektorisierung der Wissensdatenbank fehlgeschlagen",
-      "mcp": "Verbindung zum MCP-Server fehlgeschlagen, prüfen Sie ob der Dienst läuft",
       "model": "Modell nicht gefunden oder kein Zugriff",
       "model_conflict": "Diagnosemodell ist identisch mit dem fehlerhaften Modell",
       "network": "Verbindung zum Server nicht möglich, Netzwerk- oder Proxy-Einstellungen prüfen",
@@ -2501,7 +2447,6 @@
         "exitPlanMode": "ExitPlanModus",
         "glob": "Globus",
         "grep": "Grep",
-        "mcpServerTool": "MCP-Server-Tool",
         "multiEdit": "MultiEdit",
         "notebookEdit": "NotizbuchBearbeiten",
         "readFile": "Datei lesen",
@@ -4581,259 +4526,6 @@
       },
       "title": "Mathematikformel-Einstellungen"
     },
-    "mcp": {
-      "actions": "Aktionen",
-      "active": "Aktivieren",
-      "addError": "Server hinzufügen fehlgeschlagen",
-      "addServer": {
-        "create": "Schnell erstellen",
-        "importFrom": {
-          "connectionFailed": "Verbindung fehlgeschlagen",
-          "dxt": "DXT-Paket importieren",
-          "dxtFile": "DXT-Paket-Datei",
-          "dxtHelp": "MCP-Server-Datei .dxt auswählen",
-          "dxtProcessFailed": "DXT-Datei verarbeiten fehlgeschlagen",
-          "error": {
-            "multipleServers": "Import von mehreren Servern nicht möglich"
-          },
-          "invalid": "Ungültige Eingabe, bitte JSON-Format überprüfen",
-          "json": "Von JSON importieren",
-          "method": "Importmethode",
-          "nameExists": "Server existiert bereits: {{name}}",
-          "noDxtFile": "Eine DXT-Datei auswählen",
-          "oneServer": "Nur eine MCP-Server-Konfiguration kann gespeichert werden",
-          "placeholder": "MCP-Server-JSON-Konfiguration einfügen",
-          "selectDxtFile": "DXT-Datei auswählen",
-          "tooltip": "Konfigurations-JSON von MCP-Servers kopieren (Vorzugsweise NPX oder UVX-Konfigurationen verwenden) und in das Eingabefeld einfügen"
-        },
-        "label": "Server hinzufügen"
-      },
-      "addSuccess": "Server erfolgreich hinzugefügt",
-      "advancedSettings": "Erweiterte Einstellungen",
-      "args": "Parameter",
-      "argsTooltip": "Ein Parameter pro Zeile",
-      "baseUrlTooltip": "Remote-URL-Adresse",
-      "builtinServers": "Integrierter Server",
-      "builtinServersDescriptions": {
-        "brave_search": "MCP-Server-Implementierung mit Brave-Search-API, die sowohl Web- als auch lokale Suchfunktionen bietet. BRAVE_API_KEY-Umgebungsvariable muss konfiguriert werden",
-        "browser": "Steuert ein headless Electron-Fenster über das Chrome DevTools Protocol. Tools: URL öffnen, einzeiligen JS ausführen, Sitzung zurücksetzen.",
-        "didi_mcp": "An integrated Didi MCP server implementation that provides ride-hailing services including map search, price estimation, order management, and driver tracking. Only available in mainland China. Requires the DIDI_API_KEY environment variable to be configured.",
-        "dify_knowledge": "MCP-Server-Implementierung von Dify, die einen einfachen API-Zugriff auf Dify bietet. Dify Key muss konfiguriert werden",
-        "fetch": "MCP-Server zum Abrufen von Webseiteninhalten",
-        "filesystem": "MCP-Server für Dateisystemoperationen (Node.js), der den Zugriff auf bestimmte Verzeichnisse ermöglicht",
-        "flomo": "Verbinde dich mit flomo, um Notizen und Ideen schnell per KI zu erfassen. Eine Autorisierung des flomo-Kontos ist erforderlich.",
-        "mcp_auto_install": "MCP-Service automatisch installieren (Beta-Version)",
-        "memory": "MCP-Server mit persistenter Erinnerungsbasis auf lokalem Wissensgraphen, der Informationen über verschiedene Dialoge hinweg speichert. MEMORY_FILE_PATH-Umgebungsvariable muss konfiguriert werden",
-        "no": "Keine Beschreibung",
-        "nowledge_mem": "Erfordert lokal laufende Nowledge Mem App. Speichert KI-Chats, Tools, Notizen, Agenten und Dateien in einem privaten Speicher auf Ihrem Computer. Download unter https://mem.nowledge.co/",
-        "python": "Python-Code in einem sicheren Sandbox-Umgebung ausführen. Verwendung von Pyodide für Python, Unterstützung für die meisten Standardbibliotheken und wissenschaftliche Pakete",
-        "sequentialthinking": "MCP-Server-Implementierung mit strukturiertem Denkprozess, der dynamische und reflektierende Problemlösungen ermöglicht"
-      },
-      "command": "Befehl",
-      "config_description": "Model-Context-Protocol-Server konfigurieren",
-      "customRegistryPlaceholder": "Privates Repository-Adresse eingeben, z. B. https://npm.company.com",
-      "deleteError": "Server löschen fehlgeschlagen",
-      "deleteServer": "Server löschen",
-      "deleteServerConfirm": "Diesen Server wirklich löschen?",
-      "deleteSuccess": "Server erfolgreich gelöscht",
-      "dependenciesInstall": "Abhängigkeiten installieren",
-      "dependenciesInstalling": "Abhängigkeiten werden installiert...",
-      "description": "Beschreibung",
-      "disable": {
-        "description": "MCP-Service-Funktion nicht aktivieren",
-        "label": "MCP-Server nicht verwenden"
-      },
-      "discover": "Entdecken",
-      "duplicateName": "Server mit gleichem Namen existiert bereits",
-      "editJson": "JSON bearbeiten",
-      "editMcpJson": "MCP-Konfiguration bearbeiten",
-      "editServer": "Server bearbeiten",
-      "env": "Umgebungsvariablen",
-      "envTooltip": "Format: KEY=value, jede Zeile eine Variable",
-      "errors": {
-        "32000": "MCP-Server starten fehlgeschlagen, bitte überprüfen Sie, ob alle Parameter vollständig ausgefüllt sind",
-        "toolNotFound": "Tool {{name}} nicht gefunden"
-      },
-      "fetch": {
-        "button": "Server abrufen",
-        "success": "MCP-Server erfolgreich abgerufen"
-      },
-      "findMore": "Mehr MCP",
-      "headers": "Request-Header",
-      "headersTooltip": "Benutzerdefinierte Request-Header für HTTP-Anfragen",
-      "inMemory": "Speicher",
-      "install": "Installieren",
-      "installError": "Installation der Abhängigkeiten fehlgeschlagen",
-      "installHelp": "Installationshilfe abrufen",
-      "installSuccess": "Abhängigkeiten erfolgreich installiert",
-      "jsonFormatError": "JSON-Formatierungsfehler",
-      "jsonModeHint": "JSON-Darstellung der MCP-Server-Konfiguration. Bitte sicherstellen, dass das Format korrekt ist, bevor gespeichert wird",
-      "jsonSaveError": "JSON-Konfiguration speichern fehlgeschlagen",
-      "jsonSaveSuccess": "JSON-Konfiguration erfolgreich gespeichert",
-      "lanyun": {
-        "description": "Lanyun Technology Cloud Platform MCP Service",
-        "name": "Lanyun Technology"
-      },
-      "logoUrl": "Logo-URL",
-      "logs": "Protokolle",
-      "longRunning": "Lang laufender Modus",
-      "longRunningTooltip": "Nach Aktivierung unterstützt der Server lange Aufgaben. Wenn ein Fortschrittsbenachrichtigung empfangen wird, wird der Timeout-Timer zurückgesetzt und die maximale Timeout-Zeit auf 10 Minuten verlängert",
-      "marketplaces": "Marktplätze",
-      "missingDependencies": "Abhängigkeiten fehlen, bitte installieren Sie sie, um fortzufahren",
-      "more": {
-        "awesome": "Kuratierte MCP-Serverliste",
-        "composio": "Composio MCP-Entwicklungstool",
-        "glama": "Glama MCP-Server-Verzeichnis",
-        "higress": "Higress MCP-Server",
-        "mcpso": "MCP-Server-Discovery-Plattform",
-        "mcpworld": "Baidu MCP-Aggregationsplattform",
-        "modelscope": "Modelscope MCP-Server",
-        "official": "Offizielle MCP-Server-Sammlung",
-        "pulsemcp": "Pulse MCP-Server",
-        "smithery": "Smithery MCP-Tool",
-        "zhipu": "Ausgewählte MCP, schnelle Integration"
-      },
-      "name": "Name",
-      "newServer": "MCP-Server",
-      "noDescriptionAvailable": "Keine Beschreibung",
-      "noLogs": "Noch keine Protokolle",
-      "noServers": "Server nicht konfiguriert",
-      "not_support": "Modell nicht unterstützt",
-      "npx_list": {
-        "actions": "Aktionen",
-        "description": "Beschreibung",
-        "no_packages": "Paket nicht gefunden",
-        "npm": "NPM",
-        "package_name": "Paketname",
-        "scope_placeholder": "npm-Scope eingeben (z.B. @your-org)",
-        "scope_required": "npm-Scope eingeben (z.B. @your-org)",
-        "search": "Suchen",
-        "search_error": "Suche fehlgeschlagen",
-        "usage": "Verwendung",
-        "version": "Version"
-      },
-      "oauth": {
-        "callback": {
-          "message": "Sie können diese Seite schließen und zu Cherry Studio zurückkehren",
-          "title": "Authentifizierung erfolgreich"
-        }
-      },
-      "prompts": {
-        "arguments": "Parameter",
-        "availablePrompts": "Verfügbare Prompts",
-        "genericError": "Prompt-Fehler abrufen",
-        "loadError": "Prompt-Fehler abrufen",
-        "noPromptsAvailable": "Keine Prompts verfügbar",
-        "requiredField": "Pflichtfeld"
-      },
-      "protocolInstallWarning": {
-        "command": "Startbefehl",
-        "message": "Dieses MCP wurde über ein Protokoll aus einer externen Quelle installiert. Das Ausführen unbekannter Tools kann Ihren Computer schädigen.",
-        "run": "Laufen",
-        "title": "Externes MCP ausführen?"
-      },
-      "provider": "Anbieter",
-      "providerPlaceholder": "Anbietername",
-      "providerUrl": "Anbieter-Website",
-      "providers": "Anbieter",
-      "registry": "Paketverwaltungsquelle",
-      "registryDefault": "Standard",
-      "registryTooltip": "Quelle für Paketinstallation auswählen um Netzwerkprobleme der Standardquelle zu lösen",
-      "requiresConfig": "Konfiguration erforderlich",
-      "resources": {
-        "availableResources": "Verfügbare Ressourcen",
-        "blob": "Binärdaten",
-        "blobInvisible": "Binärdaten ausblenden",
-        "genericError": "Ressourcenfehler abrufen",
-        "mimeType": "MIME-Typ",
-        "noResourcesAvailable": "Keine Ressourcen verfügbar",
-        "size": "Größe",
-        "text": "Text",
-        "uri": "URI"
-      },
-      "search": {
-        "placeholder": "MCP-Server durchsuchen...",
-        "tooltip": "MCP-Server durchsuchen"
-      },
-      "searchNpx": "MCP durchsuchen",
-      "serverPlural": "Server",
-      "serverSingular": "Server",
-      "servers": "MCP-Server",
-      "sse": "Server-Sende-Ereignisse (sse)",
-      "startError": "Start fehlgeschlagen",
-      "stdio": "Standard-Eingabe / -Ausgabe (stdio)",
-      "streamableHttp": "Streaming-HTTP (streamableHttp)",
-      "sync": {
-        "button": "Synchronisieren",
-        "discoverMcpServers": "MCP-Server finden",
-        "discoverMcpServersDescription": "Zugriff auf die Plattform, um verfügbare MCP-Server zu finden",
-        "error": "Synchronisation von MCP-Server fehlgeschlagen",
-        "getToken": "API-Token abrufen",
-        "getTokenDescription": "Persönlichen API-Token aus Ihrem Konto abrufen",
-        "noServersAvailable": "Keine MCP-Server verfügbar",
-        "providerDescriptions": {
-          "302ai": "302.AI-Plattform MCP-Dienst",
-          "bailian": "Alibaba Cloud Bailian Platform MCP-Dienst",
-          "lanyun": "Lanyun Technology Cloud Platform MCP-Dienst",
-          "mcprouter": "MCP-Router-Plattform MCP-Service",
-          "modelscope": "ModelScope-Plattform MCP-Dienst",
-          "tokenflux": "TokenFlux Platform MCP Service"
-        },
-        "selectProvider": "Anbieter auswählen:",
-        "setToken": "Ihren Token eingeben",
-        "success": "MCP-Server erfolgreich synchronisiert",
-        "title": "Server synchronisieren",
-        "tokenPlaceholder": "API-Token hier eingeben",
-        "tokenRequired": "API-Token ist erforderlich",
-        "unauthorized": "Synchronisation nicht autorisiert"
-      },
-      "system": "System",
-      "tabs": {
-        "description": "Beschreibung",
-        "general": "Allgemein",
-        "prompts": "Hinweis",
-        "resources": "Ressourcen",
-        "tools": "Tools"
-      },
-      "tags": "Tags",
-      "tagsPlaceholder": "Tag eingeben",
-      "timeout": "Timeout",
-      "timeoutTooltip": "Timeout für Anfragen an den Server in Sekunden. Standardmäßig 60 Sekunden.",
-      "title": "MCP-Server",
-      "tools": {
-        "autoApprove": {
-          "label": "Automatische Genehmigung",
-          "tooltip": {
-            "confirm": "MCP-Tool ausführen?",
-            "disabled": "Manuelle Genehmigung vor Tool-Ausführung erforderlich",
-            "enabled": "Tool wird automatisch ohne Genehmigung ausgeführt",
-            "howToEnable": "Tool muss aktiviert sein für Auto-Genehmigung"
-          }
-        },
-        "availableTools": "Verfügbare Tools",
-        "enable": "Tool aktivieren",
-        "inputSchema": {
-          "enum": {
-            "allowedValues": "Erlaubte Werte"
-          },
-          "label": "Eingabemodus"
-        },
-        "loadError": "Tool-Abruf fehlgeschlagen",
-        "noToolsAvailable": "Keine Tools verfügbar",
-        "run": "Ausführen"
-      },
-      "type": "Typ",
-      "types": {
-        "inMemory": "Integriert",
-        "sse": "SSE",
-        "stdio": "STDIO",
-        "streamableHttp": "Streaming"
-      },
-      "updateError": "Server-Update fehlgeschlagen",
-      "updateSuccess": "Server erfolgreich aktualisiert",
-      "url": "URL",
-      "user": "Benutzer"
-    },
     "messages": {
       "divider": {
         "label": "Nachrichtentrennlinie",
@@ -5702,7 +5394,6 @@
     "home": "Startseite",
     "knowledge": "Wissensdatenbank",
     "launchpad": "Launchpad",
-    "mcp-servers": "MCP-Server",
     "memories": "Erinnerungen",
     "notes": "Notizen",
     "openclaw": "OpenClaw",

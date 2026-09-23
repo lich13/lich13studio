@@ -504,13 +504,6 @@
         "title": "自主模式"
       },
       "tooling": {
-        "mcp": {
-          "description": "连接 MCP 服务器即可解锁更多可在上方预先授权的工具。",
-          "empty": "未检测到 MCP 服务器，请前往 MCP 设置页添加。",
-          "inactiveTooltip": "该 MCP 服务器未激活，请先启动它。",
-          "manageHint": "需要更多配置？前往 设置 → MCP 服务器。",
-          "toggle": "切换 {{name}}"
-        },
         "permissionMode": {
           "acceptEdits": {
             "description": "可自由读取和编辑文件，执行命令前会询问。",
@@ -542,7 +535,6 @@
           "autoDescription": "该工具由当前权限模式自动预先授权。",
           "autoDisabledTooltip": "由「{{mode}}」自动授权，无法禁用。",
           "empty": "没有符合筛选条件的工具。",
-          "mcpBadge": "MCP 工具",
           "requiresApproval": "禁用时需要人工审批",
           "search": "搜索工具",
           "title": "预授权工具",
@@ -897,27 +889,6 @@
         "label": "最大工具调用次数",
         "tip": "单次对话中允许的最大工具调用次数。较高的值支持更复杂的多步操作，但可能增加 Token 消耗和响应时间。"
       },
-      "mcp": {
-        "description": "默认启用的 MCP 服务器",
-        "enableFirst": "请先在 MCP 设置中启用此服务器",
-        "label": "MCP 服务器",
-        "mode": {
-          "auto": {
-            "description": "AI 自动发现和使用工具",
-            "label": "自动"
-          },
-          "disabled": {
-            "description": "不使用 MCP 工具",
-            "label": "禁用"
-          },
-          "manual": {
-            "description": "选择特定的 MCP 服务器",
-            "label": "手动"
-          }
-        },
-        "noServersAvailable": "无可用 MCP 服务器。请在设置中添加服务器",
-        "title": "MCP 服务器"
-      },
       "model": "模型设置",
       "more": "助手设置",
       "prompt": "提示词设置",
@@ -1190,17 +1161,6 @@
           "label": "不使用网络"
         },
         "settings": "网络搜索设置"
-      }
-    },
-    "mcp": {
-      "error": {
-        "parse_tool_call": "无法转换为有效的工具调用格式：{{toolCall}}"
-      },
-      "warning": {
-        "gemini_web_search": "Gemini 不支持同时使用原生网络搜索工具与函数调用",
-        "multiple_tools": "存在多个匹配的MCP工具，已选择 {{tool}}",
-        "no_tool": "未匹配到所需的MCP工具 {{tool}}",
-        "url_context": "Gemini 不支持同时使用网页上下文与函数调用"
       }
     },
     "message": {
@@ -1748,10 +1708,7 @@
         "message": "似乎出现了一些问题...",
         "reload": "重新加载"
       },
-      "details": "详细信息",
-      "mcp": {
-        "invalid": "无效的MCP服务器"
-      }
+      "details": "详细信息"
     },
     "cause": "错误原因",
     "chat": {
@@ -1778,7 +1735,6 @@
       "deprecated": "该模型已下线或弃用，请更换其他模型",
       "go_to_settings": "前往设置",
       "knowledge": "知识库向量化失败",
-      "mcp": "MCP 服务器连接失败，请检查服务是否已启动",
       "model": "模型不存在或你没有访问权限",
       "model_conflict": "诊断模型与出错模型相同，无法进行诊断",
       "network": "无法连接到服务器，请检查网络或代理设置",
@@ -2499,7 +2455,6 @@
         "exitPlanMode": "退出计划模式",
         "glob": "文件匹配",
         "grep": "搜索",
-        "mcpServerTool": "MCP 服务器工具",
         "multiEdit": "批量编辑",
         "notebookEdit": "笔记本编辑",
         "readFile": "读取文件",
@@ -5452,7 +5407,6 @@
     "home": "首页",
     "knowledge": "知识库",
     "launchpad": "启动台",
-    "mcp-servers": "MCP 服务器",
     "memories": "记忆",
     "notes": "笔记",
     "openclaw": "OpenClaw",

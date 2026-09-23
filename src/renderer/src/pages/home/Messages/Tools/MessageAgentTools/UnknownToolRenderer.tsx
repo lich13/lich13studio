@@ -51,10 +51,7 @@ export function UnknownToolRenderer({
 }: UnknownToolProps): NonNullable<CollapseProps['items']>[number] {
   const { t } = useTranslation()
 
-  const getToolDescription = (name: string) => {
-    if (name.startsWith('mcp__')) {
-      return t('message.tools.labels.mcpServerTool')
-    }
+  const getToolDescription = () => {
     return t('message.tools.labels.tool')
   }
 
@@ -78,7 +75,7 @@ export function UnknownToolRenderer({
       <ToolHeader
         toolName={getToolDisplayName(toolName)}
         icon={<Wrench className="h-4 w-4" />}
-        params={getToolDescription(toolName)}
+        params={getToolDescription()}
         variant="collapse-label"
         showStatus={false}
       />

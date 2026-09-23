@@ -504,13 +504,6 @@
         "title": "Mod Autonom"
       },
       "tooling": {
-        "mcp": {
-          "description": "Conectează servere MCP pentru a debloca instrumente suplimentare pe care le poți aproba mai sus.",
-          "empty": "Nu au fost detectate servere MCP. Adaugă unul din pagina de setări MCP.",
-          "inactiveTooltip": "Acest server MCP nu este activ. Vă rugăm să-l porniți mai întâi.",
-          "manageHint": "Ai nevoie de configurare avansată? Vizitează Setări → Servere MCP.",
-          "toggle": "Comută {{name}}"
-        },
         "permissionMode": {
           "acceptEdits": {
             "description": "Editările de fișiere și operațiunile sistemului de fișiere sunt aprobate automat.",
@@ -542,7 +535,6 @@
           "autoDescription": "Acest instrument este aprobat automat de modul de permisiune curent.",
           "autoDisabledTooltip": "Aprobat automat de „{{mode}}” și nu poate fi dezactivat.",
           "empty": "Niciun instrument nu corespunde filtrelor tale.",
-          "mcpBadge": "Instrument MCP",
           "requiresApproval": "Necesită aprobare când este dezactivat",
           "search": "Caută instrumente",
           "toggle": "Comută {{name}}"
@@ -556,16 +548,6 @@
         "tab": "Instrumente pre-aprobate",
         "title": "Instrumente pre-aprobate",
         "toggle": "{{defaultValue}}"
-      },
-      "toolsMcp": {
-        "mcp": {
-          "tab": "MCP",
-          "title": "Servere MCP"
-        },
-        "tab": "Unelte",
-        "tools": {
-          "title": "Instrumente pre-aprobate"
-        }
       }
     },
     "sidebar_title": "Agenți",
@@ -906,27 +888,6 @@
         "label": "Apeluri maxime de instrumente",
         "tip": "Numărul maxim de apeluri de instrumente permise într-o singură conversație. Valorile mai mari permit operațiuni multi-etapă mai complexe, dar pot crește utilizarea tokenilor și timpul de răspuns."
       },
-      "mcp": {
-        "description": "Servere MCP activate implicit",
-        "enableFirst": "Activează mai întâi acest server în setările MCP",
-        "label": "Servere MCP",
-        "mode": {
-          "auto": {
-            "description": "AI descoperă și folosește instrumente automat",
-            "label": "Auto"
-          },
-          "disabled": {
-            "description": "Niciun instrument MCP",
-            "label": "Dezactivat"
-          },
-          "manual": {
-            "description": "Selectați servere MCP specifice",
-            "label": "Manual"
-          }
-        },
-        "noServersAvailable": "Nu există servere MCP disponibile. Adaugă servere în setări",
-        "title": "Setări MCP"
-      },
       "model": "Setări model",
       "more": "Setări asistent",
       "prompt": "Setări prompt",
@@ -1195,17 +1156,6 @@
           "label": "Dezactivează căutarea web"
         },
         "settings": "Setări căutare web"
-      }
-    },
-    "mcp": {
-      "error": {
-        "parse_tool_call": "Nu se poate converti într-un format valid de apelare a instrumentului: {{toolCall}}"
-      },
-      "warning": {
-        "gemini_web_search": "Gemini nu acceptă utilizarea simultană a instrumentelor native de căutare web și a apelării funcțiilor",
-        "multiple_tools": "Există mai multe instrumente MCP care se potrivesc, a fost selectat {{tool}}",
-        "no_tool": "Nu s-a găsit niciun instrument MCP potrivit pentru {{tool}}",
-        "url_context": "Gemini nu acceptă utilizarea simultană a contextului URL și a apelării funcțiilor"
       }
     },
     "message": {
@@ -1751,10 +1701,7 @@
         "message": "Se pare că ceva nu a mers bine...",
         "reload": "Reîncarcă"
       },
-      "details": "Detalii",
-      "mcp": {
-        "invalid": "Server MCP invalid"
-      }
+      "details": "Detalii"
     },
     "cause": "Cauză eroare",
     "chat": {
@@ -1781,7 +1728,6 @@
       "deprecated": "Acest model a fost retras, te rugăm să treci la alt model",
       "go_to_settings": "Mergi la setări",
       "knowledge": "Vectorizarea bazei de cunoștințe a eșuat",
-      "mcp": "Conexiunea la serverul MCP a eșuat, verificați dacă serviciul rulează",
       "model": "Model negăsit sau fără acces",
       "model_conflict": "Modelul de diagnostic este identic cu modelul cu eroare",
       "network": "Nu se poate conecta la server, verificați setările de rețea sau proxy",
@@ -2501,7 +2447,6 @@
         "exitPlanMode": "ExitPlanMode",
         "glob": "Glob",
         "grep": "Grep",
-        "mcpServerTool": "Instrument Server MCP",
         "multiEdit": "MultiEdit",
         "notebookEdit": "NotebookEdit",
         "readFile": "Citește fișier",
@@ -4581,259 +4526,6 @@
       },
       "title": "Setări matematice"
     },
-    "mcp": {
-      "actions": "Acțiuni",
-      "active": "Activ",
-      "addError": "Nu s-a putut adăuga serverul",
-      "addServer": {
-        "create": "Creare rapidă",
-        "importFrom": {
-          "connectionFailed": "Conexiune eșuată",
-          "dxt": "Importă pachet DXT",
-          "dxtFile": "Fișier pachet DXT",
-          "dxtHelp": "Selectează un fișier .dxt care conține un pachet de server MCP",
-          "dxtProcessFailed": "Procesarea fișierului DXT a eșuat",
-          "error": {
-            "multipleServers": "Nu se poate importa din mai multe servere"
-          },
-          "invalid": "Intrare invalidă, te rugăm să verifici formatul JSON",
-          "json": "Importă din JSON",
-          "method": "Metodă import",
-          "nameExists": "Serverul există deja: {{name}}",
-          "noDxtFile": "Te rugăm să selectezi un fișier DXT",
-          "oneServer": "Doar o singură configurație de server MCP la un moment dat",
-          "placeholder": "Lipește configurația JSON a serverului MCP",
-          "selectDxtFile": "Selectează fișierul DXT",
-          "tooltip": "Te rugăm să copiezi JSON-ul de configurare (prioritizând configurațiile\n NPX sau UVX) din pagina de introducere a serverelor MCP și să-l lipești în caseta de intrare."
-        },
-        "label": "Adaugă server"
-      },
-      "addSuccess": "Server adăugat cu succes",
-      "advancedSettings": "Setări avansate",
-      "args": "Argumente",
-      "argsTooltip": "Fiecare argument pe o linie nouă",
-      "baseUrlTooltip": "URL de bază server la distanță",
-      "builtinServers": "Servere integrate",
-      "builtinServersDescriptions": {
-        "brave_search": "O implementare de server MCP care integrează API-ul Brave Search, oferind funcționalități de căutare web și locală. Necesită configurarea variabilei de mediu BRAVE_API_KEY",
-        "browser": "Controlează o fereastră Electron headless prin Protocolul Chrome DevTools. Instrumente: deschide URL, execută JS pe o singură linie, resetează sesiunea.",
-        "didi_mcp": "Server DiDi MCP care oferă servicii de ride-hailing, inclusiv căutare pe hartă, estimare preț, gestionare comenzi și urmărire șofer. Disponibil doar în China continentală. Necesită configurarea variabilei de mediu DIDI_API_KEY",
-        "dify_knowledge": "Implementarea serverului MCP Dify oferă un API simplu pentru a interacționa cu Dify. Necesită configurarea cheii Dify",
-        "fetch": "Server MCP pentru preluarea conținutului web de la URL",
-        "filesystem": "Un server Node.js care implementează Protocolul de Context Model (MCP) pentru operațiuni în sistemul de fișiere. Necesită configurarea directoarelor permise pentru acces.",
-        "flomo": "Conectează-te la flomo pentru a captura rapid notițe și idei prin AI. Necesită autorizarea contului flomo.",
-        "mcp_auto_install": "Instalează automat serviciul MCP (beta)",
-        "memory": "Implementare de memorie persistentă bazată pe un graf de cunoștințe local. Aceasta permite modelului să rețină informații legate de utilizator între conversații diferite. Necesită configurarea variabilei de mediu MEMORY_FILE_PATH.",
-        "no": "Fără descriere",
-        "nowledge_mem": "Necesită aplicația Nowledge Mem rulând local. Păstrează chat-urile AI, instrumentele, notițele, agenții și fișierele în memoria privată de pe computerul tău. Descarcă de la https://mem.nowledge.co/",
-        "python": "Execută cod Python într-un mediu sandbox securizat. Rulează Python cu Pyodide, suportând majoritatea bibliotecilor standard și pachetelor de calcul științific",
-        "sequentialthinking": "O implementare de server MCP care oferă instrumente pentru rezolvarea dinamică și reflexivă a problemelor prin procese de gândire structurată"
-      },
-      "command": "Comandă",
-      "config_description": "Configurează serverele Protocolului de Context Model",
-      "customRegistryPlaceholder": "Introdu URL registru privat, de ex.: https://npm.company.com",
-      "deleteError": "Nu s-a putut șterge serverul",
-      "deleteServer": "Șterge serverul",
-      "deleteServerConfirm": "Ești sigur că vrei să ștergi acest server?",
-      "deleteSuccess": "Server șters cu succes",
-      "dependenciesInstall": "Instalează dependențe",
-      "dependenciesInstalling": "Se instalează dependențele...",
-      "description": "Descriere",
-      "disable": {
-        "description": "Nu activa funcționalitatea serverului MCP",
-        "label": "Dezactivează serverul MCP"
-      },
-      "discover": "Descoperă",
-      "duplicateName": "Un server cu acest nume există deja",
-      "editJson": "Editează JSON",
-      "editMcpJson": "Editează configurația MCP",
-      "editServer": "Editează serverul",
-      "env": "Variabile de mediu",
-      "envTooltip": "Format: CHEIE=valoare, una pe linie",
-      "errors": {
-        "32000": "Serverul MCP nu a pornit, te rugăm să verifici parametrii conform tutorialului",
-        "toolNotFound": "Instrumentul {{name}} nu a fost găsit"
-      },
-      "fetch": {
-        "button": "Preluare servere",
-        "success": "Serverele MCP au fost preluate cu succes"
-      },
-      "findMore": "Găsește mai multe MCP",
-      "headers": "Headere",
-      "headersTooltip": "Headere personalizate pentru cereri HTTP",
-      "inMemory": "Memorie",
-      "install": "Instalează",
-      "installError": "Instalarea dependențelor a eșuat",
-      "installHelp": "Obține ajutor pentru instalare",
-      "installSuccess": "Dependențe instalate cu succes",
-      "jsonFormatError": "Eroare formatare JSON",
-      "jsonModeHint": "Editează reprezentarea JSON a configurației serverului MCP. Te rugăm să te asiguri că formatul este corect înainte de salvare.",
-      "jsonSaveError": "Nu s-a putut salva configurația JSON.",
-      "jsonSaveSuccess": "Configurația JSON a fost salvată.",
-      "lanyun": {
-        "description": "Lanyun Technology Cloud Platform MCP Service",
-        "name": "Lanyun Technology"
-      },
-      "logoUrl": "URL logo",
-      "logs": "Jurnale",
-      "longRunning": "Mod rulare lungă",
-      "longRunningTooltip": "Când este activat, serverul acceptă sarcini de lungă durată. La primirea notificărilor de progres, timpul de expirare va fi resetat, iar timpul maxim de execuție va fi extins la 10 minute.",
-      "marketplaces": "Piețe",
-      "missingDependencies": "Lipsește, te rugăm să îl instalezi pentru a continua.",
-      "more": {
-        "awesome": "Listă curatoriată servere MCP",
-        "composio": "Instrumente dezvoltare MCP Composio",
-        "glama": "Director servere MCP Glama",
-        "higress": "Server MCP Higress",
-        "mcpso": "Platformă descoperire servere MCP",
-        "mcpworld": "Platforma de agregare MCP Baidu",
-        "modelscope": "Server MCP comunitate ModelScope",
-        "official": "Colecție oficială servere MCP",
-        "pulsemcp": "Server MCP Pulse",
-        "smithery": "Instrumente MCP Smithery",
-        "zhipu": "MCP curatoriat, integrare rapidă"
-      },
-      "name": "Nume",
-      "newServer": "Server MCP",
-      "noDescriptionAvailable": "Nicio descriere disponibilă",
-      "noLogs": "Niciun jurnal încă",
-      "noServers": "Niciun server configurat",
-      "not_support": "Model neacceptat",
-      "npx_list": {
-        "actions": "Acțiuni",
-        "description": "Descriere",
-        "no_packages": "Nu s-au găsit pachete",
-        "npm": "NPM",
-        "package_name": "Nume pachet",
-        "scope_placeholder": "Introdu domeniul npm (de ex. @organizatia-ta)",
-        "scope_required": "Te rugăm să introduci domeniul npm",
-        "search": "Caută",
-        "search_error": "Eroare căutare",
-        "usage": "Utilizare",
-        "version": "Versiune"
-      },
-      "oauth": {
-        "callback": {
-          "message": "Poți închide această pagină și te poți întoarce la Cherry Studio",
-          "title": "Autentificare reușită"
-        }
-      },
-      "prompts": {
-        "arguments": "Argumente",
-        "availablePrompts": "Prompturi disponibile",
-        "genericError": "Eroare obținere prompt",
-        "loadError": "Eroare obținere prompturi",
-        "noPromptsAvailable": "Nu există prompturi disponibile",
-        "requiredField": "Câmp obligatoriu"
-      },
-      "protocolInstallWarning": {
-        "command": "Comandă pornire",
-        "message": "Acest MCP a fost instalat dintr-o sursă externă prin protocol. Rularea instrumentelor necunoscute poate dăuna computerului tău.",
-        "run": "Rulează",
-        "title": "Rulezi MCP extern?"
-      },
-      "provider": "Furnizor",
-      "providerPlaceholder": "Nume furnizor",
-      "providerUrl": "URL furnizor",
-      "providers": "Furnizori",
-      "registry": "Registru pachete",
-      "registryDefault": "Implicit",
-      "registryTooltip": "Alege registrul pentru instalarea pachetelor pentru a rezolva problemele de rețea cu registrul implicit.",
-      "requiresConfig": "Necesită configurare",
-      "resources": {
-        "availableResources": "Resurse disponibile",
-        "blob": "Blob",
-        "blobInvisible": "Blob invizibil",
-        "genericError": "Eroare achiziție resursă",
-        "mimeType": "Tip MIME",
-        "noResourcesAvailable": "Nu există resurse disponibile",
-        "size": "Dimensiune",
-        "text": "Text",
-        "uri": "URI"
-      },
-      "search": {
-        "placeholder": "Caută servere MCP...",
-        "tooltip": "Caută servere MCP"
-      },
-      "searchNpx": "Caută MCP",
-      "serverPlural": "servere",
-      "serverSingular": "server",
-      "servers": "Servere MCP",
-      "sse": "Evenimente trimise de server (sse)",
-      "startError": "Pornire eșuată",
-      "stdio": "Intrare/Ieșire standard (stdio)",
-      "streamableHttp": "HTTP fluxabil (streamableHttp)",
-      "sync": {
-        "button": "Sincronizează",
-        "discoverMcpServers": "Descoperă servere MCP",
-        "discoverMcpServersDescription": "Vizitează platforma pentru a descoperi servere MCP disponibile",
-        "error": "Eroare sincronizare servere MCP",
-        "getToken": "Obține token API",
-        "getTokenDescription": "Obține tokenul tău personal API din contul tău",
-        "noServersAvailable": "Nu există servere MCP disponibile",
-        "providerDescriptions": {
-          "302ai": "Serviciul MCP al Platformei 302.AI",
-          "bailian": "Serviciul MCP al Platformei Bailian Alibaba Cloud",
-          "lanyun": "Platforma Cloud Lanyun Technology - Serviciul MCP",
-          "mcprouter": "Platformă Router MCP Serviciu MCP",
-          "modelscope": "Serviciul MCP al Platformei ModelScope",
-          "tokenflux": "Serviciul MCP al Platformei TokenFlux"
-        },
-        "selectProvider": "Selectează furnizor:",
-        "setToken": "Introdu tokenul tău",
-        "success": "Sincronizare servere MCP reușită",
-        "title": "Sincronizare servere",
-        "tokenPlaceholder": "Introdu tokenul API aici",
-        "tokenRequired": "Tokenul API este obligatoriu",
-        "unauthorized": "Sincronizare neautorizată"
-      },
-      "system": "Sistem",
-      "tabs": {
-        "description": "Descriere",
-        "general": "General",
-        "prompts": "Prompturi",
-        "resources": "Resurse",
-        "tools": "Instrumente"
-      },
-      "tags": "Etichete",
-      "tagsPlaceholder": "Introdu etichete",
-      "timeout": "Expirare",
-      "timeoutTooltip": "Timpul de expirare în secunde pentru cererile către acest server, implicit este 60 secunde",
-      "title": "Servere MCP",
-      "tools": {
-        "autoApprove": {
-          "label": "Aprobare automată",
-          "tooltip": {
-            "confirm": "Ești sigur că vrei să rulezi acest instrument MCP?",
-            "disabled": "Instrumentul va necesita aprobare manuală înainte de rulare",
-            "enabled": "Instrumentul va rula automat fără confirmare",
-            "howToEnable": "Activează mai întâi instrumentul pentru a folosi aprobarea automată"
-          }
-        },
-        "availableTools": "Instrumente disponibile",
-        "enable": "Activează instrumentul",
-        "inputSchema": {
-          "enum": {
-            "allowedValues": "Valori permise"
-          },
-          "label": "Schemă intrare"
-        },
-        "loadError": "Eroare obținere instrumente",
-        "noToolsAvailable": "Nu există instrumente disponibile",
-        "run": "Rulează"
-      },
-      "type": "Tip",
-      "types": {
-        "inMemory": "În memorie",
-        "sse": "SSE",
-        "stdio": "STDIO",
-        "streamableHttp": "HTTP fluxabil"
-      },
-      "updateError": "Actualizarea serverului a eșuat",
-      "updateSuccess": "Server actualizat cu succes",
-      "url": "URL",
-      "user": "Utilizator"
-    },
     "messages": {
       "divider": {
         "label": "Afișează divizor între mesaje",
@@ -5702,7 +5394,6 @@
     "home": "Acasă",
     "knowledge": "Bază de cunoștințe",
     "launchpad": "Launchpad",
-    "mcp-servers": "Servere MCP",
     "memories": "Amintiri",
     "notes": "Notițe",
     "openclaw": "OpenClaw",
