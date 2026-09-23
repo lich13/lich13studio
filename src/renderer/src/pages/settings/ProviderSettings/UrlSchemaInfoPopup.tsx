@@ -1,6 +1,6 @@
 import { TopView } from '@renderer/components/TopView'
 import { useAllProviders } from '@renderer/hooks/useProvider'
-import type { Provider, ProviderType } from '@renderer/types'
+import { type Provider, type ProviderType, ProviderTypeSchema } from '@renderer/types'
 import { getFancyProviderName, maskApiKey } from '@renderer/utils'
 import { Button, Descriptions, Flex, Modal } from 'antd'
 import { Eye, EyeOff } from 'lucide-react'
@@ -36,7 +36,7 @@ const PopupContainer = ({ id, apiKey: newApiKey, baseUrl, type, name, resolve }:
   const baseProvider: Provider = foundProvider ?? {
     id,
     name: name || id,
-    type: type || 'openai',
+    type: ProviderTypeSchema.parse(type || 'openai-response'),
     apiKey: '',
     apiHost: baseUrl || '',
     models: [],

@@ -2,14 +2,11 @@
  * 模型基础参数处理模块
  * 处理温度、TopP、超时等基础参数的获取逻辑
  */
-
 import { loggerService } from '@logger'
 import {
-  isClaude46SeriesModel,
   isClaudeReasoningModel,
   isMaxTemperatureOneModel,
   isSupportedFlexServiceTier,
-  isSupportedThinkingTokenClaudeModel,
   isSupportTemperatureModel,
   isSupportTopPModel,
   isTemperatureTopPMutuallyExclusiveModel
@@ -21,6 +18,7 @@ import {
 } from '@renderer/services/AssistantService'
 import { type Assistant, type Model } from '@renderer/types'
 import { DEFAULT_TIMEOUT } from '@shared/config/constant'
+import { anthropicThinkingMode } from '@shared/reasoning'
 
 import { getThinkingBudget } from '../utils/reasoning'
 
@@ -29,7 +27,7 @@ const logger = loggerService.withContext('modelParameters')
 /**
  * Retrieves the temperature parameter, adapting it based on assistant.settings and model capabilities.
  * - Disabled when enableTemperature is off.
- * - Disabled for Claude reasoning models when reasoning effort is set (excluding 'default' and 'none').
+ * - Disabled for Claude reasoning models when thinking is enabled.
  * - Disabled for models that do not support temperature.
  * - Clamped to 1 for models with max temperature of 1.
  * Otherwise, returns the temperature value.
@@ -42,17 +40,12 @@ export function getTemperature(assistant: Assistant, model: Model): number | und
 
   // Thinking isn't compatible with temperature or top_k modifications as well as forced tool use.
   // See: https://platform.claude.com/docs/en/build-with-claude/extended-thinking#feature-compatibility
-  if (
-    isClaudeReasoningModel(model) &&
-    assistant.settings?.reasoning_effort &&
-    assistant.settings.reasoning_effort !== 'default' &&
-    assistant.settings.reasoning_effort !== 'none'
-  ) {
+  if (isClaudeReasoningModel(model)) {
     logger.info(`Model ${model.id} does not support reasoning with temperature, disabling temperature`)
     return undefined
   }
 
-  if (!isSupportTemperatureModel(model, assistant)) {
+  if (!isSupportTemperatureModel(model)) {
     logger.info(`Model ${model.id} does not support temperature, disabling temperature`)
     return undefined
   }
@@ -76,7 +69,7 @@ export function getTemperature(assistant: Assistant, model: Model): number | und
  * - Disabled when enableTopP is off.
  * - Disabled for models that do not support TopP.
  * - Disabled for mutually exclusive models when temperature is enabled.
- * - Clamped to [0.95, 1] for Claude reasoning models with reasoning effort set (excluding 'default' and 'none').
+ * - Clamped to [0.95, 1] for Claude reasoning models with thinking enabled.
  * Otherwise, returns the TopP value.
  */
 export function getTopP(assistant: Assistant, model: Model): number | undefined {
@@ -85,7 +78,7 @@ export function getTopP(assistant: Assistant, model: Model): number | undefined 
     return undefined
   }
 
-  if (!isSupportTopPModel(model, assistant)) {
+  if (!isSupportTopPModel(model)) {
     logger.info(`Model ${model.id} does not support topP, disabling topP.`)
     return undefined
   }
@@ -99,13 +92,7 @@ export function getTopP(assistant: Assistant, model: Model): number | undefined 
 
   // When thinking is enabled, the topP should be between 0.95 and 1
   // See: https://platform.claude.com/docs/en/build-with-claude/extended-thinking#feature-compatibility
-  // NOTE: It depends on the behavior that extended thinking defaults to off, so we clamp the topP value also when reasoning is not 'default'
-  if (
-    isClaudeReasoningModel(model) &&
-    assistant.settings?.reasoning_effort &&
-    assistant.settings.reasoning_effort !== 'default' &&
-    assistant.settings.reasoning_effort !== 'none'
-  ) {
+  if (isClaudeReasoningModel(model)) {
     const clampedTopP = Math.max(0.95, Math.min(topP, 1))
     if (clampedTopP !== topP) {
       logger.info(`Claude Model ${model.id} has reasoning enabled, clamping topP from ${topP} to ${clampedTopP}`)
@@ -127,30 +114,11 @@ export function getTimeout(model: Model): number {
 }
 
 export function getMaxTokens(assistant: Assistant, model: Model): number | undefined {
-  // NOTE: ai-sdk会把maxToken和budgetToken加起来
-  const assistantSettings = getAssistantSettings(assistant)
-  const enabledMaxTokens = assistantSettings.enableMaxTokens ?? false
-  let maxTokens = assistantSettings.maxTokens
-
-  // If user hasn't enabled enableMaxTokens, return undefined to let the API use its default value.
-  // Note: Anthropic API requires max_tokens, but that's handled by the Anthropic client with a fallback.
-  if (!enabledMaxTokens || maxTokens === undefined) {
-    return undefined
-  }
-
+  const settings = getAssistantSettings(assistant)
   const provider = getProviderByModel(model)
-  // Claude 4.6 uses adaptive thinking (no budgetTokens), so the AI SDK does not add budget back
-  // to maxOutputTokens. Skip the subtraction to avoid incorrectly reducing max_tokens.
-  if (
-    isSupportedThinkingTokenClaudeModel(model) &&
-    !isClaude46SeriesModel(model) &&
-    ['anthropic', 'aws-bedrock'].includes(provider.type)
-  ) {
-    const { reasoning_effort: reasoningEffort } = assistantSettings
-    const budget = getThinkingBudget(maxTokens, reasoningEffort, model.id)
-    if (budget) {
-      maxTokens -= budget
-    }
-  }
-  return maxTokens
+  if (provider.type !== 'anthropic') return settings.enableMaxTokens ? settings.maxTokens : undefined
+  const total = settings.enableMaxTokens ? (settings.maxTokens ?? 4096) : 4096
+  const mode = anthropicThinkingMode(model.id)
+  if (mode === 'five' || mode === 'four') return total
+  return total - getThinkingBudget(total, settings.reasoning_effort, model.id)
 }

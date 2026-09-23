@@ -33,4 +33,4 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build renderer bundle
-        run: pnpm build:tauri:web
+        run: pnpm test:upgrade && pnpm test:renderer && pnpm build:tauri:web

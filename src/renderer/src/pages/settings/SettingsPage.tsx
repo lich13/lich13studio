@@ -1,5 +1,4 @@
 import { Navbar, NavbarCenter } from '@renderer/components/app/Navbar'
-import { McpLogo } from '@renderer/components/Icons'
 import Scrollbar from '@renderer/components/Scrollbar'
 import ModelSettings from '@renderer/pages/settings/ModelSettings/ModelSettings'
 import { Divider as AntDivider } from 'antd'
@@ -12,7 +11,6 @@ import styled from 'styled-components'
 import DataSettings from './DataSettings/DataSettings'
 import DisplaySettings from './DisplaySettings/DisplaySettings'
 import GeneralSettings from './GeneralSettings'
-import MCPSettings from './MCPSettings'
 import { ProviderList } from './ProviderSettings'
 import QuickPhraseSettings from './QuickPhraseSettings'
 import WebSearchSettings from './WebSearchSettings'
@@ -62,12 +60,6 @@ const SettingsPage: FC = () => {
             </MenuItem>
           </MenuItemLink>
           <Divider />
-          <MenuItemLink to="/settings/mcp">
-            <MenuItem className={isRoute('/settings/mcp')}>
-              <McpLogo width={18} height={18} style={{ opacity: 0.8 }} />
-              {t('settings.mcp.title')}
-            </MenuItem>
-          </MenuItemLink>
           <MenuItemLink to="/settings/websearch">
             <MenuItem className={isRoute('/settings/websearch')}>
               <Search size={18} />
@@ -87,7 +79,6 @@ const SettingsPage: FC = () => {
             <Route path="model" element={<ModelSettings />} />
             <Route path="websearch/*" element={<WebSearchSettings />} />
             <Route path="quickphrase" element={<QuickPhraseSettings />} />
-            <Route path="mcp/*" element={<MCPSettings />} />
             <Route path="general/*" element={<GeneralSettings />} />
             <Route path="display" element={<DisplaySettings />} />
             <Route path="data" element={<DataSettings />} />

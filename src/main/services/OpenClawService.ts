@@ -13,10 +13,9 @@ import getShellEnv, { refreshShellEnv } from '@main/utils/shell-env'
 import type { OperationResult } from '@shared/config/types'
 import { IpcChannel } from '@shared/IpcChannel'
 import { formatApiHost, hasAPIVersion, withoutTrailingSlash } from '@shared/utils'
-import type { Model, Provider, ProviderType, VertexProvider } from '@types'
+import type { Model, Provider, ProviderType } from '@types'
 
 import { parseCurrentVersion, parseUpdateStatus } from './utils/openClawParsers'
-import VertexAIService from './VertexAIService'
 import { windowService } from './WindowService'
 
 const logger = loggerService.withContext('OpenClawService')
@@ -83,7 +82,6 @@ export interface OpenClawProviderConfig {
  * - 'anthropic-messages': For Anthropic Messages API format
  */
 const OPENCLAW_API_TYPES = {
-  OPENAI: 'openai-completions',
   ANTHROPIC: 'anthropic-messages',
   OPENAI_RESPOSNE: 'openai-responses'
 } as const
@@ -101,7 +99,7 @@ const NO_KEY_PLACEHOLDERS: Record<string, string> = {
 /**
  * Providers that always use Anthropic API format
  */
-const ANTHROPIC_ONLY_PROVIDERS: ProviderType[] = ['anthropic', 'vertex-anthropic']
+const ANTHROPIC_ONLY_PROVIDERS: ProviderType[] = ['anthropic']
 
 /**
  * Endpoint types that use Anthropic API format
@@ -120,10 +118,6 @@ function isAnthropicEndpointType(model: Model): boolean {
 /**
  * Type guard to check if a provider is a VertexProvider
  */
-function isVertexProvider(provider: Provider): provider is VertexProvider {
-  return provider.type === 'vertexai'
-}
-
 class OpenClawService {
   private gatewayStatus: GatewayStatus = 'stopped'
   private gatewayPort: number = DEFAULT_GATEWAY_PORT
@@ -781,21 +775,6 @@ class OpenClawService {
       // If multiple API keys are configured (comma-separated), use the first one
       // Some providers like Ollama and LM Studio don't require API keys
       let apiKey = provider.apiKey ? provider.apiKey.split(',')[0].trim() : ''
-      if (isVertexProvider(provider)) {
-        try {
-          const vertexService = VertexAIService.getInstance()
-          apiKey = await vertexService.getAccessToken({
-            projectId: provider.project,
-            serviceAccount: {
-              privateKey: provider.googleCredentials.privateKey,
-              clientEmail: provider.googleCredentials.clientEmail
-            }
-          })
-        } catch (err) {
-          logger.warn('Failed to get VertexAI access token, using provider apiKey:', err as Error)
-        }
-      }
-
       // Providers like Ollama and LM Studio don't require real API keys,
       // but OpenClaw needs a non-empty placeholder value
       if (!apiKey) {
@@ -1020,7 +999,7 @@ class OpenClawService {
     }
 
     // 4. Default to OpenAI-compatible
-    return OPENCLAW_API_TYPES.OPENAI
+    return OPENCLAW_API_TYPES.OPENAI_RESPOSNE
   }
 
   /**
@@ -1056,26 +1035,6 @@ class OpenClawService {
     }
 
     const url = withoutTrailingSlash(provider.apiHost)
-    const providerType = provider.type
-
-    // VertexAI: build OpenAI-compatible endpoint URL with project and location
-    // https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/call-gemini-using-openai-library
-    if (isVertexProvider(provider)) {
-      const location = provider.location || 'us-central1'
-      return `https://${location}-aiplatform.googleapis.com/v1beta1/projects/${provider.project}/locations/${location}/endpoints/openapi`
-    }
-
-    // Gemini: use OpenAI-compatible endpoint
-    // https://ai.google.dev/gemini-api/docs/openai
-    if (providerType === 'gemini' && url.includes('generativelanguage.googleapis.com')) {
-      return `${url}/v1beta/openai`
-    }
-
-    // Vercel AI Gateway: convert /v1/ai to /v1
-    if (providerType === 'gateway' && url.endsWith('/v1/ai')) {
-      return url.replace(/\/v1\/ai$/, '/v1')
-    }
-
     // Skip if URL already has version (e.g., /v1, /v2, /v3)
     if (hasAPIVersion(url)) {
       return url

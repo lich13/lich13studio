@@ -79,37 +79,9 @@
 | `src/renderer/src/pages/home/Inputbar/tools/components/QuickPhrasesButton.tsx` | `keep` | 插入入口 |
 | `src/renderer/src/types/index.ts` | `refactor` | `QuickPhrase` 与变量插值类型继续保留 |
 
-## mcp
+## MCP（0.1.16 已移除）
 
-| Path | Status | Note |
-| --- | --- | --- |
-| `src/main/services/MCPService.ts` | `refactor` | 保留手动添加 / 启停 / 测试 / 绑定助手，去掉 auto-install 市场流程 |
-| `src/renderer/src/store/mcp.ts` | `refactor` | 去掉 `mcpAutoInstall` 内置项与市场安装元数据 |
-| `src/renderer/src/pages/settings/MCPSettings/AddMcpServerModal.tsx` | `keep` | 手动添加 MCP 核心入口 |
-| `src/renderer/src/pages/settings/MCPSettings/McpServersList.tsx` | `keep` | MCP server 列表 |
-| `src/renderer/src/pages/settings/MCPSettings/McpSettings.tsx` | `keep` | 单个 server 配置 / 测试 |
-| `src/renderer/src/pages/settings/MCPSettings/McpServerCard.tsx` | `keep` | 单卡片展示 |
-| `src/renderer/src/pages/settings/MCPSettings/BuiltinMCPServerList.tsx` | `refactor` | 如保留，只保留离线 / 手动配置友好的内置 server |
-| `src/renderer/src/pages/settings/MCPSettings/McpPrompt.tsx` | `keep` | MCP prompt 读取 |
-| `src/renderer/src/pages/settings/MCPSettings/McpResource.tsx` | `keep` | MCP resource 读取 |
-| `src/renderer/src/pages/settings/MCPSettings/index.tsx` | `refactor` | 删除 `marketplaces` / `discover` 菜单，保留 servers 主线 |
-| `src/renderer/src/pages/settings/MCPSettings/NpxSearch.tsx` | `remove` | 依赖在线 npm 搜索与安装，不符合 Lite 范围 |
-| `src/renderer/src/pages/settings/MCPSettings/McpMarketList.tsx` | `remove` | MCP market 页面 |
-| `src/renderer/src/pages/settings/MCPSettings/SyncServersPopup.tsx` | `remove` | 平台发现 / 同步流程 |
-| `src/renderer/src/pages/settings/MCPSettings/providers/config.ts` | `remove` | 在线平台发现配置 |
-| `src/renderer/src/pages/settings/MCPSettings/providers/302ai.ts` | `remove` | 在线发现 provider |
-| `src/renderer/src/pages/settings/MCPSettings/providers/bailian.ts` | `remove` | 在线发现 provider |
-| `src/renderer/src/pages/settings/MCPSettings/providers/lanyun.ts` | `remove` | 在线发现 provider |
-| `src/renderer/src/pages/settings/MCPSettings/providers/mcprouter.ts` | `remove` | 在线发现 provider |
-| `src/renderer/src/pages/settings/MCPSettings/providers/modelscope.ts` | `remove` | 在线发现 provider |
-| `src/renderer/src/pages/settings/MCPSettings/providers/tokenflux.ts` | `remove` | 在线发现 provider |
-| `src/main/services/urlschema/mcp-install.ts` | `remove` | deeplink 自动安装 MCP 流程 |
-| `src/renderer/src/pages/home/Inputbar/tools/mcpToolsTool.tsx` | `keep` | 聊天区 MCP 工具入口保留 |
-| `src/renderer/src/pages/home/Inputbar/tools/components/MCPToolsButton.tsx` | `keep` | 聊天区 MCP 按钮保留 |
-| `src/main/ipc.ts` | `refactor` | 清除 install/discover 相关 handler，保留 CRUD / test / call |
-| `packages/shared/IpcChannel.ts` | `refactor` | 同上 |
-| `src/preload/index.ts` | `refactor` | 同上 |
-| `src/main/mcpServers/hub/**/*` | `investigate` | Hub 模式是否保留取决于 Lite 是否继续保留自动聚合模式 |
+前后端、安装器、OAuth、IPC 和 API 路由均已删除。历史工具消息仅保留只读展示。
 
 ## backup
 

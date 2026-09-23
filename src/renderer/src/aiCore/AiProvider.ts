@@ -114,7 +114,6 @@ export default class AiProvider {
       // If config wasn't set in constructor (when provider only), generate it now
       this.config = await Promise.resolve(providerToAiSdkConfig(this.actualProvider, this.model))
     }
-    logger.debug('Using provider config for completions', this.config)
 
     // 注意：模型对象将由 createExecutor 内部处理，不再需要预先创建
 
@@ -261,7 +260,6 @@ export default class AiProvider {
       const accumulate = this.model!.supported_text_delta !== false // true and undefined
       const adapter = new AiSdkToChunkAdapter(
         middlewareConfig.onChunk,
-        middlewareConfig.mcpTools,
         accumulate,
         middlewareConfig.enableWebSearch,
         undefined,

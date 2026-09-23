@@ -35,7 +35,7 @@ const AgentSettingPopupContainer: React.FC<AgentSettingPopupParams> = ({ tab, ag
         { key: 'essential', label: t('agent.settings.essential') },
         { key: 'prompt', label: t('agent.settings.prompt') },
         !isSoul && { key: 'permission-mode', label: t('agent.settings.permissionMode.tab', 'Permission Mode') },
-        { key: 'tools-mcp', label: t('agent.settings.toolsMcp.tab', 'Tools & MCP') },
+        { key: 'tools', label: t('agent.settings.tooling.title', 'Tools') },
         { key: 'installed', label: t('agent.settings.skills.tab', 'Skills') },
         { key: 'advanced', label: t('agent.settings.advance.title', 'Advanced Settings') }
       ].filter(Boolean) as SettingsMenuItem[],
@@ -52,7 +52,7 @@ const AgentSettingPopupContainer: React.FC<AgentSettingPopupParams> = ({ tab, ag
         return <PromptSettings agentBase={agent} update={updateAgent} />
       case 'permission-mode':
         return <PermissionModeSettings agentBase={agent} update={updateAgent} />
-      case 'tools-mcp':
+      case 'tools':
         return <ToolsSettings agentBase={agent} update={updateAgent} />
       case 'installed':
         return <InstalledSkillsSettings agentBase={agent} update={updateAgent} />

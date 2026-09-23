@@ -1,8 +1,6 @@
 import { MessageStream } from '@anthropic-ai/sdk/resources/messages/messages'
 import { Stream } from '@cherrystudio/openai/streaming'
 import { loggerService } from '@logger'
-import type { SpanEntity, TokenUsage } from '@mcp-trace/trace-core'
-import { cleanContext, endContext, getContext, startContext } from '@mcp-trace/trace-web'
 import type { Context, Span } from '@opentelemetry/api'
 import { context, SpanStatusCode, trace } from '@opentelemetry/api'
 import { db } from '@renderer/databases'
@@ -16,6 +14,8 @@ import { ModelSpanEntity } from '@renderer/trace/types/ModelSpanEntity'
 import type { Model, Topic } from '@renderer/types'
 import type { Message } from '@renderer/types/newMessage'
 import { MessageBlockType } from '@renderer/types/newMessage'
+import type { SpanEntity, TokenUsage } from '@trace/trace-core'
+import { cleanContext, endContext, getContext, startContext } from '@trace/trace-web'
 
 const logger = loggerService.withContext('SpanManagerService')
 

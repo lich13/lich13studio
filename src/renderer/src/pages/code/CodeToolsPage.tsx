@@ -10,8 +10,7 @@ import { useTimer } from '@renderer/hooks/useTimer'
 import { getAssistantSettings, getProviderByModel } from '@renderer/services/AssistantService'
 import { loggerService } from '@renderer/services/LoggerService'
 import { getModelUniqId } from '@renderer/services/ModelService'
-import { useAppDispatch, useAppSelector } from '@renderer/store'
-import { setIsBunInstalled } from '@renderer/store/mcp'
+import { useAppSelector } from '@renderer/store'
 import type { EndpointType, Model } from '@renderer/types'
 import type { TerminalConfig } from '@shared/config/constant'
 import { codeTools, terminalApps } from '@shared/config/constant'
@@ -36,8 +35,7 @@ const logger = loggerService.withContext('CodeToolsPage')
 const CodeToolsPage: FC = () => {
   const { t } = useTranslation()
   const { providers } = useProviders()
-  const dispatch = useAppDispatch()
-  const isBunInstalled = useAppSelector((state) => state.mcp.isBunInstalled)
+  const [isBunInstalled, setIsBunInstalled] = useState(false)
   const {
     selectedCliTool,
     selectedModel,
@@ -179,12 +177,12 @@ const CodeToolsPage: FC = () => {
   const checkBunInstallation = useCallback(async () => {
     try {
       const bunExists = await window.api.isBinaryExist('bun')
-      dispatch(setIsBunInstalled(bunExists))
+      setIsBunInstalled(bunExists)
     } catch (error) {
       logger.error('Failed to check bun installation status:', error as Error)
-      dispatch(setIsBunInstalled(false))
+      setIsBunInstalled(false)
     }
-  }, [dispatch])
+  }, [])
 
   // 获取可用终端
   const loadAvailableTerminals = useCallback(async () => {
@@ -211,11 +209,11 @@ const CodeToolsPage: FC = () => {
     try {
       setIsInstallingBun(true)
       await window.api.installBunBinary()
-      dispatch(setIsBunInstalled(true))
-      window.toast.success(t('settings.mcp.installSuccess'))
+      setIsBunInstalled(true)
+      window.toast.success(t('code.installSuccess'))
     } catch (error: any) {
       logger.error('Failed to install bun:', error as Error)
-      window.toast.error(`${t('settings.mcp.installError')}: ${error.message}`)
+      window.toast.error(`${t('code.installError')}: ${error.message}`)
     } finally {
       setIsInstallingBun(false)
       // 重新检查安装状态

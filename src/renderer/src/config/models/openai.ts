@@ -66,7 +66,7 @@ export const isGPT5SeriesReasoningModel = (model: Model) => {
  */
 export const isGPT5FamilyModel = (model: Model) => {
   const modelId = getLowerBaseModelName(model.id)
-  return modelId.includes('gpt-5')
+  return /gpt-[5-9]/.test(modelId)
 }
 
 export const isGPT51SeriesModel = (model: Model) => {

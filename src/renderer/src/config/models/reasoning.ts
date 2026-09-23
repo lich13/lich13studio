@@ -6,6 +6,7 @@ import type {
   ThinkingOptionConfig
 } from '@renderer/types'
 import { getLowerBaseModelName, isUserSelectedModelType } from '@renderer/utils'
+import { REASONING_EFFORTS } from '@shared/reasoning'
 
 import { isEmbeddingModel, isRerankModel } from './embedding'
 import {
@@ -39,89 +40,42 @@ export const REASONING_REGEX =
 // 模型类型到支持的reasoning_effort的映射表
 // TODO: refactor this. too many identical options
 export const MODEL_SUPPORTED_REASONING_EFFORT = {
-  default: ['low', 'medium', 'high'] as const,
-  // Constrains effort on reasoning for reasoning models. Currently supported values are (none, minimal, low, medium, high, and xhigh).
-  // Reducing reasoning effort can result in faster responses and fewer tokens used on reasoning in a response.
-  // • (gpt-5.1) defaults to none, which does not perform reasoning.
-  //   The supported reasoning values for (gpt-5.1) are (none, low, medium, and high). Tool calls are supported for all reasoning values in (gpt-5.1).
-  // • All models before (gpt-5.1) default to medium reasoning effort, and do not support (none).
-  // • The (gpt-5-pro) model defaults to (and only supports) (high reasoning effort).
-  // • xhigh is supported for all models after (gpt-5.1-codex-max).
-  o: ['low', 'medium', 'high'] as const,
-  openai_deep_research: ['medium'] as const,
-  gpt5: ['minimal', 'low', 'medium', 'high'] as const,
-  gpt5_codex: ['low', 'medium', 'high'] as const,
-  gpt5_1: ['none', 'low', 'medium', 'high'] as const,
-  gpt5_1_codex: ['medium', 'high'] as const,
-  gpt5_1_codex_max: ['medium', 'high', 'xhigh'] as const,
-  gpt5_2_codex: ['low', 'medium', 'high', 'xhigh'] as const,
-  // Fallback for GPT-5.2+ base models and GPT-5.3+ codex models
-  gpt5_2: ['none', 'low', 'medium', 'high', 'xhigh'] as const,
-  gpt5pro: ['high'] as const,
-  // Fallback for GPT-5.2+ pro models
-  gpt52pro: ['medium', 'high', 'xhigh'] as const,
-  gpt_oss: ['low', 'medium', 'high'] as const,
-  grok: ['low', 'high'] as const,
-  grok4_fast: ['auto'] as const,
-  gemini2_flash: ['low', 'medium', 'high', 'auto'] as const,
-  gemini2_pro: ['low', 'medium', 'high', 'auto'] as const,
-  // Also Gemini 3.1 Flash(-lite)
-  gemini3_flash: ['minimal', 'low', 'medium', 'high'] as const,
-  gemini3_pro: ['low', 'high'] as const,
-  gemini3_1_pro: ['low', 'medium', 'high'] as const,
-  qwen: ['low', 'medium', 'high'] as const,
-  qwen_thinking: ['low', 'medium', 'high'] as const,
-  doubao: ['auto', 'high'] as const,
-  doubao_no_auto: ['high'] as const,
-  doubao_after_251015: ['minimal', 'low', 'medium', 'high'] as const,
-  hunyuan: ['auto'] as const,
-  mimo: ['auto'] as const,
-  zhipu: ['auto'] as const,
-  perplexity: ['low', 'medium', 'high'] as const,
-  deepseek_hybrid: ['auto'] as const,
-  kimi_k2_5: ['none', 'auto'] as const,
-  // Claude 3.7, 4.0, 4.5 reasoning models
-  claude: ['low', 'medium', 'high'] as const,
-  // Claude 4.6 supports low, medium, high, xhigh (xhigh is mapped to max in API)
-  claude46: ['low', 'medium', 'high', 'xhigh'] as const
-} as const satisfies ReasoningEffortConfig
+  default: [...REASONING_EFFORTS],
+  o: [...REASONING_EFFORTS],
+  openai_deep_research: [...REASONING_EFFORTS],
+  gpt5: [...REASONING_EFFORTS],
+  gpt5_codex: [...REASONING_EFFORTS],
+  gpt5_1: [...REASONING_EFFORTS],
+  gpt5_1_codex: [...REASONING_EFFORTS],
+  gpt5_1_codex_max: [...REASONING_EFFORTS],
+  gpt5_2_codex: [...REASONING_EFFORTS],
+  gpt5_2: [...REASONING_EFFORTS],
+  gpt5pro: [...REASONING_EFFORTS],
+  gpt52pro: [...REASONING_EFFORTS],
+  gpt_oss: [...REASONING_EFFORTS],
+  grok: [...REASONING_EFFORTS],
+  grok4_fast: [...REASONING_EFFORTS],
+  gemini2_flash: [...REASONING_EFFORTS],
+  gemini2_pro: [...REASONING_EFFORTS],
+  gemini3_flash: [...REASONING_EFFORTS],
+  gemini3_pro: [...REASONING_EFFORTS],
+  gemini3_1_pro: [...REASONING_EFFORTS],
+  qwen: [...REASONING_EFFORTS],
+  qwen_thinking: [...REASONING_EFFORTS],
+  doubao: [...REASONING_EFFORTS],
+  doubao_no_auto: [...REASONING_EFFORTS],
+  doubao_after_251015: [...REASONING_EFFORTS],
+  hunyuan: [...REASONING_EFFORTS],
+  mimo: [...REASONING_EFFORTS],
+  zhipu: [...REASONING_EFFORTS],
+  perplexity: [...REASONING_EFFORTS],
+  deepseek_hybrid: [...REASONING_EFFORTS],
+  kimi_k2_5: [...REASONING_EFFORTS],
+  claude: [...REASONING_EFFORTS],
+  claude46: [...REASONING_EFFORTS]
+} satisfies ReasoningEffortConfig
 
-// Model type to supported options mapping
-export const MODEL_SUPPORTED_OPTIONS: ThinkingOptionConfig = {
-  default: ['default', 'none', ...MODEL_SUPPORTED_REASONING_EFFORT.default] as const,
-  o: ['default', ...MODEL_SUPPORTED_REASONING_EFFORT.o] as const,
-  openai_deep_research: ['default', ...MODEL_SUPPORTED_REASONING_EFFORT.openai_deep_research] as const,
-  gpt5: ['default', ...MODEL_SUPPORTED_REASONING_EFFORT.gpt5] as const,
-  gpt5pro: ['default', ...MODEL_SUPPORTED_REASONING_EFFORT.gpt5pro] as const,
-  gpt5_codex: ['default', ...MODEL_SUPPORTED_REASONING_EFFORT.gpt5_codex] as const,
-  gpt5_1: ['default', ...MODEL_SUPPORTED_REASONING_EFFORT.gpt5_1] as const,
-  gpt5_1_codex: ['default', ...MODEL_SUPPORTED_REASONING_EFFORT.gpt5_1_codex] as const,
-  gpt5_2_codex: ['default', ...MODEL_SUPPORTED_REASONING_EFFORT.gpt5_2_codex] as const,
-  gpt5_2: ['default', ...MODEL_SUPPORTED_REASONING_EFFORT.gpt5_2] as const,
-  gpt5_1_codex_max: ['default', ...MODEL_SUPPORTED_REASONING_EFFORT.gpt5_1_codex_max] as const,
-  gpt52pro: ['default', ...MODEL_SUPPORTED_REASONING_EFFORT.gpt52pro] as const,
-  gpt_oss: ['default', ...MODEL_SUPPORTED_REASONING_EFFORT.gpt_oss] as const,
-  grok: ['default', ...MODEL_SUPPORTED_REASONING_EFFORT.grok] as const,
-  grok4_fast: ['default', 'none', ...MODEL_SUPPORTED_REASONING_EFFORT.grok4_fast] as const,
-  gemini2_flash: ['default', 'none', ...MODEL_SUPPORTED_REASONING_EFFORT.gemini2_flash] as const,
-  gemini2_pro: ['default', ...MODEL_SUPPORTED_REASONING_EFFORT.gemini2_pro] as const,
-  gemini3_flash: ['default', ...MODEL_SUPPORTED_REASONING_EFFORT.gemini3_flash] as const,
-  gemini3_pro: ['default', ...MODEL_SUPPORTED_REASONING_EFFORT.gemini3_pro] as const,
-  gemini3_1_pro: ['default', ...MODEL_SUPPORTED_REASONING_EFFORT.gemini3_1_pro] as const,
-  qwen: ['default', 'none', ...MODEL_SUPPORTED_REASONING_EFFORT.qwen] as const,
-  qwen_thinking: ['default', ...MODEL_SUPPORTED_REASONING_EFFORT.qwen_thinking] as const,
-  doubao: ['default', 'none', ...MODEL_SUPPORTED_REASONING_EFFORT.doubao] as const,
-  doubao_no_auto: ['default', 'none', ...MODEL_SUPPORTED_REASONING_EFFORT.doubao_no_auto] as const,
-  doubao_after_251015: ['default', ...MODEL_SUPPORTED_REASONING_EFFORT.doubao_after_251015] as const,
-  mimo: ['default', 'none', ...MODEL_SUPPORTED_REASONING_EFFORT.mimo] as const,
-  hunyuan: ['default', 'none', ...MODEL_SUPPORTED_REASONING_EFFORT.hunyuan] as const,
-  zhipu: ['default', 'none', ...MODEL_SUPPORTED_REASONING_EFFORT.zhipu] as const,
-  perplexity: ['default', ...MODEL_SUPPORTED_REASONING_EFFORT.perplexity] as const,
-  deepseek_hybrid: ['default', 'none', ...MODEL_SUPPORTED_REASONING_EFFORT.deepseek_hybrid] as const,
-  kimi_k2_5: ['default', ...MODEL_SUPPORTED_REASONING_EFFORT.kimi_k2_5] as const,
-  claude: ['default', 'none', ...MODEL_SUPPORTED_REASONING_EFFORT.claude] as const,
-  claude46: ['default', 'none', ...MODEL_SUPPORTED_REASONING_EFFORT.claude46] as const
-} as const
+export const MODEL_SUPPORTED_OPTIONS: ThinkingOptionConfig = MODEL_SUPPORTED_REASONING_EFFORT
 
 // TODO: add ut
 const _getThinkModelType = (model: Model): ThinkingModelType => {
@@ -221,15 +175,6 @@ export const getThinkModelType = (model: Model): ThinkingModelType => {
   }
 }
 
-const _getModelSupportedReasoningEffortOptions = (model: Model): ReasoningEffortOption[] | undefined => {
-  if (!isSupportedReasoningEffortModel(model) && !isSupportedThinkingTokenModel(model)) {
-    return undefined
-  }
-  // use private function to avoid redundant function calling
-  const thinkingType = _getThinkModelType(model)
-  return MODEL_SUPPORTED_OPTIONS[thinkingType]
-}
-
 /**
  * Gets the supported reasoning effort options for a given model.
  *
@@ -278,13 +223,9 @@ const _getModelSupportedReasoningEffortOptions = (model: Model): ReasoningEffort
  * getModelSupportedReasoningEffortOptions({ id: 'custom-id', name: 'gpt-5.1', ... })
  * // Returns: ['default', 'none', 'low', 'medium', 'high']
  */
-export const getModelSupportedReasoningEffortOptions = (
-  model: Model | undefined | null
-): ReasoningEffortOption[] | undefined => {
-  if (!model) return undefined
-
-  const { idResult, nameResult } = withModelIdAndNameAsId(model, _getModelSupportedReasoningEffortOptions)
-  return idResult ?? nameResult
+export const getModelSupportedReasoningEffortOptions = (_model?: Model): ReasoningEffortOption[] => {
+  void _model
+  return [...REASONING_EFFORTS]
 }
 
 function _isSupportedThinkingTokenModel(model: Model): boolean {

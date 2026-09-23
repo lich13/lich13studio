@@ -9,7 +9,6 @@ import './quickPhrasesTool'
 import './thinkingTool'
 import './webSearchTool'
 import './urlContextTool'
-import './mcpToolsTool'
 // Agent Session tools
 import './createSessionTool'
 import './slashCommandsTool'

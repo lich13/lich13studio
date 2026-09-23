@@ -448,11 +448,6 @@ export const updateAgent = async (req: Request, res: Response): Promise<Response
  *                 items:
  *                   type: string
  *                 description: Tools
- *               mcps:
- *                 type: array
- *                 items:
- *                   type: string
- *                 description: MCP tool IDs
  *               knowledges:
  *                 type: array
  *                 items:

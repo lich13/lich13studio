@@ -23,18 +23,7 @@ import type { ApiKeyConnectivity } from '@renderer/types/healthCheck'
 import { HealthStatus } from '@renderer/types/healthCheck'
 import { formatApiHost, formatApiKeys, getFancyProviderName, validateApiHost } from '@renderer/utils'
 import { serializeHealthCheckError } from '@renderer/utils/error'
-import {
-  isAIGatewayProvider,
-  isAnthropicProvider,
-  isAzureOpenAIProvider,
-  isGeminiProvider,
-  isNewApiProvider,
-  isOllamaProvider,
-  isOpenAICompatibleProvider,
-  isOpenAIProvider,
-  isSupportAnthropicPromptCacheProvider,
-  isVertexProvider
-} from '@renderer/utils/provider'
+import { isNewApiProvider, isSupportAnthropicPromptCacheProvider, isVertexProvider } from '@renderer/utils/provider'
 import { Button, Divider, Flex, Input, Select, Space, Switch, Tooltip } from 'antd'
 import Link from 'antd/es/typography/Link'
 import { debounce, isEmpty } from 'lodash'
@@ -53,18 +42,13 @@ import {
   SettingTitle
 } from '..'
 import ApiOptionsSettingsPopup from './ApiOptionsSettings/ApiOptionsSettingsPopup'
-import AwsBedrockSettings from './AwsBedrockSettings'
 import CherryINOAuth from './CherryINOAuth'
 import CherryINSettings from './CherryINSettings'
 import CustomHeaderPopup from './CustomHeaderPopup'
 import DMXAPISettings from './DMXAPISettings'
-import GithubCopilotSettings from './GithubCopilotSettings'
-import GPUStackSettings from './GPUStackSettings'
-import LMStudioSettings from './LMStudioSettings'
 import OVMSSettings from './OVMSSettings'
 import ProviderOAuth from './ProviderOAuth'
 import SelectProviderModelPopup from './SelectProviderModelPopup'
-import VertexAISettings from './VertexAISettings'
 
 interface Props {
   providerId: string
@@ -106,7 +90,6 @@ const ProviderSetting: FC<Props> = ({ providerId, isOnboarding = false }) => {
   const { updateProviders } = useProviders()
   const [apiHost, setApiHost] = useState(provider.apiHost)
   const [anthropicApiHost, setAnthropicHost] = useState<string | undefined>(provider.anthropicApiHost)
-  const [apiVersion, setApiVersion] = useState(provider.apiVersion)
   const [userAgent, setUserAgent] = useState(provider.userAgent || '')
   const [activeHostField, setActiveHostField] = useState<HostField>('apiHost')
   const { t, i18n } = useTranslation()
@@ -114,7 +97,6 @@ const ProviderSetting: FC<Props> = ({ providerId, isOnboarding = false }) => {
   const { setTimeoutTimer } = useTimer()
   const dispatch = useAppDispatch()
 
-  const isAzureOpenAI = isAzureOpenAIProvider(provider)
   const isDmxapi = provider.id === 'dmxapi'
   const isCherryIN = provider.id === 'cherryin'
   const isChineseUser = i18n.language.startsWith('zh')
@@ -243,7 +225,6 @@ const ProviderSetting: FC<Props> = ({ providerId, isOnboarding = false }) => {
       setAnthropicHost(undefined)
     }
   }
-  const onUpdateApiVersion = () => updateProvider({ apiVersion })
   const onUpdateUserAgent = () => {
     const normalizedUserAgent = userAgent.trim()
     updateProvider({ userAgent: normalizedUserAgent || undefined })
@@ -336,41 +317,8 @@ const ProviderSetting: FC<Props> = ({ providerId, isOnboarding = false }) => {
   }, [configuredApiHost, apiHost])
 
   const hostPreview = () => {
-    const formattedApiHost = adaptProvider({ provider: { ...provider, apiHost } }).apiHost
-
-    if (isOllamaProvider(provider)) {
-      return formattedApiHost + '/chat'
-    }
-
-    if (isOpenAICompatibleProvider(provider)) {
-      return formattedApiHost + '/chat/completions'
-    }
-
-    if (isAzureOpenAIProvider(provider)) {
-      const apiVersion = provider.apiVersion || ''
-      const path = !['preview', 'v1'].includes(apiVersion)
-        ? `/v1/chat/completions?apiVersion=v1`
-        : `/v1/responses?apiVersion=v1`
-      return formattedApiHost + path
-    }
-
-    if (isAnthropicProvider(provider)) {
-      return formattedApiHost + '/messages'
-    }
-
-    if (isGeminiProvider(provider)) {
-      return formattedApiHost + '/models'
-    }
-    if (isOpenAIProvider(provider)) {
-      return formattedApiHost + '/responses'
-    }
-    if (isVertexProvider(provider)) {
-      return formattedApiHost + '/publishers/google'
-    }
-    if (isAIGatewayProvider(provider)) {
-      return formattedApiHost + '/language-model'
-    }
-    return formattedApiHost
+    const host = adaptProvider({ provider: { ...provider, apiHost } }).apiHost
+    return host + (provider.type === 'anthropic' ? '/messages' : '/responses')
   }
 
   // API key 连通性检查状态指示器，目前仅在失败时显示
@@ -664,29 +612,6 @@ const ProviderSetting: FC<Props> = ({ providerId, isOnboarding = false }) => {
           </SettingHelpTextRow>
         </>
       )}
-      {isAzureOpenAI && (
-        <>
-          <SettingSubtitle>{t('settings.provider.api_version')}</SettingSubtitle>
-          <Space.Compact style={{ width: '100%', marginTop: 5 }}>
-            <Input
-              value={apiVersion}
-              placeholder="2024-xx-xx-preview"
-              onChange={(e) => setApiVersion(e.target.value)}
-              onBlur={onUpdateApiVersion}
-            />
-          </Space.Compact>
-          <SettingHelpTextRow style={{ justifyContent: 'space-between' }}>
-            <SettingHelpText style={{ minWidth: 'fit-content' }}>
-              {t('settings.provider.azure.apiversion.tip')}
-            </SettingHelpText>
-          </SettingHelpTextRow>
-        </>
-      )}
-      {provider.id === 'lmstudio' && <LMStudioSettings />}
-      {provider.id === 'gpustack' && <GPUStackSettings />}
-      {provider.id === 'copilot' && <GithubCopilotSettings providerId={provider.id} />}
-      {provider.id === 'aws-bedrock' && <AwsBedrockSettings />}
-      {provider.id === 'vertexai' && <VertexAISettings />}
       <ModelList providerId={provider.id} />
     </SettingContainer>
   )

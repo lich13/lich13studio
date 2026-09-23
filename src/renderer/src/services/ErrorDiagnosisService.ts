@@ -93,11 +93,6 @@ function buildContextHint(errorInfo: Record<string, unknown>, context?: Diagnosi
     return `## Context\nNetwork or proxy error. lich13studio supports HTTP/SOCKS proxy configuration in general settings. The user may be behind a firewall or using a custom API endpoint.\n`
   }
 
-  // MCP
-  if (msg.includes('mcp')) {
-    return `## Context\nMCP (Model Context Protocol) server error. Users manage MCP servers in MCP settings. Common issues: server not started, wrong configuration, connection timeout.\n`
-  }
-
   // Knowledge base
   if (msg.includes('embedding') || msg.includes('knowledge base')) {
     return `## Context\nKnowledge base / embedding error. Users create knowledge bases with documents and use embedding models for retrieval.\n`
@@ -175,7 +170,7 @@ Analyze the error and return a JSON diagnosis in ${language}.
 ${contextHint}
 ## Output
 Return ONLY valid JSON (no markdown, no code blocks):
-{"summary":"one-line","category":"auth|quota|model|network|proxy|content|server|context_length|payload|stream|parse|mcp|knowledge|ocr|deprecated|unknown","explanation":"2-3 sentences why this happened","steps":[{"text":"step 1"},{"text":"step 2"}]}
+{"summary":"one-line","category":"auth|quota|model|network|proxy|content|server|context_length|payload|stream|parse|knowledge|ocr|deprecated|unknown","explanation":"2-3 sentences why this happened","steps":[{"text":"step 1"},{"text":"step 2"}]}
 
 ## Rules
 - 2-4 concrete steps, reference actual provider/model name from error

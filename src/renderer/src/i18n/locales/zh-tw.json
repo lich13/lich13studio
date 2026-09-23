@@ -545,6 +545,7 @@
           "mcpBadge": "MCP 工具",
           "requiresApproval": "停用時需要人工核准",
           "search": "搜尋工具",
+          "title": "預授權工具",
           "toggle": "切換 {{name}}"
         }
       },
@@ -556,16 +557,6 @@
         "tab": "預先授權工具",
         "title": "預先授權工具",
         "toggle": "{{defaultValue}}"
-      },
-      "toolsMcp": {
-        "mcp": {
-          "tab": "MCP",
-          "title": "MCP 伺服器"
-        },
-        "tab": "工具",
-        "tools": {
-          "title": "預授權工具"
-        }
       }
     },
     "sidebar_title": "Agents",
@@ -933,6 +924,7 @@
       "reasoning_effort": {
         "auto": "自動",
         "auto_description": "彈性決定推理投入的心力",
+        "budget_description": "Mapped to a thinking token budget",
         "default": "預設",
         "default_description": "依賴模型的預設行為，無需任何配置。",
         "high": "盡力思考",
@@ -940,6 +932,9 @@
         "label": "思維鏈長度",
         "low": "稍微思考",
         "low_description": "低階推理",
+        "mapped_description": "This model uses {{effort}}",
+        "max": "max",
+        "max_description": "Maximum reasoning effort",
         "medium": "正常思考",
         "medium_description": "中等程度推理",
         "minimal": "最少思考",
@@ -1520,6 +1515,8 @@
     "env_vars_help": "輸入自訂環境變數（每行一個，格式：KEY=value）",
     "environment_variables": "環境變數",
     "folder_placeholder": "選擇工作目錄",
+    "installError": "安裝相依套件失敗",
+    "installSuccess": "相依套件安裝成功",
     "install_bun": "安裝 Bun",
     "installing_bun": "安裝中...",
     "launch": {
@@ -2489,6 +2486,7 @@
       "abort_failed": "工具呼叫中斷失敗",
       "aborted": "工具呼叫已中斷",
       "approvalRequired": "工具 \"{{tool}}\" 需要審批",
+      "autoApprove": "自動核准",
       "autoApproveEnabled": "此工具已啟用自動批准",
       "cancelled": "已取消",
       "completed": "已完成",
@@ -2518,6 +2516,7 @@
       "pending": "等待中",
       "preview": "預覽",
       "raw": "原始碼",
+      "run": "運作",
       "runningCount": "{{count}} 個工具正在運行",
       "sections": {
         "args": "參數",
@@ -4581,259 +4580,6 @@
       },
       "title": "數學公式設定"
     },
-    "mcp": {
-      "actions": "操作",
-      "active": "啟用",
-      "addError": "新增伺服器失敗",
-      "addServer": {
-        "create": "快速建立",
-        "importFrom": {
-          "connectionFailed": "連線失敗",
-          "dxt": "匯入 DXT 套件",
-          "dxtFile": "DXT 套件檔案",
-          "dxtHelp": "選擇包含 MCP 伺服器的 .dxt 檔案",
-          "dxtProcessFailed": "處理 DXT 檔案失敗",
-          "error": {
-            "multipleServers": "不能從多個伺服器匯入"
-          },
-          "invalid": "無效的輸入，請檢查 JSON 格式",
-          "json": "從 JSON 匯入",
-          "method": "匯入方式",
-          "nameExists": "伺服器已存在：{{name}}",
-          "noDxtFile": "請選擇一個 DXT 檔案",
-          "oneServer": "每次只能儲存一個 MCP 伺服器設定",
-          "placeholder": "貼上 MCP 伺服器 JSON 設定",
-          "selectDxtFile": "選擇 DXT 檔案",
-          "tooltip": "請從 MCP Servers 的介紹頁面複製設定 JSON（優先使用 NPX 或 UVX 設定），並貼上到輸入框中"
-        },
-        "label": "新增伺服器"
-      },
-      "addSuccess": "伺服器新增成功",
-      "advancedSettings": "進階設定",
-      "args": "參數",
-      "argsTooltip": "每個參數佔一行",
-      "baseUrlTooltip": "遠端 URL 位址",
-      "builtinServers": "內建伺服器",
-      "builtinServersDescriptions": {
-        "brave_search": "一個整合了 Brave 搜尋 API 的 MCP 伺服器實做，提供網頁與本機搜尋雙重功能。需要設定 BRAVE_API_KEY 環境變數",
-        "browser": "透過 Chrome DevTools Protocol 控制 headless Electron 視窗。工具：開啟 URL、執行單行 JS、重設工作階段。",
-        "didi_mcp": "一個整合了滴滴 MCP 伺服器實做，提供網約車服務包括地圖搜尋、價格預估、訂單管理和司機追蹤。僅支援中國大陸地區。需要設定 DIDI_API_KEY 環境變數",
-        "dify_knowledge": "Dify 的 MCP 伺服器實做，提供了一個簡單的 API 來與 Dify 進行互動。需要設定 Dify Key",
-        "fetch": "用於取得 URL 網頁內容的 MCP 伺服器",
-        "filesystem": "實做文件系統操作的模型上下文協議（MCP）的 Node.js 伺服器。需要設定允許存取的目錄",
-        "flomo": "連接 flomo 透過 AI 快速記錄筆記和想法。需要 flomo 帳號授權。",
-        "mcp_auto_install": "自動安裝 MCP 服務（測試版）",
-        "memory": "基於本機知識圖譜的持久性記憶基礎實做。這使得模型能夠在不同對話間記住使用者的相關資訊。需要設定 MEMORY_FILE_PATH 環境變數。",
-        "no": "無描述",
-        "nowledge_mem": "需要本機執行 Nowledge Mem 應用程式。將 AI 對話、工具、筆記、代理和檔案保存在電腦上的私人記憶體中。請從 https://mem.nowledge.co/ 下載",
-        "python": "在安全的沙盒環境中執行 Python 程式碼。使用 Pyodide 執行 Python，支援大多數標準函式庫和科學計算套件",
-        "sequentialthinking": "一個 MCP 伺服器實做，提供了透過結構化思維過程進行動態和反思性問題解決的工具"
-      },
-      "command": "指令",
-      "config_description": "設定模型上下文協議伺服器",
-      "customRegistryPlaceholder": "請輸入私有倉庫位址，如：https://npm.company.com",
-      "deleteError": "刪除伺服器失敗",
-      "deleteServer": "刪除伺服器",
-      "deleteServerConfirm": "確定要刪除此伺服器嗎？",
-      "deleteSuccess": "伺服器刪除成功",
-      "dependenciesInstall": "安裝相依套件",
-      "dependenciesInstalling": "正在安裝相依套件...",
-      "description": "描述",
-      "disable": {
-        "description": "不啟用 MCP 服務功能",
-        "label": "不使用 MCP 伺服器"
-      },
-      "discover": "發現",
-      "duplicateName": "已存在相同名稱的伺服器",
-      "editJson": "編輯 JSON",
-      "editMcpJson": "編輯 MCP 設定",
-      "editServer": "編輯伺服器",
-      "env": "環境變數",
-      "envTooltip": "格式：KEY=value，每行一個",
-      "errors": {
-        "32000": "MCP 伺服器啟動失敗，請根據教學檢查參數是否填寫完整",
-        "toolNotFound": "未找到工具 {{name}}"
-      },
-      "fetch": {
-        "button": "取得伺服器",
-        "success": "伺服器取得成功"
-      },
-      "findMore": "更多 MCP",
-      "headers": "請求標頭",
-      "headersTooltip": "HTTP 請求的自定義標頭",
-      "inMemory": "記憶體",
-      "install": "安裝",
-      "installError": "安裝相依套件失敗",
-      "installHelp": "取得安裝幫助",
-      "installSuccess": "相依套件安裝成功",
-      "jsonFormatError": "JSON 格式錯誤",
-      "jsonModeHint": "編輯 MCP 伺服器設定的 JSON 表示。儲存前請確認格式正確",
-      "jsonSaveError": "儲存 JSON 設定失敗",
-      "jsonSaveSuccess": "JSON 設定已儲存",
-      "lanyun": {
-        "description": "藍雲科技雲平台MCP服務",
-        "name": "藍雲科技"
-      },
-      "logoUrl": "Logo URL",
-      "logs": "日誌",
-      "longRunning": "長時間運作模式",
-      "longRunningTooltip": "啟用後，伺服器支援長時間任務；收到進度通知時會重設逾時計時器，並將最大逾時時間延長至 10 分鐘",
-      "marketplaces": "市場",
-      "missingDependencies": "遺失，請安裝它以繼續",
-      "more": {
-        "awesome": "精選的 MCP 伺服器清單",
-        "composio": "Composio MCP 開發工具",
-        "glama": "Glama MCP 伺服器目錄",
-        "higress": "Higress MCP 伺服器",
-        "mcpso": "MCP 伺服器發現平台",
-        "mcpworld": "百度旗下MCP聚合平台網站",
-        "modelscope": "魔搭社群 MCP 伺服器",
-        "official": "官方 MCP 伺服器集合",
-        "pulsemcp": "Pulse MCP 伺服器",
-        "smithery": "Smithery MCP 工具",
-        "zhipu": "精選 MCP，極速接入"
-      },
-      "name": "名稱",
-      "newServer": "MCP 伺服器",
-      "noDescriptionAvailable": "描述不存在",
-      "noLogs": "暫無日誌",
-      "noServers": "未設定伺服器",
-      "not_support": "不支援此模型",
-      "npx_list": {
-        "actions": "操作",
-        "description": "描述",
-        "no_packages": "找不到套件",
-        "npm": "NPM",
-        "package_name": "套件名稱",
-        "scope_placeholder": "輸入 npm 作用區域 (例如 @your-org)",
-        "scope_required": "請輸入 npm 作用區域",
-        "search": "搜尋",
-        "search_error": "搜尋失敗",
-        "usage": "用法",
-        "version": "版本"
-      },
-      "oauth": {
-        "callback": {
-          "message": "關閉此頁面後即可回到 Cherry Studio",
-          "title": "認證成功"
-        }
-      },
-      "prompts": {
-        "arguments": "參數",
-        "availablePrompts": "可用提示",
-        "genericError": "取得提示錯誤",
-        "loadError": "取得提示失敗",
-        "noPromptsAvailable": "無可用提示",
-        "requiredField": "必填欄位"
-      },
-      "protocolInstallWarning": {
-        "command": "啟動命令",
-        "message": "此 MCP 透過協議從外部來源安裝，執行來源不明的工具可能會對您的電腦造成危害。",
-        "run": "執行",
-        "title": "執行外部 MCP？"
-      },
-      "provider": "提供者",
-      "providerPlaceholder": "提供者名稱",
-      "providerUrl": "提供者網址",
-      "providers": "供應商",
-      "registry": "套件管理源",
-      "registryDefault": "預設",
-      "registryTooltip": "選擇用於安裝套件的源，以解決預設源的網路問題",
-      "requiresConfig": "需要設定",
-      "resources": {
-        "availableResources": "可用資源",
-        "blob": "二進位資料",
-        "blobInvisible": "隱藏二進位資料",
-        "genericError": "取得資源錯誤",
-        "mimeType": "MIME 類型",
-        "noResourcesAvailable": "無可用資源",
-        "size": "大小",
-        "text": "文字",
-        "uri": "URI"
-      },
-      "search": {
-        "placeholder": "搜尋 MCP 伺服器...",
-        "tooltip": "搜尋 MCP 伺服器"
-      },
-      "searchNpx": "搜尋 MCP",
-      "serverPlural": "伺服器",
-      "serverSingular": "伺服器",
-      "servers": "MCP 伺服器",
-      "sse": "伺服器傳送事件 (sse)",
-      "startError": "啟動失敗",
-      "stdio": "標準輸入 / 輸出 (stdio)",
-      "streamableHttp": "可串流的 HTTP (streamableHttp)",
-      "sync": {
-        "button": "同步",
-        "discoverMcpServers": "發現 MCP 伺服器",
-        "discoverMcpServersDescription": "存取平台以發現可用的 MCP 伺服器",
-        "error": "同步 MCP 伺服器出錯",
-        "getToken": "取得 API 權杖",
-        "getTokenDescription": "從帳戶取得個人 API 權杖",
-        "noServersAvailable": "無可用的 MCP 伺服器",
-        "providerDescriptions": {
-          "302ai": "302.AI 平台 MCP 服務",
-          "bailian": "阿里雲百鍊平台 MCP 服務",
-          "lanyun": "藍雲科技雲平台 MCP 服務",
-          "mcprouter": "MCP 路由器平台 MCP 服務",
-          "modelscope": "ModelScope平台MCP服務",
-          "tokenflux": "TokenFlux 平台 MCP 服務"
-        },
-        "selectProvider": "選擇提供者：",
-        "setToken": "輸入權杖",
-        "success": "同步 MCP 伺服器成功",
-        "title": "同步伺服器",
-        "tokenPlaceholder": "在此輸入 API 權杖",
-        "tokenRequired": "需要 API 權杖",
-        "unauthorized": "同步未授權"
-      },
-      "system": "系統",
-      "tabs": {
-        "description": "描述",
-        "general": "通用",
-        "prompts": "提示",
-        "resources": "資源",
-        "tools": "工具"
-      },
-      "tags": "標籤",
-      "tagsPlaceholder": "輸入標籤",
-      "timeout": "逾時",
-      "timeoutTooltip": "對該伺服器請求的逾時時間（秒），預設為 60 秒",
-      "title": "MCP 伺服器",
-      "tools": {
-        "autoApprove": {
-          "label": "自動核准",
-          "tooltip": {
-            "confirm": "是否運作該 MCP 工具？",
-            "disabled": "工具運作前需要手動核准",
-            "enabled": "工具將自動運作而無需手動核准",
-            "howToEnable": "啟用工具後才能使用自動核准"
-          }
-        },
-        "availableTools": "可用工具",
-        "enable": "啟用工具",
-        "inputSchema": {
-          "enum": {
-            "allowedValues": "允許的值"
-          },
-          "label": "輸入模式"
-        },
-        "loadError": "取得工具失敗",
-        "noToolsAvailable": "無可用工具",
-        "run": "運作"
-      },
-      "type": "類型",
-      "types": {
-        "inMemory": "記憶體內",
-        "sse": "SSE",
-        "stdio": "STDIO",
-        "streamableHttp": "串流 HTTP"
-      },
-      "updateError": "更新伺服器失敗",
-      "updateSuccess": "伺服器更新成功",
-      "url": "URL",
-      "user": "使用者"
-    },
     "messages": {
       "divider": {
         "label": "訊息間顯示分隔線",
@@ -5273,12 +5019,16 @@
       },
       "docs_check": "檢查",
       "docs_more_details": "檢視更多細節",
+      "empty": "暂无服务商，请添加服务商并选择模型。",
       "filter": {
         "agent": "支援 Agent",
         "all": "全部服務商"
       },
       "filter_agent": "篩選支援 Agent 的服務商",
       "get_api_key": "點選這裡取得金鑰",
+      "import_duplicate": "此服务商已导入",
+      "import_invalid": "导入失败：仅支持有效的 Responses 或 Anthropic 服务商链接。",
+      "import_success": "服务商已导入",
       "misc": "其他",
       "no_models_for_check": "沒有可以被檢查的模型（例如對話模型）",
       "not_checked": "未檢查",

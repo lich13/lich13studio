@@ -188,7 +188,7 @@ export async function handleLargeFileUpload(
     return await handleGeminiFileUpload(file, model)
   }
 
-  if (provider.type === 'openai') {
+  if (provider.type === 'openai-response') {
     return await handleOpenAILargeFileUpload(file, model)
   }
 

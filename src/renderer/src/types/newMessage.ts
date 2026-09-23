@@ -5,9 +5,8 @@ import type {
   Assistant,
   FileMetadata,
   GenerateImageResponse,
+  HistoricalToolResponse,
   KnowledgeReference,
-  MCPServer,
-  MCPToolResponse,
   MemoryItem,
   Metrics,
   Model,
@@ -116,7 +115,7 @@ export interface ToolMessageBlock extends BaseMessageBlock {
   arguments?: Record<string, any>
   content?: string | object
   metadata?: BaseMessageBlock['metadata'] & {
-    rawMcpToolResponse?: MCPToolResponse | NormalToolResponse
+    rawMcpToolResponse?: HistoricalToolResponse | NormalToolResponse
   }
 }
 
@@ -200,7 +199,6 @@ export type Message = {
   /**
    * @deprecated
    */
-  enabledMCPs?: MCPServer[]
 
   usage?: Usage
   metrics?: Metrics
@@ -229,7 +227,7 @@ export interface Response {
   usage?: Usage
   metrics?: Metrics
   webSearch?: WebSearchResponse
-  mcpToolResponse?: MCPToolResponse[]
+  mcpToolResponse?: HistoricalToolResponse[]
   generateImage?: GenerateImageResponse
   error?: ResponseError
 }
@@ -247,6 +245,5 @@ export interface MessageInputBaseParams {
   /**
    * @deprecated
    */
-  enabledMCPs?: MCPServer[]
   usage?: CompletionUsage
 }

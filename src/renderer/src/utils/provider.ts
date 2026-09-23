@@ -1,9 +1,9 @@
-import type { AzureOpenAIProvider, ProviderType } from '@renderer/types'
+import type { ProviderType } from '@renderer/types'
 import { isSystemProvider, type Provider, type SystemProviderId, SystemProviderIds } from '@renderer/types'
 import { isAzureOpenAIProvider } from '@shared/aiCore/provider/utils'
 import { CLAUDE_SUPPORTED_PROVIDERS } from '@shared/config/providers'
 
-export const isAzureResponsesEndpoint = (provider: AzureOpenAIProvider) => {
+export const isAzureResponsesEndpoint = (provider: Provider) => {
   return provider.apiVersion === 'preview' || provider.apiVersion === 'v1'
 }
 
@@ -94,7 +94,6 @@ const SUPPORT_SERVICE_TIER_PROVIDERS = [
 export const isSupportServiceTierProvider = (provider: Provider) => {
   return (
     provider.apiOptions?.isSupportServiceTier === true ||
-    provider.type === 'azure-openai' ||
     (isSystemProvider(provider) && SUPPORT_SERVICE_TIER_PROVIDERS.some((pid) => pid === provider.id))
   )
 }
@@ -114,13 +113,7 @@ export const isSupportVerbosityProvider = (provider: Provider) => {
   )
 }
 
-const SUPPORT_URL_CONTEXT_PROVIDER_TYPES = [
-  'gemini',
-  'vertexai',
-  'anthropic',
-  'azure-openai',
-  'new-api'
-] as const satisfies ProviderType[]
+const SUPPORT_URL_CONTEXT_PROVIDER_TYPES = ['anthropic'] as const satisfies ProviderType[]
 
 export const isSupportUrlContextProvider = (provider: Provider) => {
   return (
@@ -137,7 +130,7 @@ export const isGeminiWebSearchProvider = (provider: Provider) => {
 }
 
 export const isNewApiProvider = (provider: Provider) => {
-  return ['new-api', 'cherryin', 'aionly'].includes(provider.id) || provider.type === 'new-api'
+  return ['new-api', 'cherryin', 'aionly'].includes(provider.id)
 }
 
 /**
@@ -146,15 +139,16 @@ export const isNewApiProvider = (provider: Provider) => {
  * @returns {boolean} 是否为 OpenAI 兼容提供商
  */
 export function isOpenAICompatibleProvider(provider: Provider): boolean {
-  return ['openai', 'new-api', 'mistral'].includes(provider.type)
+  return provider.type === 'openai-response'
 }
 
 export function isOpenAIProvider(provider: Provider): boolean {
   return provider.type === 'openai-response'
 }
 
-export function isAwsBedrockProvider(provider: Provider): boolean {
-  return provider.type === 'aws-bedrock'
+export function isAwsBedrockProvider(_provider: Provider): boolean {
+  void _provider
+  return false
 }
 
 // Re-export from shared, for backward compatibility
@@ -168,8 +162,9 @@ export {
   isVertexProvider
 } from '@shared/aiCore/provider/utils'
 
-export function isAIGatewayProvider(provider: Provider): boolean {
-  return provider.type === 'gateway'
+export function isAIGatewayProvider(_provider: Provider): boolean {
+  void _provider
+  return false
 }
 
 const NOT_SUPPORT_API_VERSION_PROVIDERS = ['github', 'copilot', 'perplexity'] as const satisfies SystemProviderId[]
@@ -189,7 +184,7 @@ export const NOT_SUPPORT_API_KEY_PROVIDERS: readonly SystemProviderId[] = [
   'copilot'
 ]
 
-export const NOT_SUPPORT_API_KEY_PROVIDER_TYPES: readonly ProviderType[] = ['vertexai', 'aws-bedrock']
+export const NOT_SUPPORT_API_KEY_PROVIDER_TYPES: readonly ProviderType[] = []
 
 // https://platform.claude.com/docs/en/build-with-claude/prompt-caching#1-hour-cache-duration
 export const isSupportAnthropicPromptCacheProvider = (provider: Provider) => {

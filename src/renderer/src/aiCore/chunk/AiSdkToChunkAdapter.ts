@@ -4,7 +4,7 @@
  */
 
 import { loggerService } from '@logger'
-import type { AISDKWebSearchResult, MCPTool, WebSearchResults, WebSearchSource } from '@renderer/types'
+import type { AISDKWebSearchResult, WebSearchResults, WebSearchSource } from '@renderer/types'
 import { WEB_SEARCH_SOURCE } from '@renderer/types'
 import type { Chunk, ProviderMetadata } from '@renderer/types/chunk'
 import { ChunkType } from '@renderer/types/chunk'
@@ -38,7 +38,6 @@ export class AiSdkToChunkAdapter {
 
   constructor(
     private onChunk: (chunk: Chunk) => void,
-    mcpTools: MCPTool[] = [],
     accumulate?: boolean,
     enableWebSearch?: boolean,
     onSessionUpdate?: (sessionId: string) => void,
@@ -46,7 +45,7 @@ export class AiSdkToChunkAdapter {
     providerId?: string,
     idleTimeout?: IdleTimeoutHandle
   ) {
-    this.toolCallHandler = new ToolCallChunkHandler(onChunk, mcpTools)
+    this.toolCallHandler = new ToolCallChunkHandler(onChunk)
     this.accumulate = accumulate
     this.enableWebSearch = enableWebSearch || false
     this.onSessionUpdate = onSessionUpdate

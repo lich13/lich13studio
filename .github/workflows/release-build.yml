@@ -78,7 +78,7 @@ jobs:
         run: node scripts/set-app-version.mjs --version "${{ steps.app_version.outputs.version }}"
 
       - name: Build renderer bundle
-        run: pnpm build:tauri:web
+        run: pnpm test:upgrade && pnpm test:renderer && pnpm build:tauri:web
 
       - name: Upload frontend assets
         uses: actions/upload-artifact@v7
@@ -172,6 +172,9 @@ jobs:
       - name: Prepare bundled binary
         run: ${{ matrix.prepare_cmd }}
 
+      - name: Test native commands
+        run: cargo test --manifest-path src-tauri/Cargo.toml
+
       - name: Build Tauri bundle (macOS)
         if: startsWith(matrix.os, 'macos')
         shell: bash
@@ -194,7 +197,7 @@ jobs:
             fi
 
             echo "Cleaning bundle output before retry..."
-            rm -rf "src-tauri/target/${{ matrix.rust_target }}/release/bundle"
+            node scripts/clean-paths.mjs "src-tauri/target/${{ matrix.rust_target }}/release/bundle"
             attempt=$((attempt + 1))
             sleep 20
           done

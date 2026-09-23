@@ -1,4 +1,3 @@
-import { isReasoningModel } from '@renderer/config/models'
 import ThinkingButton from '@renderer/pages/home/Inputbar/tools/components/ThinkingButton'
 import { defineTool, registerTool, TopicType } from '@renderer/pages/home/Inputbar/types'
 
@@ -7,7 +6,7 @@ const thinkingTool = defineTool({
   label: (t) => t('chat.input.thinking.label'),
   visibleInScopes: [TopicType.Chat, TopicType.Session],
   condition: ({ model }) => {
-    return isReasoningModel(model)
+    return Boolean(model?.id)
   },
   render: ({ assistant, model, quickPanel, session }) => (
     <ThinkingButton

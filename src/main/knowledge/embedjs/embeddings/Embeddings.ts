@@ -1,5 +1,5 @@
 import type { BaseEmbeddings } from '@cherrystudio/embedjs-interfaces'
-import { TraceMethod } from '@mcp-trace/trace-core'
+import { TraceMethod } from '@trace/trace-core'
 import type { ApiClient } from '@types'
 
 import EmbeddingsFactory from './EmbeddingsFactory'

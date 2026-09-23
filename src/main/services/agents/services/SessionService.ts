@@ -152,7 +152,6 @@ export class SessionService extends BaseService {
       model: serializedData.model || null,
       plan_model: serializedData.plan_model || null,
       small_model: serializedData.small_model || null,
-      mcps: serializedData.mcps || null,
       allowed_tools: serializedData.allowed_tools || null,
       configuration: serializedData.configuration || null,
       sort_order: 0,
@@ -193,9 +192,9 @@ export class SessionService extends BaseService {
     }
 
     const session = this.deserializeJsonFields(result[0]) as GetAgentSessionResponse
-    const { tools, legacyIdMap } = await this.listMcpTools(session.agent_type, session.mcps)
+    const { tools } = await this.listTools(session.agent_type)
     session.tools = tools
-    session.allowed_tools = this.normalizeAllowedTools(session.allowed_tools, session.tools, legacyIdMap)
+    session.allowed_tools = this.normalizeAllowedTools(session.allowed_tools, session.tools)
 
     // If slash_commands is not in database yet (e.g., first invoke before init message),
     // fall back to builtin + local commands. Otherwise, use the merged commands from database.
@@ -247,9 +246,9 @@ export class SessionService extends BaseService {
 
     await Promise.all(
       sessions.map(async (session) => {
-        const { tools, legacyIdMap } = await this.listMcpTools(session.agent_type, session.mcps)
+        const { tools } = await this.listTools(session.agent_type)
         session.tools = tools
-        session.allowed_tools = this.normalizeAllowedTools(session.allowed_tools, session.tools, legacyIdMap)
+        session.allowed_tools = this.normalizeAllowedTools(session.allowed_tools, session.tools)
       })
     )
 

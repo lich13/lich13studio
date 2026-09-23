@@ -6,6 +6,8 @@ import {
   requestPermission as requestNotificationPermission
 } from '@tauri-apps/plugin-notification'
 
+import { startProviderImportListener } from './services/ProviderImportQueue'
+
 type AnyRecord = Record<string, any>
 const WORD_DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 const logger = loggerService.withContext('TauriShim')
@@ -43,13 +45,7 @@ const mockInvoke = async (command: string) => {
     return await buildBackupSnapshot()
   }
 
-  if (
-    command === 'webdav_backup' ||
-    command === 'test_provider' ||
-    command === 'test_mcp' ||
-    command === 'check_webdav_connection' ||
-    command === 'create_webdav_directory'
-  ) {
+  if (command === 'webdav_backup' || command === 'check_webdav_connection' || command === 'create_webdav_directory') {
     return true
   }
 
@@ -1462,36 +1458,6 @@ const api = {
         protocolListeners.delete(callback)
       }
     }
-  },
-  mcp: {
-    listTools: async () => [],
-    listPrompts: async () => [],
-    listResources: async () => [],
-    getServerVersion: async () => 'tauri-runtime',
-    getServerLogs: async () => [],
-    onServersChanged: () => createCleanup(),
-    onServerAdded: () => createCleanup(),
-    onServerLog: () => createCleanup(),
-    restartServer: async () => true,
-    removeServer: async () => true,
-    stopServer: async () => true,
-    uploadDxt: async () => ({ success: false, message: 'DXT install is not available in Tauri yet.' }),
-    getInstallInfo: async () => ({ uvPath: '', bunPath: '', dir: '' }),
-    getPrompt: async () => ({ description: '', messages: [] }),
-    getResource: async () => ({ uri: '', mimeType: '', text: '' }),
-    resolveHubTool: async () => null,
-    checkMcpConnectivity: async (server: AnyRecord) => {
-      if (!invoke) return false
-      const payload = {
-        transport: server.type === 'stdio' ? 'local' : 'remote',
-        command: server.command || '',
-        args: server.args || [],
-        url: server.baseUrl || server.url || ''
-      }
-      return invoke('check_mcp_connectivity', { server: payload })
-    },
-    abortTool: async () => true,
-    callTool: async () => ({ content: [] })
   }
 } as AnyRecord
 
@@ -1521,3 +1487,6 @@ if (isTauriRuntime) {
 }
 
 export {}
+
+for (const key of ['config:mcpServers', 'config:mcp', 'mcpServers', 'mcp']) localStorage.removeItem(key)
+startProviderImportListener()

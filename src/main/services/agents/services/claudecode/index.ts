@@ -9,7 +9,6 @@ import path from 'node:path'
 import type {
   CanUseTool,
   HookCallback,
-  McpHttpServerConfig,
   Options,
   SDKMessage,
   SdkPluginConfig,
@@ -19,12 +18,8 @@ import type {
 import { query } from '@anthropic-ai/claude-agent-sdk'
 import type { Base64ImageSource, ContentBlockParam } from '@anthropic-ai/sdk/resources/messages/messages'
 import { loggerService } from '@logger'
-import { config as apiConfigService } from '@main/apiServer/config'
 import { validateModelId } from '@main/apiServer/utils'
 import { isWin } from '@main/constant'
-import AssistantServer from '@main/mcpServers/assistant'
-import BrowserServer from '@main/mcpServers/browser/server'
-import ClawServer from '@main/mcpServers/claw'
 import { configManager } from '@main/services/ConfigManager'
 import {
   getNodeProxyConfigFromEnvironment,
@@ -138,11 +133,10 @@ class ClaudeCodeService implements AgentServiceInterface {
       return aiStream
     }
 
-    const isAzureOpenAI = provider.type === 'azure-openai'
     const isAnthropicType = provider.type === 'anthropic'
     const hasAnthropicHost = provider.anthropicApiHost?.trim()
 
-    if (!isAnthropicType && !isAzureOpenAI && !hasAnthropicHost) {
+    if (!isAnthropicType && !hasAnthropicHost) {
       logger.error('Anthropic provider configuration is missing', {
         modelInfo
       })
@@ -160,7 +154,6 @@ class ClaudeCodeService implements AgentServiceInterface {
       provider.apiKey = provider.id
     }
 
-    const apiConfig = await apiConfigService.get()
     const loginShellEnv = await getLoginShellEnvironment()
 
     // Auto-discover Git Bash path on Windows (already logs internally)
@@ -172,10 +165,6 @@ class ClaudeCodeService implements AgentServiceInterface {
     // by stripping any trailing API version (e.g. `/v1`).
     // For Azure OpenAI providers, the Anthropic endpoint lives under /anthropic.
     const resolveAnthropicBaseUrl = (): string => {
-      if (isAzureOpenAI) {
-        const host = withoutTrailingApiVersion(provider.apiHost).replace(/\/openai$/, '')
-        return `${host}/anthropic`
-      }
       return withoutTrailingApiVersion(provider.anthropicApiHost?.trim() || provider.apiHost)
     }
     const anthropicBaseUrl = resolveAnthropicBaseUrl()
@@ -186,9 +175,6 @@ class ClaudeCodeService implements AgentServiceInterface {
       // prevent claude agent sdk using bedrock api
       CLAUDE_CODE_USE_BEDROCK: '0',
       // TODO: fix the proxy api server
-      // ANTHROPIC_API_KEY: apiConfig.apiKey,
-      // ANTHROPIC_AUTH_TOKEN: apiConfig.apiKey,
-      // ANTHROPIC_BASE_URL: `http://${apiConfig.host}:${apiConfig.port}/${modelInfo.provider.id}`,
       ANTHROPIC_API_KEY: provider.apiKey,
       ANTHROPIC_AUTH_TOKEN: provider.apiKey,
       ANTHROPIC_BASE_URL: anthropicBaseUrl,
@@ -503,6 +489,9 @@ class ClaudeCodeService implements AgentServiceInterface {
       maxTurns: session.configuration?.max_turns,
       allowedTools: session.allowed_tools,
       plugins,
+      // Ignore external CLI MCP configuration; this application has no MCP runtime.
+      strictMcpConfig: true,
+      mcpServers: {},
       canUseTool,
       hooks: {
         PreToolUse: [
@@ -523,73 +512,6 @@ class ClaudeCodeService implements AgentServiceInterface {
 
     if (session.accessible_paths.length > 1) {
       options.additionalDirectories = session.accessible_paths.slice(1)
-    }
-
-    if (session.mcps && session.mcps.length > 0) {
-      // mcp configs
-      const mcpList: Record<string, McpHttpServerConfig> = {}
-      for (const mcpId of session.mcps) {
-        mcpList[mcpId] = {
-          type: 'http',
-          url: `http://${apiConfig.host}:${apiConfig.port}/v1/mcps/${mcpId}/mcp`,
-          headers: {
-            Authorization: `Bearer ${apiConfig.apiKey}`
-          }
-        }
-      }
-      options.mcpServers = mcpList
-      options.strictMcpConfig = true
-    }
-
-    // Inject @cherry/browser MCP for all agents (replaces SDK built-in WebSearch/WebFetch)
-    if (!options.mcpServers) options.mcpServers = {}
-    const browserServer = new BrowserServer()
-    options.mcpServers.browser = { type: 'sdk', name: '@cherry/browser', instance: browserServer.mcpServer }
-
-    // Inject Exa MCP for structured web search (free tier, no API key required)
-    options.mcpServers.exa = {
-      type: 'http',
-      url: 'https://mcp.exa.ai/mcp'
-    }
-
-    if (soulEnabled) {
-      // Find the channel that owns this session (if any) for context-aware cron defaults
-      const sourceChannelId = await this.resolveSourceChannel(session.agent_id, session.id)
-      const clawServer = new ClawServer(session.agent_id, sourceChannelId)
-      options.mcpServers.claw = { type: 'sdk', name: 'claw', instance: clawServer.mcpServer }
-
-      // Ensure claw MCP tools are in allowed_tools whitelist
-      if (Array.isArray(options.allowedTools) && options.allowedTools.length > 0) {
-        if (!options.allowedTools.includes('mcp__claw__*')) {
-          options.allowedTools = [...options.allowedTools, 'mcp__claw__*']
-        }
-      }
-
-      logger.debug('Soul Mode: injected claw MCP server', {
-        agentId: session.agent_id,
-        totalMcpServers: Object.keys(options.mcpServers).length
-      })
-    }
-
-    // Cherry Assistant: inject navigate + diagnose MCP server
-    if (isAssistant) {
-      const assistantServer = new AssistantServer()
-      options.mcpServers.assistant = { type: 'sdk', name: 'assistant', instance: assistantServer.mcpServer }
-
-      // Auto-approve assistant MCP tools
-      if (Array.isArray(options.allowedTools) && options.allowedTools.length > 0) {
-        if (!options.allowedTools.includes('mcp__assistant__*')) {
-          options.allowedTools = [...options.allowedTools, 'mcp__assistant__*']
-        }
-      } else {
-        // When allowed_tools is empty/undefined, set it so assistant MCP tools are auto-approved
-        options.allowedTools = ['mcp__assistant__*']
-      }
-
-      logger.debug('Cherry Assistant: injected assistant MCP server', {
-        agentId: session.agent_id,
-        totalMcpServers: Object.keys(options.mcpServers).length
-      })
     }
 
     if (lastAgentSessionId && !NO_RESUME_COMMANDS.some((cmd) => prompt.includes(cmd))) {
@@ -636,16 +558,6 @@ class ClaudeCodeService implements AgentServiceInterface {
     })
 
     return aiStream
-  }
-
-  private async resolveSourceChannel(agentId: string, sessionId: string): Promise<string | undefined> {
-    try {
-      const { channelService } = await import('../ChannelService')
-      const channels = await channelService.listChannels({ agentId })
-      return channels.find((ch) => ch.sessionId === sessionId)?.id
-    } catch {
-      return undefined
-    }
   }
 
   private async createUserMessageStream(
@@ -1011,10 +923,6 @@ async function buildAssistantContext(): Promise<string> {
     .filter((p) => p.apiKey || p.enabled)
     .map((p) => `${p.name || p.id}(${(p.models as unknown[])?.length || 0} models)`)
 
-  // MCP summary
-  const mcpServers = configManager.get<Record<string, unknown>[]>('mcpServers', [])
-  const activeMcp = mcpServers.filter((s) => s.isActive)
-
   // Network probe (parallel, 2s timeout each)
   const probeResults = await Promise.allSettled([
     probeHost('github.com'),
@@ -1033,7 +941,6 @@ async function buildAssistantContext(): Promise<string> {
     `- Language: ${language}, Theme: ${theme}`,
     proxy ? `- Proxy: ${proxy}` : '- Proxy: none',
     `- Providers (${configuredProviders.length}): ${configuredProviders.join(', ') || 'none configured'}`,
-    `- MCP Servers: ${activeMcp.length} active / ${mcpServers.length} total`,
     '',
     '## Network',
     ...networkLines

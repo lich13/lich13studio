@@ -40,40 +40,7 @@ const DEFAULT_BASIC_PROMPT = `You are CherryClaw, a personal assistant running i
 
 `
 
-const TOOLS_SECTION = `## CherryClaw Tools
-
-You have exclusive access to these tools for interacting with CherryStudio. Always prefer them over manual alternatives.
-
-| Tool | Purpose | When to use |
-|---|---|---|
-| \`mcp__claw__cron\` | Schedule recurring or one-time tasks | Creating reminders, periodic checks, scheduled reports. Never use builtin Cron* tools — they are disabled. |
-| \`mcp__claw__notify\` | Send messages to the user via IM channels | Proactive updates, task results, alerts. Use when the user is not in the current session. |
-| \`mcp__claw__skills\` | Search, install, and remove Claude skills | When the user asks for new capabilities or you need a skill you don't have. |
-| \`mcp__claw__memory\` | Manage JOURNAL.jsonl (append and search) | Log events and search past activity. Never write to JOURNAL.jsonl directly via file tools. |
-| \`mcp__claw__config\` | Inspect and manage your own agent config | Check connected channels, supported adapters, add/update/remove IM channels, rename yourself. |
-
-Rules:
-- These are your primary interface to CherryStudio. Do not attempt workarounds or alternative approaches.
-- When creating scheduled tasks, always use \`mcp__claw__cron\`. The SDK builtin CronCreate, CronDelete, and CronList tools are disabled.
-- When you need to notify the user outside the current conversation, use \`mcp__claw__notify\`.
-- When adding a WeChat channel, the config tool returns a QR code image. Include the image in your response so the user can scan it directly in the chat.
-- Use \`config status\` to check which channels are actually connected. If a channel shows \`connected: false\`, use \`config reconnect_channel\` to trigger a fresh QR scan.
-
-## Web Search & Browser Strategy
-
-You have two complementary web tools: \`mcp__exa__web_search_exa\` for structured search and \`mcp__browser__*\` for page interaction.
-
-**Search-first, browse-second:** Start with Exa for search queries (returns clean structured results). Only use the browser to visit specific pages when you need full content, screenshots, or interaction.
-
-**Always parallelize when possible.** You can call multiple tools simultaneously in a single response. Do this whenever queries are independent:
-- Searching in multiple languages: call \`web_search_exa\` once per language in parallel (e.g., English + Chinese + Japanese queries simultaneously)
-- Researching multiple topics: fire all search queries at once, don't wait for one to finish before starting another
-- Visiting multiple URLs: use \`mcp__browser__open\` with \`newTab=true\` for each URL in parallel
-- Combining search + browse: search with Exa while simultaneously screenshotting a known URL
-
-**Use \`mcp__browser__screenshot\`** to visually inspect pages (search results, dashboards, verification). It's far more efficient than fetching full page content.
-**Use \`mcp__browser__snapshot\`** with \`selector\` to extract only the relevant part of a page (e.g., \`selector: "#search"\` for Google results).
-`
+const TOOLS_SECTION = 'Use the native WebSearch and WebFetch tools when web research is needed.'
 
 function memoriesTemplate(workspacePath: string, sections: string): string {
   return `## Memories
@@ -85,12 +52,12 @@ Persistent files in \`${workspacePath}/\` carry your state across sessions. Upda
 | \`SOUL.md\` | WHO you are — personality, tone, communication style, core principles | Read + Edit tools |
 | \`USER.md\` | WHO the user is — name, preferences, timezone, personal context | Read + Edit tools |
 | \`memory/FACT.md\` | WHAT you know — active projects, technical decisions, durable knowledge (6+ months) | Read + Edit tools |
-| \`memory/JOURNAL.jsonl\` | WHEN things happened — one-time events, session notes (append-only log) | \`mcp__claw__memory\` tool only (actions: append, search) |
+| \`memory/JOURNAL.jsonl\` | WHEN things happened — one-time events, session notes (append-only log) | Read + Edit tools |
 
 Rules:
 - Each file has an exclusive scope — never duplicate information across files.
 - \`SOUL.md\`, \`USER.md\`, and \`memory/FACT.md\` are loaded below. Read and edit them directly when updates are needed.
-- \`memory/JOURNAL.jsonl\` is NOT loaded into context. Use \`mcp__claw__memory\` to append entries or search past events. Never read or write the file directly.
+- \`memory/JOURNAL.jsonl\` is NOT loaded into context. Use Read + Edit tools to append entries or search past events.
 - Filenames are case-insensitive.
 ${sections}`
 }

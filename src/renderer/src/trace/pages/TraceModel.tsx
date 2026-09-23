@@ -1,4 +1,4 @@
-import type { SpanEntity } from '@mcp-trace/trace-core'
+import type { SpanEntity } from '@trace/trace-core'
 
 export interface TraceModal extends SpanEntity {
   children: TraceModal[]

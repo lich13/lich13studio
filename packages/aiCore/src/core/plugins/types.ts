@@ -51,8 +51,6 @@ export interface AiRequestContext<TParams = unknown, TResult = unknown> {
   recursiveDepth: number // 当前递归深度
   maxRecursiveDepth: number // 最大递归深度限制，默认 10
 
-  mcpTools?: ToolSet
-
   extensions: Map<string, JSONValue>
 
   middlewares?: LanguageModelMiddleware[]

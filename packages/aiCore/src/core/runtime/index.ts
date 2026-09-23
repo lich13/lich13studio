@@ -12,7 +12,7 @@ export type { EmbedManyParams, EmbedManyResult, RuntimeConfig } from './types'
 // === 便捷工厂函数 ===
 
 import { type AiPlugin } from '../plugins'
-import { extensionRegistry } from '../providers'
+import { coreExtensions, extensionRegistry } from '../providers'
 import { type CoreProviderSettingsMap, type StringKeys } from '../providers/types'
 import { RuntimeExecutor } from './executor'
 
@@ -24,6 +24,8 @@ export async function createExecutor<
   TSettingsMap extends Record<string, any> = CoreProviderSettingsMap,
   T extends StringKeys<TSettingsMap> = StringKeys<TSettingsMap>
 >(providerId: T, options: TSettingsMap[T], plugins?: AiPlugin[]): Promise<RuntimeExecutor<TSettingsMap, T>> {
+  // Explicitly retain initialization in production bundles with sideEffects: false.
+  extensionRegistry.registerAll(coreExtensions)
   if (!extensionRegistry.has(providerId)) {
     throw new Error(`Provider extension "${providerId}" not registered`)
   }

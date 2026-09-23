@@ -183,32 +183,6 @@
           }
         }
       },
-      "MCPServer": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "command": {
-            "type": "string"
-          },
-          "args": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "env": {
-            "type": "object"
-          },
-          "disabled": {
-            "type": "boolean"
-          }
-        }
-      },
       "PermissionMode": {
         "type": "string",
         "enum": ["default", "acceptEdits", "bypassPermissions", "plan"],
@@ -267,13 +241,6 @@
           "small_model": {
             "type": "string",
             "description": "Optional small/fast model ID"
-          },
-          "mcps": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Array of MCP tool IDs"
           },
           "allowed_tools": {
             "type": "array",
@@ -378,13 +345,6 @@
             "type": "string",
             "description": "Optional small/fast model ID"
           },
-          "mcps": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Array of MCP tool IDs"
-          },
           "allowed_tools": {
             "type": "array",
             "items": {
@@ -486,13 +446,6 @@
           "small_model": {
             "type": "string",
             "description": "Optional small/fast model ID"
-          },
-          "mcps": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Array of MCP tool IDs"
           },
           "allowed_tools": {
             "type": "array",
@@ -961,13 +914,6 @@
                       "type": "string"
                     },
                     "description": "Tools"
-                  },
-                  "mcps": {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    },
-                    "description": "MCP tool IDs"
                   },
                   "knowledges": {
                     "type": "array",
@@ -1963,292 +1909,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/chat/completions": {
-      "post": {
-        "summary": "Create chat completion",
-        "description": "Create a chat completion response, compatible with OpenAI API",
-        "tags": ["Chat"],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ChatCompletionRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Chat completion response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "id": {
-                      "type": "string"
-                    },
-                    "object": {
-                      "type": "string",
-                      "example": "chat.completion"
-                    },
-                    "created": {
-                      "type": "integer"
-                    },
-                    "model": {
-                      "type": "string"
-                    },
-                    "choices": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "index": {
-                            "type": "integer"
-                          },
-                          "message": {
-                            "$ref": "#/components/schemas/ChatMessage"
-                          },
-                          "finish_reason": {
-                            "type": "string"
-                          }
-                        }
-                      }
-                    },
-                    "usage": {
-                      "type": "object",
-                      "properties": {
-                        "prompt_tokens": {
-                          "type": "integer"
-                        },
-                        "completion_tokens": {
-                          "type": "integer"
-                        },
-                        "total_tokens": {
-                          "type": "integer"
-                        }
-                      }
-                    }
-                  }
-                }
-              },
-              "text/event-stream": {
-                "schema": {
-                  "type": "string",
-                  "description": "Server-sent events stream (when stream=true)"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Rate limit exceeded",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/mcps": {
-      "get": {
-        "summary": "List MCP servers",
-        "description": "Get a list of all configured Model Context Protocol servers",
-        "tags": ["MCP"],
-        "responses": {
-          "200": {
-            "description": "List of MCP servers",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean"
-                    },
-                    "data": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/MCPServer"
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Service unavailable",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "error": {
-                      "$ref": "#/components/schemas/Error"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/mcps/{server_id}": {
-      "get": {
-        "summary": "Get MCP server info",
-        "description": "Get detailed information about a specific MCP server",
-        "tags": ["MCP"],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "server_id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "MCP server ID"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "MCP server information",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean"
-                    },
-                    "data": {
-                      "$ref": "#/components/schemas/MCPServer"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "MCP server not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "error": {
-                      "$ref": "#/components/schemas/Error"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/mcps/{server_id}/mcp": {
-      "post": {
-        "summary": "MCP protocol proxy",
-        "description": "Proxy endpoint for Model Context Protocol communication with a specific MCP server. Accepts all HTTP methods (GET, POST, DELETE, etc.).",
-        "tags": ["MCP"],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "server_id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "MCP server ID"
-          }
-        ],
-        "requestBody": {
-          "description": "MCP protocol request body (JSON-RPC format)",
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "MCP protocol response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "MCP server not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "error": {
-                      "$ref": "#/components/schemas/Error"
-                    }
-                  }
                 }
               }
             }

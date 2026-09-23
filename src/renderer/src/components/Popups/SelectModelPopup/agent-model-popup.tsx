@@ -32,7 +32,7 @@ const isAdaptedApiModel = (value: Model): value is AdaptedApiModel => 'origin' i
 const buildFallbackProvider = (providerId: string, model: AdaptedApiModel): Provider => {
   return {
     id: providerId,
-    type: model.origin.provider_type ?? 'openai',
+    type: model.origin.provider_type ?? 'openai-response',
     name: model.origin.provider_name || providerId || 'Unknown Provider',
     apiKey: '',
     apiHost: '',

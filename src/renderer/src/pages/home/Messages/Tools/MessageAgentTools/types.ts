@@ -391,24 +391,6 @@ export function parseAskUserQuestionToolInput(value: unknown): AskUserQuestionTo
   return result.success ? result.data : undefined
 }
 
-// ListMcpResourcesToolInput
-export type ListMcpResourcesToolInput = {
-  /**
-   * Optional server name to filter resources by
-   */
-  server?: string
-}
-// ReadMcpResourceToolInput
-export type ReadMcpResourceToolInput = {
-  /**
-   * The MCP server name
-   */
-  server: string
-  /**
-   * The resource URI to read
-   */
-  uri: string
-}
 export type KillBashToolInput = {
   /**
    * The ID of the background shell to kill
@@ -432,8 +414,6 @@ export type ToolInput =
   | WebSearchToolInput
   | TodoWriteToolInput
   | ExitPlanModeToolInput
-  | ListMcpResourcesToolInput
-  | ReadMcpResourceToolInput
   | AskUserQuestionToolInput
   | ToolSearchToolInput
 

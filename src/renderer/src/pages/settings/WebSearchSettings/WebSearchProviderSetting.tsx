@@ -150,7 +150,6 @@ const WebSearchProviderSetting: FC<Props> = ({ providerId }) => {
       case 'searxng':
         return SearxngLogo
       case 'exa':
-      case 'exa-mcp':
         return ExaLogo
       case 'bocha':
         return BochaLogo

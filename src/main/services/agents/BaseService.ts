@@ -1,10 +1,8 @@
 import { loggerService } from '@logger'
-import { mcpApiService } from '@main/apiServer/services/mcp'
 import type { ModelValidationError } from '@main/apiServer/utils'
 import { validateModelId } from '@main/apiServer/utils'
 import { getDataPath } from '@main/utils'
-import { buildFunctionCallToolName } from '@shared/mcp'
-import type { AgentType, MCPTool, SlashCommand, SystemProviderId, Tool } from '@types'
+import type { AgentType, SlashCommand, SystemProviderId, Tool } from '@types'
 import { objectKeys } from '@types'
 import fs from 'fs'
 import path from 'path'
@@ -16,18 +14,6 @@ import { builtinSlashCommands } from './services/claudecode/commands'
 import { builtinTools } from './services/claudecode/tools'
 
 const logger = loggerService.withContext('BaseService')
-const MCP_TOOL_ID_PREFIX = 'mcp__'
-const MCP_TOOL_LEGACY_PREFIX = 'mcp_'
-
-const buildMcpToolId = (serverId: string, toolName: string) => `${MCP_TOOL_ID_PREFIX}${serverId}__${toolName}`
-const toLegacyMcpToolId = (toolId: string) => {
-  if (!toolId.startsWith(MCP_TOOL_ID_PREFIX)) {
-    return null
-  }
-  const rawId = toolId.slice(MCP_TOOL_ID_PREFIX.length)
-  return `${MCP_TOOL_LEGACY_PREFIX}${rawId.replace(/__/g, '_')}`
-}
-
 /**
  * Base service class providing shared utilities for all agent-related services.
  *
@@ -36,106 +22,17 @@ const toLegacyMcpToolId = (toolId: string) => {
  * - JSON field serialization/deserialization
  * - Path validation and creation
  * - Model validation
- * - MCP tools and slash commands listing
+ * - Built-in tools and slash commands listing
  */
 export abstract class BaseService {
-  protected jsonFields: string[] = [
-    'tools',
-    'mcps',
-    'configuration',
-    'accessible_paths',
-    'allowed_tools',
-    'slash_commands'
-  ]
+  protected jsonFields: string[] = ['tools', 'configuration', 'accessible_paths', 'allowed_tools', 'slash_commands']
 
-  public async listMcpTools(
-    agentType: AgentType,
-    ids?: string[]
-  ): Promise<{ tools: Tool[]; legacyIdMap: Map<string, string> }> {
-    const tools: Tool[] = []
-    const legacyIdMap = new Map<string, string>()
-    if (agentType === 'claude-code') {
-      tools.push(...builtinTools)
-    }
-    if (ids && ids.length > 0) {
-      for (const id of ids) {
-        try {
-          const server = await mcpApiService.getServerInfo(id)
-          if (server) {
-            server.tools.forEach((tool: MCPTool) => {
-              const canonicalId = buildFunctionCallToolName(server.name, tool.name)
-              const serverIdBasedId = buildMcpToolId(id, tool.name)
-              const legacyId = toLegacyMcpToolId(serverIdBasedId)
-
-              tools.push({
-                id: canonicalId,
-                name: tool.name,
-                type: 'mcp',
-                description: tool.description || '',
-                requirePermissions: true
-              })
-              legacyIdMap.set(serverIdBasedId, canonicalId)
-              if (legacyId) {
-                legacyIdMap.set(legacyId, canonicalId)
-              }
-            })
-          }
-        } catch (error) {
-          logger.warn('Failed to list MCP tools', {
-            id,
-            error: error as Error
-          })
-        }
-      }
-    }
-
-    return { tools, legacyIdMap }
+  public async listTools(agentType: AgentType): Promise<{ tools: Tool[] }> {
+    return { tools: agentType === 'claude-code' ? [...builtinTools] : [] }
   }
 
-  /**
-   * Normalize MCP tool IDs in allowed_tools to the current format.
-   *
-   * Legacy formats:
-   * - "mcp__<serverId>__<toolName>" (double underscore separators, server ID based)
-   * - "mcp_<serverId>_<toolName>" (single underscore separators)
-   * Current format: "mcp__<serverName>__<toolName>" (double underscore separators).
-   *
-   * This keeps persisted data compatible without requiring a database migration.
-   */
-  protected normalizeAllowedTools(
-    allowedTools: string[] | undefined,
-    tools: Tool[],
-    legacyIdMap?: Map<string, string>
-  ): string[] | undefined {
-    if (!allowedTools || allowedTools.length === 0) {
-      return allowedTools
-    }
-
-    const resolvedLegacyIdMap = new Map<string, string>()
-
-    if (legacyIdMap) {
-      for (const [legacyId, canonicalId] of legacyIdMap) {
-        resolvedLegacyIdMap.set(legacyId, canonicalId)
-      }
-    }
-
-    for (const tool of tools) {
-      if (tool.type !== 'mcp') {
-        continue
-      }
-      const legacyId = toLegacyMcpToolId(tool.id)
-      if (!legacyId) {
-        continue
-      }
-      resolvedLegacyIdMap.set(legacyId, tool.id)
-    }
-
-    if (resolvedLegacyIdMap.size === 0) {
-      return allowedTools
-    }
-
-    const normalized = allowedTools.map((toolId) => resolvedLegacyIdMap.get(toolId) ?? toolId)
-    return Array.from(new Set(normalized))
+  protected normalizeAllowedTools(allowedTools: string[] | undefined, tools: Tool[]): string[] | undefined {
+    return allowedTools?.filter((id) => !id.startsWith('mcp_') && tools.some((tool) => tool.id === id))
   }
 
   public async listSlashCommands(agentType: AgentType): Promise<SlashCommand[]> {
@@ -156,6 +53,7 @@ export abstract class BaseService {
 
   protected serializeJsonFields(data: any): any {
     const serialized = { ...data }
+    delete serialized.mcps
 
     for (const field of this.jsonFields) {
       if (serialized[field] !== undefined) {
@@ -173,6 +71,7 @@ export abstract class BaseService {
     if (!data) return data
 
     const deserialized = { ...data }
+    delete deserialized.mcps
 
     for (const field of this.jsonFields) {
       if (deserialized[field] && typeof deserialized[field] === 'string') {

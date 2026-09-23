@@ -2,7 +2,7 @@ import { loggerService } from '@logger'
 import type {
   ExternalToolResult,
   GenerateImageResponse,
-  MCPToolResponse,
+  HistoricalToolResponse,
   NormalToolResponse,
   WebSearchResponse
 } from '@renderer/types'
@@ -30,12 +30,12 @@ export interface StreamProcessorCallbacks {
   // Thinking/reasoning content chunk received (e.g., from Claude)
   onThinkingChunk?: (text: string, thinking_millsec?: number) => MaybePromise
   onThinkingComplete?: (text: string, thinking_millsec?: number) => MaybePromise
-  // A tool call response chunk (from MCP)
-  onToolCallPending?: (toolResponse: MCPToolResponse | NormalToolResponse) => MaybePromise
-  onToolCallInProgress?: (toolResponse: MCPToolResponse | NormalToolResponse) => MaybePromise
-  onToolCallComplete?: (toolResponse: MCPToolResponse | NormalToolResponse) => MaybePromise
+  // A tool call response chunk
+  onToolCallPending?: (toolResponse: HistoricalToolResponse | NormalToolResponse) => MaybePromise
+  onToolCallInProgress?: (toolResponse: HistoricalToolResponse | NormalToolResponse) => MaybePromise
+  onToolCallComplete?: (toolResponse: HistoricalToolResponse | NormalToolResponse) => MaybePromise
   // Tool argument streaming (partial arguments during streaming)
-  onToolArgumentStreaming?: (toolResponse: MCPToolResponse | NormalToolResponse) => MaybePromise
+  onToolArgumentStreaming?: (toolResponse: HistoricalToolResponse | NormalToolResponse) => MaybePromise
   // External tool call in progress
   onExternalToolInProgress?: () => MaybePromise
   // Citation data received (e.g., from Internet and  Knowledge Base)
@@ -106,22 +106,22 @@ export function createStreamProcessor(callbacks: StreamProcessorCallbacks = {}):
         case ChunkType.THINKING_COMPLETE:
           await callbacks.onThinkingComplete?.(data.text, data.thinking_millsec)
           break
-        case ChunkType.MCP_TOOL_PENDING:
+        case ChunkType.TOOL_PENDING:
           if (callbacks.onToolCallPending) {
             await Promise.all(data.responses.map((toolResp) => callbacks.onToolCallPending!(toolResp)))
           }
           break
-        case ChunkType.MCP_TOOL_IN_PROGRESS:
+        case ChunkType.TOOL_IN_PROGRESS:
           if (callbacks.onToolCallInProgress) {
             await Promise.all(data.responses.map((toolResp) => callbacks.onToolCallInProgress!(toolResp)))
           }
           break
-        case ChunkType.MCP_TOOL_COMPLETE:
+        case ChunkType.TOOL_COMPLETE:
           if (callbacks.onToolCallComplete && data.responses.length > 0) {
             await Promise.all(data.responses.map((toolResp) => callbacks.onToolCallComplete!(toolResp)))
           }
           break
-        case ChunkType.MCP_TOOL_STREAMING:
+        case ChunkType.TOOL_STREAMING:
           if (callbacks.onToolArgumentStreaming) {
             await Promise.all(data.responses.map((toolResp) => callbacks.onToolArgumentStreaming!(toolResp)))
           }

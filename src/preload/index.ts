@@ -1,7 +1,6 @@
 import type { PermissionUpdate } from '@anthropic-ai/claude-agent-sdk'
 import type { TokenUsageData } from '@cherrystudio/analytics-client'
 import { electronAPI } from '@electron-toolkit/preload'
-import type { SpanEntity, TokenUsage } from '@mcp-trace/trace-core'
 import type { SpanContext } from '@opentelemetry/api'
 import type { GitBashPathInfo, TerminalConfig, UpgradeChannel } from '@shared/config/constant'
 import type { LogLevel, LogSourceWithContext } from '@shared/config/logger'
@@ -16,16 +15,15 @@ import type {
   OperationResult,
   WebviewKeyEvent
 } from '@shared/config/types'
-import type { MCPServerLogEntry } from '@shared/config/types'
 import type { ExternalAppInfo } from '@shared/externalApp/types'
 import { IpcChannel } from '@shared/IpcChannel'
+import type { SpanEntity, TokenUsage } from '@trace/trace-core'
 import type { Notification } from '@types'
 import type {
   FileListResponse,
   FileMetadata,
   FileUploadResponse,
   GetApiServerStatusResult,
-  MCPServer,
   Model,
   OcrProvider,
   OcrResult,
@@ -358,46 +356,6 @@ const api = {
       ipcRenderer.invoke(IpcChannel.Aes_Encrypt, text, secretKey, iv),
     decrypt: (encryptedData: string, iv: string, secretKey: string) =>
       ipcRenderer.invoke(IpcChannel.Aes_Decrypt, encryptedData, iv, secretKey)
-  },
-  mcp: {
-    removeServer: (server: MCPServer) => ipcRenderer.invoke(IpcChannel.Mcp_RemoveServer, server),
-    restartServer: (server: MCPServer) => ipcRenderer.invoke(IpcChannel.Mcp_RestartServer, server),
-    stopServer: (server: MCPServer) => ipcRenderer.invoke(IpcChannel.Mcp_StopServer, server),
-    listTools: (server: MCPServer, context?: SpanContext) => tracedInvoke(IpcChannel.Mcp_ListTools, context, server),
-    callTool: (
-      { server, name, args, callId }: { server: MCPServer; name: string; args: any; callId?: string },
-      context?: SpanContext
-    ) => tracedInvoke(IpcChannel.Mcp_CallTool, context, { server, name, args, callId }),
-    listPrompts: (server: MCPServer) => ipcRenderer.invoke(IpcChannel.Mcp_ListPrompts, server),
-    getPrompt: ({ server, name, args }: { server: MCPServer; name: string; args?: Record<string, any> }) =>
-      ipcRenderer.invoke(IpcChannel.Mcp_GetPrompt, { server, name, args }),
-    listResources: (server: MCPServer) => ipcRenderer.invoke(IpcChannel.Mcp_ListResources, server),
-    getResource: ({ server, uri }: { server: MCPServer; uri: string }) =>
-      ipcRenderer.invoke(IpcChannel.Mcp_GetResource, { server, uri }),
-    getInstallInfo: () => ipcRenderer.invoke(IpcChannel.Mcp_GetInstallInfo),
-    checkMcpConnectivity: (server: any) => ipcRenderer.invoke(IpcChannel.Mcp_CheckConnectivity, server),
-    uploadDxt: async (file: File) => {
-      const buffer = await file.arrayBuffer()
-      return ipcRenderer.invoke(IpcChannel.Mcp_UploadDxt, buffer, file.name)
-    },
-    abortTool: (callId: string) => ipcRenderer.invoke(IpcChannel.Mcp_AbortTool, callId),
-    resolveHubTool: (nameOrId: string): Promise<{ serverId: string; toolName: string } | null> =>
-      ipcRenderer.invoke(IpcChannel.Mcp_ResolveHubTool, nameOrId),
-    getServerVersion: (server: MCPServer): Promise<string | null> =>
-      ipcRenderer.invoke(IpcChannel.Mcp_GetServerVersion, server),
-    getServerLogs: (server: MCPServer): Promise<MCPServerLogEntry[]> =>
-      ipcRenderer.invoke(IpcChannel.Mcp_GetServerLogs, server),
-    onProgress: (callback: (data: any) => void) => addIpcListener(IpcChannel.Mcp_Progress, callback),
-    onServersChanged: (callback: (servers: MCPServer[]) => void) =>
-      addIpcListener(IpcChannel.Mcp_ServersChanged, callback),
-    onServerAdded: (callback: (server: MCPServer) => void) => addIpcListener(IpcChannel.Mcp_AddServer, callback),
-    onServerLog: (callback: (log: MCPServerLogEntry & { serverId?: string }) => void) => {
-      const listener = (_event: Electron.IpcRendererEvent, log: MCPServerLogEntry & { serverId?: string }) => {
-        callback(log)
-      }
-      ipcRenderer.on(IpcChannel.Mcp_ServerLog, listener)
-      return () => ipcRenderer.off(IpcChannel.Mcp_ServerLog, listener)
-    }
   },
   python: {
     execute: (script: string, context?: Record<string, any>, timeout?: number) =>

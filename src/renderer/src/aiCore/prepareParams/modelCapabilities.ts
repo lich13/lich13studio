@@ -82,11 +82,6 @@ export function getFileSizeLimit(model: Model, fileType: FileType): number {
     return 20 * 1024 * 1024 // 20MB
   }
 
-  // Dashscope如果模型支持大文件上传优先使用File API上传
-  if (aiSdkId === 'dashscope' && supportsLargeFileUpload(model)) {
-    return 0 // 使用较小的默认值
-  }
-
   // 其他提供商没有明确限制，使用较大的默认值
   // 这与Legacy架构中的实现一致，让提供商自行处理文件大小
   return Infinity

@@ -5,21 +5,17 @@ import { loggerService } from '@logger'
 import { buildStreamTextParams } from '@renderer/aiCore/prepareParams'
 import type { AiSdkMiddlewareConfig } from '@renderer/aiCore/types/middlewareConfig'
 import { buildProviderOptions } from '@renderer/aiCore/utils/options'
-import { isDedicatedImageGenerationModel, isEmbeddingModel, isFunctionCallingModel } from '@renderer/config/models'
+import { isDedicatedImageGenerationModel, isEmbeddingModel } from '@renderer/config/models'
 import { getStoreSetting } from '@renderer/hooks/useSettings'
 import i18n from '@renderer/i18n'
-import store from '@renderer/store'
-import { hubMCPServer } from '@renderer/store/mcp'
-import type { Assistant, MCPServer, MCPTool, Model, Provider } from '@renderer/types'
-import { type FetchChatCompletionParams, getEffectiveMcpMode, isSystemProvider } from '@renderer/types'
+import type { Assistant, Model, Provider } from '@renderer/types'
+import { type FetchChatCompletionParams, isSystemProvider } from '@renderer/types'
 import type { StreamTextParams } from '@renderer/types/aiCoreTypes'
 import { type Chunk, ChunkType } from '@renderer/types/chunk'
 import type { Message, ResponseError } from '@renderer/types/newMessage'
 import { removeSpecialCharactersForTopicName, uuid } from '@renderer/utils'
 import { abortCompletion, readyToAbort } from '@renderer/utils/abortController'
 import { trackTokenUsage } from '@renderer/utils/analytics'
-import { isToolUseModeFunction } from '@renderer/utils/assistant'
-import { isPromptToolUse, isSupportedToolUse } from '@renderer/utils/assistant'
 import { getErrorMessage, isAbortError } from '@renderer/utils/error'
 import { purifyMarkdownImages } from '@renderer/utils/markdown'
 import { findFileBlocks, findImageBlocks, getMainTextContent } from '@renderer/utils/messageUtils/find'
@@ -52,84 +48,6 @@ import type { StreamProcessor, StreamProcessorCallbacks } from './StreamProcessi
 // FIXME: 这里太多重复逻辑，需要重构
 
 const logger = loggerService.withContext('ApiService')
-
-/**
- * Get the MCP servers to use based on the assistant's MCP mode.
- */
-export function getMcpServersForAssistant(assistant: Assistant): MCPServer[] {
-  const mode = getEffectiveMcpMode(assistant)
-  const allMcpServers = store.getState().mcp.servers || []
-  const activedMcpServers = allMcpServers.filter((s) => s.isActive)
-
-  switch (mode) {
-    case 'disabled':
-      return []
-    case 'auto':
-      return [hubMCPServer]
-    case 'manual': {
-      const assistantMcpServers = assistant.mcpServers || []
-      return activedMcpServers.filter((server) => assistantMcpServers.some((s) => s.id === server.id))
-    }
-    default:
-      return []
-  }
-}
-
-export async function fetchAllActiveServerTools(): Promise<MCPTool[]> {
-  const allMcpServers = store.getState().mcp.servers || []
-  const activedMcpServers = allMcpServers.filter((s) => s.isActive)
-
-  if (activedMcpServers.length === 0) {
-    return []
-  }
-
-  try {
-    const toolPromises = activedMcpServers.map(async (mcpServer: MCPServer) => {
-      try {
-        const tools = await window.api.mcp.listTools(mcpServer)
-        return tools.filter((tool: any) => !mcpServer.disabledTools?.includes(tool.name))
-      } catch (error) {
-        logger.error(`Error fetching tools from MCP server ${mcpServer.name}:`, error as Error)
-        return []
-      }
-    })
-    const results = await Promise.allSettled(toolPromises)
-    return results
-      .filter((result): result is PromiseFulfilledResult<MCPTool[]> => result.status === 'fulfilled')
-      .map((result) => result.value)
-      .flat()
-  } catch (toolError) {
-    logger.error('Error fetching all active server tools:', toolError as Error)
-    return []
-  }
-}
-
-export async function fetchMcpTools(assistant: Assistant) {
-  let mcpTools: MCPTool[] = []
-  const enabledMCPs = getMcpServersForAssistant(assistant)
-
-  if (enabledMCPs && enabledMCPs.length > 0) {
-    try {
-      const toolPromises = enabledMCPs.map(async (mcpServer: MCPServer) => {
-        try {
-          const tools = await window.api.mcp.listTools(mcpServer)
-          return tools.filter((tool: any) => !mcpServer.disabledTools?.includes(tool.name))
-        } catch (error) {
-          logger.error(`Error fetching tools from MCP server ${mcpServer.name}:`, error as Error)
-          return []
-        }
-      })
-      const results = await Promise.allSettled(toolPromises)
-      mcpTools = results
-        .filter((result): result is PromiseFulfilledResult<MCPTool[]> => result.status === 'fulfilled')
-        .map((result) => result.value)
-        .flat()
-    } catch (toolError) {
-      logger.error('Error fetching MCP tools:', toolError as Error)
-    }
-  }
-  return mcpTools
-}
 
 /**
  * 将用户消息转换为LLM可以理解的格式并发送请求
@@ -223,12 +141,8 @@ export async function fetchChatCompletion({
   const AI = new AiProvider(assistant.model || getDefaultModel(), providerWithRotatedKey)
   const provider = AI.getActualProvider()
 
-  const mcpTools: MCPTool[] = []
   onChunkReceived({ type: ChunkType.LLM_RESPONSE_CREATED })
 
-  if (isPromptToolUse(assistant) || isSupportedToolUse(assistant)) {
-    mcpTools.push(...(await fetchMcpTools(assistant)))
-  }
   if (prompt) {
     messages = [
       {
@@ -245,29 +159,21 @@ export async function fetchChatCompletion({
     capabilities,
     webSearchPluginConfig
   } = await buildStreamTextParams(messages, assistant, provider, {
-    mcpTools: mcpTools,
     allowedTools,
     webSearchProviderId: assistant.webSearchProviderId,
     requestOptions
   })
 
-  // Safely fallback to prompt tool use when function calling is not supported by model.
-  const usePromptToolUse =
-    isPromptToolUse(assistant) || (isToolUseModeFunction(assistant) && !isFunctionCallingModel(assistant.model))
-
-  const mcpMode = getEffectiveMcpMode(assistant)
   const middlewareConfig: AiSdkMiddlewareConfig = {
     streamOutput: assistant.settings?.streamOutput ?? true,
     onChunk: onChunkReceived,
     enableReasoning: capabilities.enableReasoning,
-    isPromptToolUse: usePromptToolUse,
-    isSupportedToolUse: isSupportedToolUse(assistant),
+    isPromptToolUse: false,
+    isSupportedToolUse: true,
     webSearchPluginConfig: webSearchPluginConfig,
     enableWebSearch: capabilities.enableWebSearch,
     enableGenerateImage: capabilities.enableGenerateImage,
     enableUrlContext: capabilities.enableUrlContext,
-    mcpMode,
-    mcpTools,
     uiMessages
   }
 
@@ -470,7 +376,7 @@ export async function fetchMessagesSummary({
     ...defaultAssistant,
     settings: {
       ...defaultAssistant.settings,
-      reasoning_effort: 'none',
+      reasoning_effort: 'max',
       qwenThinkMode: false
     },
     prompt,
@@ -497,8 +403,7 @@ export async function fetchMessagesSummary({
     isSupportedToolUse: false,
     enableWebSearch: false,
     enableGenerateImage: false,
-    enableUrlContext: false,
-    mcpTools: []
+    enableUrlContext: false
   }
   try {
     // 从 messages 中找到有 traceId 的助手消息，用于绑定现有 trace
@@ -560,7 +465,7 @@ export async function fetchNoteSummary({ content, assistant }: { content: string
     ...resolvedAssistant,
     settings: {
       ...resolvedAssistant.settings,
-      reasoning_effort: undefined,
+      reasoning_effort: 'max' as const,
       qwenThinkMode: false
     },
     prompt,
@@ -579,8 +484,7 @@ export async function fetchNoteSummary({ content, assistant }: { content: string
     isSupportedToolUse: false,
     enableWebSearch: false,
     enableGenerateImage: false,
-    enableUrlContext: false,
-    mcpTools: []
+    enableUrlContext: false
   }
 
   try {
@@ -791,7 +695,7 @@ export function checkApiProvider(provider: Provider): void {
     }
   }
 
-  if (!provider.apiHost && provider.type !== 'vertexai') {
+  if (!provider.apiHost) {
     window.toast.error(i18n.t('message.error.enter.api.host'))
     throw new Error(i18n.t('message.error.enter.api.host'))
   }

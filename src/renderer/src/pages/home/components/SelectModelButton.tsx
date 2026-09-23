@@ -3,7 +3,7 @@ import { SelectChatModelPopup } from '@renderer/components/Popups/SelectModelPop
 import { isLocalAi } from '@renderer/config/env'
 import { isEmbeddingModel, isRerankModel, isWebSearchModel } from '@renderer/config/models'
 import { useAssistant } from '@renderer/hooks/useAssistant'
-import { useProvider } from '@renderer/hooks/useProvider'
+import { useAllProviders, useProvider } from '@renderer/hooks/useProvider'
 import { getProviderName } from '@renderer/services/ProviderService'
 import type { Assistant, Model } from '@renderer/types'
 import { Button, Tag } from 'antd'
@@ -22,11 +22,16 @@ const SelectModelButton: FC<Props> = ({ assistant }) => {
   const { t } = useTranslation()
   const timerRef = useRef<NodeJS.Timeout>(undefined)
   const provider = useProvider(model?.provider)
+  const providers = useAllProviders()
 
   const modelFilter = (model: Model) => !isEmbeddingModel(model) && !isRerankModel(model)
 
   const onSelectModel = async (event: React.MouseEvent<HTMLElement>) => {
     event.currentTarget.blur()
+    if (!providers.some((provider) => provider.enabled && provider.models.length > 0)) {
+      window.navigate('/settings/provider')
+      return
+    }
     const selectedModel = await SelectChatModelPopup.show({ model, filter: modelFilter })
     if (selectedModel) {
       // 避免更新数据造成关闭弹框的卡顿
@@ -58,11 +63,11 @@ const SelectModelButton: FC<Props> = ({ assistant }) => {
       <ButtonContent>
         <ModelAvatar model={model} size={20} />
         <ModelName>
-          {model ? model.name : t('button.select_model')} {providerName ? ' | ' + providerName : ''}
+          {model?.id ? model.name : t('button.select_model')} {providerName ? ' | ' + providerName : ''}
         </ModelName>
       </ButtonContent>
       <ChevronsUpDown size={14} color="var(--color-icon)" />
-      {!provider && <Tag color="error">{t('models.invalid_model')}</Tag>}
+      {model?.id && !provider && <Tag color="error">{t('models.invalid_model')}</Tag>}
     </DropdownButton>
   )
 }

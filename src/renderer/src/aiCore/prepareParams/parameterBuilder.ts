@@ -11,23 +11,19 @@ import type { AppProviderId } from '@renderer/aiCore/types'
 import { MAX_TOOL_CALLS, MIN_TOOL_CALLS } from '@renderer/config/constant'
 import {
   isAnthropicModel,
-  isFixedReasoningModel,
   isGeminiModel,
   isGenerateImageModel,
   isGrokModel,
   isOpenAIModel,
   isOpenRouterBuiltInWebSearchModel,
   isPureGenerateImageModel,
-  isSupportedReasoningEffortModel,
-  isSupportedThinkingTokenModel,
   isWebSearchModel
 } from '@renderer/config/models'
-import { getHubModeSystemPrompt } from '@renderer/config/prompts-code-mode'
 import { DEFAULT_ASSISTANT_SETTINGS, getDefaultModel } from '@renderer/services/AssistantService'
 import store from '@renderer/store'
 import type { CherryWebSearchConfig } from '@renderer/store/websearch'
 import type { Model } from '@renderer/types'
-import { type Assistant, getEffectiveMcpMode, type MCPTool, type Provider, SystemProviderIds } from '@renderer/types'
+import { type Assistant, type Provider, SystemProviderIds } from '@renderer/types'
 import type { StreamTextParams } from '@renderer/types/aiCoreTypes'
 import { IdleTimeoutController, type IdleTimeoutHandle } from '@renderer/utils/IdleTimeoutController'
 import { replacePromptVariables } from '@renderer/utils/prompt'
@@ -38,7 +34,6 @@ import { stepCountIs } from 'ai'
 
 import { getAiSdkProviderId } from '../provider/factory'
 import type { ProviderCapabilities } from '../types'
-import { setupToolsConfig } from '../utils/mcp'
 import { buildProviderOptions } from '../utils/options'
 import { buildProviderBuiltinWebSearchConfig } from '../utils/websearch'
 import { addAnthropicHeaders } from './header'
@@ -85,7 +80,6 @@ export async function buildStreamTextParams(
   assistant: Assistant,
   provider: Provider,
   options: {
-    mcpTools?: MCPTool[]
     allowedTools?: string[]
     webSearchProviderId?: string
     webSearchConfig?: CherryWebSearchConfig
@@ -102,7 +96,7 @@ export async function buildStreamTextParams(
   webSearchPluginConfig?: WebSearchPluginConfig
   idleTimeout: IdleTimeoutHandle
 }> {
-  const { mcpTools, requestOptions = {} } = options
+  const { requestOptions = {} } = options
   // No caller currently provides a custom timeout; defaultTimeout (10 min) is the fallback.
   const { signal: externalSignal, timeout = DEFAULT_TIMEOUT, headers: inputHeaders = {} } = requestOptions
 
@@ -121,10 +115,7 @@ export async function buildStreamTextParams(
   // 这三个变量透传出来，交给下面启用插件/中间件
   // 也可以在外部构建好再传入buildStreamTextParams
   // FIXME: qwen3即使关闭思考仍然会导致enableReasoning的结果为true
-  const enableReasoning =
-    ((isSupportedThinkingTokenModel(model) || isSupportedReasoningEffortModel(model)) &&
-      assistant.settings?.reasoning_effort !== undefined) ||
-    isFixedReasoningModel(model)
+  const enableReasoning = true
 
   // 判断是否使用内置搜索
   // 条件：没有外部搜索提供商 && (用户开启了内置搜索 || 模型强制使用内置搜索)
@@ -144,8 +135,6 @@ export async function buildStreamTextParams(
   )
 
   const enableGenerateImage = !!(isGenerateImageModel(model) && assistant.enableGenerateImage)
-
-  const tools = setupToolsConfig(mcpTools, options.allowedTools)
 
   // 构建真正的 providerOptions
   const webSearchConfig: CherryWebSearchConfig = {
@@ -217,18 +206,7 @@ export async function buildStreamTextParams(
   }
   // When disabled, don't pass stopWhen - let AI SDK use its own default
 
-  if (tools) {
-    params.tools = tools
-  }
-
-  let systemPrompt = assistant.prompt ? await replacePromptVariables(assistant.prompt, model.name) : ''
-
-  if (getEffectiveMcpMode(assistant) === 'auto') {
-    const autoModePrompt = getHubModeSystemPrompt()
-    if (autoModePrompt) {
-      systemPrompt = systemPrompt ? `${systemPrompt}\n\n${autoModePrompt}` : autoModePrompt
-    }
-  }
+  const systemPrompt = assistant.prompt ? await replacePromptVariables(assistant.prompt, model.name) : ''
 
   if (systemPrompt) {
     params.system = systemPrompt
@@ -253,7 +231,6 @@ export async function buildGenerateTextParams(
   assistant: Assistant,
   provider: Provider,
   options: {
-    mcpTools?: MCPTool[]
     allowedTools?: string[]
     enableTools?: boolean
   } = {}

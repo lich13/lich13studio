@@ -176,7 +176,7 @@ const AgentSessionInputbarInner: FC<InnerProps> = ({ assistant, agentId, session
   const { t } = useTranslation()
   const quickPanel = useQuickPanel()
 
-  const [reasoningEffort, setReasoningEffort] = useState<ThinkingOption>('default')
+  const [reasoningEffort, setReasoningEffort] = useState<ThinkingOption>('max')
 
   const { files } = useInputbarToolsState()
   const { toolsRegistry, setIsExpanded, setFiles } = useInputbarToolsDispatch()

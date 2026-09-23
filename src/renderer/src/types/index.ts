@@ -2,6 +2,7 @@ import type { LanguageModelV3Source } from '@ai-sdk/provider'
 import type { WebSearchResultBlock } from '@anthropic-ai/sdk/resources'
 import type OpenAI from '@cherrystudio/openai'
 import type { GenerateImagesConfig, GroundingMetadata, PersonGeneration } from '@google/genai'
+import type { ReasoningEffort } from '@shared/reasoning'
 import type { CSSProperties } from 'react'
 
 export * from './file'
@@ -13,23 +14,19 @@ import type { StreamTextParams } from './aiCoreTypes'
 import type { Chunk } from './chunk'
 import type { FileMetadata } from './file'
 import type { KnowledgeReference } from './knowledge'
-import type { MCPConfigSample, MCPServerInstallSource, McpServerType } from './mcp'
 import type { Message } from './newMessage'
-import type { BaseTool, MCPTool } from './tool'
+import type { BaseTool, HistoricalTool } from './tool'
 
 export * from './agent'
 export * from './apiModels'
 export * from './apiServer'
 export * from './knowledge'
-export * from './mcp'
 export * from './notification'
 export * from './ocr'
 export * from './plugin'
 export * from './provider'
 export * from './serialize'
 export * from './skill'
-
-export type McpMode = 'disabled' | 'auto' | 'manual'
 
 export type Assistant = {
   id: string
@@ -50,24 +47,12 @@ export type Assistant = {
   // enableUrlContext 是 Gemini/Anthropic 的特有功能
   enableUrlContext?: boolean
   enableGenerateImage?: boolean
-  /** MCP mode: 'disabled' (no MCP), 'auto' (hub server only), 'manual' (user selects servers) */
-  mcpMode?: McpMode
-  mcpServers?: MCPServer[]
   regularPhrases?: QuickPhrase[] // Added for regular phrase
   tags?: string[] // 助手标签
   enableMemory?: boolean
   // for translate. 更好的做法是定义base assistant，把 Assistant 作为多种不同定义 assistant 的联合类型，但重构代价太大
   content?: string
   targetLanguage?: TranslateLanguage
-}
-
-/**
- * Get the effective MCP mode for an assistant with backward compatibility.
- * Legacy assistants without mcpMode default based on mcpServers presence.
- */
-export function getEffectiveMcpMode(assistant: Assistant): McpMode {
-  if (assistant.mcpMode) return assistant.mcpMode
-  return (assistant.mcpServers?.length ?? 0) > 0 ? 'manual' : 'disabled'
 }
 
 export type TranslateAssistant = Assistant & {
@@ -145,7 +130,7 @@ const ThinkModelTypes = [
  *            It's also used as "on" when the reasoning behavior of the model only could be set to "on" and "off".
  * - 'default': Depend on default behavior. It means we would not set any reasoning related settings when calling API.
  */
-export type ReasoningEffortOption = NonNullable<OpenAI.ReasoningEffort> | 'auto' | 'default'
+export type ReasoningEffortOption = ReasoningEffort
 export type ThinkingOption = ReasoningEffortOption
 export type ThinkingModelType = (typeof ThinkModelTypes)[number]
 export type ThinkingOptionConfig = Record<ThinkingModelType, ThinkingOption[]>
@@ -158,14 +143,11 @@ export function isThinkModelType(type: string): type is ThinkingModelType {
 
 export const EFFORT_RATIO: EffortRatio = {
   // 'default' is not expected to be used.
-  default: 0,
-  none: 0.01,
-  minimal: 0.05,
   low: 0.05,
   medium: 0.5,
   high: 0.8,
   xhigh: 0.9,
-  auto: 2
+  max: 1
 }
 
 export type AssistantSettings = {
@@ -218,7 +200,6 @@ export type LegacyMessage = {
   askId?: string
   useful?: boolean
   error?: Record<string, any>
-  enabledMCPs?: MCPServer[]
   metadata?: {
     // Gemini
     groundingMetadata?: GroundingMetadata
@@ -231,7 +212,7 @@ export type LegacyMessage = {
     // Web search
     webSearch?: WebSearchProviderResponse
     // MCP Tools
-    mcpTools?: MCPToolResponse[]
+    mcpTools?: HistoricalToolResponse[]
     // Generate Image
     generateImage?: GenerateImageResponse
     // knowledge
@@ -694,8 +675,7 @@ export type SidebarIcon =
   | 'openclaw'
 
 export type ExternalToolResult = {
-  mcpTools?: MCPTool[]
-  toolUse?: MCPToolResponse[]
+  toolUse?: HistoricalToolResponse[]
   webSearch?: WebSearchResponse
   knowledge?: KnowledgeReference[]
   memories?: MemoryItem[]
@@ -706,7 +686,6 @@ export const WebSearchProviderIds = {
   tavily: 'tavily',
   searxng: 'searxng',
   exa: 'exa',
-  'exa-mcp': 'exa-mcp',
   bocha: 'bocha',
   querit: 'querit',
   'local-google': 'local-google',
@@ -790,132 +769,13 @@ export type WebSearchStatus = {
   countAfter?: number
 }
 
-// TODO: 把 mcp 相关类型定义迁移到独立文件中
-export type MCPArgType = 'string' | 'list' | 'number'
-export type MCPEnvType = 'string' | 'number'
-export type MCPArgParameter = { [key: string]: MCPArgType }
-export type MCPEnvParameter = { [key: string]: MCPEnvType }
-
-export interface MCPServerParameter {
-  name: string
-  type: MCPArgType | MCPEnvType
-  description: string
-}
-
-export interface MCPServer {
-  id: string // internal id
-  name: string // mcp name, generally as unique key
-  type?: McpServerType | 'inMemory'
-  description?: string
-  baseUrl?: string
-  command?: string
-  registryUrl?: string
-  args?: string[]
-  env?: Record<string, string>
-  headers?: Record<string, string> // Custom headers to be sent with requests to this server
-  provider?: string // Provider name for this server like ModelScope, Higress, etc.
-  providerUrl?: string // URL of the MCP server in provider's website or documentation
-  logoUrl?: string // URL of the MCP server's logo
-  tags?: string[] // List of tags associated with this server
-  longRunning?: boolean // Whether the server is long running
-  timeout?: number // Timeout in seconds for requests to this server, default is 60 seconds
-  dxtVersion?: string // Version of the DXT package
-  dxtPath?: string // Path where the DXT package was extracted
-  reference?: string // Reference link for the server, e.g., documentation or homepage
-  searchKey?: string
-  configSample?: MCPConfigSample
-  /** List of tool names that are disabled for this server */
-  disabledTools?: string[]
-  /** Whether to auto-approve tools for this server */
-  disabledAutoApproveTools?: string[]
-
-  /** 用于标记内置 MCP 是否需要配置 */
-  shouldConfig?: boolean
-  /** 用于标记服务器是否运行中 */
-  isActive: boolean
-  /** 标记 MCP 安装来源，例如 builtin/manual/protocol */
-  installSource?: MCPServerInstallSource
-  /** 指示用户是否已信任该 MCP */
-  isTrusted?: boolean
-  /** 首次标记为信任的时间戳 */
-  trustedAt?: number
-  /** 安装时间戳 */
-  installedAt?: number
-}
-
-export type BuiltinMCPServer = MCPServer & {
-  type: 'inMemory'
-  name: BuiltinMCPServerName
-}
-
-export const isBuiltinMCPServer = (server: MCPServer): server is BuiltinMCPServer => {
-  return server.type === 'inMemory' && isBuiltinMCPServerName(server.name)
-}
-
-export const BuiltinMCPServerNames = {
-  flomo: '@cherry/flomo',
-  mcpAutoInstall: '@cherry/mcp-auto-install',
-  memory: '@cherry/memory',
-  sequentialThinking: '@cherry/sequentialthinking',
-  braveSearch: '@cherry/brave-search',
-  fetch: '@cherry/fetch',
-  filesystem: '@cherry/filesystem',
-  python: '@cherry/python',
-  didiMCP: '@cherry/didi-mcp',
-  browser: '@cherry/browser',
-  nowledgeMem: '@cherry/nowledge-mem',
-  hub: '@cherry/hub'
-} as const
-
-export type BuiltinMCPServerName = (typeof BuiltinMCPServerNames)[keyof typeof BuiltinMCPServerNames]
-
-export const BuiltinMCPServerNamesArray = Object.values(BuiltinMCPServerNames)
-
-export const isBuiltinMCPServerName = (name: string): name is BuiltinMCPServerName => {
-  return BuiltinMCPServerNamesArray.some((n) => n === name)
-}
-
-export interface MCPPromptArguments {
-  name: string
-  description?: string
-  required?: boolean
-}
-
-export interface MCPPrompt {
-  id: string
-  name: string
-  description?: string
-  arguments?: MCPPromptArguments[]
-  serverId: string
-  serverName: string
-}
-
-export interface GetMCPPromptResponse {
-  description?: string
-  messages: {
-    role: string
-    content: {
-      type: 'text' | 'image' | 'audio' | 'resource'
-      text?: string
-      data?: string
-      mimeType?: string
-    }
-  }[]
-}
-
-export interface MCPConfig {
-  servers: MCPServer[]
-  isUvInstalled: boolean
-  isBunInstalled: boolean
-}
-
-export type MCPToolResponseStatus = 'pending' | 'streaming' | 'cancelled' | 'invoking' | 'done' | 'error'
+export type ToolResponseStatus = 'pending' | 'streaming' | 'cancelled' | 'invoking' | 'done' | 'error'
 
 interface BaseToolResponse {
   id: string // unique id
-  tool: BaseTool | MCPTool
+  tool: BaseTool | HistoricalTool
   arguments: Record<string, unknown> | Record<string, unknown>[] | string | undefined
-  status: MCPToolResponseStatus
+  status: ToolResponseStatus
   response?: any
   // Streaming arguments support
   partialArguments?: string // Accumulated partial JSON string during streaming
@@ -930,9 +790,9 @@ export interface ToolCallResponse extends BaseToolResponse {
   toolCallId?: string
 }
 
-// export type MCPToolResponse = ToolUseResponse | ToolCallResponse
-export interface MCPToolResponse extends Omit<ToolUseResponse | ToolCallResponse, 'tool'> {
-  tool: MCPTool
+// export type HistoricalToolResponse = ToolUseResponse | ToolCallResponse
+export interface HistoricalToolResponse extends Omit<ToolUseResponse | ToolCallResponse, 'tool'> {
+  tool: HistoricalTool
   toolCallId?: string
   toolUseId?: string
   parentToolUseId?: string
@@ -944,7 +804,7 @@ export interface NormalToolResponse extends Omit<ToolCallResponse, 'tool'> {
   parentToolUseId?: string
 }
 
-export interface MCPToolResultContent {
+export interface ToolResultContent {
   type: 'text' | 'image' | 'audio' | 'resource'
   text?: string
   data?: string
@@ -957,26 +817,10 @@ export interface MCPToolResultContent {
   }
 }
 
-export interface MCPCallToolResponse {
-  content: MCPToolResultContent[]
+export interface ToolResult {
+  content: ToolResultContent[]
   structuredContent?: unknown
   isError?: boolean
-}
-
-export interface MCPResource {
-  serverId: string
-  serverName: string
-  uri: string
-  name: string
-  description?: string
-  mimeType?: string
-  size?: number
-  text?: string
-  blob?: string
-}
-
-export interface GetResourceResponse {
-  contents: MCPResource[]
 }
 
 export interface QuickPhrase {

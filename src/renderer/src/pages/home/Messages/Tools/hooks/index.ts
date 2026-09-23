@@ -1,11 +1,9 @@
-// Tool approval hooks - unified abstraction for MCP and Agent tool approval
+// Tool approval hooks - agent tool approval interface
 export {
   isBlockWaitingApproval,
   type ToolApprovalActions,
   type ToolApprovalState,
   useAgentToolApproval,
   type UseAgentToolApprovalOptions,
-  useMcpToolApproval,
-  useToolApproval,
-  type UseToolApprovalOptions
+  useToolApproval
 } from './useToolApproval'

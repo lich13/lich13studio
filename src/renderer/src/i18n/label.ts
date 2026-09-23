@@ -5,8 +5,7 @@
  */
 
 import { loggerService } from '@logger'
-import type { AgentType, BuiltinMCPServerName, BuiltinOcrProviderId } from '@renderer/types'
-import { BuiltinMCPServerNames } from '@renderer/types'
+import type { AgentType, BuiltinOcrProviderId } from '@renderer/types'
 
 import i18n from './index'
 
@@ -287,17 +286,6 @@ export const getPaintingsBackgroundOptionsLabel = (key: string): string => {
   return getLabel(paintingsBackgroundOptionsKeyMap, key)
 }
 
-const mcpTypeKeyMap = {
-  inMemory: 'settings.mcp.types.inMemory',
-  sse: 'settings.mcp.types.sse',
-  stdio: 'settings.mcp.types.stdio',
-  streamableHttp: 'settings.mcp.types.streamableHttp'
-} as const
-
-export const getMcpTypeLabel = (key: string): string => {
-  return getLabel(mcpTypeKeyMap, key)
-}
-
 const miniappsStatusKeyMap = {
   visible: 'settings.miniapps.visible',
   disabled: 'settings.miniapps.disabled'
@@ -331,25 +319,6 @@ const fileFieldKeyMap = {
 
 export const getFileFieldLabel = (key: string): string => {
   return getLabel(fileFieldKeyMap, key)
-}
-
-const builtInMcpDescriptionKeyMap: Record<BuiltinMCPServerName, string> = {
-  [BuiltinMCPServerNames.flomo]: 'settings.mcp.builtinServersDescriptions.flomo',
-  [BuiltinMCPServerNames.mcpAutoInstall]: 'settings.mcp.builtinServersDescriptions.mcp_auto_install',
-  [BuiltinMCPServerNames.memory]: 'settings.mcp.builtinServersDescriptions.memory',
-  [BuiltinMCPServerNames.sequentialThinking]: 'settings.mcp.builtinServersDescriptions.sequentialthinking',
-  [BuiltinMCPServerNames.braveSearch]: 'settings.mcp.builtinServersDescriptions.brave_search',
-  [BuiltinMCPServerNames.fetch]: 'settings.mcp.builtinServersDescriptions.fetch',
-  [BuiltinMCPServerNames.filesystem]: 'settings.mcp.builtinServersDescriptions.filesystem',
-  [BuiltinMCPServerNames.python]: 'settings.mcp.builtinServersDescriptions.python',
-  [BuiltinMCPServerNames.didiMCP]: 'settings.mcp.builtinServersDescriptions.didi_mcp',
-  [BuiltinMCPServerNames.browser]: 'settings.mcp.builtinServersDescriptions.browser',
-  [BuiltinMCPServerNames.nowledgeMem]: 'settings.mcp.builtinServersDescriptions.nowledge_mem',
-  [BuiltinMCPServerNames.hub]: 'settings.mcp.builtinServersDescriptions.hub'
-} as const
-
-export const getBuiltInMcpServerDescriptionLabel = (key: string): string => {
-  return getLabel(builtInMcpDescriptionKeyMap, key, t('settings.mcp.builtinServersDescriptions.no'))
 }
 
 const builtinOcrProviderKeyMap = {

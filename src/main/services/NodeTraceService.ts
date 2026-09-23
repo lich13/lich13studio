@@ -1,9 +1,9 @@
 import { loggerService } from '@logger'
 import { isDev } from '@main/constant'
-import { CacheBatchSpanProcessor, FunctionSpanExporter } from '@mcp-trace/trace-core'
-import { NodeTracer as MCPNodeTracer } from '@mcp-trace/trace-node/nodeTracer'
 import type { SpanContext } from '@opentelemetry/api'
 import { context, trace } from '@opentelemetry/api'
+import { CacheBatchSpanProcessor, FunctionSpanExporter } from '@trace/trace-core'
+import { NodeTracer as AppNodeTracer } from '@trace/trace-node/nodeTracer'
 import { BrowserWindow, ipcMain } from 'electron'
 import * as path from 'path'
 
@@ -20,7 +20,7 @@ export class NodeTraceService {
       logger.info(`Spans length: ${spans.length}`)
     })
 
-    MCPNodeTracer.init(
+    AppNodeTracer.init(
       {
         defaultTracerName: TRACER_NAME,
         serviceName: TRACER_NAME

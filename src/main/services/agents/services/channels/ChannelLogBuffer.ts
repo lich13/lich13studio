@@ -2,7 +2,7 @@ import type { ChannelLogEntry } from '@shared/config/types'
 
 /**
  * Lightweight ring buffer for per-channel logs.
- * Mirrors ServerLogBuffer from MCP.
+ * Keeps bounded logs for channel sessions.
  */
 export class ChannelLogBuffer {
   private maxEntries: number

@@ -3,7 +3,7 @@ use base64::{engine::general_purpose, Engine as _};
 use futures_util::StreamExt;
 use image::codecs::png::PngEncoder;
 use image::{ColorType, ImageEncoder};
-use reqwest::header::{HeaderName, HeaderValue, AUTHORIZATION, CONTENT_TYPE, USER_AGENT};
+use reqwest::header::{HeaderName, HeaderValue, CONTENT_TYPE, USER_AGENT};
 use reqwest::{Client, Method};
 use roxmltree::Document;
 use serde::{Deserialize, Serialize};
@@ -149,46 +149,6 @@ struct TauriFileMetadata {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct ProviderRequest {
-  id: String,
-  name: String,
-  api_type: String,
-  api_key: String,
-  api_host: Option<String>,
-  model_ids: Vec<String>,
-  enabled: Option<bool>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct ChatMessage {
-  role: String,
-  content: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct ChatRequest {
-  stream_id: Option<String>,
-  provider: ProviderRequest,
-  model_id: String,
-  system_prompt: Option<String>,
-  messages: Vec<ChatMessage>,
-  temperature: Option<f64>,
-  max_tokens: Option<u32>,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct ChatChunkEvent {
-  stream_id: String,
-  delta: String,
-  done: bool,
-  error: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 struct NativeHttpHeader {
   name: String,
   value: String,
@@ -234,21 +194,6 @@ struct BackupWebDavConfig {
   user_agent: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct McpServerRequest {
-  transport: String,
-  command: Option<String>,
-  args: Option<Vec<String>>,
-  url: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct OperationResult {
-  ok: bool,
-  message: String,
-}
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -1345,46 +1290,6 @@ fn obsidian_files(vault_name: &str) -> Result<Vec<ObsidianFileInfo>, String> {
   Ok(results)
 }
 
-fn resolve_openai_host(provider: &ProviderRequest) -> String {
-  normalize_base_url(
-    provider
-      .api_host
-      .as_deref()
-      .filter(|host| !host.trim().is_empty())
-      .unwrap_or("https://api.openai.com"),
-  )
-}
-
-fn resolve_gemini_host(provider: &ProviderRequest) -> String {
-  normalize_base_url(
-    provider
-      .api_host
-      .as_deref()
-      .filter(|host| !host.trim().is_empty())
-      .unwrap_or("https://generativelanguage.googleapis.com"),
-  )
-}
-
-fn resolve_anthropic_host(provider: &ProviderRequest) -> String {
-  normalize_base_url(
-    provider
-      .api_host
-      .as_deref()
-      .filter(|host| !host.trim().is_empty())
-      .unwrap_or("https://api.anthropic.com"),
-  )
-}
-
-async fn emit_chunk(window: &Window, stream_id: &str, delta: String, done: bool, error: Option<String>) {
-  let payload = ChatChunkEvent {
-    stream_id: stream_id.to_string(),
-    delta,
-    done,
-    error,
-  };
-  let _ = window.emit("chat_chunk", payload);
-}
-
 #[tauri::command]
 async fn start_http_request(window: Window, request: NativeHttpRequest) -> Result<NativeHttpResponseStart, String> {
   let request_id = if request.request_id.trim().is_empty() {
@@ -1484,310 +1389,6 @@ async fn abort_http_request(request_id: String) -> Result<bool, String> {
   }
 
   Ok(false)
-}
-
-fn split_sse_events(buffer: &mut String) -> Vec<String> {
-  let normalized = buffer.replace("\r\n", "\n");
-  *buffer = normalized;
-  let mut events = Vec::new();
-
-  while let Some(position) = buffer.find("\n\n") {
-    let event = buffer[..position].to_string();
-    let rest = buffer[position + 2..].to_string();
-    *buffer = rest;
-    if !event.trim().is_empty() {
-      events.push(event);
-    }
-  }
-
-  events
-}
-
-fn parse_sse_data(event: &str) -> Vec<String> {
-  event
-    .lines()
-    .filter_map(|line| line.strip_prefix("data:"))
-    .map(|line| line.trim().to_string())
-    .filter(|line| !line.is_empty())
-    .collect()
-}
-
-fn build_openai_messages(request: &ChatRequest) -> Vec<Value> {
-  let mut messages = Vec::new();
-
-  if let Some(system_prompt) = request.system_prompt.as_ref().filter(|prompt| !prompt.trim().is_empty()) {
-    messages.push(json!({
-      "role": "system",
-      "content": system_prompt
-    }));
-  }
-
-  messages.extend(request.messages.iter().map(|message| {
-    json!({
-      "role": message.role,
-      "content": message.content
-    })
-  }));
-
-  messages
-}
-
-fn build_anthropic_messages(request: &ChatRequest) -> Vec<Value> {
-  request
-    .messages
-    .iter()
-    .map(|message| {
-      json!({
-        "role": message.role,
-        "content": message.content
-      })
-    })
-    .collect()
-}
-
-fn build_gemini_contents(request: &ChatRequest) -> Vec<Value> {
-  let mut contents = Vec::new();
-
-  if let Some(system_prompt) = request.system_prompt.as_ref().filter(|prompt| !prompt.trim().is_empty()) {
-    contents.push(json!({
-      "role": "user",
-      "parts": [{ "text": format!("System instruction:\n{}", system_prompt) }]
-    }));
-  }
-
-  contents.extend(request.messages.iter().map(|message| {
-    json!({
-      "role": if message.role == "assistant" { "model" } else { "user" },
-      "parts": [{ "text": message.content }]
-    })
-  }));
-
-  contents
-}
-
-async fn stream_openai(window: Window, stream_id: String, request: ChatRequest) {
-  let client = Client::new();
-  let endpoint = format!("{}/v1/chat/completions", resolve_openai_host(&request.provider));
-  let body = json!({
-    "model": request.model_id,
-    "messages": build_openai_messages(&request),
-    "stream": true,
-    "temperature": request.temperature.unwrap_or(0.7),
-    "max_tokens": request.max_tokens.unwrap_or(2048)
-  });
-
-  let response = client
-    .post(endpoint)
-    .header(AUTHORIZATION, format!("Bearer {}", request.provider.api_key))
-    .header(CONTENT_TYPE, "application/json")
-    .json(&body)
-    .send()
-    .await;
-
-  match response {
-    Ok(response) if response.status().is_success() => {
-      let mut stream = response.bytes_stream();
-      let mut buffer = String::new();
-
-      while let Some(chunk) = stream.next().await {
-        match chunk {
-          Ok(bytes) => {
-            buffer.push_str(&String::from_utf8_lossy(&bytes));
-            for event in split_sse_events(&mut buffer) {
-              for data in parse_sse_data(&event) {
-                if data == "[DONE]" {
-                  emit_chunk(&window, &stream_id, String::new(), true, None).await;
-                  return;
-                }
-
-                let payload: Value = match serde_json::from_str(&data) {
-                  Ok(value) => value,
-                  Err(_) => continue,
-                };
-                let delta = payload["choices"][0]["delta"]["content"]
-                  .as_str()
-                  .unwrap_or_default()
-                  .to_string();
-                if !delta.is_empty() {
-                  emit_chunk(&window, &stream_id, delta, false, None).await;
-                }
-              }
-            }
-          }
-          Err(error) => {
-            emit_chunk(&window, &stream_id, String::new(), true, Some(error.to_string())).await;
-            return;
-          }
-        }
-      }
-
-      emit_chunk(&window, &stream_id, String::new(), true, None).await;
-    }
-    Ok(response) => {
-      let error = response.text().await.unwrap_or_else(|_| String::from("OpenAI-compatible request failed"));
-      emit_chunk(&window, &stream_id, String::new(), true, Some(error)).await;
-    }
-    Err(error) => {
-      emit_chunk(&window, &stream_id, String::new(), true, Some(error.to_string())).await;
-    }
-  }
-}
-
-async fn stream_anthropic(window: Window, stream_id: String, request: ChatRequest) {
-  let client = Client::new();
-  let endpoint = format!("{}/v1/messages", resolve_anthropic_host(&request.provider));
-  let body = json!({
-    "model": request.model_id,
-    "system": request.system_prompt.clone().unwrap_or_default(),
-    "messages": build_anthropic_messages(&request),
-    "max_tokens": request.max_tokens.unwrap_or(2048),
-    "stream": true
-  });
-
-  let response = client
-    .post(endpoint)
-    .header("x-api-key", request.provider.api_key)
-    .header("anthropic-version", "2023-06-01")
-    .header(CONTENT_TYPE, "application/json")
-    .json(&body)
-    .send()
-    .await;
-
-  match response {
-    Ok(response) if response.status().is_success() => {
-      let mut stream = response.bytes_stream();
-      let mut buffer = String::new();
-
-      while let Some(chunk) = stream.next().await {
-        match chunk {
-          Ok(bytes) => {
-            buffer.push_str(&String::from_utf8_lossy(&bytes));
-            for event in split_sse_events(&mut buffer) {
-              for data in parse_sse_data(&event) {
-                let payload: Value = match serde_json::from_str(&data) {
-                  Ok(value) => value,
-                  Err(_) => continue,
-                };
-
-                if payload["type"].as_str() == Some("content_block_delta")
-                  && payload["delta"]["type"].as_str() == Some("text_delta")
-                {
-                  let delta = payload["delta"]["text"].as_str().unwrap_or_default().to_string();
-                  if !delta.is_empty() {
-                    emit_chunk(&window, &stream_id, delta, false, None).await;
-                  }
-                }
-
-                if payload["type"].as_str() == Some("message_stop") {
-                  emit_chunk(&window, &stream_id, String::new(), true, None).await;
-                  return;
-                }
-
-                if payload["type"].as_str() == Some("error") {
-                  let message = payload["error"]["message"]
-                    .as_str()
-                    .unwrap_or("Anthropic streaming failed")
-                    .to_string();
-                  emit_chunk(&window, &stream_id, String::new(), true, Some(message)).await;
-                  return;
-                }
-              }
-            }
-          }
-          Err(error) => {
-            emit_chunk(&window, &stream_id, String::new(), true, Some(error.to_string())).await;
-            return;
-          }
-        }
-      }
-
-      emit_chunk(&window, &stream_id, String::new(), true, None).await;
-    }
-    Ok(response) => {
-      let error = response.text().await.unwrap_or_else(|_| String::from("Anthropic request failed"));
-      emit_chunk(&window, &stream_id, String::new(), true, Some(error)).await;
-    }
-    Err(error) => {
-      emit_chunk(&window, &stream_id, String::new(), true, Some(error.to_string())).await;
-    }
-  }
-}
-
-async fn stream_gemini(window: Window, stream_id: String, request: ChatRequest) {
-  let client = Client::new();
-  let endpoint = format!(
-    "{}/v1beta/models/{}:streamGenerateContent?alt=sse",
-    resolve_gemini_host(&request.provider),
-    request.model_id
-  );
-  let body = json!({
-    "contents": build_gemini_contents(&request),
-    "generationConfig": {
-      "temperature": request.temperature.unwrap_or(0.7),
-      "maxOutputTokens": request.max_tokens.unwrap_or(2048)
-    }
-  });
-
-  let response = client
-    .post(endpoint)
-    .header("x-goog-api-key", request.provider.api_key)
-    .header(CONTENT_TYPE, "application/json")
-    .json(&body)
-    .send()
-    .await;
-
-  match response {
-    Ok(response) if response.status().is_success() => {
-      let mut stream = response.bytes_stream();
-      let mut buffer = String::new();
-
-      while let Some(chunk) = stream.next().await {
-        match chunk {
-          Ok(bytes) => {
-            buffer.push_str(&String::from_utf8_lossy(&bytes));
-            for event in split_sse_events(&mut buffer) {
-              for data in parse_sse_data(&event) {
-                let payload: Value = match serde_json::from_str(&data) {
-                  Ok(value) => value,
-                  Err(_) => continue,
-                };
-
-                let delta = payload["candidates"]
-                  .as_array()
-                  .and_then(|candidates| candidates.first())
-                  .and_then(|candidate| candidate["content"]["parts"].as_array())
-                  .map(|parts| {
-                    parts
-                      .iter()
-                      .filter_map(|part| part["text"].as_str())
-                      .collect::<Vec<_>>()
-                      .join("")
-                  })
-                  .unwrap_or_default();
-
-                if !delta.is_empty() {
-                  emit_chunk(&window, &stream_id, delta, false, None).await;
-                }
-              }
-            }
-          }
-          Err(error) => {
-            emit_chunk(&window, &stream_id, String::new(), true, Some(error.to_string())).await;
-            return;
-          }
-        }
-      }
-
-      emit_chunk(&window, &stream_id, String::new(), true, None).await;
-    }
-    Ok(response) => {
-      let error = response.text().await.unwrap_or_else(|_| String::from("Gemini request failed"));
-      emit_chunk(&window, &stream_id, String::new(), true, Some(error)).await;
-    }
-    Err(error) => {
-      emit_chunk(&window, &stream_id, String::new(), true, Some(error.to_string())).await;
-    }
-  }
 }
 
 async fn upload_webdav(config: &BackupWebDavConfig, payload: Vec<u8>) -> Result<String, String> {
@@ -2828,154 +2429,6 @@ async fn delete_webdav_file(file_name: String, config: BackupWebDavConfig) -> Re
 }
 
 #[tauri::command]
-async fn test_provider(provider: ProviderRequest) -> Result<OperationResult, String> {
-  let client = Client::new();
-  let model_id = provider
-    .model_ids
-    .first()
-    .cloned()
-    .unwrap_or_else(|| String::from("gpt-5-chat"));
-
-  let result = match provider.api_type.as_str() {
-    "anthropic" => {
-      let response = client
-        .post(format!("{}/v1/messages", resolve_anthropic_host(&provider)))
-        .header("x-api-key", provider.api_key)
-        .header("anthropic-version", "2023-06-01")
-        .header(CONTENT_TYPE, "application/json")
-        .json(&json!({
-          "model": model_id,
-          "max_tokens": 1,
-          "messages": [{ "role": "user", "content": "ping" }]
-        }))
-        .send()
-        .await;
-      response
-        .map_err(|error| error.to_string())?
-        .error_for_status()
-        .map_err(|error| error.to_string())?;
-      OperationResult { ok: true, message: String::from("Anthropic connectivity verified") }
-    }
-    "gemini" => {
-      let response = client
-        .post(format!(
-          "{}/v1beta/models/{}:generateContent",
-          resolve_gemini_host(&provider),
-          model_id
-        ))
-        .header("x-goog-api-key", provider.api_key)
-        .header(CONTENT_TYPE, "application/json")
-        .json(&json!({
-          "contents": [{ "parts": [{ "text": "ping" }] }]
-        }))
-        .send()
-        .await;
-      response
-        .map_err(|error| error.to_string())?
-        .error_for_status()
-        .map_err(|error| error.to_string())?;
-      OperationResult { ok: true, message: String::from("Gemini connectivity verified") }
-    }
-    _ => {
-      let response = client
-        .post(format!("{}/v1/chat/completions", resolve_openai_host(&provider)))
-        .header(AUTHORIZATION, format!("Bearer {}", provider.api_key))
-        .header(CONTENT_TYPE, "application/json")
-        .json(&json!({
-          "model": model_id,
-          "messages": [{ "role": "user", "content": "ping" }],
-          "max_tokens": 1
-        }))
-        .send()
-        .await;
-      response
-        .map_err(|error| error.to_string())?
-        .error_for_status()
-        .map_err(|error| error.to_string())?;
-      OperationResult { ok: true, message: String::from("OpenAI-compatible connectivity verified") }
-    }
-  };
-
-  Ok(result)
-}
-
-#[tauri::command]
-async fn test_mcp(server: McpServerRequest) -> Result<OperationResult, String> {
-  match server.transport.as_str() {
-    "local" => {
-      let command = server
-        .command
-        .clone()
-        .filter(|command| !command.trim().is_empty())
-        .ok_or_else(|| String::from("Local MCP command is required"))?;
-      let args = server.args.clone().unwrap_or_default();
-      let output = hidden_command(&command)
-        .args(args)
-        .arg("--help")
-        .output()
-        .await
-        .map_err(|error| error.to_string())?;
-
-      Ok(OperationResult {
-        ok: output.status.success(),
-        message: if output.status.success() {
-          String::from("Local MCP command executed successfully")
-        } else {
-          String::from_utf8_lossy(&output.stderr).to_string()
-        },
-      })
-    }
-    "remote" => {
-      let target = server
-        .url
-        .clone()
-        .filter(|url| !url.trim().is_empty())
-        .ok_or_else(|| String::from("Remote MCP URL is required"))?;
-      let response = Client::new()
-        .get(target)
-        .timeout(Duration::from_secs(10))
-        .send()
-        .await
-        .map_err(|error| error.to_string())?;
-
-      Ok(OperationResult {
-        ok: response.status().is_success() || response.status().is_redirection(),
-        message: format!("Remote MCP endpoint responded with HTTP {}", response.status()),
-      })
-    }
-    _ => Err(String::from("Unsupported MCP transport")),
-  }
-}
-
-#[tauri::command]
-async fn check_mcp_connectivity(server: McpServerRequest) -> Result<bool, String> {
-  let result = test_mcp(server).await?;
-  Ok(result.ok)
-}
-
-#[tauri::command]
-async fn start_chat(window: Window, request: ChatRequest) -> Result<String, String> {
-  let stream_id = request
-    .stream_id
-    .clone()
-    .filter(|stream_id| !stream_id.trim().is_empty())
-    .unwrap_or_else(|| Uuid::new_v4().to_string());
-  let provider_type = request.provider.api_type.clone();
-  let task_window = window.clone();
-  let task_stream_id = stream_id.clone();
-
-  tauri::async_runtime::spawn(async move {
-    match provider_type.as_str() {
-      "anthropic" => stream_anthropic(task_window, task_stream_id, request).await,
-      "gemini" => stream_gemini(task_window, task_stream_id, request).await,
-      _ => stream_openai(task_window, task_stream_id, request).await,
-    }
-  });
-
-  Ok(stream_id)
-}
-
-#[tauri::command]
 fn show_main_window(app: AppHandle) -> Result<(), String> {
   show_and_focus_main_window(&app)
 }
@@ -3018,8 +2471,17 @@ fn set_mini_window_pin(is_pinned: bool) -> Result<(), String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
+    .plugin(tauri_plugin_single_instance::init(|app, _, _| {
+      let _ = show_and_focus_main_window(app);
+    }))
+    .plugin(tauri_plugin_deep_link::init())
     .plugin(tauri_plugin_notification::init())
     .setup(|app| {
+      use tauri_plugin_deep_link::DeepLinkExt;
+      let import_app = app.handle().clone();
+      app.deep_link().on_open_url(move |_| {
+        let _ = show_and_focus_main_window(&import_app);
+      });
       let runtime_settings = load_runtime_settings_from_state().unwrap_or_default();
       replace_runtime_settings(runtime_settings);
       let launch_args = std::env::args().collect::<Vec<_>>();
@@ -3098,16 +2560,12 @@ pub fn run() {
       delete_webdav_file,
       webdav_backup,
       webdav_restore,
-      test_provider,
-      test_mcp,
-      check_mcp_connectivity,
       show_main_window,
       show_mini_window,
       hide_mini_window,
       close_mini_window,
       toggle_mini_window,
       set_mini_window_pin,
-      start_chat,
       start_http_request,
       abort_http_request
     ])

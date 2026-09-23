@@ -935,7 +935,7 @@ class CodeToolsService {
             'uv not found in PATH and bundled version is not available.\n' +
               'Please either:\n' +
               '1. Install uv from https://github.com/astral-sh/uv\n' +
-              '2. Run the MCP dependencies installer from Settings\n' +
+              '2. Install the required Bun runtime from Code Tools\n' +
               '3. Restart the application if you recently installed uv'
           )
         }

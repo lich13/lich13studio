@@ -36,7 +36,6 @@ const getProviderLogo = (providerId: WebSearchProviderId): string | undefined =>
     case 'searxng':
       return SearxngLogo
     case 'exa':
-    case 'exa-mcp':
       return ExaLogo
     case 'bocha':
       return BochaLogo

@@ -36,7 +36,6 @@ Cherry Studio integrates several security best practices, including:
 - TypeScript strict mode and linting to reduce potential injection or runtime issues.
 - Enforced code formatting and pre-commit hooks.
 - Internal security reviews before releases.
-- Dedicated MCP (Model Context Protocol) safeguards for model interactions and data privacy.
 
 ---
 

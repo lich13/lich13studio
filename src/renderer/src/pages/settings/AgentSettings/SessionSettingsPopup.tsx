@@ -32,7 +32,7 @@ const SessionSettingPopupContainer: React.FC<SessionSettingPopupParams> = ({ tab
       { key: 'essential', label: t('agent.settings.essential') },
       { key: 'prompt', label: t('agent.settings.prompt') },
       { key: 'permission-mode', label: t('agent.settings.permissionMode.tab', 'Permission Mode') },
-      { key: 'tools-mcp', label: t('agent.settings.toolsMcp.tab', 'Tools & MCP') },
+      { key: 'tools', label: t('agent.settings.tooling.title', 'Tools') },
       { key: 'advanced', label: t('agent.settings.advance.title', 'Advanced Settings') }
     ],
     [t]
@@ -48,7 +48,7 @@ const SessionSettingPopupContainer: React.FC<SessionSettingPopupParams> = ({ tab
         return <PromptSettings agentBase={session} update={updateSession} />
       case 'permission-mode':
         return <PermissionModeSettings agentBase={session} update={updateSession} />
-      case 'tools-mcp':
+      case 'tools':
         return <ToolsSettings agentBase={session} update={updateSession} />
       case 'advanced':
         return <AdvancedSettings agentBase={session} update={updateSession} />

@@ -2,7 +2,7 @@ import { loggerService } from '@logger'
 import type { AppDispatch } from '@renderer/store'
 import store from '@renderer/store'
 import { toolPermissionsActions } from '@renderer/store/toolPermissions'
-import type { MCPToolResponse, NormalToolResponse } from '@renderer/types'
+import type { HistoricalToolResponse, NormalToolResponse } from '@renderer/types'
 import { WEB_SEARCH_SOURCE } from '@renderer/types'
 import type { ToolMessageBlock } from '@renderer/types/newMessage'
 import { MessageBlockStatus, MessageBlockType } from '@renderer/types/newMessage'
@@ -13,7 +13,7 @@ import type { BlockManager } from '../BlockManager'
 
 const logger = loggerService.withContext('ToolCallbacks')
 
-type ToolResponse = MCPToolResponse | NormalToolResponse
+type ToolResponse = HistoricalToolResponse | NormalToolResponse
 
 interface ToolCallbacksDependencies {
   blockManager: BlockManager
@@ -133,7 +133,7 @@ export const createToolCallbacks = (deps: ToolCallbacksDependencies) => {
           isPlainObject(resolvedInput) ? resolvedInput : null
         )
 
-        const mergedToolResponse: MCPToolResponse | NormalToolResponse = {
+        const mergedToolResponse: HistoricalToolResponse | NormalToolResponse = {
           ...(existingResponse ?? toolResponse),
           ...toolResponse,
           arguments: mergedArguments,

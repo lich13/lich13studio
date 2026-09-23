@@ -18,7 +18,7 @@ export interface ToolApprovalActionsProps extends ToolApprovalState, ToolApprova
 
 /**
  * Unified tool approval action buttons
- * Used in both MessageMcpTool and ToolPermissionRequestCard
+ * Used by agent tool permission controls
  */
 export const ToolApprovalActionsComponent: FC<ToolApprovalActionsProps> = ({
   isWaiting,
@@ -87,19 +87,19 @@ export const ToolApprovalActionsComponent: FC<ToolApprovalActionsProps> = ({
             items: [
               {
                 key: 'autoApprove',
-                label: t('settings.mcp.tools.autoApprove.label'),
+                label: t('message.tools.autoApprove'),
                 icon: <ShieldCheck size={14} />,
                 onClick: () => autoApprove()
               }
             ]
           }}>
           <CirclePlay size={compact ? 13 : 15} className="lucide-custom" />
-          {t('settings.mcp.tools.run', 'Run')}
+          {t('message.tools.run', 'Run')}
         </StyledDropdownButton>
       ) : (
         <Button size="small" type="primary" disabled={isSubmitting} onClick={(e) => handleClick(e, confirm)}>
           <CirclePlay size={compact ? 13 : 15} className="lucide-custom" />
-          {t('settings.mcp.tools.run', 'Run')}
+          {t('message.tools.run', 'Run')}
         </Button>
       )}
     </ActionsContainer>

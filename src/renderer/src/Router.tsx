@@ -6,6 +6,7 @@ import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 
 import Sidebar from './components/app/Sidebar'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import ProviderImportHandler from './components/ProviderImportHandler'
 import NavigationHandler from './handler/NavigationHandler'
 import { useOnboardingState } from './hooks/useOnboardingState'
 import HomePage from './pages/home/HomePage'
@@ -28,7 +29,12 @@ const Router: FC = () => {
   }, [])
 
   if (!onboardingCompleted) {
-    return <OnboardingPage onComplete={completeOnboarding} />
+    return (
+      <HashRouter>
+        <OnboardingPage onComplete={completeOnboarding} />
+        <ProviderImportHandler />
+      </HashRouter>
+    )
   }
 
   return (
@@ -36,6 +42,7 @@ const Router: FC = () => {
       <Sidebar />
       {routes}
       <NavigationHandler />
+      <ProviderImportHandler />
     </HashRouter>
   )
 }

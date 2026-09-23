@@ -32,8 +32,8 @@ export default defineConfig({
         '@types': resolve('src/renderer/src/types'),
         '@shared': resolve('packages/shared'),
         '@logger': resolve('src/main/services/LoggerService'),
-        '@mcp-trace/trace-core': resolve('packages/mcp-trace/trace-core'),
-        '@mcp-trace/trace-node': resolve('packages/mcp-trace/trace-node')
+        '@trace/trace-core': resolve('packages/trace/trace-core'),
+        '@trace/trace-node': resolve('packages/trace/trace-node')
       }
     },
     build: {
@@ -64,7 +64,7 @@ export default defineConfig({
     resolve: {
       alias: {
         '@shared': resolve('packages/shared'),
-        '@mcp-trace/trace-core': resolve('packages/mcp-trace/trace-core')
+        '@trace/trace-core': resolve('packages/trace/trace-core')
       }
     },
     build: {
@@ -86,8 +86,8 @@ export default defineConfig({
         '@shared': resolve('packages/shared'),
         '@types': resolve('src/renderer/src/types'),
         '@logger': resolve('src/renderer/src/services/LoggerService'),
-        '@mcp-trace/trace-core': resolve('packages/mcp-trace/trace-core'),
-        '@mcp-trace/trace-web': resolve('packages/mcp-trace/trace-web'),
+        '@trace/trace-core': resolve('packages/trace/trace-core'),
+        '@trace/trace-web': resolve('packages/trace/trace-web'),
         '@cherrystudio/ai-core/provider': resolve('packages/aiCore/src/core/providers'),
         '@cherrystudio/ai-core/built-in/plugins': resolve('packages/aiCore/src/core/plugins/built-in'),
         '@cherrystudio/ai-core': resolve('packages/aiCore/src'),

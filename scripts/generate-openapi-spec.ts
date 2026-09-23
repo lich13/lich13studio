@@ -148,20 +148,6 @@ const swaggerOptions: swaggerJSDoc.Options = {
             created: { type: 'integer' },
             owned_by: { type: 'string' }
           }
-        },
-        MCPServer: {
-          type: 'object',
-          properties: {
-            id: { type: 'string' },
-            name: { type: 'string' },
-            command: { type: 'string' },
-            args: {
-              type: 'array',
-              items: { type: 'string' }
-            },
-            env: { type: 'object' },
-            disabled: { type: 'boolean' }
-          }
         }
       }
     },

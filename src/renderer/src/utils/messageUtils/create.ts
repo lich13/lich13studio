@@ -414,8 +414,7 @@ export function resetMessage(
     blocks: updates.blocks ?? [], // Always clear blocks array
     useful: undefined,
     askId: undefined,
-    mentions: undefined,
-    enabledMCPs: undefined
+    mentions: undefined
     // NOTE: Add any other fields here that should be reset upon message regeneration
   }
 }

@@ -4,20 +4,7 @@ import * as z from 'zod'
 
 import type { OpenAIVerbosity } from './aiCoreTypes'
 
-export const ProviderTypeSchema = z.enum([
-  'openai',
-  'openai-response',
-  'anthropic',
-  'gemini',
-  'azure-openai',
-  'vertexai',
-  'mistral',
-  'aws-bedrock',
-  'vertex-anthropic',
-  'new-api',
-  'gateway',
-  'ollama'
-])
+export const ProviderTypeSchema = z.enum(['openai-response', 'anthropic'])
 
 export type ProviderType = z.infer<typeof ProviderTypeSchema>
 

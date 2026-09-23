@@ -42,6 +42,13 @@
       "tag": "0005_normal_doomsday",
       "version": "6",
       "when": 1775032005049
+    },
+    {
+      "breakpoints": true,
+      "idx": 6,
+      "tag": "0006_remove_mcp",
+      "version": "6",
+      "when": 1790150690746
     }
   ],
   "version": "7"

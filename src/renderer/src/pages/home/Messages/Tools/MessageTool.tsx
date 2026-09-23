@@ -9,11 +9,10 @@ interface Props {
   block: ToolMessageBlock
 }
 const builtinToolsPrefix = 'builtin_'
-const agentMcpToolsPrefix = 'mcp__'
 const agentTools = Object.values(AgentToolsType)
 
 const isAgentTool = (toolName: AgentToolsType) => {
-  if (agentTools.includes(toolName) || toolName.startsWith(agentMcpToolsPrefix)) {
+  if (agentTools.includes(toolName)) {
     return true
   }
   return false

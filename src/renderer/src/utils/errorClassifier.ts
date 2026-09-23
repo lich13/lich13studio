@@ -15,7 +15,6 @@ export interface ErrorClassification {
     | 'deprecated'
     | 'knowledge'
     | 'ocr'
-    | 'mcp'
     | 'parse'
     | 'unknown'
   i18nKey: string
@@ -138,11 +137,6 @@ export function classifyError(error?: SerializedError, providerId?: string): Err
   // OCR errors
   if (msg.includes('ocr') || msg.includes('engine not initialized') || msg.includes('recognition failed')) {
     return { category: 'ocr', i18nKey: 'error.diagnosis.ocr', navTarget: null }
-  }
-
-  // MCP errors
-  if (msg.includes('mcp server') || msg.includes('mcp connection') || msg.includes('mcp error')) {
-    return { category: 'mcp', i18nKey: 'error.diagnosis.mcp', navTarget: '/settings/mcp/servers' }
   }
 
   // Response parse errors

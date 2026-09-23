@@ -24,15 +24,7 @@ type ContentPart = Exclude<LanguageModelV3Message['content'], string>[number]
  * Aggregators (new-api, gateway) and generic 'openai' type are excluded
  * because they may route to backends that don't support the 'file' part type.
  */
-const PDF_NATIVE_PROVIDER_TYPES = new Set<ProviderType>([
-  'openai-response', // OpenAI Responses API
-  'anthropic', // Anthropic API
-  'gemini', // Google Gemini API
-  'azure-openai', // Azure OpenAI
-  'vertexai', // Google Vertex AI
-  'aws-bedrock', // AWS Bedrock
-  'vertex-anthropic' // Vertex AI with Anthropic models
-])
+const PDF_NATIVE_PROVIDER_TYPES = new Set<ProviderType>(['openai-response', 'anthropic'])
 
 function isPdfFilePart(part: ContentPart): part is LanguageModelV3FilePart & { mediaType: 'application/pdf' } {
   return part.type === 'file' && part.mediaType === 'application/pdf'

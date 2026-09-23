@@ -545,6 +545,7 @@
           "mcpBadge": "MCP tool",
           "requiresApproval": "Requires approval when disabled",
           "search": "Search tools",
+          "title": "Pre-approved Tools",
           "toggle": "Toggle {{name}}"
         }
       },
@@ -556,16 +557,6 @@
         "tab": "Pre-approved tools",
         "title": "Pre-approved tools",
         "toggle": "{{defaultValue}}"
-      },
-      "toolsMcp": {
-        "mcp": {
-          "tab": "MCP",
-          "title": "MCP Servers"
-        },
-        "tab": "Tools",
-        "tools": {
-          "title": "Pre-approved Tools"
-        }
       }
     },
     "sidebar_title": "Agents",
@@ -933,6 +924,7 @@
       "reasoning_effort": {
         "auto": "Auto",
         "auto_description": "Flexibly determine reasoning effort",
+        "budget_description": "Mapped to a thinking token budget",
         "default": "Default",
         "default_description": "Depend on the model's default behavior, without any configuration.",
         "high": "High",
@@ -940,6 +932,9 @@
         "label": "Reasoning effort",
         "low": "Low",
         "low_description": "Low level reasoning",
+        "mapped_description": "This model uses {{effort}}",
+        "max": "max",
+        "max_description": "Maximum reasoning effort",
         "medium": "Medium",
         "medium_description": "Medium level reasoning",
         "minimal": "Minimal",
@@ -1520,6 +1515,8 @@
     "env_vars_help": "Enter custom environment variables (one per line, format: KEY=value)",
     "environment_variables": "Environment Variables",
     "folder_placeholder": "Select working directory",
+    "installError": "Failed to install dependencies",
+    "installSuccess": "Dependencies installed successfully",
     "install_bun": "Install Bun",
     "installing_bun": "Installing...",
     "launch": {
@@ -2489,6 +2486,7 @@
       "abort_failed": "Tool call abort failed",
       "aborted": "Tool call aborted",
       "approvalRequired": "Tool \"{{tool}}\" requires approval",
+      "autoApprove": "Auto Approve",
       "autoApproveEnabled": "Auto-approve enabled for this tool",
       "cancelled": "Cancelled",
       "completed": "Completed",
@@ -2518,6 +2516,7 @@
       "pending": "Pending",
       "preview": "Preview",
       "raw": "Raw",
+      "run": "Run",
       "runningCount": "{{count}} tools running",
       "sections": {
         "args": "Arguments",
@@ -4581,259 +4580,6 @@
       },
       "title": "Math Settings"
     },
-    "mcp": {
-      "actions": "Actions",
-      "active": "Active",
-      "addError": "Failed to add server",
-      "addServer": {
-        "create": "Quick Create",
-        "importFrom": {
-          "connectionFailed": "Connection failed",
-          "dxt": "Import DXT Package",
-          "dxtFile": "DXT Package File",
-          "dxtHelp": "Select a .dxt file containing an MCP server package",
-          "dxtProcessFailed": "Failed to process DXT file",
-          "error": {
-            "multipleServers": "Cannot import from multiple servers"
-          },
-          "invalid": "Invalid input, please check JSON format",
-          "json": "Import from JSON",
-          "method": "Import Method",
-          "nameExists": "Server already exists: {{name}}",
-          "noDxtFile": "Please select a DXT file",
-          "oneServer": "Only one MCP server configuration at a time",
-          "placeholder": "Paste MCP server JSON config",
-          "selectDxtFile": "Select DXT File",
-          "tooltip": "Please copy the configuration JSON (prioritizing\n NPX or UVX configurations) from the MCP Servers introduction page and paste it into the input box."
-        },
-        "label": "Add Server"
-      },
-      "addSuccess": "Server added successfully",
-      "advancedSettings": "Advanced Settings",
-      "args": "Arguments",
-      "argsTooltip": "Each argument on a new line",
-      "baseUrlTooltip": "Remote server base URL",
-      "builtinServers": "Builtin Servers",
-      "builtinServersDescriptions": {
-        "brave_search": "An MCP server implementation integrating the Brave Search API, providing both web and local search functionalities. Requires configuring the BRAVE_API_KEY environment variable",
-        "browser": "Control a headless Electron window via Chrome DevTools Protocol. Tools: open URL, execute single-line JS, reset session.",
-        "didi_mcp": "DiDi MCP server providing ride-hailing services including map search, price estimation, order management, and driver tracking. Only available in Mainland China. Requires configuring the DIDI_API_KEY environment variable",
-        "dify_knowledge": "Dify's MCP server implementation provides a simple API to interact with Dify. Requires configuring the Dify Key",
-        "fetch": "MCP server for retrieving URL web content",
-        "filesystem": "A Node.js server implementing the Model Context Protocol (MCP) for file system operations. Requires configuration of directories allowed for access.",
-        "flomo": "Connect to flomo to quickly capture notes and ideas via AI. Requires flomo account authorization.",
-        "mcp_auto_install": "Automatically install MCP service (beta)",
-        "memory": "Persistent memory implementation based on a local knowledge graph. This enables the model to remember user-related information across different conversations. Requires configuring the MEMORY_FILE_PATH environment variable.",
-        "no": "No description",
-        "nowledge_mem": "Requires Nowledge Mem app running locally. Keeps AI chats, tools, notes, agents, and files in private memory on your computer. Download from https://mem.nowledge.co/",
-        "python": "Execute Python code in a secure sandbox environment. Run Python with Pyodide, supporting most standard libraries and scientific computing packages",
-        "sequentialthinking": "A MCP server implementation that provides tools for dynamic and reflective problem solving through structured thinking processes"
-      },
-      "command": "Command",
-      "config_description": "Configure Model Context Protocol servers",
-      "customRegistryPlaceholder": "Enter private registry URL, e.g.: https://npm.company.com",
-      "deleteError": "Failed to delete server",
-      "deleteServer": "Delete Server",
-      "deleteServerConfirm": "Are you sure you want to delete this server?",
-      "deleteSuccess": "Server deleted successfully",
-      "dependenciesInstall": "Install Dependencies",
-      "dependenciesInstalling": "Installing dependencies...",
-      "description": "Description",
-      "disable": {
-        "description": "Do not enable MCP server functionality",
-        "label": "Disable MCP Server"
-      },
-      "discover": "Discover",
-      "duplicateName": "A server with this name already exists",
-      "editJson": "Edit JSON",
-      "editMcpJson": "Edit MCP Configuration",
-      "editServer": "Edit Server",
-      "env": "Environment Variables",
-      "envTooltip": "Format: KEY=value, one per line",
-      "errors": {
-        "32000": "MCP server failed to start, please check the parameters according to the tutorial",
-        "toolNotFound": "Tool {{name}} not found"
-      },
-      "fetch": {
-        "button": "Fetch Servers",
-        "success": "Successfully fetched MCP servers"
-      },
-      "findMore": "Find More MCP",
-      "headers": "Headers",
-      "headersTooltip": "Custom headers for HTTP requests",
-      "inMemory": "Memory",
-      "install": "Install",
-      "installError": "Failed to install dependencies",
-      "installHelp": "Get Installation Help",
-      "installSuccess": "Dependencies installed successfully",
-      "jsonFormatError": "JSON formatting error",
-      "jsonModeHint": "Edit the JSON representation of the MCP server configuration. Please ensure the format is correct before saving.",
-      "jsonSaveError": "Failed to save JSON configuration.",
-      "jsonSaveSuccess": "JSON configuration has been saved.",
-      "lanyun": {
-        "description": "Lanyun Technology Cloud Platform MCP Service",
-        "name": "Lanyun Technology"
-      },
-      "logoUrl": "Logo URL",
-      "logs": "Logs",
-      "longRunning": "Long Running Mode",
-      "longRunningTooltip": "When enabled, the server supports long-running tasks. When receiving progress notifications, the timeout will be reset and the maximum execution time will be extended to 10 minutes.",
-      "marketplaces": "Marketplaces",
-      "missingDependencies": "is Missing, please install it to continue.",
-      "more": {
-        "awesome": "Curated MCP Server List",
-        "composio": "Composio MCP Development Tools",
-        "glama": "Glama MCP Server Directory",
-        "higress": "Higress MCP Server",
-        "mcpso": "MCP Server Discovery Platform",
-        "mcpworld": "Baidu MCP Aggregation Platform",
-        "modelscope": "ModelScope Community MCP Server",
-        "official": "Official MCP Server Collection",
-        "pulsemcp": "Pulse MCP Server",
-        "smithery": "Smithery MCP Tools",
-        "zhipu": "Curated MCP, Fast Integration"
-      },
-      "name": "Name",
-      "newServer": "MCP Server",
-      "noDescriptionAvailable": "No description available",
-      "noLogs": "No logs yet",
-      "noServers": "No servers configured",
-      "not_support": "Model not supported",
-      "npx_list": {
-        "actions": "Actions",
-        "description": "Description",
-        "no_packages": "No packages found",
-        "npm": "NPM",
-        "package_name": "Package Name",
-        "scope_placeholder": "Enter npm scope (e.g. @your-org)",
-        "scope_required": "Please enter npm scope",
-        "search": "Search",
-        "search_error": "Search error",
-        "usage": "Usage",
-        "version": "Version"
-      },
-      "oauth": {
-        "callback": {
-          "message": "You can close this page and return to Cherry Studio",
-          "title": "Authentication Successful"
-        }
-      },
-      "prompts": {
-        "arguments": "Arguments",
-        "availablePrompts": "Available Prompts",
-        "genericError": "Get prompt Error",
-        "loadError": "Get prompts Error",
-        "noPromptsAvailable": "No prompts available",
-        "requiredField": "Required Field"
-      },
-      "protocolInstallWarning": {
-        "command": "Startup command",
-        "message": "This MCP was installed from an external source via protocol. Running unknown tools may harm your computer.",
-        "run": "Run",
-        "title": "Run external MCP?"
-      },
-      "provider": "Provider",
-      "providerPlaceholder": "Provider name",
-      "providerUrl": "Provider URL",
-      "providers": "Providers",
-      "registry": "Package Registry",
-      "registryDefault": "Default",
-      "registryTooltip": "Choose the registry for package installation to resolve network issues with the default registry.",
-      "requiresConfig": "Requires Configuration",
-      "resources": {
-        "availableResources": "Available Resources",
-        "blob": "Blob",
-        "blobInvisible": "Blob Invisible",
-        "genericError": "Resource acquisition error",
-        "mimeType": "MIME Type",
-        "noResourcesAvailable": "No resources available",
-        "size": "Size",
-        "text": "Text",
-        "uri": "URI"
-      },
-      "search": {
-        "placeholder": "Search MCP servers...",
-        "tooltip": "Search MCP servers"
-      },
-      "searchNpx": "Search MCP",
-      "serverPlural": "servers",
-      "serverSingular": "server",
-      "servers": "MCP Servers",
-      "sse": "Server-Sent Events (sse)",
-      "startError": "Start failed",
-      "stdio": "Standard Input/Output (stdio)",
-      "streamableHttp": "Streamable HTTP (streamableHttp)",
-      "sync": {
-        "button": "Sync",
-        "discoverMcpServers": "Discover MCP Servers",
-        "discoverMcpServersDescription": "Visit the platform to discover available MCP servers",
-        "error": "Sync MCP Servers error",
-        "getToken": "Get API Token",
-        "getTokenDescription": "Retrieve your personal API token from your account",
-        "noServersAvailable": "No MCP servers available",
-        "providerDescriptions": {
-          "302ai": "302.AI Platform MCP Service",
-          "bailian": "Alibaba Cloud Bailian Platform MCP Service",
-          "lanyun": "Lanyun Technology Cloud Platform MCP Service",
-          "mcprouter": "MCP Router Platform MCP Service",
-          "modelscope": "ModelScope Platform MCP Service",
-          "tokenflux": "TokenFlux Platform MCP Service"
-        },
-        "selectProvider": "Select Provider:",
-        "setToken": "Enter Your Token",
-        "success": "Sync MCP Servers successful",
-        "title": "Sync Servers",
-        "tokenPlaceholder": "Enter API token here",
-        "tokenRequired": "API Token is required",
-        "unauthorized": "Sync Unauthorized"
-      },
-      "system": "System",
-      "tabs": {
-        "description": "Description",
-        "general": "General",
-        "prompts": "Prompts",
-        "resources": "Resources",
-        "tools": "Tools"
-      },
-      "tags": "Tags",
-      "tagsPlaceholder": "Enter tags",
-      "timeout": "Timeout",
-      "timeoutTooltip": "Timeout in seconds for requests to this server, default is 60 seconds",
-      "title": "MCP Servers",
-      "tools": {
-        "autoApprove": {
-          "label": "Auto Approve",
-          "tooltip": {
-            "confirm": "Are you sure you want to run this MCP tool?",
-            "disabled": "Tool will require manual approval before running",
-            "enabled": "Tool will run automatically without confirmation",
-            "howToEnable": "Enable the tool first to use auto-approve"
-          }
-        },
-        "availableTools": "Available Tools",
-        "enable": "Enable Tool",
-        "inputSchema": {
-          "enum": {
-            "allowedValues": "Allowed Values"
-          },
-          "label": "Input Schema"
-        },
-        "loadError": "Get tools Error",
-        "noToolsAvailable": "No tools available",
-        "run": "Run"
-      },
-      "type": "Type",
-      "types": {
-        "inMemory": "In Memory",
-        "sse": "SSE",
-        "stdio": "STDIO",
-        "streamableHttp": "Streamable HTTP"
-      },
-      "updateError": "Failed to update server",
-      "updateSuccess": "Server updated successfully",
-      "url": "URL",
-      "user": "User"
-    },
     "messages": {
       "divider": {
         "label": "Show divider between messages",
@@ -5273,12 +5019,16 @@
       },
       "docs_check": "Check",
       "docs_more_details": "for more details",
+      "empty": "Add a provider, then select a model to get started.",
       "filter": {
         "agent": "Agent Supported",
         "all": "All Providers"
       },
       "filter_agent": "Filter Agent Supported Providers",
       "get_api_key": "Get API Key",
+      "import_duplicate": "This provider is already imported.",
+      "import_invalid": "Import failed. Use a valid Responses or Anthropic provider link.",
+      "import_success": "Provider imported.",
       "misc": "Other",
       "no_models_for_check": "No models available for checking (e.g. chat models)",
       "not_checked": "Not Checked",

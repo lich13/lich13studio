@@ -6,7 +6,6 @@ import {
   MAX_CONTEXT_COUNT,
   UNLIMITED_CONTEXT_COUNT
 } from '@renderer/config/constant'
-import { getModelSupportedReasoningEffortOptions } from '@renderer/config/models'
 import { isQwenMTModel } from '@renderer/config/models/qwen'
 import { UNKNOWN } from '@renderer/config/translate'
 import { getStoreProviders } from '@renderer/hooks/useStore'
@@ -51,7 +50,7 @@ export const DEFAULT_ASSISTANT_SETTINGS = {
   streamOutput: true,
   defaultModel: undefined,
   customParameters: [],
-  reasoning_effort: 'default',
+  reasoning_effort: 'max',
   reasoning_effort_cache: undefined,
   qwenThinkMode: undefined,
   // It would gracefully fallback to prompt if not supported by model.
@@ -114,9 +113,8 @@ export function getDefaultTranslateAssistant(
     throw new Error('Unknown target language')
   }
 
-  const supportedOptions = getModelSupportedReasoningEffortOptions(model)
   // disable reasoning if it could be disabled, otherwise no configuration
-  const reasoningEffort = supportedOptions?.includes('none') ? 'none' : 'default'
+  const reasoningEffort = 'max'
   const settings = {
     reasoning_effort: reasoningEffort,
     ..._settings
@@ -176,8 +174,20 @@ export function getDefaultProvider() {
   return getProviderByModel(getDefaultModel())
 }
 
-export function getDefaultModel() {
-  return store.getState().llm.defaultModel
+const EMPTY_PROVIDER: Provider = {
+  id: '',
+  name: '',
+  type: 'openai-response',
+  apiKey: '',
+  apiHost: '',
+  models: [],
+  enabled: false
+}
+
+export const EMPTY_MODEL: Model = { id: '', name: '', provider: '', group: '' }
+
+export function getDefaultModel(): Model {
+  return store.getState().llm.defaultModel ?? EMPTY_MODEL
 }
 
 export function getQuickModel() {
@@ -202,7 +212,7 @@ export function getProviderByModel(model?: Model): Provider {
 
   if (!provider) {
     const defaultProvider = providers.find((p) => p.id === getDefaultModel()?.provider)
-    return defaultProvider || providers[0]
+    return defaultProvider || providers[0] || EMPTY_PROVIDER
   }
 
   return provider

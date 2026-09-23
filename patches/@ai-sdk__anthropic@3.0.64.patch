@@ -1,0 +1,53 @@
+--- a/src/anthropic-messages-options.ts
++++ b/src/anthropic-messages-options.ts
+@@ -182,7 +182,7 @@
+   /**
+    * @default 'high'
+    */
+-  effort: z.enum(['low', 'medium', 'high', 'max']).optional(),
++  effort: z.enum(['low', 'medium', 'high', 'xhigh', 'max']).optional(),
+ 
+   /**
+    * Enable fast mode for faster inference (2.5x faster output token speeds).
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -925,7 +925,7 @@
+   /**
+    * @default 'high'
+    */
+-  effort: import_v43.z.enum(["low", "medium", "high", "max"]).optional(),
++  effort: import_v43.z.enum(["low", "medium", "high", "xhigh", "max"]).optional(),
+   /**
+    * Enable fast mode for faster inference (2.5x faster output token speeds).
+    * Only supported with claude-opus-4-6.
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -920,7 +920,7 @@
+   /**
+    * @default 'high'
+    */
+-  effort: z3.enum(["low", "medium", "high", "max"]).optional(),
++  effort: z3.enum(["low", "medium", "high", "xhigh", "max"]).optional(),
+   /**
+    * Enable fast mode for faster inference (2.5x faster output token speeds).
+    * Only supported with claude-opus-4-6.
+--- a/dist/index.d.ts
++++ b/dist/index.d.ts
+@@ -175,6 +175,7 @@
+         low: "low";
+         medium: "medium";
+         high: "high";
++        xhigh: "xhigh";
+         max: "max";
+     }>>;
+     speed: z.ZodOptional<z.ZodEnum<{
+--- a/dist/index.d.mts
++++ b/dist/index.d.mts
+@@ -175,6 +175,7 @@
+         low: "low";
+         medium: "medium";
+         high: "high";
++        xhigh: "xhigh";
+         max: "max";
+     }>>;
+     speed: z.ZodOptional<z.ZodEnum<{

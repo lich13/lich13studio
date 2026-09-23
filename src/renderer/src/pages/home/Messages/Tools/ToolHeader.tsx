@@ -1,7 +1,6 @@
-import type { MCPTool, MCPToolResponse, NormalToolResponse } from '@renderer/types'
+import type { HistoricalToolResponse, NormalToolResponse } from '@renderer/types'
 import type { ToolMessageBlock } from '@renderer/types/newMessage'
-import { isToolAutoApproved } from '@renderer/utils/mcp-tools'
-import { Flex, Tooltip } from 'antd'
+import { Flex } from 'antd'
 import {
   Bot,
   DoorOpen,
@@ -14,7 +13,6 @@ import {
   NotebookPen,
   PencilRuler,
   Search,
-  ShieldCheck,
   Terminal,
   Wrench
 } from 'lucide-react'
@@ -119,7 +117,7 @@ const getAgentToolLabel = (toolName: string, t: (key: string) => string): string
   }
 }
 
-const getToolDescription = (toolResponse?: MCPToolResponse | NormalToolResponse): string | undefined => {
+const getToolDescription = (toolResponse?: HistoricalToolResponse | NormalToolResponse): string | undefined => {
   if (!toolResponse) return undefined
   const args = toolResponse.arguments
   if (!args || typeof args !== 'object' || Array.isArray(args)) return undefined
@@ -220,32 +218,6 @@ const ToolHeader: FC<ToolHeaderProps> = ({
   const description = params ?? getToolDescription(toolResponse)
 
   const Container = variant === 'standalone' ? HeaderContainer : LabelContainer
-
-  if (block && tool?.type === 'mcp') {
-    const mcpTool = tool as MCPTool
-    return (
-      <Container>
-        <ToolName align="center" gap={6}>
-          <Wrench size={14} className="tool-icon" />
-          <span className="name">
-            {mcpTool.serverName} : {mcpTool.name}
-          </span>
-          {isToolAutoApproved(mcpTool) && (
-            <Tooltip title={t('message.tools.autoApproveEnabled')} mouseLeaveDelay={0}>
-              <ShieldCheck size={14} color="var(--color-primary)" />
-            </Tooltip>
-          )}
-        </ToolName>
-        {description && <Description>{description}</Description>}
-        {stats && <Stats>{stats}</Stats>}
-        {showStatus && status && (
-          <StatusWrapper>
-            <ToolStatusIndicator status={status} hasError={hasError} />
-          </StatusWrapper>
-        )}
-      </Container>
-    )
-  }
 
   return (
     <Container>

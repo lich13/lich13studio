@@ -9,9 +9,6 @@ import { errorHandler } from './middleware/error'
 import { setupOpenAPIDocumentation } from './middleware/openapi'
 import { agentsRoutes } from './routes/agents'
 import { channelsRouter } from './routes/channels'
-import { chatRoutes } from './routes/chat'
-import { clawMcpRoutes } from './routes/claw-mcp'
-import { mcpRoutes } from './routes/mcp'
 import { messagesProviderRoutes, messagesRoutes } from './routes/messages'
 import { modelsRoutes } from './routes/models'
 import { tasksRouter } from './routes/tasks'
@@ -126,13 +123,9 @@ app.get('/', (_req, res) => {
       health: 'GET /health',
       docs: 'GET /api-docs',
       docs_json: 'GET /api-docs.json',
-      chat_completions: 'POST /v1/chat/completions',
       models: 'GET /v1/models',
       messages: 'POST /v1/messages',
       messages_provider: 'POST /:provider/v1/messages',
-      mcps: 'GET /v1/mcps',
-      mcp_server: 'GET /v1/mcps/:server_id',
-      mcp_proxy: 'ALL /v1/mcps/:server_id/mcp',
       agents: 'GET /v1/agents',
       channels: 'GET /v1/channels',
       agent_sessions: 'GET /v1/agents/:agentId/sessions',
@@ -151,14 +144,11 @@ app.use('/:provider/v1/messages', authMiddleware, extendMessagesTimeout, message
 const apiRouter = express.Router()
 apiRouter.use(authMiddleware)
 // Mount routes
-apiRouter.use('/chat', chatRoutes)
-apiRouter.use('/mcps', mcpRoutes)
 apiRouter.use('/messages', extendMessagesTimeout, messagesRoutes)
 apiRouter.use('/models', modelsRoutes)
 apiRouter.use('/agents', agentsRoutes)
 apiRouter.use('/channels', channelsRouter)
 apiRouter.use('/tasks', tasksRouter)
-apiRouter.use('/claw', clawMcpRoutes)
 app.use('/v1', apiRouter)
 
 // Error handling (must be last)

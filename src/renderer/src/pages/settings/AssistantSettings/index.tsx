@@ -8,7 +8,6 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
-import AssistantMCPSettings from './AssistantMCPSettings'
 import AssistantModelSettings from './AssistantModelSettings'
 import AssistantPromptSettings from './AssistantPromptSettings'
 import AssistantRegularPromptsSettings from './AssistantRegularPromptsSettings'
@@ -18,7 +17,7 @@ interface AssistantSettingPopupShowParams {
   tab?: AssistantSettingPopupTab
 }
 
-type AssistantSettingPopupTab = 'prompt' | 'model' | 'messages' | 'mcp' | 'regular_phrases'
+type AssistantSettingPopupTab = 'prompt' | 'model' | 'messages' | 'regular_phrases'
 
 interface Props extends AssistantSettingPopupShowParams {
   resolve: (assistant: Assistant) => void
@@ -59,10 +58,6 @@ const AssistantSettingPopupContainer: React.FC<Props> = ({ resolve, tab, ...prop
     {
       key: 'prompt',
       label: t('assistants.settings.prompt')
-    },
-    {
-      key: 'mcp',
-      label: t('assistants.settings.mcp.label')
     },
     {
       key: 'regular_phrases',
@@ -112,13 +107,6 @@ const AssistantSettingPopupContainer: React.FC<Props> = ({ resolve, tab, ...prop
           )}
           {menu === 'prompt' && (
             <AssistantPromptSettings
-              assistant={assistant}
-              updateAssistant={updateAssistant}
-              updateAssistantSettings={updateAssistantSettings}
-            />
-          )}
-          {menu === 'mcp' && (
-            <AssistantMCPSettings
               assistant={assistant}
               updateAssistant={updateAssistant}
               updateAssistantSettings={updateAssistantSettings}

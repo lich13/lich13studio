@@ -860,7 +860,6 @@ const fetchAndProcessAgentResponseImpl = async (
 
     const adapter = new AiSdkToChunkAdapter(
       streamProcessorCallbacks,
-      [],
       false,
       false,
       (sessionId) => {
@@ -1018,7 +1017,7 @@ const fetchAndProcessAssistantResponseImpl = async (
     logger.silly('Add Abort Controller', { id: userMessageId })
     addAbortController(userMessageId!, () => abortController.abort())
 
-    // Fetch agent allowed_tools for MCP auto-approval
+    // Fetch agent allowed_tools for tool permission handling
     let allowedTools: string[] | undefined
     const activeAgentId = getState().runtime.chat.activeAgentId
     const apiServer = getState().settings.apiServer
@@ -2363,7 +2362,7 @@ export const setupChannelStream = (
   const streamProcessorCallbacks = createStreamProcessor(callbacks)
   void streamProcessorCallbacks({ type: ChunkType.LLM_RESPONSE_CREATED })
 
-  const adapter = new AiSdkToChunkAdapter(streamProcessorCallbacks, [], false, false)
+  const adapter = new AiSdkToChunkAdapter(streamProcessorCallbacks, false, false)
   adapter
     .processStream({
       fullStream: stream,

@@ -15,7 +15,6 @@
  * --------------------------------------------------------------------------
  */
 import { loggerService } from '@logger'
-import { nanoid } from '@reduxjs/toolkit'
 import {
   DEFAULT_CONTEXTCOUNT,
   DEFAULT_STREAM_OPTIONS_INCLUDE_USAGE,
@@ -43,7 +42,7 @@ import type {
   TranslateLanguageCode,
   WebSearchProvider
 } from '@renderer/types'
-import { isBuiltinMCPServer, isSystemProvider, SystemProviderIds } from '@renderer/types'
+import { isSystemProvider, SystemProviderIds } from '@renderer/types'
 import { getDefaultGroupName, getLeadingEmoji, runAsyncFunction, uuid } from '@renderer/utils'
 import {
   isSupportArrayContentProvider,
@@ -52,13 +51,13 @@ import {
 } from '@renderer/utils/provider'
 import { API_SERVER_DEFAULTS } from '@shared/config/constant'
 import { defaultByPassRules, UpgradeChannel } from '@shared/config/constant'
+import { sanitizeState } from '@shared/stateMigration'
 import { isEmpty } from 'lodash'
 import { createMigrate } from 'redux-persist'
 
 import type { RootState } from '.'
 import { DEFAULT_TOOL_ORDER, DEFAULT_TOOL_ORDER_BY_SCOPE } from './inputTools'
 import { initialState as llmInitialState, moveProvider } from './llm'
-import { mcpSlice } from './mcp'
 import { initialState as notesInitialState } from './note'
 import { defaultActionItems } from './selectionStore'
 import { initialState as settingsInitialState } from './settings'
@@ -66,86 +65,6 @@ import { initialState as shortcutsInitialState } from './shortcuts'
 import { defaultWebSearchProviders } from './websearch'
 
 const logger = loggerService.withContext('Migrate')
-const LITE_SYSTEM_PROVIDER_ID_SET = new Set<string>(SYSTEM_PROVIDERS.map((provider) => provider.id))
-
-function mergeSystemProvider(existingProvider: Provider | undefined, systemProvider: Provider): Provider {
-  if (!existingProvider) {
-    return { ...systemProvider }
-  }
-
-  return {
-    ...systemProvider,
-    ...existingProvider,
-    id: systemProvider.id,
-    isSystem: true,
-    models: existingProvider.models?.length ? existingProvider.models : systemProvider.models
-  }
-}
-
-function getLiteFallbackModel(state: RootState): Model {
-  const providerWithModels = state.llm.providers.find((provider) => provider.models.length > 0)
-  return providerWithModels?.models[0] || SYSTEM_MODELS.defaultModel[0]
-}
-
-function resolvePersistedModel(state: RootState, model: Model | undefined): Model {
-  if (model && state.llm.providers.some((provider) => provider.id === model.provider)) {
-    return model
-  }
-
-  return getLiteFallbackModel(state)
-}
-
-function normalizeLiteLlmState(state: RootState) {
-  const providerMap = new Map<string, Provider>(state.llm.providers.map((provider) => [provider.id, provider]))
-  const userProviders = state.llm.providers.filter((provider) => !isSystemProvider(provider))
-
-  state.llm.providers = [
-    ...SYSTEM_PROVIDERS.map((provider) => mergeSystemProvider(providerMap.get(provider.id), provider)),
-    ...userProviders
-  ]
-
-  if (!state.llm.providers.some((provider) => provider.enabled)) {
-    const primaryProvider = state.llm.providers.find((provider) => provider.id === SystemProviderIds.openai)
-    if (primaryProvider) {
-      primaryProvider.enabled = true
-    }
-  }
-
-  state.llm.defaultModel = resolvePersistedModel(state, state.llm.defaultModel)
-  state.llm.topicNamingModel = resolvePersistedModel(state, state.llm.topicNamingModel)
-  state.llm.quickModel = resolvePersistedModel(state, state.llm.quickModel)
-  state.llm.translateModel = resolvePersistedModel(state, state.llm.translateModel)
-
-  state.assistants.assistants.forEach((assistant) => {
-    if (assistant.model && !state.llm.providers.some((provider) => provider.id === assistant.model?.provider)) {
-      assistant.model = getLiteFallbackModel(state)
-    }
-    if (
-      assistant.defaultModel &&
-      !state.llm.providers.some((provider) => provider.id === assistant.defaultModel?.provider)
-    ) {
-      assistant.defaultModel = getLiteFallbackModel(state)
-    }
-  })
-
-  if (
-    state.assistants.defaultAssistant.model &&
-    !state.llm.providers.some((provider) => provider.id === state.assistants.defaultAssistant.model?.provider)
-  ) {
-    state.assistants.defaultAssistant.model = getLiteFallbackModel(state)
-  }
-
-  if (
-    state.assistants.defaultAssistant.defaultModel &&
-    !state.llm.providers.some((provider) => provider.id === state.assistants.defaultAssistant.defaultModel?.provider)
-  ) {
-    state.assistants.defaultAssistant.defaultModel = getLiteFallbackModel(state)
-  }
-
-  state.llm.providers = state.llm.providers.filter(
-    (provider) => !isSystemProvider(provider) || LITE_SYSTEM_PROVIDER_ID_SET.has(provider.id)
-  )
-}
 
 // remove logo base64 data to reduce the size of the state
 function removeMiniAppIconsFromState(state: RootState) {
@@ -1359,37 +1278,10 @@ const migrateConfig = {
       return state
     }
   },
-  '86': (state: RootState) => {
-    try {
-      if (state?.mcp?.servers) {
-        state.mcp.servers = state.mcp.servers.map((server) => ({
-          ...server,
-          id: nanoid()
-        }))
-      }
-    } catch (error) {
-      return state
-    }
-    return state
-  },
   '87': (state: RootState) => {
     try {
       state.settings.maxKeepAliveMinapps = 3
       state.settings.showOpenedMinappsInSidebar = true
-      return state
-    } catch (error) {
-      return state
-    }
-  },
-  '88': (state: RootState) => {
-    try {
-      if (state?.mcp?.servers) {
-        const hasAutoInstall = state.mcp.servers.some((server) => server.name === '@cherry/mcp-auto-install')
-        if (!hasAutoInstall) {
-          const defaultServer = mcpSlice.getInitialState().servers[0]
-          state.mcp.servers = [{ ...defaultServer, id: nanoid() }, ...state.mcp.servers]
-        }
-      }
       return state
     } catch (error) {
       return state
@@ -2804,23 +2696,6 @@ const migrateConfig = {
       return state
     }
   },
-  '169': (state: RootState) => {
-    try {
-      if (state?.mcp?.servers) {
-        state.mcp.servers = state.mcp.servers.map((server) => {
-          const inferredSource = isBuiltinMCPServer(server) ? 'builtin' : 'unknown'
-          return {
-            ...server,
-            installSource: inferredSource
-          }
-        })
-      }
-      return state
-    } catch (error) {
-      logger.error('migrate 169 error', error as Error)
-      return state
-    }
-  },
   '170': (state: RootState) => {
     try {
       addProvider(state, 'sophnet')
@@ -3112,31 +2987,6 @@ const migrateConfig = {
       return state
     } catch (error) {
       logger.error('migrate 183 error', error as Error)
-      return state
-    }
-  },
-  '184': (state: RootState) => {
-    try {
-      // Add exa-mcp (free) web search provider if not exists
-      const exaMcpExists = state.websearch.providers.some((p) => p.id === 'exa-mcp')
-      if (!exaMcpExists) {
-        // Find the index of 'exa' provider to insert after it
-        const exaIndex = state.websearch.providers.findIndex((p) => p.id === 'exa')
-        const newProvider = {
-          id: 'exa-mcp' as const,
-          name: 'ExaMCP',
-          apiHost: 'https://mcp.exa.ai/mcp'
-        }
-        if (exaIndex !== -1) {
-          state.websearch.providers.splice(exaIndex + 1, 0, newProvider)
-        } else {
-          state.websearch.providers.push(newProvider)
-        }
-      }
-      logger.info('migrate 184 success')
-      return state
-    } catch (error) {
-      logger.error('migrate 184 error', error as Error)
       return state
     }
   },
@@ -3433,18 +3283,6 @@ const migrateConfig = {
       return state
     }
   },
-  '202': (state: RootState) => {
-    try {
-      const filesystemServer = state.mcp?.servers?.find((s: any) => s.name === '@cherry/filesystem')
-      if (filesystemServer && filesystemServer.disabledAutoApproveTools === undefined) {
-        filesystemServer.disabledAutoApproveTools = ['write', 'edit', 'delete']
-      }
-      return state
-    } catch (error) {
-      logger.error('migrate 202 error', error as Error)
-      return state
-    }
-  },
   '203': (state: RootState) => {
     try {
       if (state.settings && state.settings.sidebarIcons) {
@@ -3550,7 +3388,6 @@ const migrateConfig = {
   },
   '207': (state: RootState) => {
     try {
-      normalizeLiteLlmState(state)
       logger.info('migrate 207 success')
       return state
     } catch (error) {
@@ -3632,12 +3469,17 @@ const migrateConfig = {
       logger.error('migrate 211 error', error as Error)
       return state
     }
-  }
+  },
+  '216': (state: RootState) => sanitizeState(state, true)
 }
 
 // 注意：添加新迁移时，记得同时更新 persistReducer
 // file://./index.ts
 
-const migrate = createMigrate(migrateConfig as any)
+const versionedMigrate = createMigrate(migrateConfig as any)
+const migrate: typeof versionedMigrate = async (state, version) => {
+  const migrated = await versionedMigrate(state, version)
+  return migrated ? sanitizeState(migrated) : migrated
+}
 
 export default migrate

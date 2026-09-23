@@ -23,7 +23,7 @@
 import type { SDKMessage } from '@anthropic-ai/claude-agent-sdk'
 import type { ImageBlockParam, TextBlockParam } from '@anthropic-ai/sdk/resources/messages/messages'
 import { loggerService } from '@logger'
-import type { CallToolResult, ImageContent, TextContent } from '@modelcontextprotocol/sdk/types.js'
+import type { ToolResult, ToolResultContent as StructuredToolContent } from '@types'
 import type { LanguageModelUsage, ProviderMetadata, TextStreamPart } from 'ai'
 import { v4 as uuidv4 } from 'uuid'
 
@@ -74,23 +74,23 @@ const emptyUsage: LanguageModelUsage = {
 const generateMessageId = (): string => `msg_${uuidv4().replace(/-/g, '')}`
 
 /**
- * Converts Anthropic API tool_result content into MCP CallToolResult format.
+ * Converts Anthropic API tool_result content into structured tool output.
  *
  * Claude Code SDK delivers tool_result.content using Anthropic image blocks:
  *   { type: 'image', source: { type: 'base64', media_type, data } }
  *
- * Downstream consumers (extractImagesFromToolOutput) expect MCP format:
+ * Downstream consumers (extractImagesFromToolOutput) expect structured output:
  *   { type: 'image', data, mimeType }
  *
  * This function normalises the content so a single format flows through the
  * entire pipeline.
  */
-function toMcpToolResult(content: AnthropicToolResultContent): CallToolResult | string {
+function toToolResult(content: AnthropicToolResultContent): ToolResult | string {
   if (typeof content === 'string') {
     return content
   }
 
-  const mapped: Array<TextContent | ImageContent> = content.map((item) => {
+  const mapped: StructuredToolContent[] = content.map((item) => {
     if (item.type === 'image' && item.source.type === 'base64') {
       return {
         type: 'image' as const,
@@ -98,7 +98,7 @@ function toMcpToolResult(content: AnthropicToolResultContent): CallToolResult | 
         mimeType: item.source.media_type
       }
     }
-    return item as TextContent
+    return item as StructuredToolContent
   })
 
   return { content: mapped }
@@ -392,7 +392,7 @@ function handleUserMessage(
             toolCallId,
             toolName: pendingCall?.toolName ?? 'unknown',
             input: pendingCall?.input,
-            output: toMcpToolResult(toolResult.content),
+            output: toToolResult(toolResult.content),
             providerExecuted: true
           })
         }

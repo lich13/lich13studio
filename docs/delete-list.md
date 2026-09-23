@@ -94,7 +94,7 @@
 - 上传图片或文档入口继续保留，但只作为聊天附件，不再进入知识库索引链。
 - 若文档预处理仅服务知识库，短期内隐藏对应设置并在 `docs/migration-notes.md` 标注 TODO。
 - assistant 上历史遗留的 `knowledge_bases` 字段在迁移时忽略或清空，不能导致运行时报错。
-- WebSearch、MCP、模型切换、快捷短语继续保留，不能因为删知识库连带下线。
+- WebSearch、模型切换、快捷短语继续保留，不能因为删知识库连带下线。
 
 ## 3. market 相关删除清单
 
@@ -123,53 +123,10 @@
 - 不再保留精选、分类、在线推荐、市场分页。
 - 如果仍沿用 preset JSON 结构，只保留本地文件导入 / 导出，不保留市场列表。
 
-### MCP market / discover / auto-install
+### MCP removal (0.1.16)
 
-#### 可直接删除
+MCP UI, configuration, runtime, installer, OAuth, IPC, HTTP routes and Tauri commands are removed. Shared trace code is retained under `packages/trace`; historical tool records remain read-only. No manual or built-in MCP server path is retained.
 
-- `src/renderer/src/pages/settings/MCPSettings/McpMarketList.tsx`
-- `src/renderer/src/pages/settings/MCPSettings/SyncServersPopup.tsx`
-- `src/renderer/src/pages/settings/MCPSettings/NpxSearch.tsx`
-- `src/renderer/src/pages/settings/MCPSettings/providers/302ai.ts`
-- `src/renderer/src/pages/settings/MCPSettings/providers/bailian.ts`
-- `src/renderer/src/pages/settings/MCPSettings/providers/lanyun.ts`
-- `src/renderer/src/pages/settings/MCPSettings/providers/mcprouter.ts`
-- `src/renderer/src/pages/settings/MCPSettings/providers/modelscope.ts`
-- `src/renderer/src/pages/settings/MCPSettings/providers/tokenflux.ts`
-- `src/main/services/urlschema/mcp-install.ts`
-
-#### 先改后删
-
-- `src/renderer/src/pages/settings/MCPSettings/index.tsx`
-- `src/renderer/src/store/mcp.ts`
-- `src/main/services/MCPService.ts`
-- `src/main/ipc.ts`
-- `packages/shared/IpcChannel.ts`
-- `src/preload/index.ts`
-- `src/renderer/src/pages/home/Messages/Tools/MessageAgentTools/NavigateTool.tsx`
-
-#### 替代逻辑
-
-- 保留 `AddMcpServerModal` + `McpServersList` + `McpSettings` 作为唯一 MCP 配置路径。
-- 手动输入 `command/args/env` 或远程 URL，即可添加本地 / 远程 MCP server。
-- 保留连接测试、启用禁用、重启、绑定到 assistant。
-- 如需保留部分内置 MCP server，只保留“无需在线发现 / 不自动安装”的离线项。
-
-## 4. 删除动作的统一扫尾清单
-
-- 路由: `src/renderer/src/Router.tsx`
-- 侧边栏: `src/renderer/src/config/sidebar.ts`
-- 设置页菜单: `src/renderer/src/pages/settings/SettingsPage.tsx`
-- 输入框工具注册: `src/renderer/src/pages/home/Inputbar/tools/index.ts`
-- store 汇总: `src/renderer/src/store/index.ts`
-- IPC 常量: `packages/shared/IpcChannel.ts`
-- preload bridge: `src/preload/index.ts`
-- 主进程 handler: `src/main/ipc.ts`
-- 迁移脚本: `src/renderer/src/store/migrate.ts`
-- i18n: `src/renderer/src/i18n/label.ts`, `src/renderer/src/i18n/locales/*.json`
-- 相关测试: `src/renderer/src/utils/__tests__/topicKnowledge.test.ts`, `src/renderer/src/store/thunk/__tests__/knowledgeThunk.test.ts`
-
-## 5. 本轮已落地删除清单
 
 ### 设置页全局记忆
 

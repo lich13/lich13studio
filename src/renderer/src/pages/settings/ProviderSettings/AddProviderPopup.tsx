@@ -23,8 +23,8 @@ interface Props {
 const PopupContainer: React.FC<Props> = ({ provider, resolve }) => {
   const [open, setOpen] = useState(true)
   const [name, setName] = useState(provider?.name || '')
-  const [type, setType] = useState<ProviderType>(provider?.type || 'openai')
-  const [displayType, setDisplayType] = useState<string>(provider?.type || 'openai')
+  const [type, setType] = useState<ProviderType>(provider?.type || 'openai-response')
+  const [displayType, setDisplayType] = useState<string>(provider?.type || 'openai-response')
   const [logo, setLogo] = useState<string | null>(null)
   const [logoPickerOpen, setLogoPickerOpen] = useState(false)
   const [dropdownOpen, setDropdownOpen] = useState(false)
@@ -61,7 +61,7 @@ const PopupContainer: React.FC<Props> = ({ provider, resolve }) => {
 
   const onCancel = () => {
     setOpen(false)
-    resolve({ name: '', type: 'openai' })
+    resolve({ name: '', type: 'openai-response' })
   }
 
   const onClose = () => {
@@ -252,13 +252,8 @@ const PopupContainer: React.FC<Props> = ({ provider, resolve }) => {
               setType(value as ProviderType)
             }}
             options={[
-              { label: 'OpenAI', value: 'openai' },
-              { label: 'OpenAI-Response', value: 'openai-response' },
-              { label: 'Gemini', value: 'gemini' },
-              { label: 'Anthropic', value: 'anthropic' },
-              { label: 'Azure OpenAI', value: 'azure-openai' },
-              { label: 'New API', value: 'new-api' },
-              { label: 'Ollama', value: 'ollama' }
+              { label: 'Responses', value: 'openai-response' },
+              { label: 'Anthropic', value: 'anthropic' }
             ]}
           />
         </Form.Item>

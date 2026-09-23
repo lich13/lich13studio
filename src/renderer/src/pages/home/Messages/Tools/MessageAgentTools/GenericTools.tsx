@@ -2,7 +2,7 @@
 
 import { LoadingIcon } from '@renderer/components/Icons'
 import { SkeletonSpan } from '@renderer/components/Skeleton/InlineSkeleton'
-import type { MCPToolResponseStatus } from '@renderer/types'
+import type { ToolResponseStatus } from '@renderer/types'
 import { formatFileSize } from '@renderer/utils/file'
 import { Check, Ellipsis, TriangleAlert, X } from 'lucide-react'
 import { createContext, type ReactNode, use } from 'react'
@@ -110,17 +110,17 @@ export function StringOutputTool({
   )
 }
 
-// ToolStatus extends MCPToolResponseStatus with UI-derived statuses
+// ToolStatus extends ToolResponseStatus with UI-derived statuses
 // 'waiting' is a UI status derived from 'pending' + needs approval
-export type ToolStatus = MCPToolResponseStatus | 'waiting'
+export type ToolStatus = ToolResponseStatus | 'waiting'
 
 /**
  * Convert raw data layer status to UI display status
- * @param status - Raw status from MCPToolResponseStatus
+ * @param status - Raw status from ToolResponseStatus
  * @param isWaiting - Whether the tool is waiting for user approval
  * @returns The effective UI status
  */
-export function getEffectiveStatus(status: MCPToolResponseStatus | undefined, isWaiting: boolean): ToolStatus {
+export function getEffectiveStatus(status: ToolResponseStatus | undefined, isWaiting: boolean): ToolStatus {
   if (status === 'pending') {
     return isWaiting ? 'waiting' : 'invoking'
   }

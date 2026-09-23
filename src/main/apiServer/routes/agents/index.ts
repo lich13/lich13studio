@@ -71,11 +71,6 @@ const agentsRouter = express.Router()
  *         small_model:
  *           type: string
  *           description: Optional small/fast model ID
- *         mcps:
- *           type: array
- *           items:
- *             type: string
- *           description: Array of MCP tool IDs
  *         allowed_tools:
  *           type: array
  *           items:
@@ -156,11 +151,6 @@ const agentsRouter = express.Router()
  *         small_model:
  *           type: string
  *           description: Optional small/fast model ID
- *         mcps:
- *           type: array
- *           items:
- *             type: string
- *           description: Array of MCP tool IDs
  *         allowed_tools:
  *           type: array
  *           items:
@@ -239,11 +229,6 @@ const agentsRouter = express.Router()
  *         small_model:
  *           type: string
  *           description: Optional small/fast model ID
- *         mcps:
- *           type: array
- *           items:
- *             type: string
- *           description: Array of MCP tool IDs
  *         allowed_tools:
  *           type: array
  *           items:

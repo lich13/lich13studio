@@ -426,14 +426,7 @@ const InputbarInner: FC<InputbarInnerProps> = ({ assistant: initialAssistant, se
     if (!document.querySelector('.topview-fullscreen-container')) {
       focusTextarea()
     }
-  }, [
-    topic.id,
-    assistant.mcpServers,
-    assistant.enableWebSearch,
-    assistant.webSearchProviderId,
-    mentionedModels,
-    focusTextarea
-  ])
+  }, [topic.id, assistant.enableWebSearch, assistant.webSearchProviderId, mentionedModels, focusTextarea])
 
   useEffect(() => {
     // Disable web search if model doesn't support it

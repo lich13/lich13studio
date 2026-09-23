@@ -51,7 +51,7 @@ export const isAgentType = (type: unknown): type is AgentType => {
 export const ToolSchema = z.object({
   id: z.string(),
   name: z.string(),
-  type: z.enum(['builtin', 'mcp', 'custom']),
+  type: z.enum(['builtin', 'custom']),
   description: z.string().optional(),
   requirePermissions: z.boolean().optional()
 })
@@ -154,7 +154,6 @@ export const AgentBaseSchema = z.object({
   small_model: z.string().optional(), // Optional small/fast model ID
 
   // Tools
-  mcps: z.array(z.string()).optional(), // Array of MCP tool IDs
   allowed_tools: z.array(z.string()).optional(), // Array of allowed tool IDs (whitelist)
   slash_commands: z.array(SlashCommandSchema).optional(), // Array of slash commands merged from builtin and SDK
 
@@ -279,7 +278,6 @@ export type BaseAgentForm = {
   model: string
   accessible_paths: string[]
   allowed_tools: string[]
-  mcps?: string[]
   configuration?: AgentConfiguration
 }
 

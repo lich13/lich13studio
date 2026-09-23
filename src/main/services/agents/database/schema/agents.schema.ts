@@ -17,7 +17,6 @@ export const agentsTable = sqliteTable('agents', {
   plan_model: text('plan_model'), // Optional plan/thinking model ID
   small_model: text('small_model'), // Optional small/fast model ID
 
-  mcps: text('mcps'), // JSON array of MCP tool IDs
   allowed_tools: text('allowed_tools'), // JSON array of allowed tool IDs (whitelist)
 
   configuration: text('configuration'), // JSON, extensible settings

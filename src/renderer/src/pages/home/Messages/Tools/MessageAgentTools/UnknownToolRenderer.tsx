@@ -1,4 +1,4 @@
-import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js'
+import { ToolResultSchema } from '@shared/toolResult'
 import type { CollapseProps } from 'antd'
 import { Wrench } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -27,8 +27,8 @@ const getToolDisplayName = (name: string) => {
  * Images are already rendered via IMAGE_COMPLETE, so only text is shown here.
  * Returns null if the output is not a valid CallToolResult.
  */
-function extractMcpText(output: unknown): string | null {
-  const result = CallToolResultSchema.safeParse(output)
+function extractToolText(output: unknown): string | null {
+  const result = ToolResultSchema.safeParse(output)
   if (!result.success) return null
 
   const textParts: string[] = []
@@ -69,8 +69,8 @@ export function UnknownToolRenderer({
   const normalizedInput = normalizeArgs(input)
 
   // Try MCP CallToolResult format first (text only, images rendered via IMAGE_COMPLETE)
-  const mcpText = extractMcpText(output)
-  const normalizedOutput = mcpText !== null ? { value: mcpText } : normalizeArgs(output)
+  const toolText = extractToolText(output)
+  const normalizedOutput = toolText !== null ? { value: toolText } : normalizeArgs(output)
 
   return {
     key: 'unknown-tool',

@@ -1,7 +1,6 @@
 import type { ToolMessageBlock } from '@renderer/types/newMessage'
 
 import { useAgentToolApproval } from './useAgentToolApproval'
-import { useMcpToolApproval } from './useMcpToolApproval'
 
 /**
  * Unified tool approval state
@@ -29,43 +28,16 @@ export interface ToolApprovalActions {
   autoApprove?: () => void | Promise<void>
 }
 
-export interface UseToolApprovalOptions {
-  /** Force a specific approval type */
-  forceType?: 'mcp' | 'agent'
+export function useToolApproval(block: ToolMessageBlock): ToolApprovalState & ToolApprovalActions {
+  return useAgentToolApproval(block)
 }
 
 /**
- * Unified hook for tool approval - automatically selects between MCP and Agent approval
- * based on the tool type in the block metadata.
- *
- * @param block - The tool message block
- * @param options - Optional configuration
- * @returns Unified approval state and actions
- */
-export function useToolApproval(
-  block: ToolMessageBlock,
-  options: UseToolApprovalOptions = {}
-): ToolApprovalState & ToolApprovalActions {
-  const { forceType } = options
-
-  const toolResponse = block.metadata?.rawMcpToolResponse
-  const tool = toolResponse?.tool
-
-  const isMcpTool =
-    forceType === 'mcp' ||
-    (forceType !== 'agent' && (tool?.type === 'mcp' || tool?.type === 'builtin' || tool?.type === 'provider'))
-  const mcpApproval = useMcpToolApproval(block)
-  const agentApproval = useAgentToolApproval(block)
-
-  return isMcpTool ? mcpApproval : agentApproval
-}
-
-/**
- * Determine if a block needs approval (either MCP or Agent)
+ * Determine if an active agent tool needs approval
  */
 export function isBlockWaitingApproval(block: ToolMessageBlock): boolean {
-  return block.metadata?.rawMcpToolResponse?.status === 'pending'
+  const response = block.metadata?.rawMcpToolResponse
+  return response?.tool.type !== 'mcp' && !response?.tool.name.startsWith('mcp__') && response?.status === 'pending'
 }
 
 export { useAgentToolApproval, type UseAgentToolApprovalOptions } from './useAgentToolApproval'
-export { useMcpToolApproval } from './useMcpToolApproval'

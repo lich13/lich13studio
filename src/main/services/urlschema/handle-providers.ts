@@ -44,7 +44,7 @@ export async function handleProvidersProtocolUrl(url: URL) {
       const version = params.get('v')
       if (version == '1') {
         // TODO: handle different version
-        logger.debug('handleProvidersProtocolUrl', { data, version })
+        logger.debug('Provider import received', { version })
       }
 
       // add check there is window.navigate function in mainWindow
@@ -62,14 +62,14 @@ export async function handleProvidersProtocolUrl(url: URL) {
         }
       } else {
         setTimeout(() => {
-          logger.debug('handleProvidersProtocolUrl timeout', { data, version })
+          logger.debug('Provider import waiting for window', { version })
           void handleProvidersProtocolUrl(url)
         }, 1000)
       }
       break
     }
     default:
-      logger.error(`Unknown MCP protocol URL: ${url}`)
+      logger.error('Unsupported provider import path')
       break
   }
 }

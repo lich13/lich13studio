@@ -310,7 +310,6 @@ export async function upgradeToV7(tx: Transaction): Promise<void> {
         useful: oldMessage.useful,
         askId: oldMessage.askId,
         mentions: oldMessage.mentions,
-        enabledMCPs: oldMessage.enabledMCPs,
         usage: oldMessage.usage,
         metrics: oldMessage.metrics,
         multiModelMessageStyle: oldMessage.multiModelMessageStyle,

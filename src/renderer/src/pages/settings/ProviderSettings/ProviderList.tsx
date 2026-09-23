@@ -15,7 +15,7 @@ import { isSystemProvider } from '@renderer/types'
 import { getFancyProviderName, matchKeywordsInModel, matchKeywordsInProvider, uuid } from '@renderer/utils'
 import { isAnthropicSupportedProvider } from '@renderer/utils/provider'
 import type { MenuProps } from 'antd'
-import { Button, Dropdown, Input, Tag } from 'antd'
+import { Button, Dropdown, Empty, Input, Tag } from 'antd'
 import { Check, Filter, GripVertical, PlusIcon, Search, UserPen } from 'lucide-react'
 import type { FC } from 'react'
 import { startTransition, useCallback, useEffect, useRef, useState } from 'react'
@@ -447,7 +447,11 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
           </Button>
         </AddButtonWrapper>
       </ProviderListContainer>
-      <ProviderSetting providerId={selectedProvider.id} key={selectedProvider.id} isOnboarding={isOnboarding} />
+      {selectedProvider ? (
+        <ProviderSetting providerId={selectedProvider.id} key={selectedProvider.id} isOnboarding={isOnboarding} />
+      ) : (
+        <Empty style={{ margin: 'auto' }} description={t('settings.provider.empty')} />
+      )}
     </Container>
   )
 }

@@ -1,9 +1,8 @@
 import { ErrorBoundary } from '@renderer/components/ErrorBoundary'
 import { useAppSelector } from '@renderer/store'
 import type { ToolPermissionEntry } from '@renderer/store/toolPermissions'
-import type { MCPToolResponseStatus } from '@renderer/types'
+import type { ToolResponseStatus } from '@renderer/types'
 import type { ToolMessageBlock } from '@renderer/types/newMessage'
-import { isToolPending } from '@renderer/utils/userConfirmation'
 import { Collapse, type CollapseProps } from 'antd'
 import { Wrench } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
@@ -109,7 +108,12 @@ interface Props {
   blocks: ToolMessageBlock[]
 }
 
-function isCompletedStatus(status: MCPToolResponseStatus | undefined): boolean {
+function isHistoricalBlock(block: ToolMessageBlock): boolean {
+  const tool = block.metadata?.rawMcpToolResponse?.tool
+  return tool?.type === 'mcp' || Boolean(tool?.name.startsWith('mcp__'))
+}
+
+function isCompletedStatus(status: ToolResponseStatus | undefined): boolean {
   return status === 'done' || status === 'error' || status === 'cancelled'
 }
 
@@ -119,9 +123,8 @@ function getBlockIsWaiting(block: ToolMessageBlock, agentPermissions: Record<str
   if (!toolResponse || toolResponse.status !== 'pending') return false
 
   const tool = toolResponse.tool
-  if (tool?.type === 'mcp') {
-    // MCP tools: check the global confirmation queue
-    return isToolPending(toolResponse.id)
+  if (tool?.type === 'mcp' || tool?.name.startsWith('mcp__')) {
+    return false
   } else {
     // Agent tools: check Redux store for pending permission
     const permission = Object.values(agentPermissions).find((p) => p.toolCallId === toolResponse.toolCallId)
@@ -135,6 +138,7 @@ function getBlockEffectiveStatus(
   agentPermissions: Record<string, ToolPermissionEntry>
 ): ToolStatus {
   const toolResponse = block.metadata?.rawMcpToolResponse
+  if (isHistoricalBlock(block)) return 'done'
   const isWaiting = getBlockIsWaiting(block, agentPermissions)
   return getEffectiveStatus(toolResponse?.status, isWaiting)
 }
@@ -248,7 +252,7 @@ const ToolListContent = React.memo(({ blocks, scrollRef }: ToolListContentProps)
   <ScrollableToolList ref={scrollRef}>
     {blocks.map((block) => {
       const status = block.metadata?.rawMcpToolResponse?.status
-      const isCompleted = isCompletedStatus(status)
+      const isCompleted = isHistoricalBlock(block) || isCompletedStatus(status)
       return (
         <ToolItem key={block.id} data-block-id={block.id} $isCompleted={isCompleted}>
           <ErrorBoundary fallbackComponent={BlockErrorFallback}>
@@ -271,14 +275,14 @@ const ToolBlockGroup: React.FC<Props> = ({ blocks }) => {
   const allCompleted = useMemo(() => {
     return blocks.every((block) => {
       const status = block.metadata?.rawMcpToolResponse?.status
-      return isCompletedStatus(status)
+      return isHistoricalBlock(block) || isCompletedStatus(status)
     })
   }, [blocks])
 
   const currentRunningBlock = useMemo(() => {
     return blocks.find((block) => {
       const status = block.metadata?.rawMcpToolResponse?.status
-      return !isCompletedStatus(status)
+      return !isHistoricalBlock(block) && !isCompletedStatus(status)
     })
   }, [blocks])
 

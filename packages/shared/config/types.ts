@@ -34,19 +34,6 @@ export type FileChangeEvent = {
   watchPath: string
 }
 
-export type MCPProgressEvent = {
-  callId: string
-  progress: number // 0-1 range
-}
-
-export type MCPServerLogEntry = {
-  timestamp: number
-  level: 'debug' | 'info' | 'warn' | 'error' | 'stderr' | 'stdout'
-  message: string
-  data?: any
-  source?: string
-}
-
 // Channel log & status types
 export type ChannelLogLevel = 'debug' | 'info' | 'warn' | 'error'
 

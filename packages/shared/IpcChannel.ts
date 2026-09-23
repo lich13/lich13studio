@@ -70,28 +70,6 @@ export enum IpcChannel {
   MiniWindow_Toggle = 'miniwindow:toggle',
   MiniWindow_SetPin = 'miniwindow:set-pin',
 
-  // Mcp
-  Mcp_AddServer = 'mcp:add-server',
-  Mcp_RemoveServer = 'mcp:remove-server',
-  Mcp_RestartServer = 'mcp:restart-server',
-  Mcp_StopServer = 'mcp:stop-server',
-  Mcp_ListTools = 'mcp:list-tools',
-  Mcp_CallTool = 'mcp:call-tool',
-  Mcp_ListPrompts = 'mcp:list-prompts',
-  Mcp_GetPrompt = 'mcp:get-prompt',
-  Mcp_ListResources = 'mcp:list-resources',
-  Mcp_GetResource = 'mcp:get-resource',
-  Mcp_GetInstallInfo = 'mcp:get-install-info',
-  Mcp_ServersChanged = 'mcp:servers-changed',
-  Mcp_ServersUpdated = 'mcp:servers-updated',
-  Mcp_CheckConnectivity = 'mcp:check-connectivity',
-  Mcp_UploadDxt = 'mcp:upload-dxt',
-  Mcp_AbortTool = 'mcp:abort-tool',
-  Mcp_ResolveHubTool = 'mcp:resolve-hub-tool',
-  Mcp_GetServerVersion = 'mcp:get-server-version',
-  Mcp_Progress = 'mcp:progress',
-  Mcp_GetServerLogs = 'mcp:get-server-logs',
-  Mcp_ServerLog = 'mcp:server-log',
   // Python
   Python_Execute = 'python:execute',
 

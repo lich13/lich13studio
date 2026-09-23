@@ -1,8 +1,6 @@
 import type { Provider } from '@types'
 
 import type { BaseFileService } from './BaseFileService'
-import { GeminiService } from './GeminiService'
-import { MistralService } from './MistralService'
 import { OpenaiService } from './OpenAIService'
 
 export class FileServiceManager {
@@ -25,13 +23,7 @@ export class FileServiceManager {
 
     if (!service) {
       switch (type) {
-        case 'gemini':
-          service = new GeminiService(provider)
-          break
-        case 'mistral':
-          service = new MistralService(provider)
-          break
-        case 'openai':
+        case 'openai-response':
           service = new OpenaiService(provider)
           break
         default:

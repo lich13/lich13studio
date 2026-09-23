@@ -11,7 +11,6 @@ import { DatabaseSync } from 'node:sqlite'
 
 const require = createRequire(import.meta.url)
 
-const SYSTEM_PROVIDER_IDS = new Set(['openai', 'anthropic', 'gemini'])
 const SETTINGS_ALLOWLIST = new Set([
   'showAssistants',
   'showTopics',
@@ -133,18 +132,6 @@ function walkFiles(root) {
     }
   }
   return files
-}
-
-function uniqBy(items, keyFn) {
-  const result = []
-  const seen = new Set()
-  for (const item of items) {
-    const key = keyFn(item)
-    if (seen.has(key)) continue
-    seen.add(key)
-    result.push(item)
-  }
-  return result
 }
 
 function parsePersistSlice(state, key) {
@@ -286,20 +273,6 @@ async function exportOldData(oldRoot) {
   }
 }
 
-function buildFallbackModel(providers, preferredModels) {
-  for (const model of preferredModels) {
-    if (model?.provider && providers.some((provider) => provider.id === model.provider)) return model
-  }
-
-  for (const provider of providers) {
-    if (provider.models?.length) {
-      return provider.models[0]
-    }
-  }
-
-  return null
-}
-
 function normalizeModel(model, providers, fallbackModel) {
   if (model?.provider && providers.some((provider) => provider.id === model.provider)) return model
   return fallbackModel
@@ -307,6 +280,14 @@ function normalizeModel(model, providers, fallbackModel) {
 
 function normalizeAssistantModels(assistant, providers, fallbackModel) {
   const normalized = { ...assistant }
+  delete normalized.mcpServers
+  delete normalized.mcpMode
+  normalized.settings = {
+    ...normalized.settings,
+    reasoning_effort: ['low', 'medium', 'high', 'xhigh', 'max'].includes(normalized.settings?.reasoning_effort)
+      ? normalized.settings.reasoning_effort
+      : 'max'
+  }
   if (assistant.model) {
     normalized.model = normalizeModel(assistant.model, providers, fallbackModel)
   }
@@ -326,49 +307,17 @@ function mergePersistState(currentState, oldState, appSupport) {
   const currentLlm = parsePersistSlice(currentState, 'llm')
   const currentSettings = parsePersistSlice(currentState, 'settings')
   const currentBackup = parsePersistSlice(currentState, 'backup')
-  const currentMcp = parsePersistSlice(currentState, 'mcp')
   const currentWebsearch = parsePersistSlice(currentState, 'websearch')
   const currentNote = parsePersistSlice(currentState, 'note')
 
   const oldAssistants = parsePersistSlice(oldState, 'assistants')
-  const oldLlm = parsePersistSlice(oldState, 'llm')
   const oldSettings = parsePersistSlice(oldState, 'settings')
   const oldBackup = parsePersistSlice(oldState, 'backup')
-  const oldMcp = parsePersistSlice(oldState, 'mcp')
   const oldWebsearch = parsePersistSlice(oldState, 'websearch')
   const oldNote = parsePersistSlice(oldState, 'note')
 
-  const oldProviderMap = new Map((oldLlm.providers || []).map((provider) => [provider.id, provider]))
-  const currentSystemProviders = (currentLlm.providers || [])
-    .filter((provider) => SYSTEM_PROVIDER_IDS.has(provider.id))
-    .map((provider) => {
-      const oldProvider = oldProviderMap.get(provider.id)
-      return oldProvider
-        ? {
-            ...provider,
-            ...oldProvider,
-            id: provider.id,
-            isSystem: true,
-            models: provider.models
-          }
-        : provider
-    })
-
-  const currentCustomProviders = (currentLlm.providers || []).filter(
-    (provider) => !SYSTEM_PROVIDER_IDS.has(provider.id)
-  )
-  const oldCustomProviders = (oldLlm.providers || []).filter(
-    (provider) => !provider.isSystem && !SYSTEM_PROVIDER_IDS.has(provider.id)
-  )
-
-  const mergedCustomProviders = uniqBy([...oldCustomProviders, ...currentCustomProviders], (provider) => provider.id)
-  const mergedProviders = [...mergedCustomProviders, ...currentSystemProviders]
-  const fallbackModel = buildFallbackModel(mergedProviders, [
-    oldLlm.defaultModel,
-    currentLlm.defaultModel,
-    oldLlm.quickModel,
-    currentLlm.quickModel
-  ])
+  const mergedProviders = []
+  const fallbackModel = undefined
 
   const mergedAssistants = {
     ...currentAssistants,
@@ -385,15 +334,12 @@ function mergePersistState(currentState, oldState, appSupport) {
 
   const mergedLlm = {
     ...currentLlm,
+    settings: {},
     providers: mergedProviders,
-    defaultModel: normalizeModel(oldLlm.defaultModel || currentLlm.defaultModel, mergedProviders, fallbackModel),
-    topicNamingModel: normalizeModel(
-      oldLlm.topicNamingModel || currentLlm.topicNamingModel,
-      mergedProviders,
-      fallbackModel
-    ),
-    quickModel: normalizeModel(oldLlm.quickModel || currentLlm.quickModel, mergedProviders, fallbackModel),
-    translateModel: normalizeModel(currentLlm.translateModel, mergedProviders, fallbackModel)
+    defaultModel: undefined,
+    topicNamingModel: undefined,
+    quickModel: undefined,
+    translateModel: undefined
   }
 
   const mergedSettings = {
@@ -436,11 +382,6 @@ function mergePersistState(currentState, oldState, appSupport) {
     notesPath: path.join(appSupport, 'Data', 'Notes')
   }
 
-  const mergedMcp = {
-    ...currentMcp,
-    servers: uniqBy([...(oldMcp.servers || []), ...(currentMcp.servers || [])], (server) => server.id)
-  }
-
   const mergedBackup = {
     ...currentBackup,
     ...oldBackup
@@ -451,7 +392,7 @@ function mergePersistState(currentState, oldState, appSupport) {
   nextState.llm = stringifyPersistSlice(mergedLlm)
   nextState.settings = stringifyPersistSlice(mergedSettings)
   nextState.backup = stringifyPersistSlice(mergedBackup)
-  nextState.mcp = stringifyPersistSlice(mergedMcp)
+  delete nextState.mcp
   nextState.websearch = stringifyPersistSlice(mergedWebsearch)
   nextState.note = stringifyPersistSlice(mergedNote)
 
@@ -462,7 +403,6 @@ function mergePersistState(currentState, oldState, appSupport) {
       llm: mergedLlm,
       settings: mergedSettings,
       backup: mergedBackup,
-      mcp: mergedMcp,
       websearch: mergedWebsearch,
       note: mergedNote
     }
@@ -700,13 +640,11 @@ function copyChildren(sourceDir, targetDir) {
 function summarizeState(state) {
   const assistants = parsePersistSlice(state, 'assistants')
   const llm = parsePersistSlice(state, 'llm')
-  const mcp = parsePersistSlice(state, 'mcp')
   return {
     assistants: assistants.assistants?.length || 0,
     topics: (assistants.assistants || []).reduce((sum, assistant) => sum + (assistant.topics?.length || 0), 0),
     providers: llm.providers?.length || 0,
-    defaultModel: llm.defaultModel?.id || null,
-    mcpServers: mcp.servers?.length || 0
+    defaultModel: llm.defaultModel?.id || null
   }
 }
 
@@ -727,7 +665,6 @@ function renderReport(report) {
     `- Topics: ${report.after.topics}`,
     `- Providers: ${report.after.providers}`,
     `- Default model: ${report.after.defaultModel}`,
-    `- MCP servers: ${report.after.mcpServers}`,
     '',
     '## Migrated IndexedDB Stores',
     '',

@@ -32,7 +32,7 @@ export const MessageWebSearchToolTitle = ({ toolResponse }: { toolResponse: Norm
   )
 }
 
-// export const MessageWebSearchToolBody = ({ toolResponse }: { toolResponse: MCPToolResponse }) => {
+// export const MessageWebSearchToolBody = ({ toolResponse }: { toolResponse: HistoricalToolResponse }) => {
 //   const toolOutput = toolResponse.response as WebSearchToolOutput
 
 //   return toolResponse.status === 'done'

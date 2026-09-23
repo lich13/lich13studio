@@ -56,6 +56,8 @@ export class ConfigManager {
 
   constructor() {
     this.store = new Store()
+    this.store.delete('mcpServers')
+    this.store.delete('mcp')
   }
 
   getLanguage(): LanguageVarious {

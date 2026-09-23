@@ -11,23 +11,14 @@ import {
 } from '@renderer/components/Icons'
 import type { QuickPanelListItem } from '@renderer/components/QuickPanel'
 import { QuickPanelReservedSymbol } from '@renderer/components/QuickPanel'
-import {
-  isGemini3Model,
-  isGeminiModel,
-  isGPT5SeriesReasoningModel,
-  isOpenAIWebSearchModel,
-  isWebSearchModel
-} from '@renderer/config/models'
+import { isWebSearchModel } from '@renderer/config/models'
 import { useAssistant } from '@renderer/hooks/useAssistant'
 import { useTimer } from '@renderer/hooks/useTimer'
 import { useWebSearchProviders } from '@renderer/hooks/useWebSearchProviders'
 import type { ToolQuickPanelController, ToolRenderContext } from '@renderer/pages/home/Inputbar/types'
-import { getProviderByModel } from '@renderer/services/AssistantService'
 import WebSearchService from '@renderer/services/WebSearchService'
-import { getEffectiveMcpMode, type WebSearchProvider, type WebSearchProviderId } from '@renderer/types'
+import { type WebSearchProvider, type WebSearchProviderId } from '@renderer/types'
 import { hasObjectKey } from '@renderer/utils'
-import { isToolUseModeFunction } from '@renderer/utils/assistant'
-import { isGeminiWebSearchProvider } from '@renderer/utils/provider'
 import { Globe } from 'lucide-react'
 import { useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -106,32 +97,10 @@ export const useWebSearchPanelController = (assistantId: string, quickPanelContr
       enableWebSearch: !assistant.enableWebSearch
     }
     const model = assistant.model
-    const provider = getProviderByModel(model)
     if (!model) {
       logger.error('Model does not exist.')
       window.toast.error(t('error.model.not_exists'))
       return
-    }
-    // Gemini 3+ supports combining built-in tools with function calling
-    if (
-      isGeminiWebSearchProvider(provider) &&
-      isGeminiModel(model) &&
-      !isGemini3Model(model) &&
-      isToolUseModeFunction(assistant) &&
-      update.enableWebSearch &&
-      getEffectiveMcpMode(assistant) !== 'disabled'
-    ) {
-      update.enableWebSearch = false
-      window.toast.warning(t('chat.mcp.warning.gemini_web_search'))
-    }
-    if (
-      isOpenAIWebSearchModel(model) &&
-      isGPT5SeriesReasoningModel(model) &&
-      update.enableWebSearch &&
-      assistant.settings?.reasoning_effort === 'minimal'
-    ) {
-      update.enableWebSearch = false
-      window.toast.warning(t('chat.web_search.warning.openai'))
     }
     setTimeoutTimer('updateSelectedWebSearchBuiltin', () => updateAssistant(update), 200)
   }, [assistant, setTimeoutTimer, t, updateAssistant])

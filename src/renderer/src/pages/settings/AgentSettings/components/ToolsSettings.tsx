@@ -1,12 +1,10 @@
 import CollapsibleSearchBar from '@renderer/components/CollapsibleSearchBar'
 import { permissionModeCards } from '@renderer/config/agent'
-import { useMCPServers } from '@renderer/hooks/useMCPServers'
 import type { UpdateAgentBaseForm } from '@renderer/types'
 import { GLOBALLY_DISALLOWED_TOOLS, SOUL_MODE_DISALLOWED_TOOLS } from '@shared/agents/claudecode/constants'
 import type { CardProps } from 'antd'
 import { Card, Switch, Tag, Tooltip } from 'antd'
 import { uniq } from 'lodash'
-import { Wrench } from 'lucide-react'
 import type { FC } from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -61,10 +59,8 @@ const useBuiltinToolDescription = () => {
 export const ToolsSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, update }) => {
   const { t } = useTranslation()
   const getBuiltinToolDescription = useBuiltinToolDescription()
-  const { mcpServers: allServers } = useMCPServers()
   const [searchTerm, setSearchTerm] = useState('')
   const [isUpdatingTools, setIsUpdatingTools] = useState(false)
-  const [isUpdatingMcp, setIsUpdatingMcp] = useState(false)
 
   const selectedMode = useMemo(
     () => agentBase?.configuration?.permission_mode ?? defaultConfiguration.permission_mode,
@@ -79,10 +75,7 @@ export const ToolsSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, upda
     const merged = uniq([...sanitized, ...autoToolIds])
     return merged
   }, [agentBase?.allowed_tools, autoToolIds, availableTools])
-  const selectedMcpIds = useMemo(() => agentBase?.mcps ?? [], [agentBase?.mcps])
   const isSoulEnabled = isSoulModeEnabled(agentBase?.configuration)
-
-  const availableServers = useMemo(() => (allServers ?? []).filter((s) => s.name !== '@cherry/browser'), [allServers])
 
   const filteredTools = useMemo(() => {
     const hiddenTools = [
@@ -124,27 +117,6 @@ export const ToolsSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, upda
     [agentBase, isUpdatingTools, approvedToolIds, autoToolIds, availableTools, update]
   )
 
-  const handleToggleMcp = useCallback(
-    async (serverId: string, enabled: boolean) => {
-      if (!agentBase || isUpdatingMcp) {
-        return
-      }
-      const exists = selectedMcpIds.includes(serverId)
-      if (enabled === exists) {
-        return
-      }
-      const next = enabled ? [...selectedMcpIds, serverId] : selectedMcpIds.filter((id) => id !== serverId)
-
-      setIsUpdatingMcp(true)
-      try {
-        await update({ id: agentBase.id, mcps: next } satisfies UpdateAgentBaseForm)
-      } finally {
-        setIsUpdatingMcp(false)
-      }
-    },
-    [agentBase, isUpdatingMcp, selectedMcpIds, update]
-  )
-
   if (!agentBase) {
     return null
   }
@@ -161,7 +133,7 @@ export const ToolsSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, upda
               style={{ borderRadius: 20 }}
             />
           }>
-          {t('agent.settings.toolsMcp.tools.title', 'Pre-approved Tools')}
+          {t('agent.settings.tooling.preapproved.title', 'Pre-approved Tools')}
         </SettingsTitle>
         <div className="mt-2 flex flex-col gap-3">
           {filteredTools.length === 0 ? (
@@ -191,9 +163,6 @@ export const ToolsSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, upda
                             <Tag color="success">
                               {t('agent.settings.tooling.preapproved.autoBadge', 'Added by mode')}
                             </Tag>
-                          ) : null}
-                          {tool.type === 'mcp' ? (
-                            <Tag color="default">{t('agent.settings.tooling.preapproved.mcpBadge', 'MCP tool')}</Tag>
                           ) : null}
                           {tool.requirePermissions ? (
                             <Tag color="warning">
@@ -234,77 +203,6 @@ export const ToolsSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, upda
               )
             })
           )}
-        </div>
-      </SettingsItem>
-
-      <SettingsItem divider={false} className="mt-4">
-        <SettingsTitle>{t('agent.settings.toolsMcp.mcp.title', 'MCP Servers')}</SettingsTitle>
-        <div className="flex flex-col gap-3">
-          <span className="text-foreground-500 text-sm">
-            {t(
-              'agent.settings.tooling.mcp.description',
-              'Connect MCP servers to unlock additional tools you can approve above.'
-            )}
-          </span>
-          {availableServers.length === 0 ? (
-            <div className="rounded-medium border border-default-200 border-dashed px-4 py-6 text-center text-foreground-500 text-sm">
-              {t('agent.settings.tooling.mcp.empty', 'No MCP servers detected. Add one from the MCP settings page.')}
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {availableServers.map((server) => {
-                const isSelected = selectedMcpIds.includes(server.id)
-                return (
-                  <Card
-                    key={server.id}
-                    className="border border-default-200"
-                    title={
-                      <div className="flex items-center justify-between gap-2 py-3">
-                        <div className="flex min-w-0 flex-col gap-1">
-                          <div className="flex items-center gap-2">
-                            {server.logoUrl && (
-                              <img
-                                src={server.logoUrl}
-                                alt={`${server.name} logo`}
-                                className="h-5 w-5 rounded object-cover"
-                              />
-                            )}
-                            <span className="truncate font-medium text-sm">{server.name}</span>
-                          </div>
-                          {server.description ? (
-                            <span className="line-clamp-2 whitespace-pre-wrap break-all text-foreground-500 text-xs">
-                              {server.description}
-                            </span>
-                          ) : null}
-                        </div>
-                        <Tooltip
-                          title={!server.isActive ? t('agent.settings.tooling.mcp.inactiveTooltip') : undefined}
-                          open={!server.isActive ? undefined : false}>
-                          <Switch
-                            aria-label={t('agent.settings.tooling.mcp.toggle', {
-                              defaultValue: `Toggle ${server.name}`,
-                              name: server.name
-                            })}
-                            checked={isSelected}
-                            size="small"
-                            disabled={!server.isActive || isUpdatingMcp}
-                            onChange={(checked) => handleToggleMcp(server.id, checked)}
-                          />
-                        </Tooltip>
-                      </div>
-                    }
-                    styles={cardStyles}
-                  />
-                )
-              })}
-            </div>
-          )}
-          <div className="flex items-center gap-2 text-foreground-500 text-xs">
-            <Wrench size={14} />
-            <span>
-              {t('agent.settings.tooling.mcp.manageHint', 'Need advanced configuration? Visit Settings → MCP Servers.')}
-            </span>
-          </div>
         </div>
       </SettingsItem>
     </SettingsContainer>

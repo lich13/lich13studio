@@ -6,6 +6,7 @@ import store from '@renderer/store'
 import { setLocalBackupSyncState, setWebDAVSyncState } from '@renderer/store/backup'
 import type { WebDavConfig } from '@renderer/types'
 import { uuid } from '@renderer/utils'
+import { sanitizePersistedState } from '@shared/stateMigration'
 import dayjs from 'dayjs'
 
 import { buildDefaultBackupFileName, ensureBackupFileName, isBackupOwnedByDevice } from './BackupNaming'
@@ -772,14 +773,14 @@ export async function handleData(data: Record<string, any>) {
       }
     }
 
-    localStorage.setItem(LEGACY_PERSIST_KEY, data.localStorage[LEGACY_PERSIST_KEY])
+    localStorage.setItem(LEGACY_PERSIST_KEY, sanitizePersistedState(data.localStorage[LEGACY_PERSIST_KEY]))
     window.toast.success(i18n.t('message.restore.success'))
     setTimeout(() => window.api.relaunchApp(), 1000)
     return
   }
 
   if (data.version >= 2) {
-    localStorage.setItem(LEGACY_PERSIST_KEY, data.localStorage[LEGACY_PERSIST_KEY])
+    localStorage.setItem(LEGACY_PERSIST_KEY, sanitizePersistedState(data.localStorage[LEGACY_PERSIST_KEY]))
 
     // remove notes_tree from indexedDB
     if (data.indexedDB['notes_tree']) {
