@@ -15,7 +15,8 @@ export default defineConfig({
       '@logger': path.resolve(__dirname, 'src/renderer/src/services/LoggerService'),
       '@renderer': path.resolve(__dirname, 'src/renderer/src'),
       '@types': path.resolve(__dirname, 'src/renderer/src/types/index.ts'),
-      '@shared': path.resolve(__dirname, 'packages/shared')
+      '@shared': path.resolve(__dirname, 'packages/shared'),
+      '@cherrystudio/ai-sdk-provider': path.resolve(__dirname, 'packages/ai-sdk-provider/src/index.ts')
     }
   },
   esbuild: {
