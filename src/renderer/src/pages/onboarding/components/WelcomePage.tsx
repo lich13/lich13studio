@@ -1,6 +1,7 @@
 import { loggerService } from '@logger'
 import AppLogo from '@renderer/assets/images/logo.png'
 import { useAppStore } from '@renderer/store'
+import { resolveProviders } from '@shared/platforms'
 import { Button, Divider } from 'antd'
 import type { FC } from 'react'
 import { useCallback } from 'react'
@@ -23,9 +24,9 @@ const WelcomePage: FC<WelcomePageProps> = ({ setStep, setProviderConfigured }) =
   const handleConfigureProviders = useCallback(async () => {
     try {
       await ProviderPopup.show()
-      const hasAvailableProvider = store
-        .getState()
-        .llm.providers.some((provider) => provider.enabled && provider.models.length > 0)
+      const hasAvailableProvider = resolveProviders(store.getState().llm).some(
+        (provider) => provider.enabled && provider.models.length > 0
+      )
       if (hasAvailableProvider) {
         setProviderConfigured(true)
         window.toast.success(t('onboarding.toast.connected'))

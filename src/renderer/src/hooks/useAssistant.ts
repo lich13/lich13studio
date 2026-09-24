@@ -23,6 +23,7 @@ import { uuid } from '@renderer/utils'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { useModel } from './useModel'
 import { TopicManager } from './useTopic'
 
 export function useAssistants() {
@@ -71,10 +72,9 @@ export function useAssistant(id: string) {
   const dispatch = useAppDispatch()
   const { defaultModel } = useDefaultModel()
 
-  const model = useMemo(
-    () => assistant?.model ?? assistant?.defaultModel ?? defaultModel ?? EMPTY_MODEL,
-    [assistant, defaultModel]
-  )
+  const savedModel = assistant?.model ?? assistant?.defaultModel ?? defaultModel ?? EMPTY_MODEL
+  const currentModel = useModel(savedModel.id, savedModel.provider)
+  const model = currentModel ?? savedModel
 
   const normalizedTopics = useMemo(
     () => (Array.isArray(assistant?.topics) ? assistant.topics : []),

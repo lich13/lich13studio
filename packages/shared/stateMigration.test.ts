@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { sanitizePersistedState, sanitizeState } from './stateMigration'
+import { migratePlatformState, sanitizePersistedState, sanitizeState } from './stateMigration'
 
 const provider = { id: 'new', type: 'openai-response', apiHost: 'http://localhost/v1', apiKey: 'test-key', models: [] }
 const fixture = (version: number) => ({
@@ -47,7 +47,8 @@ describe('216 state boundary', () => {
   it('keeps new providers on restart and current backups, while scrubbing resurrected MCP data', () => {
     const raw = sanitizePersistedState(encode(fixture(216)))
     const next = decode(raw)
-    expect(next.llm.providers).toEqual([provider])
+    expect(next.llm.providers[0]).toMatchObject({ id: provider.id, apiKey: provider.apiKey, platform: 'openai' })
+    expect(next.llm.providers[0].models).toBeUndefined()
     expect(next.llm.defaultModel.id).toBe('gpt-test')
     expect(next.mcp).toBeUndefined()
     expect(sanitizePersistedState(raw)).toBe(raw)
@@ -72,5 +73,51 @@ describe('216 state boundary', () => {
     const state = fixture(216)
     state.assistants.assistants[0].settings.reasoning_effort = effort
     expect(sanitizeState(state).assistants.assistants[0].settings.reasoning_effort).toBe(effort)
+  })
+})
+
+describe('217 shared catalog migration', () => {
+  it('merges old definitions in provider order, preserves keys and chat, and repairs addresses', () => {
+    const state: any = {
+      llm: {
+        providers: [
+          {
+            ...provider,
+            models: [{ id: 'gpt-6-sol', provider: 'new', name: 'My edited name' }],
+            apiHost: 'https://happycodeai.com//v1/v1',
+            userAgent: 'old',
+            extra_headers: { 'uSeR-aGeNt': 'old', 'X-Custom': 'keep' },
+            healthStatus: 'passed'
+          },
+          { ...provider, id: 'second', models: [{ id: 'gpt-6-sol', name: 'Ignored second definition' }] },
+          { ...provider, id: 'g', models: [{ id: 'grok-custom', name: 'Custom grok' }] },
+          { ...provider, id: 'a', type: 'anthropic', models: [{ id: 'claude-custom' }] }
+        ]
+      },
+      chats: [{ text: 'immutable history', model: { id: 'gpt-6-sol', name: 'historical' } }]
+    }
+    const history = JSON.stringify(state.chats)
+    const next = migratePlatformState(state)
+    expect(next.llm.providers.map((p: any) => p.platform)).toEqual(['openai', 'openai', 'grok', 'anthropic'])
+    expect(next.llm.providers[0]).toMatchObject({
+      apiHost: 'https://happycodeai.com/v1',
+      apiKey: 'test-key',
+      extra_headers: { 'X-Custom': 'keep' }
+    })
+    expect(next.llm.providers[0]).not.toHaveProperty('models')
+    expect(next.llm.providers[0]).not.toHaveProperty('userAgent')
+    expect(next.llm.providers[0]).not.toHaveProperty('healthStatus')
+    expect(next.llm.platformModels.openai[0]).toEqual({ id: 'gpt-6-sol', name: 'My edited name' })
+    expect(next.llm.platformModels.grok[0].id).toBe('grok-custom')
+    expect(JSON.stringify(next.chats)).toBe(history)
+    const snapshot = JSON.stringify(next)
+    expect(JSON.stringify(migratePlatformState(next))).toBe(snapshot)
+  })
+  it('preserves intentionally emptied catalogs and edits on 217 backup restore', () => {
+    const state: any = fixture(217)
+    state.llm.platformModels = { openai: [], grok: [{ id: 'grok-edited', name: 'My name' }], anthropic: [] }
+    const next = decode(sanitizePersistedState(encode(state)))
+    expect(next.llm.platformModels).toEqual(state.llm.platformModels)
+    expect(next.llm.providers[0].apiKey).toBe('test-key')
   })
 })

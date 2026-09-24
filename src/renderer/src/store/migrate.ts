@@ -51,11 +51,11 @@ import {
 } from '@renderer/utils/provider'
 import { API_SERVER_DEFAULTS } from '@shared/config/constant'
 import { defaultByPassRules, UpgradeChannel } from '@shared/config/constant'
-import { sanitizeState } from '@shared/stateMigration'
+import { migratePlatformState, sanitizeState } from '@shared/stateMigration'
 import { isEmpty } from 'lodash'
 import { createMigrate } from 'redux-persist'
 
-import type { RootState } from '.'
+import type { RootState as CurrentRootState } from '.'
 import { DEFAULT_TOOL_ORDER, DEFAULT_TOOL_ORDER_BY_SCOPE } from './inputTools'
 import { initialState as llmInitialState, moveProvider } from './llm'
 import { initialState as notesInitialState } from './note'
@@ -63,6 +63,10 @@ import { defaultActionItems } from './selectionStore'
 import { initialState as settingsInitialState } from './settings'
 import { initialState as shortcutsInitialState } from './shortcuts'
 import { defaultWebSearchProviders } from './websearch'
+
+type RootState = Omit<CurrentRootState, 'llm'> & {
+  llm: Omit<CurrentRootState['llm'], 'providers'> & { providers: (Omit<Provider, 'type'> & { type: any })[] }
+}
 
 const logger = loggerService.withContext('Migrate')
 
@@ -3470,7 +3474,8 @@ const migrateConfig = {
       return state
     }
   },
-  '216': (state: RootState) => sanitizeState(state, true)
+  '216': (state: RootState) => sanitizeState(state, true),
+  '217': (state: RootState) => migratePlatformState(state)
 }
 
 // 注意：添加新迁移时，记得同时更新 persistReducer

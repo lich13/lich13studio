@@ -9,7 +9,6 @@ import { DocPreprocessApiKeyList, LlmApiKeyList, WebSearchApiKeyList } from './l
 interface ShowParams {
   providerId: string
   title?: string
-  showHealthCheck?: boolean
   providerType?: 'llm' | 'webSearch' | 'preprocess'
 }
 
@@ -20,7 +19,7 @@ interface Props extends ShowParams {
 /**
  * API Key 列表弹窗容器组件
  */
-const PopupContainer: React.FC<Props> = ({ providerId, title, resolve, showHealthCheck = true, providerType }) => {
+const PopupContainer: React.FC<Props> = ({ providerId, title, resolve, providerType }) => {
   const [open, setOpen] = useState(true)
   const { t } = useTranslation()
 
@@ -39,14 +38,14 @@ const PopupContainer: React.FC<Props> = ({ providerId, title, resolve, showHealt
 
     switch (type) {
       case 'webSearch':
-        return <WebSearchApiKeyList providerId={providerId as any} showHealthCheck={showHealthCheck} />
+        return <WebSearchApiKeyList providerId={providerId as any} />
       case 'preprocess':
-        return <DocPreprocessApiKeyList providerId={providerId as any} showHealthCheck={showHealthCheck} />
+        return <DocPreprocessApiKeyList providerId={providerId as any} />
       case 'llm':
       default:
-        return <LlmApiKeyList providerId={providerId} showHealthCheck={showHealthCheck} />
+        return <LlmApiKeyList providerId={providerId} />
     }
-  }, [providerId, showHealthCheck, providerType])
+  }, [providerId, providerType])
 
   return (
     <Modal

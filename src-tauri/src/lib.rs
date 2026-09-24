@@ -890,15 +890,6 @@ fn remove_native_http_abort(request_id: &str) {
   }
 }
 
-fn is_native_http_aborted(request_id: &str) -> bool {
-  native_http_abort_registry()
-    .lock()
-    .ok()
-    .and_then(|registry| registry.get(request_id).cloned())
-    .map(|flag| flag.load(Ordering::Relaxed))
-    .unwrap_or(false)
-}
-
 async fn emit_native_http_chunk(window: &Window, request_id: &str, chunk: Vec<u8>, done: bool, error: Option<String>) {
   let payload = NativeHttpChunkEvent {
     request_id: request_id.to_string(),
@@ -1290,6 +1281,12 @@ fn obsidian_files(vault_name: &str) -> Result<Vec<ObsidianFileInfo>, String> {
   Ok(results)
 }
 
+async fn wait_for_http_abort(flag: &AtomicBool) {
+  while !flag.load(Ordering::Relaxed) {
+    tokio::time::sleep(Duration::from_millis(25)).await;
+  }
+}
+
 #[tauri::command]
 async fn start_http_request(window: Window, request: NativeHttpRequest) -> Result<NativeHttpResponseStart, String> {
   let request_id = if request.request_id.trim().is_empty() {
@@ -1323,10 +1320,16 @@ async fn start_http_request(window: Window, request: NativeHttpRequest) -> Resul
     return Err(String::from("Request was aborted"));
   }
 
-  let response = builder.send().await.map_err(|error| {
-    remove_native_http_abort(&request_id);
-    error.to_string()
-  })?;
+  let response = tokio::select! {
+    result = builder.send() => result.map_err(|error| {
+      remove_native_http_abort(&request_id);
+      error.to_string()
+    })?,
+    _ = wait_for_http_abort(&abort_flag) => {
+      remove_native_http_abort(&request_id);
+      return Err(String::from("Request was aborted"));
+    }
+  };
 
   let response_headers = response
     .headers()
@@ -1355,11 +1358,12 @@ async fn start_http_request(window: Window, request: NativeHttpRequest) -> Resul
   tauri::async_runtime::spawn(async move {
     let mut stream = response.bytes_stream();
 
-    while let Some(chunk) = stream.next().await {
-      if abort_flag.load(Ordering::Relaxed) || is_native_http_aborted(&task_request_id) {
-        break;
-      }
-
+    loop {
+      let chunk = tokio::select! {
+        chunk = stream.next() => chunk,
+        _ = wait_for_http_abort(&abort_flag) => None,
+      };
+      let Some(chunk) = chunk else { break };
       match chunk {
         Ok(bytes) => {
           emit_native_http_chunk(&task_window, &task_request_id, bytes.to_vec(), false, None).await;
@@ -2468,9 +2472,38 @@ fn set_mini_window_pin(is_pinned: bool) -> Result<(), String> {
   Ok(())
 }
 
+// Keep import credentials only in memory until the main renderer can receive them.
+#[derive(Default)]
+struct PendingProviderImports(Mutex<Vec<String>>);
+
+impl PendingProviderImports {
+  fn enqueue(&self, urls: &[Url]) {
+    let mut pending = self.0.lock().unwrap();
+    for url in urls.iter().filter(|url| url.scheme() == "ccswitch") {
+      let value = url.as_str().to_owned();
+      if !pending.contains(&value) {
+        pending.push(value);
+      }
+    }
+  }
+
+  fn take(&self, window_label: &str) -> Vec<String> {
+    if window_label != "main" {
+      return Vec::new();
+    }
+    std::mem::take(&mut *self.0.lock().unwrap())
+  }
+}
+
+#[tauri::command]
+fn take_pending_provider_imports(window: Window, pending: tauri::State<PendingProviderImports>) -> Vec<String> {
+  pending.take(window.label())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
+    .manage(PendingProviderImports::default())
     .plugin(tauri_plugin_single_instance::init(|app, _, _| {
       let _ = show_and_focus_main_window(app);
     }))
@@ -2479,7 +2512,12 @@ pub fn run() {
     .setup(|app| {
       use tauri_plugin_deep_link::DeepLinkExt;
       let import_app = app.handle().clone();
-      app.deep_link().on_open_url(move |_| {
+      if let Ok(Some(urls)) = app.deep_link().get_current() {
+        app.state::<PendingProviderImports>().enqueue(&urls);
+      }
+      app.deep_link().on_open_url(move |event| {
+        import_app.state::<PendingProviderImports>().enqueue(&event.urls());
+        let _ = import_app.emit_to("main", "provider-import-pending", ());
         let _ = show_and_focus_main_window(&import_app);
       });
       let runtime_settings = load_runtime_settings_from_state().unwrap_or_default();
@@ -2531,6 +2569,7 @@ pub fn run() {
     })
     .invoke_handler(tauri::generate_handler![
       app_info,
+      take_pending_provider_imports,
       get_device_type,
       get_hostname,
       load_state,
@@ -2579,6 +2618,37 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  #[tokio::test]
+  async fn cancels_http_while_waiting_for_headers_or_stream_data() {
+    let flag = Arc::new(AtomicBool::new(false));
+    let trigger = flag.clone();
+    tokio::spawn(async move {
+      tokio::time::sleep(Duration::from_millis(20)).await;
+      trigger.store(true, Ordering::Relaxed);
+    });
+    let result = tokio::time::timeout(Duration::from_secs(1), async {
+      tokio::select! {
+        _ = std::future::pending::<()>() => false,
+        _ = wait_for_http_abort(&flag) => true,
+      }
+    }).await;
+    assert_eq!(result.unwrap(), true);
+  }
+
+  #[test]
+  fn queues_provider_imports_until_main_renderer_is_ready() {
+    let pending = PendingProviderImports::default();
+    let first = Url::parse("ccswitch://v1/import?app=codex").unwrap();
+    let second = Url::parse("ccswitch://v1/import?app=claude").unwrap();
+    pending.enqueue(&[first.clone(), Url::parse("cherrystudio://ignored").unwrap()]);
+    pending.enqueue(&[first.clone(), second.clone()]);
+    assert!(pending.take("mini").is_empty());
+    assert_eq!(pending.take("main"), vec![first.to_string(), second.to_string()]);
+    assert!(pending.take("main").is_empty());
+    pending.enqueue(&[first.clone()]);
+    assert_eq!(pending.take("main"), vec![first.to_string()]);
+  }
 
   #[test]
   fn decodes_base64_image_data_url() {

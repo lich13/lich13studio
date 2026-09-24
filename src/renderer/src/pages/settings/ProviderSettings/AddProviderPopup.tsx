@@ -7,6 +7,13 @@ import { PROVIDER_LOGO_MAP } from '@renderer/config/providers'
 import ImageStorage from '@renderer/services/ImageStorage'
 import type { Provider, ProviderType } from '@renderer/types'
 import { compressImage, generateColorFromChar, getForegroundColor } from '@renderer/utils'
+import {
+  inferProviderPlatform,
+  PLATFORM_NAMES,
+  platformProtocol,
+  PROVIDER_PLATFORMS,
+  type ProviderPlatform
+} from '@shared/platforms'
 import { Divider, Dropdown, Form, Input, Modal, Popover, Select, Upload } from 'antd'
 import type { ItemType } from 'antd/es/menu/interface'
 import React, { useEffect, useRef, useState } from 'react'
@@ -17,14 +24,23 @@ const logger = loggerService.withContext('AddProviderPopup')
 
 interface Props {
   provider?: Provider
-  resolve: (result: { name: string; type: ProviderType; logo?: string; logoFile?: File }) => void
+  initialPlatform?: ProviderPlatform
+  resolve: (result: {
+    name: string
+    type: ProviderType
+    platform: ProviderPlatform
+    logo?: string
+    logoFile?: File
+  }) => void
 }
 
-const PopupContainer: React.FC<Props> = ({ provider, resolve }) => {
+const PopupContainer: React.FC<Props> = ({ provider, resolve, initialPlatform = 'openai' }) => {
   const [open, setOpen] = useState(true)
   const [name, setName] = useState(provider?.name || '')
-  const [type, setType] = useState<ProviderType>(provider?.type || 'openai-response')
-  const [displayType, setDisplayType] = useState<string>(provider?.type || 'openai-response')
+  const [platform, setPlatform] = useState<ProviderPlatform>(
+    provider ? inferProviderPlatform(provider) : initialPlatform
+  )
+  const type = platformProtocol(platform)
   const [logo, setLogo] = useState<string | null>(null)
   const [logoPickerOpen, setLogoPickerOpen] = useState(false)
   const [dropdownOpen, setDropdownOpen] = useState(false)
@@ -54,6 +70,7 @@ const PopupContainer: React.FC<Props> = ({ provider, resolve }) => {
     const result = {
       name: name.trim(),
       type,
+      platform,
       logo: logo || undefined
     }
     resolve(result)
@@ -61,11 +78,11 @@ const PopupContainer: React.FC<Props> = ({ provider, resolve }) => {
 
   const onCancel = () => {
     setOpen(false)
-    resolve({ name: '', type: 'openai-response' })
+    resolve({ name: '', type: platformProtocol(platform), platform })
   }
 
   const onClose = () => {
-    resolve({ name: name.trim(), type, logo: logo || undefined })
+    resolve({ name: name.trim(), type, platform, logo: logo || undefined })
   }
 
   const buttonDisabled = name.trim().length === 0
@@ -244,17 +261,11 @@ const PopupContainer: React.FC<Props> = ({ provider, resolve }) => {
             maxLength={32}
           />
         </Form.Item>
-        <Form.Item label={t('settings.provider.add.type')} style={{ marginBottom: 0 }}>
+        <Form.Item label={t('platform.label')} style={{ marginBottom: 0 }}>
           <Select
-            value={displayType}
-            onChange={(value: string) => {
-              setDisplayType(value)
-              setType(value as ProviderType)
-            }}
-            options={[
-              { label: 'Responses', value: 'openai-response' },
-              { label: 'Anthropic', value: 'anthropic' }
-            ]}
+            value={platform}
+            onChange={setPlatform}
+            options={PROVIDER_PLATFORMS.map((value) => ({ value, label: PLATFORM_NAMES[value] }))}
           />
         </Form.Item>
       </Form>
@@ -306,16 +317,18 @@ export default class AddProviderPopup {
   static hide() {
     TopView.hide('AddProviderPopup')
   }
-  static show(provider?: Provider) {
+  static show(provider?: Provider, initialPlatform: ProviderPlatform = 'openai') {
     return new Promise<{
       name: string
       type: ProviderType
+      platform: ProviderPlatform
       logo?: string
       logoFile?: File
     }>((resolve) => {
       TopView.show(
         <PopupContainer
           provider={provider}
+          initialPlatform={initialPlatform}
           resolve={(v) => {
             resolve(v)
             this.hide()

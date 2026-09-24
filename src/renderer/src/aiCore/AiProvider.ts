@@ -2,6 +2,7 @@ import { createExecutor } from '@cherrystudio/ai-core'
 import type { generateImageResult } from '@cherrystudio/ai-core/core/runtime/types'
 import { loggerService } from '@logger'
 import { getEnableDeveloperMode } from '@renderer/hooks/useSettings'
+import { requireCurrentModel } from '@renderer/services/AssistantService'
 import { normalizeGatewayModels } from '@renderer/services/models/ModelAdapter'
 import { addSpan, endSpan } from '@renderer/services/SpanManagerService'
 import type { StartSpanParams } from '@renderer/trace/types/ModelSpanEntity'
@@ -78,7 +79,7 @@ export default class AiProvider {
   constructor(modelOrProvider: Model | Provider, provider?: Provider) {
     if (this.isModel(modelOrProvider)) {
       // 传入的是 Model
-      this.model = modelOrProvider
+      this.model = requireCurrentModel(modelOrProvider)
       this.actualProvider = provider
         ? adaptProvider({ provider, model: modelOrProvider })
         : getActualProvider(modelOrProvider)

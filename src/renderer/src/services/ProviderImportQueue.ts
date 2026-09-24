@@ -1,4 +1,6 @@
-import { getCurrent, onOpenUrl } from '@tauri-apps/plugin-deep-link'
+import { invoke } from '@tauri-apps/api/core'
+import { listen } from '@tauri-apps/api/event'
+import { getCurrentWindow } from '@tauri-apps/api/window'
 
 // Credentials only live in this in-memory queue until the user confirms import.
 const pending = new Set<string>()
@@ -16,10 +18,13 @@ function enqueue(urls: string[]) {
 }
 
 export function startProviderImportListener() {
-  if (started || !(window as any).__TAURI_INTERNALS__) return
+  if (started || !(window as any).__TAURI_INTERNALS__ || getCurrentWindow().label !== 'main') return
   started = true
-  void onOpenUrl(enqueue)
-    .then(async () => enqueue((await getCurrent()) ?? []))
+  const receive = async () => enqueue(await invoke<string[]>('take_pending_provider_imports'))
+  void listen('provider-import-pending', () => {
+    void receive().catch(() => {})
+  })
+    .then(receive)
     .catch(() => {
       started = false
     })

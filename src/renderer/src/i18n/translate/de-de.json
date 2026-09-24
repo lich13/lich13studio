@@ -3257,6 +3257,24 @@
       }
     }
   },
+  "platform": {
+    "api_options": "API options",
+    "builtin_version": "Bundled version · not yet synced",
+    "cli_identity": "Official CLI identity",
+    "delete_model": "Remove this model from all providers on this platform?",
+    "import_title": "Import CCS provider",
+    "invalid_address": "Enter a valid HTTP or HTTPS address without credentials or query parameters.",
+    "label": "Platform",
+    "models_help": "All providers on this platform use this catalog. Changes apply to subsequent requests.",
+    "models_title": "Shared model catalog",
+    "move_down": "Move down",
+    "move_up": "Move up",
+    "provider_help": "Uses {{protocol}} and the shared {{platform}} model catalog.",
+    "search_models": "Search models",
+    "select_model": "Select an available provider and a model from its platform catalog.",
+    "sync_now": "Sync now",
+    "use_catalog": "Use the platform model catalog"
+  },
   "plugins": {
     "actions": "Aktionen",
     "agents": "Agenten",
@@ -4654,30 +4672,6 @@
       },
       "api_key": "API-Schlüssel",
       "base_url": "Basis-URL",
-      "check": {
-        "all": "Alle",
-        "all_models_passed": "Alle Modelle Test bestanden",
-        "button_caption": "Gesundheitscheck",
-        "disabled": "Schließen",
-        "disclaimer": "Gesundheitscheck erfordert Anfragen. Vorsichtig verwenden. Pay-per-use-Modelle können zusätzliche Kosten verursachen.",
-        "enable_concurrent": "Parallele Erkennung",
-        "enabled": "Einschalten",
-        "failed": "Fehlgeschlagen",
-        "keys_status_count": "Erfolgreich: {{count_passed}} Schlüssel, Fehlgeschlagen: {{count_failed}} Schlüssel",
-        "model_status_failed": "{{count}} Modelle vollständig nicht zugänglich",
-        "model_status_partial": "{{count}} Modelle mit einigen Schlüsseln nicht zugänglich",
-        "model_status_passed": "{{count}} Modelle bestanden die Gesundheitscheck",
-        "model_status_summary": "{{provider}}: {{summary}}",
-        "no_api_keys": "API-Schlüssel nicht gefunden, bitte zuerst API-Schlüssel hinzufügen",
-        "no_results": "Keine Ergebnisse",
-        "passed": "Durch",
-        "select_api_key": "API-Schlüssel auswählen: ",
-        "single": "Einzeln",
-        "start": "Start",
-        "timeout": "Timeout",
-        "title": "Modell-Gesundheitscheck",
-        "use_all_keys": "Schlüssel verwenden"
-      },
       "default_assistant_model": "Standard-Assistent-Modell",
       "default_assistant_model_description": "Modell für neue Assistenten. Wird verwendet, wenn Assistent kein Modell hat.",
       "empty": "Kein Modell",
@@ -4813,9 +4807,6 @@
       "anthropic_api_host_tooltip": "Nur bei Anbietern, die ein Claude-kompatibles Basis-Endpunkt anbieten.",
       "api": {
         "key": {
-          "check": {
-            "latency": "Verzögerung"
-          },
           "error": {
             "duplicate": "API-Schlüssel bereits vorhanden",
             "empty": "API-Schlüssel darf nicht leer sein"
@@ -4914,9 +4905,6 @@
       },
       "bills": "Rechnungen",
       "charge": "Guthaben aufladen",
-      "check": "Erkennen",
-      "check_all_keys": "Alle Schlüssel testen",
-      "check_multiple_keys": "Mehrere API-Schlüssel testen",
       "copilot": {
         "auth_failed": "Github Copilot-Authentifizierung fehlgeschlagen",
         "auth_success": "Github Copilot-Authentifizierung erfolgreich",
@@ -5012,11 +5000,6 @@
       "search": "Modellplattform suchen...",
       "search_placeholder": "Modell-ID oder Name suchen",
       "title": "Modelldienst",
-      "user_agent": {
-        "help": "Optionaler benutzerdefinierter User-Agent-Header fuer API-Anfragen dieses Anbieters.",
-        "label": "User-Agent",
-        "placeholder": "Beispiel: CherryStudio/1.0"
-      },
       "vertex_ai": {
         "api_host_help": "Vertex AI-API-Adresse, nicht empfohlen, normalerweise für Reverse-Proxy geeignet",
         "documentation": "Offizielle Dokumentation für weitere Konfigurationsdetails ansehen:",

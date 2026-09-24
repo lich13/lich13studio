@@ -1,4 +1,5 @@
 import type OpenAI from '@cherrystudio/openai'
+import type { ProviderPlatform } from '@shared/platforms'
 import type { Model } from '@types'
 import * as z from 'zod'
 
@@ -90,10 +91,12 @@ export function isAwsBedrockAuthType(type: string): type is AwsBedrockAuthType {
 export type Provider = {
   id: string
   type: ProviderType
+  platform?: ProviderPlatform
+  /** Resolved from platform state; never persisted on the service provider. */
+  cliVersion?: string
   name: string
   apiKey: string
   apiHost: string
-  userAgent?: string
   anthropicApiHost?: string
   isAnthropicModel?: (m: Model) => boolean
   apiVersion?: string

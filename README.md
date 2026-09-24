@@ -29,7 +29,7 @@ Excluded:
 
 ## Current release
 
-Version 0.1.16 supports Responses and Anthropic, five reasoning levels with `max` as the default, and Sub2API's “Import to CCS” links. The first upgrade removes all old providers and credentials; chats, assistants and quick phrases are preserved. Add or import a provider to select a new model.
+Version 0.1.17 groups providers by OpenAI, grok and Anthropic, with one editable model catalog per platform. Sub2API and New API “Import to CCS” links preserve platform identity and normalize addresses. Official CLI identities synchronize hourly with offline caching. Five reasoning levels still default to `max`. Upgrades from 0.1.16 preserve providers, credentials and chats; the existing provider reset only applies to versions older than 0.1.16.
 
 MCP configuration and execution have been removed. Existing tool messages remain as read-only history.
 
@@ -59,6 +59,15 @@ That upstream reference is kept only as source acknowledgement and migration con
 - GitHub release build: push a tag or run `.github/workflows/release-build.yml`
 
 The repository now uses a Tauri-first release flow. Legacy Electron Builder packaging files and workflows have been removed.
+
+## 0.1.17
+
+- Shared platform model catalogs with add, edit, remove and reorder controls.
+- Sub2API and New API CCS imports, including multiple Claude models and editable platform selection.
+- Address normalization fixes duplicate slashes and `/v1`; a trailing `#` preserves explicit endpoints.
+- Official Codex CLI, Grok CLI and Claude Code UA synchronization, with stable-version filtering and offline caching.
+- Model health checks and API Key connection tests removed.
+- Migration 217 merges existing models without replacing user edits; subsequent requests resolve the latest catalog and retain the selected provider.
 
 ## 0.1.16
 

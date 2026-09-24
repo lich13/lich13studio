@@ -11,7 +11,6 @@ import type {
 import { isSerializedAiSdkAPICallError } from '@renderer/types/error'
 import { safeSerialize } from '@shared/utils/serialize'
 import type { NoSuchToolError } from 'ai'
-import { AISDKError } from 'ai'
 import { InvalidToolInputError } from 'ai'
 import type { AxiosError } from 'axios'
 import { isAxiosError } from 'axios'
@@ -347,19 +346,4 @@ export const formatAxiosError = (error: AxiosError) => {
   const { status, statusText } = error.response
 
   return `${t('common.error')}: ${status} ${statusText}`
-}
-
-/**
- * Safely serialize an unknown error to SerializedError format.
- * Used specifically for health check error handling.
- */
-export function serializeHealthCheckError(error: unknown): SerializedError {
-  if (AISDKError.isInstance(error)) {
-    return serializeError(error)
-  }
-  return {
-    name: null,
-    message: safeToString(error),
-    stack: null
-  }
 }

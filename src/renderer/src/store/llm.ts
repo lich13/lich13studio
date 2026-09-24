@@ -18,7 +18,18 @@ import type { PayloadAction } from '@reduxjs/toolkit'
 import { createSlice } from '@reduxjs/toolkit'
 import { SYSTEM_PROVIDERS } from '@renderer/config/providers'
 import { type AwsBedrockAuthType, type Model, type Provider, ProviderTypeSchema } from '@renderer/types'
-import { uniqBy } from 'lodash'
+import type { CliVersionCache, CliVersions } from '@shared/cliIdentity'
+import {
+  catalogModel,
+  createPlatformModels,
+  inferProviderPlatform,
+  type PlatformModel,
+  type PlatformModels,
+  type ProviderPlatform,
+  type StoredProvider,
+  storedProvider
+} from '@shared/platforms'
+import { normalizeProviderEndpoint } from '@shared/providerImport'
 
 type LlmSettings = {
   ollama: {
@@ -52,7 +63,9 @@ type LlmSettings = {
 }
 
 export interface LlmState {
-  providers: Provider[]
+  providers: StoredProvider[]
+  platformModels: PlatformModels
+  cliVersions: CliVersions
   defaultModel?: Model
   /** @deprecated */
   topicNamingModel?: Model
@@ -69,6 +82,8 @@ export const initialState: LlmState = {
   translateModel: undefined,
   quickAssistantId: '',
   providers: SYSTEM_PROVIDERS,
+  platformModels: createPlatformModels(),
+  cliVersions: {},
   settings: {
     ollama: {
       keepAliveTime: 0
@@ -120,15 +135,19 @@ const llmSlice = createSlice({
       if (action.payload.type) ProviderTypeSchema.parse(action.payload.type)
       const index = state.providers.findIndex((p) => p.id === action.payload.id)
       if (index !== -1) {
-        Object.assign(state.providers[index], action.payload)
+        const updated = storedProvider({ ...state.providers[index], ...action.payload })
+        updated.apiHost = normalizeProviderEndpoint(updated.apiHost)
+        state.providers[index] = updated
       }
     },
     updateProviders: (state, action: PayloadAction<Provider[]>) => {
-      state.providers = action.payload.filter((provider) => ProviderTypeSchema.safeParse(provider.type).success)
+      state.providers = action.payload
+        .filter((provider) => ProviderTypeSchema.safeParse(provider.type).success)
+        .map(storedProvider)
     },
     addProvider: (state, action: PayloadAction<Provider>) => {
       ProviderTypeSchema.parse(action.payload.type)
-      state.providers.unshift(action.payload)
+      state.providers.unshift(storedProvider(action.payload))
     },
     removeProvider: (state, action: PayloadAction<Provider>) => {
       const providerIndex = state.providers.findIndex((p) => p.id === action.payload.id)
@@ -136,25 +155,40 @@ const llmSlice = createSlice({
         state.providers.splice(providerIndex, 1)
       }
     },
+    setPlatformModels: (state, action: PayloadAction<{ platform: ProviderPlatform; models: PlatformModel[] }>) => {
+      state.platformModels[action.payload.platform] = action.payload.models.map(catalogModel)
+    },
+    setCliVersion: (state, action: PayloadAction<{ platform: ProviderPlatform; cache: CliVersionCache }>) => {
+      state.cliVersions[action.payload.platform] = action.payload.cache
+    },
+    importPlatformProvider: (
+      state,
+      action: PayloadAction<{ provider: Provider; models: string[]; primaryModel?: string }>
+    ) => {
+      const { provider, models, primaryModel } = action.payload
+      const platform = inferProviderPlatform(provider)
+      const catalog = state.platformModels[platform]
+      for (const id of models)
+        if (!catalog.some((model) => model.id === id)) catalog.push({ id, name: id, group: platform })
+      if (!state.providers.some((existing) => existing.id === provider.id))
+        state.providers.unshift(storedProvider(provider))
+      if (!state.defaultModel?.id) {
+        const selected = catalog.find((model) => model.id === primaryModel) ?? catalog[0]
+        if (selected) state.defaultModel = { ...selected, provider: provider.id }
+      }
+    },
     addModel: (state, action: PayloadAction<{ providerId: string; model: Model }>) => {
-      state.providers = state.providers.map((p) =>
-        p.id === action.payload.providerId
-          ? {
-              ...p,
-              models: uniqBy(p.models.concat(action.payload.model), 'id'),
-              enabled: true
-            }
-          : p
-      )
+      const provider = state.providers.find((p) => p.id === action.payload.providerId)
+      if (!provider) return
+      const models = state.platformModels[inferProviderPlatform(provider)]
+      if (!models.some((model) => model.id === action.payload.model.id)) models.push(catalogModel(action.payload.model))
     },
     removeModel: (state, action: PayloadAction<{ providerId: string; model: Model }>) => {
-      state.providers = state.providers.map((p) =>
-        p.id === action.payload.providerId
-          ? {
-              ...p,
-              models: p.models.filter((m) => m.id !== action.payload.model.id)
-            }
-          : p
+      const provider = state.providers.find((p) => p.id === action.payload.providerId)
+      if (!provider) return
+      const platform = inferProviderPlatform(provider)
+      state.platformModels[platform] = state.platformModels[platform].filter(
+        (model) => model.id !== action.payload.model.id
       )
     },
     setDefaultModel: (state, action: PayloadAction<{ model: Model }>) => {
@@ -233,9 +267,10 @@ const llmSlice = createSlice({
     ) => {
       const provider = state.providers.find((p) => p.id === action.payload.providerId)
       if (provider) {
-        const modelIndex = provider.models.findIndex((m) => m.id === action.payload.model.id)
+        const models = state.platformModels[inferProviderPlatform(provider)]
+        const modelIndex = models.findIndex((m) => m.id === action.payload.model.id)
         if (modelIndex !== -1) {
-          provider.models[modelIndex] = action.payload.model
+          models[modelIndex] = catalogModel(action.payload.model)
         }
       }
     }
@@ -243,6 +278,9 @@ const llmSlice = createSlice({
 })
 
 export const {
+  setPlatformModels,
+  setCliVersion,
+  importPlatformProvider,
   updateProvider,
   updateProviders,
   addProvider,

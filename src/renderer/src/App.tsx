@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Provider } from 'react-redux'
 import { PersistGate } from 'redux-persist/integration/react'
 
+import PlatformRuntime from './components/PlatformRuntime'
 import StartupScreen from './components/StartupScreen'
 import TopViewContainer from './components/TopView'
 import AntdProvider from './context/AntdProvider'
@@ -39,6 +40,7 @@ function App(): React.ReactElement {
               <NotificationProvider>
                 <CodeStyleProvider>
                   <PersistGate loading={<StartupScreen />} persistor={persistor}>
+                    <PlatformRuntime />
                     <TopViewContainer>
                       <Router />
                     </TopViewContainer>

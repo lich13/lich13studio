@@ -1,29 +1,16 @@
 import { formatProviderApiHost } from '@main/aiCore/provider/providerConfig'
-import { CacheService } from '@main/services/CacheService'
 import { loggerService } from '@main/services/LoggerService'
 import { reduxService } from '@main/services/ReduxService'
 import { isSiliconAnthropicCompatibleModel } from '@shared/config/providers'
+import { resolveProviders } from '@shared/platforms'
 import type { ApiModel, Model, Provider, ProviderType } from '@types'
 
 const logger = loggerService.withContext('ApiServerUtils')
 
-// Cache configuration
-const PROVIDERS_CACHE_KEY = 'api-server:providers'
-const PROVIDERS_CACHE_TTL = 10 * 1000 // 10 seconds
-
 export async function getAvailableProviders(): Promise<Provider[]> {
   try {
-    // Try to get from cache first (faster)
-    const cachedSupportedProviders = CacheService.get<Provider[]>(PROVIDERS_CACHE_KEY)
-    if (cachedSupportedProviders && cachedSupportedProviders.length > 0) {
-      logger.debug('Providers resolved from cache', {
-        count: cachedSupportedProviders.length
-      })
-      return cachedSupportedProviders
-    }
-
-    // If cache is not available, get fresh data from Redux
-    const providers = await reduxService.select('state.llm.providers')
+    const llm = await reduxService.select('state.llm')
+    const providers = llm ? resolveProviders(llm) : []
     if (!providers || !Array.isArray(providers)) {
       logger.warn('No providers found in Redux store')
       return []
@@ -47,9 +34,6 @@ export async function getAvailableProviders(): Promise<Provider[]> {
         })
       }
     }
-
-    // Cache the formatted results
-    CacheService.set(PROVIDERS_CACHE_KEY, formattedProviders, PROVIDERS_CACHE_TTL)
 
     logger.info('Providers filtered and formatted', {
       supported: formattedProviders.length,

@@ -23,6 +23,7 @@ import {
   toggleShowTopics
 } from '@renderer/store/settings'
 import type { AssistantsSortType } from '@renderer/types'
+import { resolveProviders } from '@shared/platforms'
 
 export function useShowAssistants() {
   const showAssistants = useAppSelector((state) => state.settings.showAssistants)
@@ -57,5 +58,5 @@ export function useAssistantsTabSortType() {
 }
 
 export function getStoreProviders() {
-  return store.getState().llm.providers
+  return resolveProviders(store.getState().llm)
 }

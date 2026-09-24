@@ -5,25 +5,22 @@ import { loggerService } from '@logger'
 import { buildStreamTextParams } from '@renderer/aiCore/prepareParams'
 import type { AiSdkMiddlewareConfig } from '@renderer/aiCore/types/middlewareConfig'
 import { buildProviderOptions } from '@renderer/aiCore/utils/options'
-import { isDedicatedImageGenerationModel, isEmbeddingModel } from '@renderer/config/models'
+import { isDedicatedImageGenerationModel } from '@renderer/config/models'
 import { getStoreSetting } from '@renderer/hooks/useSettings'
 import i18n from '@renderer/i18n'
 import type { Assistant, Model, Provider } from '@renderer/types'
 import { type FetchChatCompletionParams, isSystemProvider } from '@renderer/types'
-import type { StreamTextParams } from '@renderer/types/aiCoreTypes'
 import { type Chunk, ChunkType } from '@renderer/types/chunk'
-import type { Message, ResponseError } from '@renderer/types/newMessage'
-import { removeSpecialCharactersForTopicName, uuid } from '@renderer/utils'
-import { abortCompletion, readyToAbort } from '@renderer/utils/abortController'
+import type { Message } from '@renderer/types/newMessage'
+import { removeSpecialCharactersForTopicName } from '@renderer/utils'
 import { trackTokenUsage } from '@renderer/utils/analytics'
-import { getErrorMessage, isAbortError } from '@renderer/utils/error'
+import { getErrorMessage } from '@renderer/utils/error'
 import { purifyMarkdownImages } from '@renderer/utils/markdown'
 import { findFileBlocks, findImageBlocks, getMainTextContent } from '@renderer/utils/messageUtils/find'
 import { containsSupportedVariables, replacePromptVariables } from '@renderer/utils/prompt'
 import { NOT_SUPPORT_API_KEY_PROVIDER_TYPES, NOT_SUPPORT_API_KEY_PROVIDERS } from '@renderer/utils/provider'
 import { isEmpty, takeRight } from 'lodash'
 
-import type { AiProviderConfig } from '../aiCore'
 import { AiProvider } from '../aiCore'
 import {
   // getAssistantProvider,
@@ -31,7 +28,8 @@ import {
   getDefaultAssistant,
   getDefaultModel,
   getProviderByModel,
-  getQuickModel
+  getQuickModel,
+  requireCurrentModel
 } from './AssistantService'
 import { ConversationService } from './ConversationService'
 import FileManager from './FileManager'
@@ -72,9 +70,11 @@ export async function transformMessagesAndFetch(
   },
   onChunkReceived: StreamProcessor
 ) {
-  const { messages, assistant } = request
+  const { messages } = request
+  const assistant = { ...request.assistant }
 
   try {
+    assistant.model = requireCurrentModel(assistant.model || getDefaultModel())
     const { modelMessages, uiMessages } = await ConversationService.prepareMessagesForModel(messages, assistant)
 
     // replace prompt variables
@@ -119,6 +119,7 @@ export async function fetchChatCompletion({
   uiMessages,
   allowedTools
 }: FetchChatCompletionParams) {
+  assistant = { ...assistant, model: requireCurrentModel(assistant.model || getDefaultModel()) }
   logger.info('fetchChatCompletion called with detailed context', {
     messageCount: messages?.length || 0,
     prompt: prompt,
@@ -324,6 +325,7 @@ export async function fetchMessagesSummary({
 }): Promise<{ text: string | null; error?: string }> {
   let prompt = getStoreSetting('topicNamingPrompt') || i18n.t('prompts.title')
   const model = getQuickModel()
+  if (!model) return { text: null }
 
   if (prompt && containsSupportedVariables(prompt)) {
     prompt = await replacePromptVariables(prompt, model.name)
@@ -681,91 +683,4 @@ export async function fetchModels(provider: Provider): Promise<Model[]> {
     })
     return []
   }
-}
-
-export function checkApiProvider(provider: Provider): void {
-  const isExcludedProvider =
-    (isSystemProvider(provider) && NOT_SUPPORT_API_KEY_PROVIDERS.includes(provider.id)) ||
-    NOT_SUPPORT_API_KEY_PROVIDER_TYPES.includes(provider.type)
-
-  if (!isExcludedProvider) {
-    if (!provider.apiKey) {
-      window.toast.error(i18n.t('message.error.enter.api.label'))
-      throw new Error(i18n.t('message.error.enter.api.label'))
-    }
-  }
-
-  if (!provider.apiHost) {
-    window.toast.error(i18n.t('message.error.enter.api.host'))
-    throw new Error(i18n.t('message.error.enter.api.host'))
-  }
-
-  if (isEmpty(provider.models)) {
-    window.toast.error(i18n.t('message.error.enter.model'))
-    throw new Error(i18n.t('message.error.enter.model'))
-  }
-}
-
-/**
- * Validates that a provider/model pair is working by sending a minimal request.
- * @param provider - The provider configuration to test.
- * @param model - The model to use for the validation request (chat or embeddings).
- * @param timeout - Maximum time (ms) to wait for the request to complete. Defaults to 15000 ms.
- * @throws {Error} If the request fails or times out, indicating the API is not usable.
- */
-export async function checkApi(provider: Provider, model: Model, timeout = 15000): Promise<void> {
-  checkApiProvider(provider)
-
-  const ai = new AiProvider(model, provider)
-
-  const assistant = getDefaultAssistant()
-  assistant.model = model
-  assistant.prompt = 'test' // 避免部分 provider 空系统提示词会报错
-
-  if (isEmbeddingModel(model)) {
-    logger.info('checkApi: embedding model detected, calling getEmbeddingDimensions', { modelId: model.id })
-    const timerPromise = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Timeout')), timeout))
-    await Promise.race([ai.getEmbeddingDimensions(model), timerPromise])
-  } else {
-    const abortId = uuid()
-    const signal = readyToAbort(abortId)
-    let streamError: ResponseError | undefined
-    const params: StreamTextParams = {
-      system: assistant.prompt,
-      prompt: 'hi',
-      abortSignal: signal
-    }
-    const config: AiProviderConfig = {
-      streamOutput: true,
-      enableReasoning: false,
-      isSupportedToolUse: false,
-      enableWebSearch: false,
-      enableGenerateImage: false,
-      isPromptToolUse: false,
-      enableUrlContext: false,
-      assistant,
-      callType: 'check',
-      onChunk: (chunk: Chunk) => {
-        if (chunk.type === ChunkType.ERROR) {
-          streamError = chunk.error
-        } else {
-          abortCompletion(abortId)
-        }
-      }
-    }
-
-    try {
-      await ai.completions(model.id, params, config)
-    } catch (e) {
-      if (!isAbortError(e) && !isAbortError(streamError)) {
-        throw streamError ?? e
-      }
-    }
-  }
-}
-
-export async function checkModel(provider: Provider, model: Model, timeout = 15000): Promise<{ latency: number }> {
-  const startTime = performance.now()
-  await checkApi(provider, model, timeout)
-  return { latency: performance.now() - startTime }
 }

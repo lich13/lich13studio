@@ -1,7 +1,4 @@
-import { type HealthResult, HealthStatusIndicator } from '@renderer/components/HealthStatusIndicator'
 import { EditIcon } from '@renderer/components/Icons'
-import { StreamlineGoodHealthAndWellBeing } from '@renderer/components/Icons/SVGIcon'
-import type { ApiKeyWithStatus } from '@renderer/types/healthCheck'
 import { maskApiKey } from '@renderer/utils/api'
 import type { InputRef } from 'antd'
 import { Button, Flex, Input, List, Popconfirm, Tooltip, Typography } from 'antd'
@@ -14,35 +11,23 @@ import styled from 'styled-components'
 import type { ApiKeyValidity } from './types'
 
 export interface ApiKeyItemProps {
-  keyStatus: ApiKeyWithStatus
+  apiKey: string
   onUpdate: (newKey: string) => ApiKeyValidity
   onRemove: () => void
-  onCheck: () => Promise<void>
   disabled?: boolean
-  showHealthCheck?: boolean
   isNew?: boolean
 }
 
 /**
  * API Key 项组件
- * 支持编辑、删除、连接检查等操作
+ * 支持编辑、删除等操作
  */
-const ApiKeyItem: FC<ApiKeyItemProps> = ({
-  keyStatus,
-  onUpdate,
-  onRemove,
-  onCheck,
-  disabled: _disabled = false,
-  showHealthCheck = true,
-  isNew = false
-}) => {
+const ApiKeyItem: FC<ApiKeyItemProps> = ({ apiKey, onUpdate, onRemove, disabled = false, isNew = false }) => {
   const { t } = useTranslation()
-  const [isEditing, setIsEditing] = useState(isNew || !keyStatus.key.trim())
-  const [editValue, setEditValue] = useState(keyStatus.key)
+  const [isEditing, setIsEditing] = useState(isNew || !apiKey.trim())
+  const [editValue, setEditValue] = useState(apiKey)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const inputRef = useRef<InputRef>(null)
-
-  const disabled = keyStatus.checking || _disabled
 
   useEffect(() => {
     if (isEditing && inputRef.current) {
@@ -51,13 +36,13 @@ const ApiKeyItem: FC<ApiKeyItemProps> = ({
   }, [isEditing])
 
   useEffect(() => {
-    setHasUnsavedChanges(editValue.trim() !== keyStatus.key.trim())
-  }, [editValue, keyStatus.key])
+    setHasUnsavedChanges(editValue.trim() !== apiKey.trim())
+  }, [editValue, apiKey])
 
   const handleEdit = () => {
     if (disabled) return
     setIsEditing(true)
-    setEditValue(keyStatus.key)
+    setEditValue(apiKey)
   }
 
   const handleSave = () => {
@@ -71,24 +56,15 @@ const ApiKeyItem: FC<ApiKeyItemProps> = ({
   }
 
   const handleCancelEdit = () => {
-    if (isNew || !keyStatus.key.trim()) {
+    if (isNew || !apiKey.trim()) {
       // 临时项取消时直接移除
       onRemove()
     } else {
       // 现有项取消时恢复原值
-      setEditValue(keyStatus.key)
+      setEditValue(apiKey)
       setIsEditing(false)
     }
   }
-
-  const healthResults: HealthResult[] = [
-    {
-      status: keyStatus.status,
-      latency: keyStatus.latency,
-      error: keyStatus.error,
-      label: keyStatus.model?.name
-    }
-  ]
 
   return (
     <List.Item>
@@ -122,31 +98,19 @@ const ApiKeyItem: FC<ApiKeyItemProps> = ({
         <ItemInnerContainer style={{ gap: '10px' }}>
           <Tooltip
             title={
-              <Typography.Text style={{ color: 'white' }} copyable={{ text: keyStatus.key }}>
-                {keyStatus.key}
+              <Typography.Text style={{ color: 'white' }} copyable={{ text: apiKey }}>
+                {apiKey}
               </Typography.Text>
             }
             mouseEnterDelay={0.5}
             placement="top"
             // 确保不留下明文
             destroyOnHidden>
-            <span style={{ cursor: 'help' }}>{maskApiKey(keyStatus.key)}</span>
+            <span style={{ cursor: 'help' }}>{maskApiKey(apiKey)}</span>
           </Tooltip>
 
           <Flex gap={10} align="center">
-            <HealthStatusIndicator results={healthResults} loading={false} />
-
             <Flex gap={0} align="center">
-              {showHealthCheck && (
-                <Tooltip title={t('settings.provider.check')} mouseLeaveDelay={0}>
-                  <Button
-                    type="text"
-                    icon={<StreamlineGoodHealthAndWellBeing size={18} isActive={keyStatus.checking} />}
-                    onClick={onCheck}
-                    disabled={disabled}
-                  />
-                </Tooltip>
-              )}
               <Tooltip title={t('common.edit')} mouseLeaveDelay={0}>
                 <Button type="text" icon={<EditIcon size={16} />} onClick={handleEdit} disabled={disabled} />
               </Tooltip>

@@ -1,6 +1,6 @@
 [package]
 name = "lich13studio"
-version = "0.1.16"
+version = "0.1.17"
 description = "lich13studio Tauri Lite runtime"
 authors = ["lich13studio"]
 edition = "2021"
@@ -29,7 +29,7 @@ tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-deep-link = "2"
 tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
 tauri-plugin-notification = "2.3.3"
-tokio = { version = "1", features = ["process", "time"] }
+tokio = { version = "1", features = ["process", "time", "macros"] }
 url = "2"
 uuid = { version = "1", features = ["v4"] }
 walkdir = "2"

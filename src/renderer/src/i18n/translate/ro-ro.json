@@ -3257,6 +3257,24 @@
       }
     }
   },
+  "platform": {
+    "api_options": "API options",
+    "builtin_version": "Bundled version · not yet synced",
+    "cli_identity": "Official CLI identity",
+    "delete_model": "Remove this model from all providers on this platform?",
+    "import_title": "Import CCS provider",
+    "invalid_address": "Enter a valid HTTP or HTTPS address without credentials or query parameters.",
+    "label": "Platform",
+    "models_help": "All providers on this platform use this catalog. Changes apply to subsequent requests.",
+    "models_title": "Shared model catalog",
+    "move_down": "Move down",
+    "move_up": "Move up",
+    "provider_help": "Uses {{protocol}} and the shared {{platform}} model catalog.",
+    "search_models": "Search models",
+    "select_model": "Select an available provider and a model from its platform catalog.",
+    "sync_now": "Sync now",
+    "use_catalog": "Use the platform model catalog"
+  },
   "plugins": {
     "actions": "Acțiuni",
     "agents": "Agenți",
@@ -4654,30 +4672,6 @@
       },
       "api_key": "Cheie API",
       "base_url": "URL de bază",
-      "check": {
-        "all": "Toate",
-        "all_models_passed": "Verificarea tuturor modelelor a trecut",
-        "button_caption": "Verificare sănătate",
-        "disabled": "Dezactivat",
-        "disclaimer": "Verificarea sănătății necesită trimiterea de cereri, te rugăm să o folosești cu precauție. Modelele care taxează pe cerere pot genera costuri suplimentare, te rugăm să îți asumi responsabilitatea.",
-        "enable_concurrent": "Concurent",
-        "enabled": "Activat",
-        "failed": "Eșuat",
-        "keys_status_count": "Reușite: {{count_passed}} chei, eșuate: {{count_failed}} chei",
-        "model_status_failed": "{{count}} modele complet inaccesibile",
-        "model_status_partial": "{{count}} modele au avut chei inaccesibile",
-        "model_status_passed": "{{count}} modele au trecut verificările de sănătate",
-        "model_status_summary": "{{provider}}: {{summary}}",
-        "no_api_keys": "Nu s-au găsit chei API, te rugăm să adaugi mai întâi chei API.",
-        "no_results": "Niciun rezultat",
-        "passed": "Reușit",
-        "select_api_key": "Selectează cheia API de utilizat:",
-        "single": "Singur",
-        "start": "Start",
-        "timeout": "Expirare",
-        "title": "Verificare sănătate model",
-        "use_all_keys": "Cheie(i)"
-      },
       "default_assistant_model": "Model asistent implicit",
       "default_assistant_model_description": "Model folosit la crearea unui nou asistent; dacă asistentul nu este setat, va fi folosit acest model",
       "empty": "Nu s-au găsit modele",
@@ -4813,9 +4807,6 @@
       "anthropic_api_host_tooltip": "Folosește doar când furnizorul oferă un URL de bază compatibil cu Claude.",
       "api": {
         "key": {
-          "check": {
-            "latency": "Latență"
-          },
           "error": {
             "duplicate": "Cheia API există deja",
             "empty": "Cheia API nu poate fi goală"
@@ -4914,9 +4905,6 @@
       },
       "bills": "Facturi taxe",
       "charge": "Reîncărcare sold",
-      "check": "Verifică",
-      "check_all_keys": "Verifică toate cheile",
-      "check_multiple_keys": "Verifică chei API multiple",
       "copilot": {
         "auth_failed": "Autentificarea Github Copilot a eșuat.",
         "auth_success": "Autentificarea GitHub Copilot a reușit.",
@@ -5012,11 +5000,6 @@
       "search": "Caută furnizori...",
       "search_placeholder": "Caută id sau nume model",
       "title": "Furnizor model",
-      "user_agent": {
-        "help": "Antet User-Agent personalizat optional pentru cererile API ale acestui furnizor.",
-        "label": "User-Agent",
-        "placeholder": "Exemplu: CherryStudio/1.0"
-      },
       "vertex_ai": {
         "api_host_help": "Gazda API pentru Vertex AI, nerecomandat de completat, aplicabil în general pentru reverse proxy",
         "documentation": "Vezi documentația oficială pentru mai multe detalii de configurare:",

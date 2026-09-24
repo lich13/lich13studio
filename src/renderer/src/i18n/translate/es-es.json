@@ -3257,6 +3257,24 @@
       }
     }
   },
+  "platform": {
+    "api_options": "API options",
+    "builtin_version": "Bundled version · not yet synced",
+    "cli_identity": "Official CLI identity",
+    "delete_model": "Remove this model from all providers on this platform?",
+    "import_title": "Import CCS provider",
+    "invalid_address": "Enter a valid HTTP or HTTPS address without credentials or query parameters.",
+    "label": "Platform",
+    "models_help": "All providers on this platform use this catalog. Changes apply to subsequent requests.",
+    "models_title": "Shared model catalog",
+    "move_down": "Move down",
+    "move_up": "Move up",
+    "provider_help": "Uses {{protocol}} and the shared {{platform}} model catalog.",
+    "search_models": "Search models",
+    "select_model": "Select an available provider and a model from its platform catalog.",
+    "sync_now": "Sync now",
+    "use_catalog": "Use the platform model catalog"
+  },
   "plugins": {
     "actions": "Operación",
     "agents": "Agente",
@@ -4654,30 +4672,6 @@
       },
       "api_key": "Clave API",
       "base_url": "URL base",
-      "check": {
-        "all": "Todos",
-        "all_models_passed": "Todos los modelos pasaron la verificación",
-        "button_caption": "Verificación de salud",
-        "disabled": "Deshabilitado",
-        "disclaimer": "La verificación de salud requiere enviar solicitudes, úsela con precaución. Los modelos con cobro por uso podrían generar mayores costos; usted asume la responsabilidad.",
-        "enable_concurrent": "Verificación concurrente",
-        "enabled": "Habilitado",
-        "failed": "Fallido",
-        "keys_status_count": "Pasados: {{count_passed}} claves, fallidos: {{count_failed}} claves",
-        "model_status_failed": "{{count}} modelos no son accesibles en absoluto",
-        "model_status_partial": "De ellos, {{count}} modelos no son accesibles con ciertas claves",
-        "model_status_passed": "{{count}} modelos pasaron la verificación de salud",
-        "model_status_summary": "{{provider}}: {{count_passed}} modelos completaron la verificación de salud ({{count_partial}} modelos no accesibles con algunas claves), {{count_failed}} modelos completamente inaccesibles.",
-        "no_api_keys": "No se encontraron claves API, agrega una clave API primero.",
-        "no_results": "Sin resultados",
-        "passed": "Pasado",
-        "select_api_key": "Seleccionar clave API a usar:",
-        "single": "Individual",
-        "start": "Iniciar",
-        "timeout": "Tiempo de espera agotado",
-        "title": "Verificación de salud del modelo",
-        "use_all_keys": "Usar todas las claves"
-      },
       "default_assistant_model": "Modelo predeterminado del asistente",
       "default_assistant_model_description": "Modelo utilizado al crear nuevos asistentes, si el asistente no tiene un modelo asignado, se utiliza este modelo",
       "empty": "Sin modelos",
@@ -4813,9 +4807,6 @@
       "anthropic_api_host_tooltip": "Rellenar solo cuando el proveedor proporcione una dirección base compatible con Claude.",
       "api": {
         "key": {
-          "check": {
-            "latency": "Tiempo empleado"
-          },
           "error": {
             "duplicate": "La clave API ya existe",
             "empty": "La clave API no puede estar vacía"
@@ -4914,9 +4905,6 @@
       },
       "bills": "Facturas",
       "charge": "Recargar",
-      "check": "Verificar",
-      "check_all_keys": "Verificar todas las claves",
-      "check_multiple_keys": "Verificar múltiples claves API",
       "copilot": {
         "auth_failed": "Autenticación de Github Copilot fallida",
         "auth_success": "Autenticación de Github Copilot exitosa",
@@ -5012,11 +5000,6 @@
       "search": "Buscar plataforma de modelos...",
       "search_placeholder": "Buscar ID o nombre del modelo",
       "title": "Servicio de modelos",
-      "user_agent": {
-        "help": "Cabecera User-Agent personalizada opcional para las solicitudes API de este proveedor.",
-        "label": "User-Agent",
-        "placeholder": "Ejemplo: CherryStudio/1.0"
-      },
       "vertex_ai": {
         "api_host_help": "Dirección de la API de Vertex AI, no se recomienda completar, normalmente aplicable al proxy inverso",
         "documentation": "Consulte la documentación oficial para obtener más detalles de configuración:",

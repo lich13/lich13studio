@@ -19,7 +19,7 @@ import {
   isPureGenerateImageModel,
   isWebSearchModel
 } from '@renderer/config/models'
-import { DEFAULT_ASSISTANT_SETTINGS, getDefaultModel } from '@renderer/services/AssistantService'
+import { DEFAULT_ASSISTANT_SETTINGS, getDefaultModel, requireCurrentModel } from '@renderer/services/AssistantService'
 import store from '@renderer/store'
 import type { CherryWebSearchConfig } from '@renderer/store/websearch'
 import type { Model } from '@renderer/types'
@@ -109,7 +109,7 @@ export async function buildStreamTextParams(
   }
   const finalSignal = AbortSignal.any(signals)
 
-  const model = assistant.model || getDefaultModel()
+  const model = requireCurrentModel(assistant.model || getDefaultModel())
   const aiSdkProviderId = getAiSdkProviderId(provider)
 
   // 这三个变量透传出来，交给下面启用插件/中间件

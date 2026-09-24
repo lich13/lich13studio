@@ -58,7 +58,7 @@
 | `src/renderer/src/services/ModelService.ts` | `keep` | 模型列表与管理 |
 | `src/renderer/src/pages/settings/ProviderSettings/index.ts` | `keep` | provider 设置入口 |
 | `src/renderer/src/pages/settings/ProviderSettings/ProviderList.tsx` | `keep` | provider 列表 |
-| `src/renderer/src/pages/settings/ProviderSettings/ModelList/ManageModelsList.tsx` | `keep` | 模型列表管理 |
+| `src/renderer/src/pages/settings/ProviderSettings/PlatformSettings.tsx` | `keep` | 平台共享模型目录与 CLI UA 同步 |
 | `src/renderer/src/pages/settings/ProviderSettings/ModelList/HealthCheckPopup.tsx` | `keep` | 连通性检查 |
 | `src/renderer/src/pages/settings/ModelSettings/ModelSettings.tsx` | `keep` | 全局默认模型设置 |
 | `src/renderer/src/pages/settings/ModelSettings/DefaultAssistantSettings.tsx` | `keep` | assistant 默认模型覆盖全局默认模型 |

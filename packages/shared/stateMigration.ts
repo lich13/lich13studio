@@ -1,6 +1,16 @@
+import { platformRequestHeaders } from './cliIdentity'
+import {
+  catalogModel,
+  createPlatformModels,
+  inferProviderPlatform,
+  PROVIDER_PLATFORMS,
+  storedProvider
+} from './platforms'
+import { normalizeProviderEndpoint } from './providerImport'
 import { normalizeReasoningEffort } from './reasoning'
 
 export const PROVIDER_RESET_VERSION = 216
+export const PLATFORM_MIGRATION_VERSION = 217
 
 type State = Record<string, any>
 
@@ -73,5 +83,44 @@ export function sanitizePersistedState(raw: string): string {
     decoded[key] = typeof value === 'string' ? JSON.parse(value) : value
   }
   sanitizeState(decoded, (decoded._persist?.version ?? -1) < PROVIDER_RESET_VERSION)
+  migratePlatformState(decoded)
   return JSON.stringify(Object.fromEntries(Object.entries(decoded).map(([key, value]) => [key, JSON.stringify(value)])))
+}
+
+/** Idempotent across Redux upgrades and backup restore. Chat records are never traversed. */
+export function migratePlatformState<T extends State>(state: T): T {
+  const llm = state.llm
+  if (!llm) return state
+  const seeds = createPlatformModels()
+  if (!llm.platformModels) {
+    llm.platformModels = Object.fromEntries(PROVIDER_PLATFORMS.map((platform) => [platform, []]))
+    for (const provider of llm.providers ?? []) {
+      const models = llm.platformModels[inferProviderPlatform(provider)]
+      for (const model of provider.models ?? [])
+        if (model?.id && !models.some((m) => m.id === model.id)) models.push(catalogModel(model))
+    }
+    for (const platform of PROVIDER_PLATFORMS) {
+      for (const model of seeds[platform])
+        if (!llm.platformModels[platform].some((m) => m.id === model.id)) llm.platformModels[platform].push(model)
+    }
+  }
+  for (const platform of PROVIDER_PLATFORMS) llm.platformModels[platform] ??= seeds[platform]
+  llm.cliVersions ??= {}
+  llm.providers = (llm.providers ?? []).map((provider) => {
+    const result = storedProvider(provider)
+    try {
+      result.apiHost = normalizeProviderEndpoint(result.apiHost)
+    } catch {
+      /* Keep invalid old addresses editable. */
+    }
+    // Remove stored identity headers; platform identity is generated only at request time.
+    const clean = platformRequestHeaders(inferProviderPlatform(result), undefined, result.extra_headers)
+    for (const key of ['User-Agent', 'originator', 'version', 'x-grok-client-version', 'x-grok-client-identifier'])
+      delete clean[key]
+    result.extra_headers = clean
+    for (const key of ['healthCheck', 'healthStatus', 'modelStatuses', 'apiKeyConnectivity', 'latency'])
+      delete (result as any)[key]
+    return result
+  })
+  return state
 }

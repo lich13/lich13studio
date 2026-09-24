@@ -14,8 +14,9 @@ import type { Provider, ProviderType } from '@renderer/types'
 import { isSystemProvider } from '@renderer/types'
 import { getFancyProviderName, matchKeywordsInModel, matchKeywordsInProvider, uuid } from '@renderer/utils'
 import { isAnthropicSupportedProvider } from '@renderer/utils/provider'
+import { inferProviderPlatform, PLATFORM_NAMES, PROVIDER_PLATFORMS, type ProviderPlatform } from '@shared/platforms'
 import type { MenuProps } from 'antd'
-import { Button, Dropdown, Empty, Input, Tag } from 'antd'
+import { Button, Dropdown, Empty, Input, Select, Tag } from 'antd'
 import { Check, Filter, GripVertical, PlusIcon, Search, UserPen } from 'lucide-react'
 import type { FC } from 'react'
 import { startTransition, useCallback, useEffect, useRef, useState } from 'react'
@@ -26,6 +27,7 @@ import useSWRImmutable from 'swr/immutable'
 
 import AddProviderPopup from './AddProviderPopup'
 import ModelNotesPopup from './ModelNotesPopup'
+import PlatformSettings from './PlatformSettings'
 import ProviderSetting from './ProviderSetting'
 import UrlSchemaInfoPopup from './UrlSchemaInfoPopup'
 
@@ -56,6 +58,10 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
   const [selectedProvider, _setSelectedProvider] = useState<Provider>(providers[0])
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState<string>('')
+  const [platform, setPlatform] = useState<ProviderPlatform>(
+    providers[0] ? inferProviderPlatform(providers[0]) : 'openai'
+  )
+  const [catalogVisible, setCatalogVisible] = useState(false)
   const [dragging, setDragging] = useState(false)
   const [agentFilterEnabled, setAgentFilterEnabled] = useState(false)
   const [providerLogos, setProviderLogos] = useState<Record<string, string>>({})
@@ -64,8 +70,17 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
   const { data: isOvmsSupported } = useSWRImmutable('ovms/isSupported', getIsOvmsSupported)
 
   const setSelectedProvider = useCallback((provider: Provider) => {
-    startTransition(() => _setSelectedProvider(provider))
+    startTransition(() => {
+      _setSelectedProvider(provider)
+      if (provider) setPlatform(inferProviderPlatform(provider))
+      setCatalogVisible(false)
+    })
   }, [])
+
+  const currentPlatform = providers.find((provider) => provider.id === selectedProvider?.id)?.platform
+  useEffect(() => {
+    if (currentPlatform) setPlatform(currentPlatform)
+  }, [currentPlatform])
 
   useEffect(() => {
     const loadAllLogos = async () => {
@@ -175,7 +190,12 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
   }, [searchParams])
 
   const onAddProvider = async () => {
-    const { name: providerName, type, logo } = await AddProviderPopup.show()
+    const {
+      name: providerName,
+      type,
+      platform: selectedPlatform,
+      logo
+    } = await AddProviderPopup.show(undefined, platform)
 
     if (!providerName.trim()) {
       return
@@ -185,6 +205,7 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
       id: uuid(),
       name: providerName.trim(),
       type,
+      platform: selectedPlatform,
       apiKey: '',
       apiHost: '',
       models: [],
@@ -224,10 +245,11 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
       key: 'edit',
       icon: <EditIcon size={14} />,
       async onClick() {
-        const { name, type, logoFile, logo } = await AddProviderPopup.show(provider)
+        const { name, type, platform: nextPlatform, logoFile, logo } = await AddProviderPopup.show(provider)
 
         if (name) {
-          updateProvider({ ...provider, name, type })
+          updateProvider({ ...provider, name, type, platform: nextPlatform })
+          setPlatform(nextPlatform)
           if (provider.id) {
             if (logo) {
               try {
@@ -309,6 +331,7 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
   }
 
   const filteredProviders = providers.filter((provider) => {
+    if (inferProviderPlatform(provider) !== platform) return false
     // don't show it when isOvmsSupported is loading
     if (provider.id === 'ovms' && !isOvmsSupported) {
       return false
@@ -347,6 +370,25 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
   return (
     <Container className="selectable">
       <ProviderListContainer>
+        <div style={{ padding: 8 }}>
+          <Select
+            aria-label={t('platform.label')}
+            value={platform}
+            style={{ width: '100%' }}
+            options={PROVIDER_PLATFORMS.map((value) => ({ value, label: PLATFORM_NAMES[value] }))}
+            onChange={(value: ProviderPlatform) => {
+              setPlatform(value)
+              _setSelectedProvider(providers.find((p) => inferProviderPlatform(p) === value) as Provider)
+            }}
+          />
+          <Button
+            block
+            style={{ marginTop: 8 }}
+            type={catalogVisible ? 'primary' : 'default'}
+            onClick={() => setCatalogVisible(true)}>
+            {t('platform.models_title')}
+          </Button>
+        </div>
         <AddButtonWrapper>
           <Input
             type="text"
@@ -401,7 +443,8 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
           itemKey={itemKey}
           overscan={3}
           style={{
-            height: `calc(100% - 2 * ${BUTTON_WRAPPER_HEIGHT}px)`
+            flex: 1,
+            minHeight: 0
           }}
           scrollerStyle={{
             padding: 8,
@@ -447,7 +490,10 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
           </Button>
         </AddButtonWrapper>
       </ProviderListContainer>
-      {selectedProvider ? (
+      {catalogVisible ? (
+        <PlatformSettings platform={platform} key={platform} />
+      ) : selectedProvider &&
+        providers.some((p) => p.id === selectedProvider.id && inferProviderPlatform(p) === platform) ? (
         <ProviderSetting providerId={selectedProvider.id} key={selectedProvider.id} isOnboarding={isOnboarding} />
       ) : (
         <Empty style={{ margin: 'auto' }} description={t('settings.provider.empty')} />

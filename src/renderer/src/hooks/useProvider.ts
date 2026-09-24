@@ -15,6 +15,7 @@ import type { Assistant, Model, Provider } from '@renderer/types'
 import { isSystemProvider } from '@renderer/types'
 import { withoutTrailingSlash } from '@renderer/utils/api'
 import { isNewApiProvider } from '@renderer/utils/provider'
+import { resolveProviders } from '@shared/platforms'
 import { useCallback, useMemo } from 'react'
 
 import { useDefaultModel } from './useAssistant'
@@ -30,7 +31,7 @@ function normalizeProvider<T extends Provider>(provider: T): T {
   }
 }
 
-const selectProviders = (state: RootState) => state.llm.providers
+export const selectProviders = createSelector([(state: RootState) => state.llm], resolveProviders)
 
 const selectEnabledProviders = createSelector(selectProviders, (providers) =>
   providers.map(normalizeProvider).filter((p) => p.enabled)

@@ -186,43 +186,42 @@ const EMPTY_PROVIDER: Provider = {
 
 export const EMPTY_MODEL: Model = { id: '', name: '', provider: '', group: '' }
 
+function currentModelReference(model?: Model): Model | undefined {
+  return (
+    getStoreProviders()
+      .find((provider) => provider.id === model?.provider)
+      ?.models.find((entry) => entry.id === model?.id) ?? model
+  )
+}
+
 export function getDefaultModel(): Model {
-  return store.getState().llm.defaultModel ?? EMPTY_MODEL
+  const selected = store.getState().llm.defaultModel
+  return currentModelReference(selected) ?? EMPTY_MODEL
 }
 
 export function getQuickModel() {
-  return store.getState().llm.quickModel
+  return currentModelReference(store.getState().llm.quickModel)
 }
 
 export function getTranslateModel() {
-  return store.getState().llm.translateModel
+  return currentModelReference(store.getState().llm.translateModel)
 }
 
 export function getAssistantProvider(assistant: Assistant): Provider {
-  const providers = getStoreProviders()
-  const provider = providers.find((p) => p.id === assistant.model?.provider)
-  return provider || getDefaultProvider()
+  return getProviderByModel(assistant.model || getDefaultModel())
 }
 
-// FIXME: This function fails in silence.
-// TODO: Refactor it to make it return exactly valid value or null, and update all usage.
+/** A missing selection must never route a request to a different provider. */
 export function getProviderByModel(model?: Model): Provider {
-  const providers = getStoreProviders()
-  const provider = providers.find((p) => p.id === model?.provider)
-
-  if (!provider) {
-    const defaultProvider = providers.find((p) => p.id === getDefaultModel()?.provider)
-    return defaultProvider || providers[0] || EMPTY_PROVIDER
-  }
-
-  return provider
+  return getStoreProviders().find((provider) => provider.id === model?.provider) || EMPTY_PROVIDER
 }
 
-// FIXME: This function may return undefined but as Provider
-export function getProviderByModelId(modelId?: string) {
-  const providers = getStoreProviders()
-  const _modelId = modelId || getDefaultModel().id
-  return providers.find((p) => p.models.find((m) => m.id === _modelId)) as Provider
+/** Resolve a saved reference against the latest shared catalog before sending. */
+export function requireCurrentModel(model: Model): Model {
+  const provider = getProviderByModel(model)
+  const current = provider.models.find((entry) => entry.id === model.id)
+  if (!provider.enabled || !current) throw new Error(i18n.t('platform.select_model'))
+  return current
 }
 
 /**
