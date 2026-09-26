@@ -38,6 +38,11 @@ export function isolateAnswer(text: string, complete = true): { text: string; ma
   return { text: answer.trim(), malformed }
 }
 
+/** Diagnostic count only: never use these tokens for attribution. */
+export function countVisibleNumericTokens(raw: string): number {
+  return isolateAnswer(raw, false).text.match(/\d+/g)?.length || 0
+}
+
 export function validateModelTraceOutput(raw: string, expectedCount: number): OutputValidation {
   const isolated = isolateAnswer(raw)
   let text = isolated.text.replace(/^\uFEFF/, '').trim()
@@ -45,7 +50,7 @@ export function validateModelTraceOutput(raw: string, expectedCount: number): Ou
     accepted: issue === undefined,
     text,
     numbers,
-    parsedCount: numbers.length,
+    parsedCount: numbers.length || (issue ? countVisibleNumericTokens(raw) : 0),
     expectedCount,
     issue
   })

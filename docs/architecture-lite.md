@@ -17,6 +17,7 @@ ModelTrace runs directly against the selected provider; no third-party test rela
 Each attempt has its own answer collector. Complete text events replace snapshots, native reasoning and explicit commentary stay outside the answer, and inline thought tags are isolated across chunks. A provider-confirmed successful finish is required. Automatic and pasted outputs share a strict validator: exactly the requested count of integers from 1 to 355, with no explanatory text or repaired numbers. Only three valid groups reach the unchanged bundled ModelTrace scoring algorithm.
 
 Invalid or temporarily failed requests get at most two extra attempts after 1 and 3 seconds. Authentication, missing-model and other permanent request errors stop immediately. Successful groups survive exhaustion; retrying failed groups opens a new bounded attempt sequence using the original target and prompts. Results are memory-only and never create chat records. Persistence version remains 218.
+If a stream already contains more integers than the challenge permits, the active attempt is cancelled immediately and counted as an invalid answer. The source prompt explicitly asks the model to stop after the final requested integer. No prefix is accepted as a substitute for a full valid answer.
 
 ## Imports and persistence
 

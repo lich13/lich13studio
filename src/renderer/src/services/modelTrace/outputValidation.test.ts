@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { isolateAnswer, validateModelTraceOutput } from './outputValidation'
+import { countVisibleNumericTokens, isolateAnswer, validateModelTraceOutput } from './outputValidation'
 
 describe('strict ModelTrace admission', () => {
   it.each(['1 2 2 355', '1, 2; 2，355', '[1, 2, 2, 355]', '```text\n1 2 2 355\n```', '```json\n[1,2,2,355]\n```'])(
@@ -30,6 +30,15 @@ describe('strict ModelTrace admission', () => {
     expect(validateModelTraceOutput('3 3 1', 4).issue).toBe('count')
     expect(validateModelTraceOutput('3 3 1 2 2', 4).issue).toBe('count')
     expect(validateModelTraceOutput('3 3 1 2', 4).numbers).toEqual([3, 3, 1, 2])
+  })
+  it('shows an honest diagnostic count for invalid prose while excluding tagged thought content', () => {
+    expect(validateModelTraceOutput('Need 4 values: 1 2 3 4', 4)).toMatchObject({
+      accepted: false,
+      issue: 'format',
+      parsedCount: 5
+    })
+    expect(countVisibleNumericTokens('<think>999 888</think>1 2 3')).toBe(3)
+    expect(validateModelTraceOutput('<think>999 888</think>1 2 3', 4).parsedCount).toBe(3)
   })
   it('rejects the cumulative-prefix corruption from v0.1.19', () => {
     const numbers = Array.from({ length: 303 }, (_, i) => String((i % 355) + 1))

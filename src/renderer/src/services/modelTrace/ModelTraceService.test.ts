@@ -82,6 +82,32 @@ describe('bounded ModelTrace sessions', () => {
     expect(result.report).toBeUndefined()
   })
 
+  it('aborts overlong output early without ending the run or accepting a truncated prefix', async () => {
+    const observedSignals: AbortSignal[] = []
+    mocks.execute.mockImplementation(async (prompt, signal, onChunk) => {
+      observedSignals.push(signal)
+      if (prompt === 'unchanged-0' && observedSignals.length === 1) {
+        onChunk({ type: ChunkType.TEXT_DELTA, text: textFor(0) + ' 8' })
+        expect(signal.aborted).toBe(true)
+        throw signal.reason
+      }
+      await success(prompt, signal, onChunk)
+    })
+    const pending = new ModelTestRunner({ model, challenges }).run()
+    await vi.runAllTimersAsync()
+    const result = await pending
+    expect(result.outputs.map((output) => output.status)).toEqual(['valid', 'valid', 'valid'])
+    expect(result.outputs[0].attempts).toBe(2)
+    expect(observedSignals[0].aborted).toBe(true)
+    expect(observedSignals[1].aborted).toBe(false)
+    expect(mocks.execute.mock.calls.map(([prompt]) => prompt)).toEqual([
+      'unchanged-0',
+      'unchanged-0',
+      'unchanged-1',
+      'unchanged-2'
+    ])
+  })
+
   it('stops immediately on authentication failure', async () => {
     mocks.execute.mockRejectedValue(Object.assign(new Error('Unauthorized'), { statusCode: 401 }))
     const result = await new ModelTestRunner({ model, challenges }).run()

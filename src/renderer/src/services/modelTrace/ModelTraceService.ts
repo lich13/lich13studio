@@ -167,7 +167,11 @@ export class ModelTestRunner {
         for (let attempt = 1; attempt <= MODELTRACE_MAX_ATTEMPTS; attempt += 1) {
           signal.throwIfAborted()
           const collector = new AnswerCollector()
+          const attemptController = new AbortController()
+          const abortAttempt = () => attemptController.abort(signal.reason)
+          signal.addEventListener('abort', abortAttempt, { once: true })
           let accepting = true
+          let overlong = false
           this.update(index, {
             text: '',
             status: 'running',
@@ -178,32 +182,58 @@ export class ModelTestRunner {
           })
           let retryable = true
           try {
-            await this.prepared.execute(challenge.prompt, signal, (chunk) => {
+            await this.prepared.execute(challenge.prompt, attemptController.signal, (chunk) => {
               if (!accepting || !current()) return
               collector.accept(chunk)
+              const liveValidation = validateModelTraceOutput(collector.rawText, challenge.expected_count)
               this.update(index, {
                 text: collector.preview,
-                parsedCount: validateModelTraceOutput(collector.rawText, challenge.expected_count).parsedCount
+                parsedCount: liveValidation.parsedCount
               })
+              if (liveValidation.parsedCount > challenge.expected_count && !collector.completed) {
+                overlong = true
+                attemptController.abort(new DOMException('Model test answer exceeded target count', 'AbortError'))
+              }
             })
             signal.throwIfAborted()
-            if (collector.error) throw collector.error
-            const validation = validateModelTraceOutput(collector.rawText, challenge.expected_count)
-            const accepted = collector.completed && validation.accepted
-            this.update(index, {
-              text: validation.text,
-              status: accepted ? 'valid' : 'invalid',
-              parsedCount: validation.parsedCount,
-              issue: collector.completed ? validation.issue : 'incomplete'
-            })
-            if (accepted) break
+            if (overlong) {
+              const validation = validateModelTraceOutput(collector.rawText, challenge.expected_count)
+              this.update(index, {
+                text: validation.text,
+                status: 'invalid',
+                parsedCount: validation.parsedCount,
+                issue: 'count'
+              })
+            } else {
+              if (collector.error) throw collector.error
+              const validation = validateModelTraceOutput(collector.rawText, challenge.expected_count)
+              const accepted = collector.completed && validation.accepted
+              this.update(index, {
+                text: validation.text,
+                status: accepted ? 'valid' : 'invalid',
+                parsedCount: validation.parsedCount,
+                issue: collector.completed ? validation.issue : 'incomplete'
+              })
+              if (accepted) break
+            }
           } catch (error) {
             if (!current()) throw signal.reason ?? error
-            retryable = isRetryableModelTestError(error)
-            this.update(index, { status: 'error', error: errorMessage(error) })
-            if (!retryable) fatalError = errorMessage(error)
+            if (overlong) {
+              const validation = validateModelTraceOutput(collector.rawText, challenge.expected_count)
+              this.update(index, {
+                text: validation.text,
+                status: 'invalid',
+                parsedCount: validation.parsedCount,
+                issue: 'count'
+              })
+            } else {
+              retryable = isRetryableModelTestError(error)
+              this.update(index, { status: 'error', error: errorMessage(error) })
+              if (!retryable) fatalError = errorMessage(error)
+            }
           } finally {
             accepting = false
+            signal.removeEventListener('abort', abortAttempt)
           }
           if (!retryable || attempt === MODELTRACE_MAX_ATTEMPTS) break
           this.update(index, { status: 'retrying' })
