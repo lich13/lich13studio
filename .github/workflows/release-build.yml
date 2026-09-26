@@ -269,12 +269,6 @@ jobs:
           TAG_NAME="${{ steps.tag.outputs.tag_name }}"
 
           if gh release view "${TAG_NAME}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
-            RELEASE_ID="$(gh release view "${TAG_NAME}" --repo "${GITHUB_REPOSITORY}" --json id -q '.id')"
-            gh api \
-              --method PATCH \
-              "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}" \
-              -f target_commitish="${GITHUB_SHA}" \
-              -F generate_release_notes=true >/dev/null
             gh release upload "${TAG_NAME}" "${release_files[@]}" --clobber --repo "${GITHUB_REPOSITORY}"
           else
             gh release create \
