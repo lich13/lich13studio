@@ -1,6 +1,7 @@
 import { getStoreSetting } from '@renderer/hooks/useSettings'
 import type { Assistant, Model, Provider } from '@renderer/types'
 import { type AiSdkParam, isAiSdkParam } from '@renderer/types/aiCoreTypes'
+import type { ReasoningMode } from '@shared/reasoning'
 import type { JSONValue } from 'ai'
 
 import { getAiSdkProviderId } from '../provider/factory'
@@ -11,7 +12,8 @@ export function buildProviderOptions(
   assistant: Assistant,
   model: Model,
   provider: Provider,
-  _capabilities: Pick<ProviderCapabilities, 'enableReasoning' | 'enableWebSearch' | 'enableGenerateImage'>
+  _capabilities: Pick<ProviderCapabilities, 'enableReasoning' | 'enableGenerateImage'>,
+  reasoningMode: ReasoningMode = 'configured'
 ): { providerOptions: Record<string, Record<string, JSONValue>>; standardParams: Partial<Record<AiSdkParam, any>> } {
   void _capabilities
   const id = getAiSdkProviderId(provider)
@@ -28,17 +30,20 @@ export function buildProviderOptions(
     'anthropic'
   ])
     delete providerParams[key]
-  const options =
-    id === 'openai'
-      ? {
-          ...providerParams,
-          ...getOpenAIReasoningParams(assistant, model),
-          forceReasoning: true,
-          store: false,
-          serviceTier: provider.serviceTier,
-          textVerbosity: getStoreSetting('openAI')?.verbosity
-        }
-      : { ...providerParams, ...getAnthropicReasoningParams(assistant, model) }
+  const options = {
+    ...providerParams,
+    ...(reasoningMode === 'configured'
+      ? id === 'openai'
+        ? {
+            ...getOpenAIReasoningParams(assistant, model),
+            forceReasoning: true
+          }
+        : getAnthropicReasoningParams(assistant, model)
+      : {}),
+    store: false,
+    serviceTier: provider.serviceTier,
+    ...(id === 'openai' ? { textVerbosity: getStoreSetting('openAI')?.verbosity } : {})
+  }
   return { providerOptions: { [id]: options as Record<string, JSONValue> }, standardParams }
 }
 

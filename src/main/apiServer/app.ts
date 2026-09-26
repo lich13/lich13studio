@@ -3,7 +3,6 @@ import cors from 'cors'
 import express from 'express'
 import { v4 as uuidv4 } from 'uuid'
 
-import { LONG_POLL_TIMEOUT_MS } from './config/timeouts'
 import { authMiddleware } from './middleware/auth'
 import { errorHandler } from './middleware/error'
 import { setupOpenAPIDocumentation } from './middleware/openapi'
@@ -14,12 +13,6 @@ import { modelsRoutes } from './routes/models'
 import { tasksRouter } from './routes/tasks'
 
 const logger = loggerService.withContext('ApiServer')
-
-const extendMessagesTimeout: express.RequestHandler = (req, res, next) => {
-  req.setTimeout(LONG_POLL_TIMEOUT_MS)
-  res.setTimeout(LONG_POLL_TIMEOUT_MS)
-  next()
-}
 
 const app: express.Express = express()
 app.use(
@@ -138,13 +131,13 @@ app.get('/', (_req, res) => {
 setupOpenAPIDocumentation(app)
 
 // Provider-specific messages route requires authentication
-app.use('/:provider/v1/messages', authMiddleware, extendMessagesTimeout, messagesProviderRoutes)
+app.use('/:provider/v1/messages', authMiddleware, messagesProviderRoutes)
 
 // API v1 routes with auth
 const apiRouter = express.Router()
 apiRouter.use(authMiddleware)
 // Mount routes
-apiRouter.use('/messages', extendMessagesTimeout, messagesRoutes)
+apiRouter.use('/messages', messagesRoutes)
 apiRouter.use('/models', modelsRoutes)
 apiRouter.use('/agents', agentsRoutes)
 apiRouter.use('/channels', channelsRouter)

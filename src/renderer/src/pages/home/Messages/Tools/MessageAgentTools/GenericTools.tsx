@@ -90,7 +90,7 @@ export function SimpleFieldInputTool({
   )
 }
 
-// 字符串输出工具 (Read, Bash, Search, Glob, WebSearch, Grep 等)
+// 字符串输出工具 (Read, Bash, Search, Glob, Grep 等)
 export function StringOutputTool({
   output,
   label,

@@ -3,7 +3,6 @@ import type { ToolMessageBlock } from '@renderer/types/newMessage'
 
 import { MessageAgentTools } from './MessageAgentTools'
 import { AgentToolsType } from './MessageAgentTools/types'
-import { MessageWebSearchToolTitle } from './MessageWebSearch'
 
 interface Props {
   block: ToolMessageBlock
@@ -20,13 +19,9 @@ const isAgentTool = (toolName: AgentToolsType) => {
 
 const ChooseTool = (toolResponse: NormalToolResponse): React.ReactNode | null => {
   let toolName = toolResponse.tool.name
-  const toolType = toolResponse.tool.type
   if (toolName.startsWith(builtinToolsPrefix)) {
     toolName = toolName.slice(builtinToolsPrefix.length)
     switch (toolName) {
-      case 'web_search':
-      case 'web_search_preview':
-        return toolType === 'provider' ? null : <MessageWebSearchToolTitle toolResponse={toolResponse} />
       default:
         return null
     }

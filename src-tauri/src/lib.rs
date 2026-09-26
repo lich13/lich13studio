@@ -162,7 +162,6 @@ struct NativeHttpRequest {
   method: String,
   headers: Vec<NativeHttpHeader>,
   body: Option<Vec<u8>>,
-  timeout_ms: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -1296,9 +1295,7 @@ async fn start_http_request(window: Window, request: NativeHttpRequest) -> Resul
   };
 
   let abort_flag = register_native_http_abort(&request_id);
-  let timeout = Duration::from_millis(request.timeout_ms.unwrap_or(600_000));
   let client = Client::builder()
-    .timeout(timeout)
     .build()
     .map_err(|error| error.to_string())?;
 

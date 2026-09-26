@@ -4,6 +4,5 @@ import { ReasoningTag } from './ReasoningTag'
 import { RerankerTag } from './RerankerTag'
 import { ToolsCallingTag } from './ToolsCallingTag'
 import { VisionTag } from './VisionTag'
-import { WebSearchTag } from './WebSearchTag'
 
-export { EmbeddingTag, FreeTag, ReasoningTag, RerankerTag, ToolsCallingTag, VisionTag, WebSearchTag }
+export { EmbeddingTag, FreeTag, ReasoningTag, RerankerTag, ToolsCallingTag, VisionTag }

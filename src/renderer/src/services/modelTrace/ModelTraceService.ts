@@ -2,6 +2,7 @@ import { fetchChatCompletion } from '@renderer/services/ApiService'
 import { getDefaultAssistant, getProviderByModel } from '@renderer/services/AssistantService'
 import type { Model } from '@renderer/types'
 import { type Chunk, ChunkType } from '@renderer/types/chunk'
+import type { ReasoningMode } from '@shared/reasoning'
 
 import { generateChallenges } from './challenge'
 import bank from './data/unified_bank.json'
@@ -52,6 +53,7 @@ export interface ModelTestRunResult {
 export interface ModelTestRunnerOptions {
   model: Model
   transport?: ModelTestTransport
+  challenges?: ModelTestChallenge[]
   signal?: AbortSignal
   onProgress?: (progress: ModelTestProgress) => void
 }
@@ -89,17 +91,23 @@ const runDirectChallenge = async (
   assistant.model = model
   assistant.settings = {
     ...assistant.settings,
+    reasoning_effort: undefined,
+    reasoning_effort_cache: undefined,
+    qwenThinkMode: undefined,
     streamOutput: true,
     enableMaxToolCalls: false,
     toolUseMode: 'prompt'
   }
+  assistant.enableUrlContext = false
+  assistant.enableGenerateImage = false
 
   let text = ''
   let streamError: unknown
   await fetchChatCompletion({
     prompt: challenge.prompt,
     assistant,
-    requestOptions: { signal },
+    allowedTools: [],
+    requestOptions: { signal, reasoningMode: 'disabled' as ReasoningMode },
     onChunkReceived: (chunk: Chunk) => {
       if (chunk.type === ChunkType.TEXT_DELTA) {
         text += chunk.text
@@ -205,10 +213,11 @@ export const analyzeModelTraceOutputs = (outputs: ModelTestOutput[]): ModelTrace
 export const runModelTraceTest = async ({
   model,
   transport = 'direct',
+  challenges: requestedChallenges,
   signal,
   onProgress
 }: ModelTestRunnerOptions): Promise<ModelTestRunResult> => {
-  const challenges = createModelTraceChallenges()
+  const challenges = requestedChallenges?.length ? requestedChallenges : createModelTraceChallenges()
   const outputs: ModelTestOutput[] = []
 
   for (let index = 0; index < challenges.length; index += 1) {

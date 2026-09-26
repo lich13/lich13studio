@@ -6,7 +6,6 @@ import { loggerService } from '@logger'
 import {
   isClaudeReasoningModel,
   isMaxTemperatureOneModel,
-  isSupportedFlexServiceTier,
   isSupportTemperatureModel,
   isSupportTopPModel,
   isTemperatureTopPMutuallyExclusiveModel
@@ -17,8 +16,7 @@ import {
   getProviderByModel
 } from '@renderer/services/AssistantService'
 import { type Assistant, type Model } from '@renderer/types'
-import { DEFAULT_TIMEOUT } from '@shared/config/constant'
-import { anthropicThinkingMode } from '@shared/reasoning'
+import { anthropicThinkingMode, type ReasoningMode } from '@shared/reasoning'
 
 import { getThinkingBudget } from '../utils/reasoning'
 
@@ -103,21 +101,16 @@ export function getTopP(assistant: Assistant, model: Model): number | undefined 
   return topP
 }
 
-/**
- * 获取超时设置
- */
-export function getTimeout(model: Model): number {
-  if (isSupportedFlexServiceTier(model)) {
-    return 15 * 1000 * 60
-  }
-  return DEFAULT_TIMEOUT
-}
-
-export function getMaxTokens(assistant: Assistant, model: Model): number | undefined {
+export function getMaxTokens(
+  assistant: Assistant,
+  model: Model,
+  reasoningMode: ReasoningMode = 'configured'
+): number | undefined {
   const settings = getAssistantSettings(assistant)
   const provider = getProviderByModel(model)
   if (provider.type !== 'anthropic') return settings.enableMaxTokens ? settings.maxTokens : undefined
   const total = settings.enableMaxTokens ? (settings.maxTokens ?? 4096) : 4096
+  if (reasoningMode === 'disabled') return total
   const mode = anthropicThinkingMode(model.id)
   if (mode === 'five' || mode === 'four') return total
   return total - getThinkingBudget(total, settings.reasoning_effort, model.id)

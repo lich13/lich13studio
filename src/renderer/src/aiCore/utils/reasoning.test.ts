@@ -1,7 +1,7 @@
 import { createAnthropic } from '@ai-sdk/anthropic'
 import { createOpenAI } from '@ai-sdk/openai'
 import type { Assistant, Model, Provider } from '@renderer/types'
-import { REASONING_EFFORTS } from '@shared/reasoning'
+import { REASONING_EFFORTS, type ReasoningMode } from '@shared/reasoning'
 import { describe, expect, it, vi } from 'vitest'
 
 import { extensionRegistry } from '../../../../../packages/aiCore/src/core/providers/core/ExtensionRegistry'
@@ -43,10 +43,15 @@ const provider = (type: Provider['type']): Provider => ({
   apiKey: 'simulation-only',
   models: []
 })
-const capabilities = { enableReasoning: true, enableWebSearch: false, enableGenerateImage: false }
+const capabilities = { enableReasoning: true, enableGenerateImage: false }
 const prompt = [{ role: 'user' as const, content: [{ type: 'text' as const, text: 'simulated request' }] }]
 
-async function capture(type: Provider['type'], id: string, effort?: string) {
+async function capture(
+  type: Provider['type'],
+  id: string,
+  effort?: string,
+  reasoningMode: ReasoningMode = 'configured'
+) {
   const requests: any[] = []
   const fetcher: typeof fetch = async (input, init) => {
     requests.push({ url: String(input), body: JSON.parse(String(init?.body)) })
@@ -61,7 +66,7 @@ async function capture(type: Provider['type'], id: string, effort?: string) {
       : createOpenAI({ baseURL: provider(type).apiHost, apiKey: 'simulation-only', fetch: fetcher }).responses(id)
   const a = assistant(effort),
     m = model(id)
-  const options = buildProviderOptions(a, m, provider(type), capabilities)
+  const options = buildProviderOptions(a, m, provider(type), capabilities, reasoningMode)
   await expect(
     sdk.doGenerate({
       prompt,
@@ -111,6 +116,17 @@ describe('actual SDK HTTP reasoning payloads', () => {
   it('defaults missing and removed values to max', async () => {
     for (const effort of [undefined, 'none', 'minimal', 'default', 'auto'])
       expect((await capture('openai-response', 'custom-model', effort)).body.reasoning.effort).toBe('max')
+  })
+  it('omits reasoning controls and timeout fields for disabled model tests', async () => {
+    const openai = await capture('openai-response', 'gpt-6-sol', 'max', 'disabled')
+    expect(openai.body.reasoning).toBeUndefined()
+    expect(openai.body.output_config).toBeUndefined()
+    expect(openai.body.timeout).toBeUndefined()
+
+    const anthropic = await capture('anthropic', 'claude-sonnet-4-5', 'max', 'disabled')
+    expect(anthropic.body.thinking).toBeUndefined()
+    expect(anthropic.body.output_config).toBeUndefined()
+    expect(anthropic.body.timeout).toBeUndefined()
   })
   it.each(REASONING_EFFORTS)('sends native Anthropic %s', async (effort) => {
     const { body } = await capture('anthropic', 'claude-opus-4-7', effort)

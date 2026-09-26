@@ -2,6 +2,9 @@ export const REASONING_EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'] as co
 export type ReasoningEffort = (typeof REASONING_EFFORTS)[number]
 export const DEFAULT_REASONING_EFFORT: ReasoningEffort = 'max'
 
+/** Controls whether a request should inherit the assistant's reasoning settings. */
+export type ReasoningMode = 'configured' | 'disabled'
+
 export function normalizeReasoningEffort(value: unknown): ReasoningEffort {
   return REASONING_EFFORTS.includes(value as ReasoningEffort) ? (value as ReasoningEffort) : DEFAULT_REASONING_EFFORT
 }

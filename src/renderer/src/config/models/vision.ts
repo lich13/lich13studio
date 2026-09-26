@@ -83,7 +83,7 @@ const VISION_REGEX = new RegExp(
 // All dedicated image generation models (only generate images, no text chat capability)
 // These models need:
 // 1. Route to dedicated image generation API
-// 2. Exclude from reasoning/websearch/tooluse selection
+// 2. Exclude from reasoning/tool-use selection
 const DEDICATED_IMAGE_MODELS = [
   // OpenAI series
   'dall-e(?:-[\\w-]+)?',
@@ -169,7 +169,7 @@ const MODERN_GENERATE_IMAGE_MODELS_REGEX = new RegExp(MODERN_IMAGE_MODELS.join('
  *
  * These models need:
  * 1. Route to dedicated image generation API
- * 2. Exclude from reasoning/websearch/tooluse selection
+ * 2. Exclude from reasoning/tool-use selection
  */
 export function isDedicatedImageModel(model: Model): boolean {
   if (!model) return false

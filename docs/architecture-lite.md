@@ -14,7 +14,7 @@ Reasoning levels are `low / medium / high / xhigh / max`, defaulting to `max`. R
 
 The installed app registers `ccswitch://v1/import`. A native queue retains every pending provider link in memory until the main renderer is ready; mini windows cannot drain it. A renderer queue serializes confirmation dialogs. Only provider resources for codex (OpenAI), grokbuild (grok) and claude (Anthropic) are accepted. Both Sub2API and New API CCS links are supported, including `model`, `haikuModel`, `sonnetModel` and `opusModel`. Platform, normalized address and key define import identity. Confirmation allows platform correction; duplicate imports may add catalog models. Only `ccswitch` is registered, never `cherrystudio`. Keys are masked at confirmation and never placed in routes or import logs. Usage scripts are ignored.
 
-Redux persistence version 217 merges old provider models into platform catalogs in original provider order, then appends missing seed models. Existing definitions take precedence. It repairs addresses and removes per-provider model copies, UA overrides and detection state. Both startup and backup restore share idempotent migration. Version 216 still clears providers and invalid references for backups older than 216. Every rehydrate and backup restore sanitizes removed configuration. New providers survive restart and current-version backups. Chat messages, assistants and quick phrases remain intact.
+Redux persistence version 218 removes persisted web-search settings, search credentials and assistant search toggles while preserving historical chat blocks as read-only content. Version 217 merges old provider models into platform catalogs in original provider order, then appends missing seed models. Existing definitions take precedence. It repairs addresses and removes per-provider model copies, UA overrides and detection state. Both startup and backup restore share idempotent migration. Version 216 still clears providers and invalid references for backups older than 216. Every rehydrate and backup restore sanitizes removed configuration. New providers survive restart and current-version backups. Chat messages, assistants and quick phrases remain intact.
 
 ## CLI identity and endpoint handling
 
@@ -26,7 +26,7 @@ Model health probes and individual/batch API Key connection tests have no servic
 
 ## Removed MCP functionality
 
-There are no MCP settings, server runtimes, OAuth flows, installers, Redux slice, IPC/preload API, Tauri commands or HTTP routes. Historical tool messages keep their existing storage key and render as read-only records. Agent SDK configuration explicitly excludes external MCP configuration; native WebSearch/WebFetch remains available.
+There are no MCP settings, server runtimes, OAuth flows, installers, Redux slice, IPC/preload API, Tauri commands or HTTP routes. Historical tool messages keep their existing storage key and render as read-only records. Agent SDK configuration explicitly excludes external MCP configuration. The removed network-search feature has no provider, tool factory, request injection, UI entry, IPC path or API route; ordinary URL opening and historical citation rendering remain.
 
 ## Validation
 

@@ -219,8 +219,6 @@ export enum IpcChannel {
   Backup_RestoreFromLocalBackup = 'backup:restoreFromLocalBackup',
   Backup_ListLocalBackupFiles = 'backup:listLocalBackupFiles',
   Backup_DeleteLocalBackupFile = 'backup:deleteLocalBackupFile',
-  Backup_CreateLanTransferBackup = 'backup:createLanTransferBackup',
-  Backup_DeleteLanTransferBackup = 'backup:deleteLanTransferBackup',
 
   // zip
   Zip_Compress = 'zip:compress',
@@ -259,9 +257,6 @@ export enum IpcChannel {
   ReduxStoreReady = 'redux-store-ready',
 
   // Search Window
-  SearchWindow_Open = 'search-window:open',
-  SearchWindow_Close = 'search-window:close',
-  SearchWindow_OpenUrl = 'search-window:open-url',
 
   //Store Sync
   StoreSync_Subscribe = 'store-sync:subscribe',
@@ -364,15 +359,6 @@ export enum IpcChannel {
   Skill_ListLocal = 'skill:list-local',
 
   // Local Transfer
-  LocalTransfer_ListServices = 'local-transfer:list',
-  LocalTransfer_StartScan = 'local-transfer:start-scan',
-  LocalTransfer_StopScan = 'local-transfer:stop-scan',
-  LocalTransfer_ServicesUpdated = 'local-transfer:services-updated',
-  LocalTransfer_Connect = 'local-transfer:connect',
-  LocalTransfer_Disconnect = 'local-transfer:disconnect',
-  LocalTransfer_ClientEvent = 'local-transfer:client-event',
-  LocalTransfer_SendFile = 'local-transfer:send-file',
-  LocalTransfer_CancelTransfer = 'local-transfer:cancel-transfer',
 
   // OpenClaw
   OpenClaw_CheckInstalled = 'openclaw:check-installed',

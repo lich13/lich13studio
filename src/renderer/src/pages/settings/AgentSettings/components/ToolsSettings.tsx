@@ -49,7 +49,6 @@ const useBuiltinToolDescription = () => {
       Task: t('agent.tools.builtin.Task.description'),
       TodoWrite: t('agent.tools.builtin.TodoWrite.description'),
       WebFetch: t('agent.tools.builtin.WebFetch.description'),
-      WebSearch: t('agent.tools.builtin.WebSearch.description'),
       Write: t('agent.tools.builtin.Write.description')
     }
     return descriptions[toolId]

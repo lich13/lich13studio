@@ -82,8 +82,7 @@ const AgentSessionInputbar = ({ agentId, sessionId }: Props) => {
       type: 'agent-session',
       model: actualModel,
       defaultModel: actualModel,
-      tags: [],
-      enableWebSearch: false
+      tags: []
     } satisfies Assistant
   }, [session, agentId])
 

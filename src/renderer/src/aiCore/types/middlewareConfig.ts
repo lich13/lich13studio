@@ -1,7 +1,6 @@
-import type { WebSearchPluginConfig } from '@cherrystudio/ai-core/built-in/plugins'
 import type { Assistant, Message } from '@renderer/types'
 import type { Chunk } from '@renderer/types/chunk'
-import type { IdleTimeoutHandle } from '@renderer/utils/IdleTimeoutController'
+import type { ReasoningMode } from '@shared/reasoning'
 
 /**
  * AI SDK 中间件配置项（用于插件构建）
@@ -17,11 +16,9 @@ export interface AiSdkMiddlewareConfig {
   enableReasoning: boolean
   isPromptToolUse: boolean
   isSupportedToolUse: boolean
-  enableWebSearch: boolean
   enableGenerateImage: boolean
   enableUrlContext: boolean
+  reasoningMode?: ReasoningMode
   uiMessages?: Message[]
-  webSearchPluginConfig?: WebSearchPluginConfig
   urlContextConfig?: Record<string, any>
-  idleTimeout?: IdleTimeoutHandle
 }

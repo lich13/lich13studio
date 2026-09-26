@@ -259,15 +259,7 @@ export default class AiProvider {
     // 创建带有中间件的执行器
     if (middlewareConfig.onChunk) {
       const accumulate = this.model!.supported_text_delta !== false // true and undefined
-      const adapter = new AiSdkToChunkAdapter(
-        middlewareConfig.onChunk,
-        accumulate,
-        middlewareConfig.enableWebSearch,
-        undefined,
-        undefined,
-        providerConfig.providerId,
-        middlewareConfig.idleTimeout
-      )
+      const adapter = new AiSdkToChunkAdapter(middlewareConfig.onChunk, accumulate, undefined, undefined)
 
       let streamError: unknown
       const streamResult = await executor.streamText({

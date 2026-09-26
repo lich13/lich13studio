@@ -9,9 +9,6 @@
  * - parameterBuilder.ts: 参数构建器 (最终参数组装)
  */
 
-// 基础参数处理
-export { getTimeout } from './modelParameters'
-
 // 文件处理
 export { extractFileContent } from './fileProcessor'
 

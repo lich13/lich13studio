@@ -14,7 +14,6 @@ import { createOpenrouterReasoningPlugin } from './openrouterReasoningPlugin'
 import { createPdfCompatibilityPlugin } from './pdfCompatibilityPlugin'
 import { createQwenThinkingPlugin } from './qwenThinkingPlugin'
 import { createReasoningExtractionPlugin } from './reasoningExtractionPlugin'
-import { searchOrchestrationPlugin } from './searchOrchestrationPlugin'
 import { createSimulateStreamingPlugin } from './simulateStreamingPlugin'
 import { createSkipGeminiThoughtSignaturePlugin } from './skipGeminiThoughtSignaturePlugin'
 import { createTelemetryPlugin } from './telemetryPlugin'
@@ -90,7 +89,8 @@ export function buildPlugins({ provider, model, config }: BuildPluginsContext): 
     !isQwen35to39Model(model) &&
     !isSupportEnableThinkingProvider(provider)
   ) {
-    const enableThinking = config.assistant?.settings?.reasoning_effort !== undefined
+    const enableThinking =
+      config.reasoningMode !== 'disabled' && config.assistant?.settings?.reasoning_effort !== undefined
     plugins.push(createQwenThinkingPlugin(enableThinking))
   }
 
@@ -99,18 +99,10 @@ export function buildPlugins({ provider, model, config }: BuildPluginsContext): 
     plugins.push(createSkipGeminiThoughtSignaturePlugin())
   }
 
-  // 1. Provider 工具注入 — providerToolPlugin 自动按 provider 分发工具
-  if (config.enableWebSearch && config.webSearchPluginConfig) {
-    plugins.push(providerToolPlugin('webSearch', config.webSearchPluginConfig))
-  }
+  // 网络搜索已移除；仅保留显式 URL context 能力。
   if (config.enableUrlContext) {
     plugins.push(providerToolPlugin('urlContext', config.urlContextConfig))
   }
-  // 2. 支持工具调用时添加搜索插件
-  if (config.isSupportedToolUse || config.isPromptToolUse) {
-    plugins.push(searchOrchestrationPlugin(config.assistant, config.topicId || ''))
-  }
-
   // 3. 推理模型时添加推理插件
   // if (config.enableReasoning) {
   //   plugins.push(reasoningTimePlugin)

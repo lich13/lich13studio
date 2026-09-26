@@ -4,38 +4,25 @@
  */
 
 import { combineHeaders } from '@ai-sdk/provider-utils'
-import type { WebSearchPluginConfig } from '@cherrystudio/ai-core/built-in/plugins'
-import { extensionRegistry } from '@cherrystudio/ai-core/provider'
 import { loggerService } from '@logger'
-import type { AppProviderId } from '@renderer/aiCore/types'
 import { MAX_TOOL_CALLS, MIN_TOOL_CALLS } from '@renderer/config/constant'
 import {
   isAnthropicModel,
   isGeminiModel,
   isGenerateImageModel,
-  isGrokModel,
-  isOpenAIModel,
-  isOpenRouterBuiltInWebSearchModel,
-  isPureGenerateImageModel,
-  isWebSearchModel
+  isPureGenerateImageModel
 } from '@renderer/config/models'
 import { DEFAULT_ASSISTANT_SETTINGS, getDefaultModel, requireCurrentModel } from '@renderer/services/AssistantService'
-import store from '@renderer/store'
-import type { CherryWebSearchConfig } from '@renderer/store/websearch'
-import type { Model } from '@renderer/types'
-import { type Assistant, type Provider, SystemProviderIds } from '@renderer/types'
+import { type Assistant, type Provider } from '@renderer/types'
 import type { StreamTextParams } from '@renderer/types/aiCoreTypes'
-import { IdleTimeoutController, type IdleTimeoutHandle } from '@renderer/utils/IdleTimeoutController'
 import { replacePromptVariables } from '@renderer/utils/prompt'
-import { isAIGatewayProvider, isAwsBedrockProvider, isSupportUrlContextProvider } from '@renderer/utils/provider'
-import { DEFAULT_TIMEOUT } from '@shared/config/constant'
+import { isAwsBedrockProvider, isSupportUrlContextProvider } from '@renderer/utils/provider'
+import type { ReasoningMode } from '@shared/reasoning'
 import type { ModelMessage } from 'ai'
 import { stepCountIs } from 'ai'
 
-import { getAiSdkProviderId } from '../provider/factory'
 import type { ProviderCapabilities } from '../types'
 import { buildProviderOptions } from '../utils/options'
-import { buildProviderBuiltinWebSearchConfig } from '../utils/websearch'
 import { addAnthropicHeaders } from './header'
 import { getMaxTokens, getTemperature, getTopP } from './modelParameters'
 
@@ -54,23 +41,6 @@ function validateMaxToolCalls(value: number | undefined): number {
   return value
 }
 
-function mapVertexAIGatewayModelToProviderId(model: Model): AppProviderId | undefined {
-  if (isAnthropicModel(model)) {
-    return 'anthropic'
-  }
-  if (isGeminiModel(model)) {
-    return 'google'
-  }
-  if (isGrokModel(model)) {
-    return 'xai'
-  }
-  if (isOpenAIModel(model)) {
-    return 'openai'
-  }
-  logger.warn(`Unknown model type for AI Gateway: ${model.id}. Web search will not be enabled.`)
-  return undefined
-}
-
 /**
  * 构建 AI SDK 流式参数
  * 这是主要的参数构建函数，整合所有转换逻辑
@@ -81,50 +51,26 @@ export async function buildStreamTextParams(
   provider: Provider,
   options: {
     allowedTools?: string[]
-    webSearchProviderId?: string
-    webSearchConfig?: CherryWebSearchConfig
     requestOptions?: {
       signal?: AbortSignal
-      timeout?: number
       headers?: Record<string, string | undefined>
+      reasoningMode?: ReasoningMode
     }
   }
 ): Promise<{
   params: StreamTextParams
   modelId: string
   capabilities: ProviderCapabilities
-  webSearchPluginConfig?: WebSearchPluginConfig
-  idleTimeout: IdleTimeoutHandle
 }> {
   const { requestOptions = {} } = options
-  // No caller currently provides a custom timeout; defaultTimeout (10 min) is the fallback.
-  const { signal: externalSignal, timeout = DEFAULT_TIMEOUT, headers: inputHeaders = {} } = requestOptions
-
-  // Use an idle timeout that resets every time a stream chunk is received,
-  // instead of a fixed total timeout that starts from the initial request.
-  const idleTimeout = new IdleTimeoutController(timeout)
-  const signals = [idleTimeout.signal]
-  if (externalSignal) {
-    signals.push(externalSignal)
-  }
-  const finalSignal = AbortSignal.any(signals)
+  const { signal: externalSignal, headers: inputHeaders = {}, reasoningMode = 'configured' } = requestOptions
 
   const model = requireCurrentModel(assistant.model || getDefaultModel())
-  const aiSdkProviderId = getAiSdkProviderId(provider)
 
   // 这三个变量透传出来，交给下面启用插件/中间件
   // 也可以在外部构建好再传入buildStreamTextParams
   // FIXME: qwen3即使关闭思考仍然会导致enableReasoning的结果为true
-  const enableReasoning = true
-
-  // 判断是否使用内置搜索
-  // 条件：没有外部搜索提供商 && (用户开启了内置搜索 || 模型强制使用内置搜索)
-  const hasExternalSearch = !!options.webSearchProviderId
-  const enableWebSearch =
-    !hasExternalSearch &&
-    ((assistant.enableWebSearch && isWebSearchModel(model)) ||
-      isOpenRouterBuiltInWebSearchModel(model) ||
-      model.id.includes('sonar'))
+  const enableReasoning = reasoningMode === 'configured'
 
   // Validate provider and model support to prevent stale state from triggering urlContext
   const enableUrlContext = !!(
@@ -137,33 +83,16 @@ export async function buildStreamTextParams(
   const enableGenerateImage = !!(isGenerateImageModel(model) && assistant.enableGenerateImage)
 
   // 构建真正的 providerOptions
-  const webSearchConfig: CherryWebSearchConfig = {
-    maxResults: store.getState().websearch.maxResults,
-    excludeDomains: store.getState().websearch.excludeDomains,
-    searchWithTime: store.getState().websearch.searchWithTime
-  }
-
-  const { providerOptions, standardParams } = buildProviderOptions(assistant, model, provider, {
-    enableReasoning,
-    enableWebSearch,
-    enableGenerateImage
-  })
-
-  // Web search + URL context 的工具注入由 plugin 系统处理：
-  // - webSearchPlugin: 根据 provider 的 toolFactories.webSearch 自动注入
-  // - urlContextPlugin: 根据 provider 的 toolFactories.urlContext 自动注入
-  // parameterBuilder 只构建 config，传给 plugin
-  let webSearchPluginConfig: WebSearchPluginConfig | undefined = undefined
-  if (enableWebSearch) {
-    if (extensionRegistry.has(aiSdkProviderId)) {
-      webSearchPluginConfig = buildProviderBuiltinWebSearchConfig(aiSdkProviderId, webSearchConfig, model)
-    } else if (isAIGatewayProvider(provider) || SystemProviderIds.gateway === provider.id) {
-      const gatewayProviderId = mapVertexAIGatewayModelToProviderId(model)
-      if (gatewayProviderId) {
-        webSearchPluginConfig = buildProviderBuiltinWebSearchConfig(gatewayProviderId, webSearchConfig, model)
-      }
-    }
-  }
+  const { providerOptions, standardParams } = buildProviderOptions(
+    assistant,
+    model,
+    provider,
+    {
+      enableReasoning,
+      enableGenerateImage
+    },
+    reasoningMode
+  )
 
   let headers = inputHeaders
 
@@ -188,12 +117,12 @@ export async function buildStreamTextParams(
 
   const params: StreamTextParams = {
     messages: sdkMessages,
-    maxOutputTokens: getMaxTokens(assistant, model),
+    maxOutputTokens: getMaxTokens(assistant, model, reasoningMode),
     temperature: getTemperature(assistant, model),
     topP: getTopP(assistant, model),
     // Include AI SDK standard params extracted from custom parameters
     ...standardParams,
-    abortSignal: finalSignal,
+    ...(externalSignal ? { abortSignal: externalSignal } : {}),
     headers,
     providerOptions,
     maxRetries: 0
@@ -217,9 +146,7 @@ export async function buildStreamTextParams(
   return {
     params,
     modelId: model.id,
-    capabilities: { enableReasoning, enableWebSearch, enableGenerateImage, enableUrlContext },
-    webSearchPluginConfig,
-    idleTimeout
+    capabilities: { enableReasoning, enableGenerateImage, enableUrlContext }
   }
 }
 

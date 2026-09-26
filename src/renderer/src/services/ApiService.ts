@@ -41,7 +41,6 @@ import type { StreamProcessor, StreamProcessorCallbacks } from './StreamProcessi
 //   filterUsefulMessages,
 //   filterUserRoleStartMessages
 // } from './MessagesService'
-// import WebSearchService from './WebSearchService'
 
 // FIXME: 这里太多重复逻辑，需要重构
 
@@ -64,8 +63,8 @@ export async function transformMessagesAndFetch(
     allowedTools?: string[]
     options: {
       signal?: AbortSignal
-      timeout?: number
       headers?: Record<string, string>
+      reasoningMode?: import('@shared/reasoning').ReasoningMode
     }
   },
   onChunkReceived: StreamProcessor
@@ -157,12 +156,9 @@ export async function fetchChatCompletion({
   const {
     params: aiSdkParams,
     modelId,
-    capabilities,
-    webSearchPluginConfig,
-    idleTimeout
+    capabilities
   } = await buildStreamTextParams(messages, assistant, provider, {
     allowedTools,
-    webSearchProviderId: assistant.webSearchProviderId,
     requestOptions
   })
 
@@ -170,14 +166,12 @@ export async function fetchChatCompletion({
     streamOutput: assistant.settings?.streamOutput ?? true,
     onChunk: onChunkReceived,
     enableReasoning: capabilities.enableReasoning,
+    reasoningMode: requestOptions?.reasoningMode,
     isPromptToolUse: false,
     isSupportedToolUse: true,
-    webSearchPluginConfig: webSearchPluginConfig,
-    enableWebSearch: capabilities.enableWebSearch,
     enableGenerateImage: capabilities.enableGenerateImage,
     enableUrlContext: capabilities.enableUrlContext,
-    uiMessages,
-    idleTimeout
+    uiMessages
   }
 
   // Wrap onChunkReceived to automatically track token usage on completion
@@ -389,7 +383,6 @@ export async function fetchMessagesSummary({
 
   const { providerOptions, standardParams } = buildProviderOptions(summaryAssistant, model, actualProvider, {
     enableReasoning: false,
-    enableWebSearch: false,
     enableGenerateImage: false
   })
 
@@ -405,7 +398,6 @@ export async function fetchMessagesSummary({
     enableReasoning: false,
     isPromptToolUse: false,
     isSupportedToolUse: false,
-    enableWebSearch: false,
     enableGenerateImage: false,
     enableUrlContext: false
   }
@@ -486,7 +478,6 @@ export async function fetchNoteSummary({ content, assistant }: { content: string
     enableReasoning: false,
     isPromptToolUse: false,
     isSupportedToolUse: false,
-    enableWebSearch: false,
     enableGenerateImage: false,
     enableUrlContext: false
   }
@@ -577,7 +568,6 @@ export async function fetchGenerate({
     enableReasoning: false,
     isPromptToolUse: false,
     isSupportedToolUse: false,
-    enableWebSearch: false,
     enableGenerateImage: false,
     enableUrlContext: false
   }

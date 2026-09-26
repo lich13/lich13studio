@@ -3,10 +3,8 @@ import {
   isAutoEnableImageGenerationModel,
   isGenerateImageModel,
   isGenerateImageModels,
-  isMandatoryWebSearchModel,
   isVisionModel,
-  isVisionModels,
-  isWebSearchModel
+  isVisionModels
 } from '@renderer/config/models'
 import db from '@renderer/databases'
 import { useAssistant } from '@renderer/hooks/useAssistant'
@@ -29,7 +27,6 @@ import FileManager from '@renderer/services/FileManager'
 import { checkRateLimit, getUserMessage } from '@renderer/services/MessagesService'
 import { spanManagerService } from '@renderer/services/SpanManagerService'
 import { estimateTextTokens as estimateTxtTokens, estimateUserPromptUsage } from '@renderer/services/TokenService'
-import WebSearchService from '@renderer/services/WebSearchService'
 import { useAppDispatch, useAppSelector } from '@renderer/store'
 import { sendMessage as _sendMessage } from '@renderer/store/thunk/messageThunk'
 import { type Assistant, type FileMetadata, type Model, type Topic, TopicType } from '@renderer/types'
@@ -426,22 +423,9 @@ const InputbarInner: FC<InputbarInnerProps> = ({ assistant: initialAssistant, se
     if (!document.querySelector('.topview-fullscreen-container')) {
       focusTextarea()
     }
-  }, [topic.id, assistant.enableWebSearch, assistant.webSearchProviderId, mentionedModels, focusTextarea])
+  }, [topic.id, mentionedModels, focusTextarea])
 
   useEffect(() => {
-    // Disable web search if model doesn't support it
-    if (!isWebSearchModel(model) && assistant.enableWebSearch) {
-      updateAssistant({ ...assistant, enableWebSearch: false })
-    }
-
-    // Clear web search provider if disabled or model has mandatory search
-    if (
-      assistant.webSearchProviderId &&
-      (!WebSearchService.isWebSearchEnabled(assistant.webSearchProviderId) || isMandatoryWebSearchModel(model))
-    ) {
-      updateAssistant({ ...assistant, webSearchProviderId: undefined })
-    }
-
     // Auto-enable/disable image generation based on model capabilities
     if (isGenerateImageModel(model)) {
       if (isAutoEnableImageGenerationModel(model) && !assistant.enableGenerateImage) {

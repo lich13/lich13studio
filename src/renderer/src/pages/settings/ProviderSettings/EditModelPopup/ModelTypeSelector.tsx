@@ -144,11 +144,6 @@ const ModelTypeSelector: FC<ModelTypeSelectorProps> = ({
               disabled: isDisabled
             },
             {
-              label: t('models.type.websearch'),
-              value: 'web_search',
-              disabled: isDisabled
-            },
-            {
               label: t('models.type.rerank'),
               value: 'rerank',
               disabled: isRerankDisabled

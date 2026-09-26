@@ -6,7 +6,7 @@ import MultiSelectActionPopup from '@renderer/components/Popups/MultiSelectionPo
 import PromptPopup from '@renderer/components/Popups/PromptPopup'
 import { SelectChatModelPopup } from '@renderer/components/Popups/SelectModelPopup'
 import { QuickPanelProvider } from '@renderer/components/QuickPanel'
-import { isEmbeddingModel, isRerankModel, isWebSearchModel } from '@renderer/config/models'
+import { isEmbeddingModel, isRerankModel } from '@renderer/config/models'
 import { useAssistant } from '@renderer/hooks/useAssistant'
 import { useChatContext } from '@renderer/hooks/useChatContext'
 import { useNavbarPosition, useSettings } from '@renderer/hooks/useSettings'
@@ -93,11 +93,7 @@ const Chat: FC<Props> = (props) => {
       filter: modelFilter
     })
     if (selectedModel) {
-      const enabledWebSearch = isWebSearchModel(selectedModel)
-      updateAssistant({
-        model: selectedModel,
-        enableWebSearch: enabledWebSearch && assistant.enableWebSearch
-      })
+      updateAssistant({ model: selectedModel })
     }
   })
 

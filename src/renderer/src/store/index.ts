@@ -43,7 +43,6 @@ import settings from './settings'
 import shortcuts from './shortcuts'
 import tabs from './tabs'
 import toolPermissions from './toolPermissions'
-import websearch from './websearch'
 
 const logger = loggerService.withContext('Store')
 
@@ -57,7 +56,6 @@ const rootReducer = combineReducers({
   runtime,
   shortcuts,
   minapps,
-  websearch,
   copilot,
   openclaw,
   selectionStore,
@@ -75,7 +73,7 @@ const persistedReducer = persistReducer(
   {
     key: 'cherry-studio',
     storage,
-    version: 217,
+    version: 218,
     blacklist: ['runtime', 'messages', 'messageBlocks', 'tabs', 'toolPermissions'],
     migrate
   },

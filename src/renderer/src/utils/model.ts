@@ -3,8 +3,7 @@ import {
   isFunctionCallingModel,
   isReasoningModel,
   isRerankModel,
-  isVisionModel,
-  isWebSearchModel
+  isVisionModel
 } from '@renderer/config/models'
 import type { AdaptedApiModel, ApiModel, Model, ModelTag } from '@renderer/types'
 import { objectKeys } from '@renderer/types'
@@ -20,7 +19,6 @@ export const getModelTags = (models: Model[]): Record<ModelTag, boolean> => {
     embedding: false,
     reasoning: false,
     function_calling: false,
-    web_search: false,
     rerank: false,
     free: false
   }
@@ -46,10 +44,6 @@ export const getModelTags = (models: Model[]): Record<ModelTag, boolean> => {
     if (!result.function_calling && isFunctionCallingModel(model)) {
       satisfied += 1
       result.function_calling = true
-    }
-    if (!result.web_search && isWebSearchModel(model)) {
-      satisfied += 1
-      result.web_search = true
     }
     if (!result.rerank && isRerankModel(model)) {
       satisfied += 1

@@ -25,7 +25,6 @@ import type { OpenRouterProviderSettings } from '@openrouter/ai-sdk-provider'
 import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import { customProvider } from 'ai'
 
-import type { OpenRouterSearchConfig } from '../../plugins/built-in/webSearchPlugin'
 import type {
   ExtensionConfigToIdResolutionMap,
   ExtractExtensionIds,
@@ -44,10 +43,6 @@ const AnthropicExtension = ProviderExtension.create({
   supportsImageGeneration: false,
   create: createAnthropic,
   toolFactories: {
-    webSearch:
-      (provider) => (config: NonNullable<Parameters<AnthropicProvider['tools']['webSearch_20260209']>[0]>) => ({
-        tools: { webSearch: provider.tools.webSearch_20260209(config) }
-      }),
     urlContext:
       (provider) => (config: NonNullable<Parameters<AnthropicProvider['tools']['webFetch_20260209']>[0]>) => ({
         tools: { urlContext: provider.tools.webFetch_20260209(config) }
@@ -72,13 +67,6 @@ const AzureExtension = ProviderExtension.create({
       }
     })
   },
-  toolFactories: {
-    webSearch:
-      (provider: AzureOpenAIProvider) =>
-      (config: NonNullable<Parameters<AzureOpenAIProvider['tools']['webSearchPreview']>[0]>) => ({
-        tools: { webSearch: provider.tools.webSearchPreview(config) }
-      })
-  },
   variants: [
     {
       suffix: 'responses',
@@ -86,13 +74,7 @@ const AzureExtension = ProviderExtension.create({
       // AI SDK defaults to responses API, so createAzure(settings) without
       // the chat override (used in base `create`) gives us Responses API behavior.
       transform: (_provider, settings) => createAzure(settings),
-      toolFactories: {
-        webSearch:
-          (provider: AzureOpenAIProvider) =>
-          (config: NonNullable<Parameters<AzureOpenAIProvider['tools']['webSearchPreview']>[0]>) => ({
-            tools: { webSearch: provider.tools.webSearchPreview(config) }
-          })
-      }
+      toolFactories: {}
     },
     // Azure 上的 Claude 模型走 Anthropic SDK
     // https://platform.claude.com/docs/en/build-with-claude/claude-in-microsoft-foundry
@@ -106,10 +88,6 @@ const AzureExtension = ProviderExtension.create({
           headers: settings?.headers
         }),
       toolFactories: {
-        webSearch:
-          (provider) => (config: NonNullable<Parameters<AnthropicProvider['tools']['webSearch_20260209']>[0]>) => ({
-            tools: { webSearch: provider.tools.webSearch_20260209(config) }
-          }),
         urlContext:
           (provider) => (config: NonNullable<Parameters<AnthropicProvider['tools']['webFetch_20260209']>[0]>) => ({
             tools: { urlContext: provider.tools.webFetch_20260209(config) }
@@ -151,11 +129,6 @@ const GoogleExtension = ProviderExtension.create({
   supportsImageGeneration: true,
   create: createGoogleGenerativeAI,
   toolFactories: {
-    webSearch:
-      (provider: GoogleGenerativeAIProvider) =>
-      (config: NonNullable<Parameters<GoogleGenerativeAIProvider['tools']['googleSearch']>[0]>) => ({
-        tools: { webSearch: provider.tools.googleSearch(config) }
-      }),
     urlContext: (provider) => (config) => ({
       tools: {
         urlContext: provider.tools.urlContext(config)
@@ -180,25 +153,14 @@ const OpenAIExtension = ProviderExtension.create({
   aliases: ['openai-response'] as const,
   supportsImageGeneration: true,
   create: createOpenAI,
-  toolFactories: {
-    webSearch:
-      (provider: OpenAIProvider) => (config: NonNullable<Parameters<OpenAIProvider['tools']['webSearch']>[0]>) => ({
-        tools: { webSearch: provider.tools.webSearch(config) }
-      })
-  },
+  toolFactories: {},
 
   variants: [
     {
       suffix: 'chat',
       name: 'OpenAI Chat',
       resolveModel: (provider: OpenAIProvider, modelId: string) => provider.chat(modelId),
-      toolFactories: {
-        webSearch:
-          (provider: OpenAIProvider) =>
-          (config: NonNullable<Parameters<OpenAIProvider['tools']['webSearchPreview']>[0]>) => ({
-            tools: { webSearch: provider.tools.webSearchPreview(config) }
-          })
-      }
+      toolFactories: {}
     }
   ] as const
 } as const satisfies ProviderExtensionConfig<OpenAIProviderSettings, OpenAIProvider, 'openai'>)
@@ -208,12 +170,7 @@ const OpenRouterExtension = ProviderExtension.create({
   // TODO: 实现注册后修改拓展配置
   aliases: ['tokenflux'] as const,
   supportsImageGeneration: true,
-  create: createOpenRouter,
-  toolFactories: {
-    webSearch: () => (config: OpenRouterSearchConfig) => ({
-      providerOptions: { openrouter: config }
-    })
-  }
+  create: createOpenRouter
 } as const satisfies ProviderExtensionConfig<OpenRouterProviderSettings, ProviderV3, 'openrouter'>)
 
 const XaiExtension = ProviderExtension.create({
@@ -226,19 +183,7 @@ const XaiExtension = ProviderExtension.create({
       suffix: 'responses',
       name: 'xAI Responses',
       resolveModel: (provider: XaiProvider, modelId: string) => provider.responses(modelId),
-      toolFactories: {
-        webSearch:
-          (provider: XaiProvider) =>
-          (config: {
-            webSearch?: Parameters<XaiProvider['tools']['webSearch']>[0]
-            xSearch?: Parameters<XaiProvider['tools']['xSearch']>[0]
-          }) => ({
-            tools: {
-              webSearch: provider.tools.webSearch(config?.webSearch ?? {}),
-              xSearch: provider.tools.xSearch(config?.xSearch ?? {})
-            }
-          })
-      }
+      toolFactories: {}
     }
   ] as const
 } as const satisfies ProviderExtensionConfig<XaiProviderSettings, XaiProvider, 'xai'>)

@@ -37,11 +37,6 @@ export const GoogleVertexExtension = ProviderExtension.create({
   supportsImageGeneration: true,
   create: createVertex,
   toolFactories: {
-    webSearch:
-      (provider: GoogleVertexProvider) =>
-      (config: NonNullable<Parameters<GoogleVertexProvider['tools']['googleSearch']>[0]>) => ({
-        tools: { webSearch: provider.tools.googleSearch(config) }
-      }),
     urlContext:
       (provider: GoogleVertexProvider) =>
       (config: NonNullable<Parameters<GoogleVertexProvider['tools']['urlContext']>[0]>) => ({
@@ -58,13 +53,7 @@ export const GoogleVertexAnthropicExtension = ProviderExtension.create({
   aliases: ['vertexai-anthropic'] as const,
   supportsImageGeneration: true,
   create: createVertexAnthropic,
-  toolFactories: {
-    webSearch:
-      (provider: GoogleVertexAnthropicProvider) =>
-      (config: NonNullable<Parameters<GoogleVertexAnthropicProvider['tools']['webSearch_20250305']>[0]>) => ({
-        tools: { webSearch: provider.tools.webSearch_20250305(config) }
-      })
-  }
+  toolFactories: {}
 } as const satisfies ProviderExtensionConfig<
   GoogleVertexProviderSettings,
   GoogleVertexAnthropicProvider,
@@ -96,11 +85,6 @@ export const BedrockExtension = ProviderExtension.create({
   supportsImageGeneration: true,
   create: createAmazonBedrock,
   toolFactories: {
-    webSearch:
-      (provider: AmazonBedrockProvider) =>
-      (config: NonNullable<Parameters<AmazonBedrockProvider['tools']['webSearch_20260209']>[0]>) => ({
-        tools: { webSearch: provider.tools.webSearch_20260209(config) }
-      }),
     urlContext:
       (provider: AmazonBedrockProvider) =>
       (config: NonNullable<Parameters<AmazonBedrockProvider['tools']['webFetch_20260209']>[0]>) => ({

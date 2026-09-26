@@ -19,7 +19,6 @@ export interface AiRequestMetadata {
   topicId?: string
   callType?: string
   enableReasoning?: boolean
-  enableWebSearch?: boolean
   enableGenerateImage?: boolean
   isPromptToolUse?: boolean
   isSupportedToolUse?: boolean

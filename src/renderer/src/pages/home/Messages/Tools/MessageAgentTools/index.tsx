@@ -30,7 +30,6 @@ import type { ToolInput, ToolOutput } from './types'
 import { AgentToolsType } from './types'
 import { UnknownToolRenderer } from './UnknownToolRenderer'
 import { WebFetchTool } from './WebFetchTool'
-import { WebSearchTool } from './WebSearchTool'
 import { WriteTool } from './WriteTool'
 
 // 创建工具渲染器映射
@@ -40,7 +39,6 @@ export const toolRenderers = {
   [AgentToolsType.Bash]: BashTool,
   [AgentToolsType.Search]: SearchTool,
   [AgentToolsType.Glob]: GlobTool,
-  [AgentToolsType.WebSearch]: WebSearchTool,
   [AgentToolsType.Grep]: GrepTool,
   [AgentToolsType.Write]: WriteTool,
   [AgentToolsType.WebFetch]: WebFetchTool,

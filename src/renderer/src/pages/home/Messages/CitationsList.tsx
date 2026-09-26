@@ -3,10 +3,7 @@ import Favicon from '@renderer/components/Icons/FallbackFavicon'
 import Scrollbar from '@renderer/components/Scrollbar'
 import { useTemporaryValue } from '@renderer/hooks/useTemporaryValue'
 import type { Citation } from '@renderer/types'
-import { fetchWebContent, fetchXOEmbed, isXPostUrl } from '@renderer/utils/fetch'
-import { cleanMarkdownContent } from '@renderer/utils/formats'
-import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
-import { Button, message, Popover, Skeleton } from 'antd'
+import { Button, message, Popover } from 'antd'
 import { Check, Copy, FileSearch } from 'lucide-react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -15,17 +12,6 @@ import styled from 'styled-components'
 interface CitationsListProps {
   citations: Citation[]
 }
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: Infinity,
-      gcTime: Infinity,
-      refetchOnWindowFocus: false,
-      retry: false
-    }
-  }
-})
 
 /**
  * 限制文本长度
@@ -69,44 +55,42 @@ const CitationsList: React.FC<CitationsListProps> = ({ citations }) => {
   )
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <Popover
-        arrow={false}
-        content={popoverContent}
-        title={
-          <div
-            style={{
-              padding: '8px 12px 8px',
-              marginBottom: -8,
-              fontWeight: 'bold',
-              borderBottom: '0.5px solid var(--color-border)'
-            }}>
-            {t('message.citations')}
-          </div>
+    <Popover
+      arrow={false}
+      content={popoverContent}
+      title={
+        <div
+          style={{
+            padding: '8px 12px 8px',
+            marginBottom: -8,
+            fontWeight: 'bold',
+            borderBottom: '0.5px solid var(--color-border)'
+          }}>
+          {t('message.citations')}
+        </div>
+      }
+      placement="right"
+      trigger="click"
+      styles={{
+        body: {
+          padding: '0 0 8px 0'
         }
-        placement="right"
-        trigger="click"
-        styles={{
-          body: {
-            padding: '0 0 8px 0'
-          }
-        }}>
-        <OpenButton type="text">
-          <PreviewIcons>
-            {previewItems.map((c, i) => (
-              <PreviewIcon key={i} style={{ zIndex: previewItems.length - i }}>
-                {c.type === 'websearch' && c.url ? (
-                  <Favicon hostname={new URL(c.url).hostname} alt={c.title || ''} />
-                ) : (
-                  <FileSearch width={16} />
-                )}
-              </PreviewIcon>
-            ))}
-          </PreviewIcons>
-          {t('message.citation', { count })}
-        </OpenButton>
-      </Popover>
-    </QueryClientProvider>
+      }}>
+      <OpenButton type="text">
+        <PreviewIcons>
+          {previewItems.map((c, i) => (
+            <PreviewIcon key={i} style={{ zIndex: previewItems.length - i }}>
+              {c.type === 'websearch' && c.url ? (
+                <Favicon hostname={new URL(c.url).hostname} alt={c.title || ''} />
+              ) : (
+                <FileSearch width={16} />
+              )}
+            </PreviewIcon>
+          ))}
+        </PreviewIcons>
+        {t('message.citation', { count })}
+      </OpenButton>
+    </Popover>
   )
 }
 
@@ -137,34 +121,7 @@ const CopyButton: React.FC<{ content: string }> = ({ content }) => {
 }
 
 const WebSearchCitation: React.FC<{ citation: Citation }> = ({ citation }) => {
-  const isXPost = Boolean(citation.url && isXPostUrl(citation.url))
-
-  const { data: fetchedContent, isLoading } = useQuery({
-    queryKey: ['webContent', citation.url],
-    queryFn: async () => {
-      if (!citation.url) return ''
-      if (isXPost) {
-        const oembed = await fetchXOEmbed(citation.url)
-        if (oembed) {
-          return `@${oembed.author}: ${oembed.text}`
-        }
-        return ''
-      }
-      const res = await fetchWebContent(citation.url, 'markdown')
-      return cleanMarkdownContent(res.content)
-    },
-    enabled: Boolean(citation.url),
-    select: (content) => truncateText(content, 100)
-  })
-
-  const { data: oembedData } = useQuery({
-    queryKey: ['xOembed', citation.url],
-    queryFn: () => fetchXOEmbed(citation.url),
-    enabled: isXPost && Boolean(citation.url),
-    staleTime: Infinity
-  })
-
-  const displayTitle = isXPost && oembedData?.author ? `@${oembedData.author}` : citation.title
+  const storedContent = truncateText(citation.content ?? '', 100)
 
   return (
     <ContextMenu>
@@ -174,17 +131,13 @@ const WebSearchCitation: React.FC<{ citation: Citation }> = ({ citation }) => {
             <Favicon hostname={new URL(citation.url).hostname} alt={citation.title || citation.hostname || ''} />
           )}
           <CitationLink className="text-nowrap" href={citation.url} onClick={(e) => handleLinkClick(citation.url, e)}>
-            {displayTitle || <span className="hostname">{citation.hostname}</span>}
+            {citation.title || <span className="hostname">{citation.hostname}</span>}
           </CitationLink>
 
           <CitationIndex>{citation.number}</CitationIndex>
-          {fetchedContent && <CopyButton content={fetchedContent} />}
+          {storedContent && <CopyButton content={storedContent} />}
         </WebSearchCardHeader>
-        {isLoading ? (
-          <Skeleton active paragraph={{ rows: 1 }} title={false} />
-        ) : (
-          <WebSearchCardContent className="selectable-text">{fetchedContent}</WebSearchCardContent>
-        )}
+        <WebSearchCardContent className="selectable-text">{storedContent}</WebSearchCardContent>
       </WebSearchCard>
     </ContextMenu>
   )

@@ -4,17 +4,7 @@ import { electronAPI } from '@electron-toolkit/preload'
 import type { SpanContext } from '@opentelemetry/api'
 import type { GitBashPathInfo, TerminalConfig, UpgradeChannel } from '@shared/config/constant'
 import type { LogLevel, LogSourceWithContext } from '@shared/config/logger'
-import type {
-  CodeToolsRunResult,
-  FileChangeEvent,
-  LanClientEvent,
-  LanFileCompleteMessage,
-  LanHandshakeAckMessage,
-  LocalTransferConnectPayload,
-  LocalTransferState,
-  OperationResult,
-  WebviewKeyEvent
-} from '@shared/config/types'
+import type { CodeToolsRunResult, FileChangeEvent, OperationResult, WebviewKeyEvent } from '@shared/config/types'
 import type { ExternalAppInfo } from '@shared/externalApp/types'
 import { IpcChannel } from '@shared/IpcChannel'
 import type { SpanEntity, TokenUsage } from '@trace/trace-core'
@@ -205,10 +195,6 @@ const api = {
       ipcRenderer.invoke(IpcChannel.Backup_DeleteLocalBackupFile, fileName, localBackupDir),
     checkWebdavConnection: (webdavConfig: WebDavConfig) =>
       ipcRenderer.invoke(IpcChannel.Backup_CheckConnection, webdavConfig),
-    createLanTransferBackup: (data: string, destinationPath?: string): Promise<string> =>
-      ipcRenderer.invoke(IpcChannel.Backup_CreateLanTransferBackup, data, destinationPath),
-    deleteLanTransferBackup: (filePath: string): Promise<boolean> =>
-      ipcRenderer.invoke(IpcChannel.Backup_DeleteLanTransferBackup, filePath),
     onProgress: (callback: (data: { stage: string; progress: number; total: number }) => void) =>
       addIpcListener(IpcChannel.BackupProgress, callback),
     onRestoreProgress: (callback: (data: { stage: string; progress: number; total: number }) => void) =>
@@ -417,11 +403,6 @@ const api = {
   },
   externalApps: {
     detectInstalled: (): Promise<ExternalAppInfo[]> => ipcRenderer.invoke(IpcChannel.ExternalApps_DetectInstalled)
-  },
-  searchService: {
-    openSearchWindow: (uid: string, show?: boolean) => ipcRenderer.invoke(IpcChannel.SearchWindow_Open, uid, show),
-    closeSearchWindow: (uid: string) => ipcRenderer.invoke(IpcChannel.SearchWindow_Close, uid),
-    openUrlInSearchWindow: (uid: string, url: string) => ipcRenderer.invoke(IpcChannel.SearchWindow_OpenUrl, uid, url)
   },
   webview: {
     setOpenLinkExternal: (webviewId: number, isExternal: boolean) =>
@@ -734,33 +715,6 @@ const api = {
       ipcRenderer.invoke(IpcChannel.Skill_ListFiles, skillId),
     listLocal: (workdir: string): Promise<SkillResult<LocalSkill[]>> =>
       ipcRenderer.invoke(IpcChannel.Skill_ListLocal, workdir)
-  },
-  localTransfer: {
-    getState: (): Promise<LocalTransferState> => ipcRenderer.invoke(IpcChannel.LocalTransfer_ListServices),
-    startScan: (): Promise<LocalTransferState> => ipcRenderer.invoke(IpcChannel.LocalTransfer_StartScan),
-    stopScan: (): Promise<LocalTransferState> => ipcRenderer.invoke(IpcChannel.LocalTransfer_StopScan),
-    connect: (payload: LocalTransferConnectPayload): Promise<LanHandshakeAckMessage> =>
-      ipcRenderer.invoke(IpcChannel.LocalTransfer_Connect, payload),
-    disconnect: (): Promise<void> => ipcRenderer.invoke(IpcChannel.LocalTransfer_Disconnect),
-    onServicesUpdated: (callback: (state: LocalTransferState) => void): (() => void) => {
-      const channel = IpcChannel.LocalTransfer_ServicesUpdated
-      const listener = (_: Electron.IpcRendererEvent, state: LocalTransferState) => callback(state)
-      ipcRenderer.on(channel, listener)
-      return () => {
-        ipcRenderer.removeListener(channel, listener)
-      }
-    },
-    onClientEvent: (callback: (event: LanClientEvent) => void): (() => void) => {
-      const channel = IpcChannel.LocalTransfer_ClientEvent
-      const listener = (_: Electron.IpcRendererEvent, event: LanClientEvent) => callback(event)
-      ipcRenderer.on(channel, listener)
-      return () => {
-        ipcRenderer.removeListener(channel, listener)
-      }
-    },
-    sendFile: (filePath: string): Promise<LanFileCompleteMessage> =>
-      ipcRenderer.invoke(IpcChannel.LocalTransfer_SendFile, { filePath }),
-    cancelTransfer: (): Promise<void> => ipcRenderer.invoke(IpcChannel.LocalTransfer_CancelTransfer)
   },
   openclaw: {
     checkInstalled: (): Promise<{ installed: boolean; path: string | null; needsMigration: boolean }> =>

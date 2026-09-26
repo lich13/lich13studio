@@ -1,7 +1,6 @@
 import { usePreprocessProvider } from '@renderer/hooks/usePreprocess'
 import { useProvider } from '@renderer/hooks/useProvider'
-import { useWebSearchProvider } from '@renderer/hooks/useWebSearchProviders'
-import type { PreprocessProviderId, WebSearchProviderId } from '@renderer/types'
+import type { PreprocessProviderId } from '@renderer/types'
 import { Button, List } from 'antd'
 import { Plus } from 'lucide-react'
 import { useState } from 'react'
@@ -58,10 +57,6 @@ export function ApiKeyList({
 }
 export function LlmApiKeyList({ providerId }: { providerId: string }) {
   const { provider, updateProvider } = useProvider(providerId)
-  return <ApiKeyList provider={provider} updateProvider={updateProvider} />
-}
-export function WebSearchApiKeyList({ providerId }: { providerId: WebSearchProviderId }) {
-  const { provider, updateProvider } = useWebSearchProvider(providerId)
   return <ApiKeyList provider={provider} updateProvider={updateProvider} />
 }
 export function DocPreprocessApiKeyList({ providerId }: { providerId: PreprocessProviderId }) {

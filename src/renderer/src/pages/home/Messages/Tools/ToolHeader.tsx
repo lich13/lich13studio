@@ -62,7 +62,6 @@ const getAgentToolIcon = (toolName: string): ReactNode => {
       return <FileEdit size={14} />
     case AgentToolsType.MultiEdit:
       return <FileText size={14} />
-    case AgentToolsType.WebSearch:
     case AgentToolsType.WebFetch:
       return <Globe size={14} />
     case AgentToolsType.NotebookEdit:
@@ -100,8 +99,6 @@ const getAgentToolLabel = (toolName: string, t: (key: string) => string): string
       return t('message.tools.labels.edit')
     case AgentToolsType.MultiEdit:
       return t('message.tools.labels.multiEdit')
-    case AgentToolsType.WebSearch:
-      return t('message.tools.labels.webSearch')
     case AgentToolsType.WebFetch:
       return t('message.tools.labels.webFetch')
     case AgentToolsType.NotebookEdit:

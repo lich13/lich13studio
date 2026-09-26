@@ -4,14 +4,10 @@
  */
 
 import { loggerService } from '@logger'
-import type { AISDKWebSearchResult, WebSearchResults, WebSearchSource } from '@renderer/types'
-import { WEB_SEARCH_SOURCE } from '@renderer/types'
 import type { Chunk, ProviderMetadata } from '@renderer/types/chunk'
 import { ChunkType } from '@renderer/types/chunk'
 import { ProviderSpecificError } from '@renderer/types/provider-specific-error'
 import { formatErrorMessage, isAbortError } from '@renderer/utils/error'
-import type { IdleTimeoutHandle } from '@renderer/utils/IdleTimeoutController'
-import { convertLinks, flushLinkConverterBuffer } from '@renderer/utils/linkConverter'
 import type { ClaudeCodeRawValue } from '@shared/agents/claudecode/types'
 import { AISDKError, type TextStreamPart, type ToolSet } from 'ai'
 
@@ -26,38 +22,44 @@ const logger = loggerService.withContext('AiSdkToChunkAdapter')
 export class AiSdkToChunkAdapter {
   toolCallHandler: ToolCallChunkHandler
   private accumulate: boolean | undefined
-  private isFirstChunk = true
-  private enableWebSearch: boolean = false
+  private pendingChunkCallbacks: Promise<unknown>[] = []
   private onSessionUpdate?: (sessionId: string) => void
   private responseStartTimestamp: number | null = null
   private firstTokenTimestamp: number | null = null
   private hasTextContent = false
+  private emittedTerminalEvent = false
   private getSessionWasCleared?: () => boolean
-  private providerId?: string
-  private idleTimeout?: IdleTimeoutHandle
 
   constructor(
-    private onChunk: (chunk: Chunk) => void,
+    private onChunk: (chunk: Chunk) => void | Promise<void>,
     accumulate?: boolean,
-    enableWebSearch?: boolean,
     onSessionUpdate?: (sessionId: string) => void,
-    getSessionWasCleared?: () => boolean,
-    providerId?: string,
-    idleTimeout?: IdleTimeoutHandle
+    getSessionWasCleared?: () => boolean
   ) {
-    this.toolCallHandler = new ToolCallChunkHandler(onChunk)
+    this.toolCallHandler = new ToolCallChunkHandler((chunk) => this.emitChunk(chunk))
     this.accumulate = accumulate
-    this.enableWebSearch = enableWebSearch || false
     this.onSessionUpdate = onSessionUpdate
     this.getSessionWasCleared = getSessionWasCleared
-    this.providerId = providerId
-    this.idleTimeout = idleTimeout
+  }
+
+  private emitChunk(chunk: Chunk) {
+    const result = this.onChunk(chunk)
+    if (result && typeof (result as Promise<void>).then === 'function') {
+      this.pendingChunkCallbacks.push(result)
+    }
+  }
+
+  private async flushChunkCallbacks() {
+    while (this.pendingChunkCallbacks.length > 0) {
+      const pending = this.pendingChunkCallbacks
+      this.pendingChunkCallbacks = []
+      await Promise.all(pending)
+    }
   }
 
   private markFirstTokenIfNeeded() {
     if (this.firstTokenTimestamp === null && this.responseStartTimestamp !== null) {
       this.firstTokenTimestamp = Date.now()
-      this.idleTimeout?.markFirstToken?.()
     }
   }
 
@@ -100,35 +102,37 @@ export class AiSdkToChunkAdapter {
     const reader = fullStream.getReader()
     const final = {
       text: '',
+      responseText: '',
       reasoningContent: '',
-      webSearchResults: [],
+      responseReasoningContent: '',
       reasoningId: '',
       providerMetadata: undefined as ProviderMetadata | undefined
     }
     this.resetTimingState()
     this.responseStartTimestamp = Date.now()
     // Reset state at the start of stream
-    this.isFirstChunk = true
     this.hasTextContent = false
+    this.emittedTerminalEvent = false
 
     try {
       while (true) {
         const { done, value } = await reader.read()
 
-        // Reset idle timeout on every chunk received from the stream
-        this.idleTimeout?.reset()
-
         if (done) {
-          // Flush any remaining content from link converter buffer if web search is enabled
-          if (this.enableWebSearch) {
-            const remainingText = flushLinkConverterBuffer()
-            if (remainingText) {
-              this.markFirstTokenIfNeeded()
-              this.onChunk({
-                type: ChunkType.TEXT_DELTA,
-                text: remainingText
-              })
+          // Some OpenAI-compatible gateways close the SSE stream after the
+          // final text event without emitting the AI SDK `finish` part. The
+          // content is still complete, so close the application stream here
+          // instead of turning a successful response into a synthetic
+          // "Stream ended without a terminal event" error.
+          if (!this.emittedTerminalEvent && (this.hasTextContent || final.reasoningContent || final.responseText)) {
+            this.emitThinkingCompleteIfNeeded(final)
+            this.emittedTerminalEvent = true
+            const response = {
+              text: final.responseText || final.text || '',
+              reasoning_content: final.responseReasoningContent || final.reasoningContent || ''
             }
+            this.emitChunk({ type: ChunkType.BLOCK_COMPLETE, response })
+            this.emitChunk({ type: ChunkType.LLM_RESPONSE_COMPLETE, response })
           }
           break
         }
@@ -138,9 +142,8 @@ export class AiSdkToChunkAdapter {
       }
     } finally {
       reader.releaseLock()
+      await this.flushChunkCallbacks()
       this.resetTimingState()
-      // Clean up the idle timeout timer when the stream ends
-      this.idleTimeout?.cleanup()
     }
   }
 
@@ -151,7 +154,7 @@ export class AiSdkToChunkAdapter {
    */
   private emitThinkingCompleteIfNeeded(final: { reasoningContent: string; [key: string]: any }) {
     if (final.reasoningContent) {
-      this.onChunk({
+      this.emitChunk({
         type: ChunkType.THINKING_COMPLETE,
         text: final.reasoningContent
       })
@@ -167,8 +170,9 @@ export class AiSdkToChunkAdapter {
     chunk: TextStreamPart<any>,
     final: {
       text: string
+      responseText: string
       reasoningContent: string
-      webSearchResults: AISDKWebSearchResult[]
+      responseReasoningContent: string
       reasoningId: string
       providerMetadata: ProviderMetadata | undefined
     }
@@ -182,7 +186,7 @@ export class AiSdkToChunkAdapter {
         } else if (agentRawMessage.type === 'compact' && agentRawMessage.session_id) {
           this.onSessionUpdate?.(agentRawMessage.session_id)
         }
-        this.onChunk({
+        this.emitChunk({
           type: ChunkType.RAW,
           content: agentRawMessage
         })
@@ -193,33 +197,16 @@ export class AiSdkToChunkAdapter {
         // 如果有未完成的思考内容，先生成 THINKING_COMPLETE
         // 这处理了某些提供商不发送 reasoning-end 事件的情况
         this.emitThinkingCompleteIfNeeded(final)
-        this.onChunk({
+        this.emitChunk({
           type: ChunkType.TEXT_START
         })
         break
       case 'text-delta': {
         this.hasTextContent = true
         const processedText = chunk.text || ''
-        let finalText: string
+        const finalText = processedText
 
-        // Only apply link conversion if web search is enabled
-        if (this.enableWebSearch) {
-          const result = convertLinks(processedText, this.isFirstChunk)
-
-          if (this.isFirstChunk) {
-            this.isFirstChunk = false
-          }
-
-          // Handle buffered content
-          if (result.hasBufferedContent) {
-            finalText = result.text
-          } else {
-            finalText = result.text || processedText
-          }
-        } else {
-          // Without web search, just use the original text
-          finalText = processedText
-        }
+        final.responseText += finalText
 
         if (this.accumulate) {
           final.text += finalText
@@ -242,7 +229,7 @@ export class AiSdkToChunkAdapter {
         // Only emit chunk if there's text to send
         if (finalText) {
           this.markFirstTokenIfNeeded()
-          this.onChunk({
+          this.emitChunk({
             type: ChunkType.TEXT_DELTA,
             text: this.accumulate ? final.text : finalText,
             providerMetadata: final.providerMetadata
@@ -251,7 +238,10 @@ export class AiSdkToChunkAdapter {
         break
       }
       case 'text-end':
-        this.onChunk({
+        if (chunk.providerMetadata?.text?.value) {
+          final.responseText = chunk.providerMetadata.text.value as string
+        }
+        this.emitChunk({
           type: ChunkType.TEXT_COMPLETE,
           text: (chunk.providerMetadata?.text?.value as string) ?? final.text ?? '',
           providerMetadata: final.providerMetadata
@@ -263,17 +253,18 @@ export class AiSdkToChunkAdapter {
       case 'reasoning-start':
         // if (final.reasoningId !== chunk.id) {
         final.reasoningId = chunk.id
-        this.onChunk({
+        this.emitChunk({
           type: ChunkType.THINKING_START
         })
         // }
         break
       case 'reasoning-delta':
         final.reasoningContent += chunk.text || ''
+        final.responseReasoningContent += chunk.text || ''
         if (chunk.text) {
           this.markFirstTokenIfNeeded()
         }
-        this.onChunk({
+        this.emitChunk({
           type: ChunkType.THINKING_DELTA,
           text: final.reasoningContent || ''
         })
@@ -307,64 +298,30 @@ export class AiSdkToChunkAdapter {
         break
 
       case 'finish-step': {
-        const { providerMetadata, finishReason } = chunk
-        // googel web search
-        if (providerMetadata?.google?.groundingMetadata) {
-          this.onChunk({
-            type: ChunkType.LLM_WEB_SEARCH_COMPLETE,
-            llm_web_search: {
-              results: providerMetadata.google?.groundingMetadata as WebSearchResults,
-              source: WEB_SEARCH_SOURCE.GEMINI
-            }
-          })
-        } else if (final.webSearchResults.length) {
-          const providerName: string | undefined = Object.keys(providerMetadata || {})[0] || this.providerId
-          const sourceMap: Record<string, WebSearchSource> = {
-            [WEB_SEARCH_SOURCE.OPENAI]: WEB_SEARCH_SOURCE.OPENAI_RESPONSE,
-            [WEB_SEARCH_SOURCE.ANTHROPIC]: WEB_SEARCH_SOURCE.ANTHROPIC,
-            [WEB_SEARCH_SOURCE.OPENROUTER]: WEB_SEARCH_SOURCE.OPENROUTER,
-            [WEB_SEARCH_SOURCE.GEMINI]: WEB_SEARCH_SOURCE.GEMINI,
-            // [WebSearchSource.PERPLEXITY]: WebSearchSource.PERPLEXITY,
-            [WEB_SEARCH_SOURCE.QWEN]: WEB_SEARCH_SOURCE.QWEN,
-            [WEB_SEARCH_SOURCE.HUNYUAN]: WEB_SEARCH_SOURCE.HUNYUAN,
-            [WEB_SEARCH_SOURCE.ZHIPU]: WEB_SEARCH_SOURCE.ZHIPU,
-            [WEB_SEARCH_SOURCE.GROK]: WEB_SEARCH_SOURCE.GROK,
-            xai: WEB_SEARCH_SOURCE.GROK,
-            [WEB_SEARCH_SOURCE.WEBSEARCH]: WEB_SEARCH_SOURCE.WEBSEARCH
-          }
-          const source = (providerName && sourceMap[providerName]) || WEB_SEARCH_SOURCE.AISDK
-
-          this.onChunk({
-            type: ChunkType.LLM_WEB_SEARCH_COMPLETE,
-            llm_web_search: {
-              results: final.webSearchResults,
-              source
-            }
-          })
-        }
+        const { finishReason } = chunk
         if (finishReason === 'tool-calls') {
-          this.onChunk({ type: ChunkType.LLM_RESPONSE_CREATED })
+          this.emitChunk({ type: ChunkType.LLM_RESPONSE_CREATED })
         }
 
-        final.webSearchResults = []
         // final.reasoningId = ''
         break
       }
 
       case 'finish': {
+        this.emittedTerminalEvent = true
         // Check if session was cleared (e.g., /clear command) and no text was output
         const sessionCleared = this.getSessionWasCleared?.() ?? false
         if (sessionCleared && !this.hasTextContent) {
           // Inject a "context cleared" message for the user
           const clearMessage = '✨ Context cleared. Starting fresh conversation.'
-          this.onChunk({
+          this.emitChunk({
             type: ChunkType.TEXT_START
           })
-          this.onChunk({
+          this.emitChunk({
             type: ChunkType.TEXT_DELTA,
             text: clearMessage
           })
-          this.onChunk({
+          this.emitChunk({
             type: ChunkType.TEXT_COMPLETE,
             text: clearMessage
           })
@@ -378,11 +335,11 @@ export class AiSdkToChunkAdapter {
         }
         const metrics = this.buildMetrics(chunk.totalUsage)
         const baseResponse = {
-          text: final.text || '',
-          reasoning_content: final.reasoningContent || ''
+          text: final.responseText || final.text || '',
+          reasoning_content: final.responseReasoningContent || final.reasoningContent || ''
         }
 
-        this.onChunk({
+        this.emitChunk({
           type: ChunkType.BLOCK_COMPLETE,
           response: {
             ...baseResponse,
@@ -390,7 +347,7 @@ export class AiSdkToChunkAdapter {
             metrics: metrics ? { ...metrics } : undefined
           }
         })
-        this.onChunk({
+        this.emitChunk({
           type: ChunkType.LLM_RESPONSE_COMPLETE,
           response: {
             ...baseResponse,
@@ -402,17 +359,10 @@ export class AiSdkToChunkAdapter {
         break
       }
 
-      // === 源和文件相关事件 ===
-      case 'source':
-        if (chunk.sourceType === 'url') {
-          // oxlint-disable-next-line @typescript-eslint/no-unused-vars
-          const { sourceType: _, ...rest } = chunk
-          final.webSearchResults.push(rest)
-        }
-        break
+      // === 文件相关事件 ===
       case 'file':
         // 文件相关事件，可能是图片生成
-        this.onChunk({
+        this.emitChunk({
           type: ChunkType.IMAGE_COMPLETE,
           image: {
             type: 'base64',
@@ -421,13 +371,15 @@ export class AiSdkToChunkAdapter {
         })
         break
       case 'abort':
-        this.onChunk({
+        this.emittedTerminalEvent = true
+        this.emitChunk({
           type: ChunkType.ERROR,
           error: new DOMException('Request was aborted', 'AbortError')
         })
         break
       case 'error':
-        this.onChunk({
+        this.emittedTerminalEvent = true
+        this.emitChunk({
           type: ChunkType.ERROR,
           error: AISDKError.isInstance(chunk.error)
             ? chunk.error

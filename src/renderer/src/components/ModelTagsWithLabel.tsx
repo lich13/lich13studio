@@ -3,8 +3,7 @@ import {
   isFunctionCallingModel,
   isReasoningModel,
   isRerankModel,
-  isVisionModel,
-  isWebSearchModel
+  isVisionModel
 } from '@renderer/config/models'
 import i18n from '@renderer/i18n'
 import type { Model } from '@renderer/types'
@@ -13,15 +12,7 @@ import type { FC } from 'react'
 import { memo, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import styled from 'styled-components'
 
-import {
-  EmbeddingTag,
-  FreeTag,
-  ReasoningTag,
-  RerankerTag,
-  ToolsCallingTag,
-  VisionTag,
-  WebSearchTag
-} from './Tags/Model'
+import { EmbeddingTag, FreeTag, ReasoningTag, RerankerTag, ToolsCallingTag, VisionTag } from './Tags/Model'
 
 interface ModelTagsProps {
   model: Model
@@ -77,7 +68,6 @@ const ModelTagsWithLabel: FC<ModelTagsProps> = ({
   return (
     <Container ref={containerRef} style={style}>
       {isVisionModel(model) && <VisionTag size={size} showTooltip={showTooltip} showLabel={shouldShowLabel} />}
-      {isWebSearchModel(model) && <WebSearchTag size={size} showTooltip={showTooltip} showLabel={shouldShowLabel} />}
       {showReasoning && isReasoningModel(model) && (
         <ReasoningTag size={size} showTooltip={showTooltip} showLabel={shouldShowLabel} />
       )}

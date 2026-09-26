@@ -121,3 +121,25 @@ describe('217 shared catalog migration', () => {
     expect(next.llm.providers[0].apiKey).toBe('test-key')
   })
 })
+
+describe('218 network search removal', () => {
+  it('removes active search state and assistant switches while preserving chat history', () => {
+    const state: any = {
+      ...fixture(217),
+      websearch: { providers: [{ id: 'tavily', apiKey: 'search-secret' }] },
+      inputTools: { toolOrder: { visible: ['web_search', 'url_context'], hidden: [] } },
+      chats: [{ id: 'old', blocks: [{ type: 'websearch', content: 'historical result' }] }]
+    }
+    state.assistants.assistants[0].enableWebSearch = true
+    state.assistants.assistants[0].webSearchProviderId = 'tavily'
+    const raw = sanitizePersistedState(encode(state))
+    const next = decode(raw)
+    expect(next.websearch).toBeUndefined()
+    expect(next.assistants.assistants[0]).not.toHaveProperty('enableWebSearch')
+    expect(next.assistants.assistants[0]).not.toHaveProperty('webSearchProviderId')
+    expect(next.inputTools.toolOrder.visible).toEqual(['url_context'])
+    expect(next.chats).toEqual(state.chats)
+    expect(JSON.stringify(next)).not.toContain('search-secret')
+    expect(sanitizePersistedState(raw)).toBe(raw)
+  })
+})

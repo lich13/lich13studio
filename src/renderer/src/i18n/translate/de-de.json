@@ -637,9 +637,6 @@
         "WebFetch": {
           "description": "Ruft Inhalte von einer angegebenen URL ab"
         },
-        "WebSearch": {
-          "description": "Führt Websuchen mit Domainfilterung durch"
-        },
         "Write": {
           "description": "Erstellt oder überschreibt Dateien"
         }
@@ -1143,25 +1140,7 @@
         "image_or_document": "Bild oder Dokument hochladen",
         "upload_from_local": "Lokale Datei hochladen..."
       },
-      "url_context": "Webseiten-Kontext",
-      "web_search": {
-        "builtin": {
-          "disabled_content": "Aktuelles Modell unterstützt keine Websuche",
-          "enabled_content": "Verwenden Sie die integrierte Websuchfunktion des Modells",
-          "label": "Modell integriert"
-        },
-        "button": {
-          "ok": "Zu Einstellungen"
-        },
-        "enable": "Websuche aktivieren",
-        "enable_content": "Bitte überprüfen Sie zunächst die Websuch-Konnektivität in den Einstellungen",
-        "label": "Websuche",
-        "no_web_search": {
-          "description": "Websuchfunktion nicht aktivieren",
-          "label": "Keine Websuche"
-        },
-        "settings": "Websuch-Einstellungen"
-      }
+      "url_context": "Webseiten-Kontext"
     },
     "message": {
       "new": {
@@ -1455,12 +1434,7 @@
       "title": "Thema",
       "unpin": "Anheften aufheben"
     },
-    "translate": "Übersetzen",
-    "web_search": {
-      "warning": {
-        "openai": "GPT5-Modell mit minimaler Denkstärke unterstützt keine Websuche"
-      }
-    }
+    "translate": "Übersetzen"
   },
   "code": {
     "auto_update_to_latest": "Updates prüfen und neueste Version installieren",
@@ -2534,13 +2508,6 @@
       "rate": {
         "limit": "Zu viele Anfragen. Bitte warten Sie {{seconds}} Sekunden, bevor Sie es erneut versuchen"
       }
-    },
-    "websearch": {
-      "cutoff": "Suchergebnisse werden gekürzt...",
-      "fetch_complete": "{{count}} Suchergebnisse",
-      "rag": "RAG wird ausgeführt...",
-      "rag_complete": "{{countAfter}} von {{countBefore}} Ergebnissen behalten...",
-      "rag_failed": "RAG fehlgeschlagen, leere Ergebnisse zurückgegeben..."
     }
   },
   "minapp": {
@@ -2682,8 +2649,7 @@
       "rerank": "Rerank",
       "select": "Modelltyp",
       "text": "Text",
-      "vision": "Vision",
-      "websearch": "Online"
+      "vision": "Vision"
     }
   },
   "navbar": {
@@ -4024,75 +3990,6 @@
         "title": "Export-Menü-Einstellungen",
         "yuque": "Nach Yuque exportieren"
       },
-      "export_to_phone": {
-        "confirm": {
-          "button": "Sicherungsdatei auswählen"
-        },
-        "content": "Exportieren Sie einige Daten, einschließlich Chat-Protokollen und Einstellungen. Bitte beachten Sie, dass der Sicherungsvorgang einige Zeit in Anspruch nehmen kann. Vielen Dank für Ihre Geduld.",
-        "file": {
-          "button": "In Datei exportieren",
-          "content": "Exportiere Daten als Sicherungsdatei, die per Datei auf dem Mobilgerät importiert werden kann.",
-          "export_failed": "Export fehlgeschlagen",
-          "export_success": "Export erfolgreich",
-          "title": "Als Datei exportieren"
-        },
-        "lan": {
-          "button": "Übertragung starten",
-          "connected": "Verbunden",
-          "connection_failed": "Verbindung fehlgeschlagen",
-          "content": "Bitte stelle sicher, dass sich dein Computer und dein Telefon im selben Netzwerk befinden, um eine LAN-Übertragung durchzuführen. Öffne die Cherry Studio App, um diesen QR-Code zu scannen.",
-          "device_list_title": "Lokale Netzwerkgeräte",
-          "discovered_devices": "Entdeckte Geräte",
-          "error": {
-            "file_too_large": "Datei zu groß, maximal 500 MB unterstützt",
-            "init_failed": "Initialisierung fehlgeschlagen",
-            "invalid_file_type": "Nur ZIP-Dateien werden unterstützt",
-            "no_file": "Keine Datei ausgewählt",
-            "no_ip": "IP-Adresse kann nicht abgerufen werden",
-            "not_connected": "Bitte vervollständigen Sie zuerst das Handshake.",
-            "send_failed": "Fehler beim Senden der Datei"
-          },
-          "file_transfer": {
-            "cancelled": "Überweisung storniert",
-            "failed": "Dateiübertragung fehlgeschlagen: {{message}}",
-            "progress": "Senden... {{progress}}%",
-            "success": "Datei erfolgreich gesendet"
-          },
-          "handshake": {
-            "button": "Handshake",
-            "failed": "Handshake fehlgeschlagen: {{message}}",
-            "in_progress": "Handshake läuft...",
-            "success": "Handshake mit {{device}} abgeschlossen",
-            "test_message_received": "Pong von {{device}} empfangen",
-            "test_message_sent": "Hallo-Welt-Test-Payload gesendet"
-          },
-          "idle_hint": "Scanvorgang pausiert. Starten Sie das Scannen, um Cherry-Studio-Peers in Ihrem LAN zu finden.",
-          "ip_addresses": "IP-Adressen",
-          "last_seen": "Zuletzt gesehen um {{time}}",
-          "metadata": "Metadaten",
-          "no_connection_warning": "Bitte öffne LAN-Transfer in der Cherry Studio Mobile-App.",
-          "no_devices": "Noch keine LAN-Peers gefunden",
-          "scan_devices": "Geräte scannen",
-          "scanning_hint": "Scanne dein lokales Netzwerk nach Cherry-Studio-Peers …",
-          "send_file": "Datei senden",
-          "status": {
-            "completed": "Übertragung abgeschlossen",
-            "connected": "Verbunden",
-            "connecting": "Verbindung wird hergestellt...",
-            "disconnected": "Getrennt",
-            "error": "Verbindungsfehler",
-            "initializing": "Verbindung wird initialisiert...",
-            "preparing": "Übertragung wird vorbereitet...",
-            "sending": "Übertrage {{progress}}%"
-          },
-          "status_badge_idle": "Leerlauf",
-          "status_badge_scanning": "Scannen",
-          "stop_scan": "Scanvorgang stoppen",
-          "title": "LAN-Übertragung",
-          "transfer_progress": "Übertragungsfortschritt"
-        },
-        "title": "Auf Telefon exportieren"
-      },
       "hour_interval_one": "{{count}} Stunde",
       "hour_interval_other": "{{count}} Stunden",
       "import_settings": {
@@ -5234,100 +5131,7 @@
         "title": "Dokumentverarbeitung",
         "tooltip": "Setzen Sie den Dokumentverarbeitungsanbieter in den Einstellungen -> Tools, um die Suche nach komplexen Formatdokumenten und gescannten Dokumenten zu verbessern"
       },
-      "title": "Weitere Einstellungen",
-      "websearch": {
-        "api_key_required": {
-          "content": "{{provider}} erfordert einen API-Schlüssel, um zu funktionieren. Möchten Sie ihn jetzt konfigurieren?",
-          "ok": "Konfigurieren",
-          "title": "API-Schlüssel erforderlich"
-        },
-        "api_providers": "API-Anbieter",
-        "apikey": "API-Schlüssel",
-        "blacklist": "Schwarze Liste",
-        "blacklist_description": "Folgende Websites werden nicht in Suchergebnissen angezeigt",
-        "blacklist_tooltip": "Verwenden Sie das folgende Format (Zeilenumbruch getrennt)\nÜbereinstimmungsmodus: *://*.example.com/*\nRegex: /example\\.(net|org)/",
-        "check": "Erkennen",
-        "check_failed": "Erkennung fehlgeschlagen",
-        "check_success": "Erkennung erfolgreich",
-        "compression": {
-          "cutoff": {
-            "limit": {
-              "label": "Abschneidelänge",
-              "placeholder": "Eingabegröße",
-              "tooltip": "Begrenzen Sie die Länge der Suchergebnisse, überschreitende Inhalte werden abgeschnitten (z. B. 2000 Zeichen)"
-            },
-            "unit": {
-              "char": "Zeichen",
-              "token": "Token"
-            }
-          },
-          "error": {
-            "rag_failed": "RAG fehlgeschlagen"
-          },
-          "info": {
-            "dimensions_auto_success": "Dimensionen automatisch erfolgreich abgerufen, Dimensionen sind {{dimensions}}"
-          },
-          "method": {
-            "cutoff": "Abschneiden",
-            "label": "Kompressionsmethode",
-            "none": "Nicht komprimieren",
-            "rag": "RAG"
-          },
-          "rag": {
-            "document_count": {
-              "label": "Anzahl Dokumentfragmente",
-              "tooltip": "Die erwartete Anzahl von Dokumentfragmenten, die aus einem einzelnen Suchergebnis extrahiert werden, ist dieser Wert multipliziert mit der Anzahl der Suchergebnisse."
-            }
-          },
-          "title": "Suchergebnis-Kompression"
-        },
-        "content_limit": "Inhaltslängenbegrenzung",
-        "content_limit_tooltip": "Begrenzen Sie die Länge der Suchergebnisse, überschreitende Inhalte werden abgeschnitten",
-        "default_provider": "Standardanbieter",
-        "free": "Kostenlos",
-        "is_default": "Standard",
-        "local_provider": {
-          "hint": "Melden Sie sich auf der Website an, um bessere Suchergebnisse zu erhalten und Ihre Sucheinstellungen zu personalisieren.",
-          "open_settings": "{{provider}}-Einstellungen öffnen",
-          "settings": "Lokale Sucheinstellungen"
-        },
-        "local_providers": "Lokale Anbieter",
-        "no_provider_selected": "Wählen Sie einen Suchanbieter aus, bevor Sie suchen",
-        "overwrite": "Suchanbieter statt LLM für Suche erzwingen",
-        "overwrite_tooltip": "Suchanbieter statt LLM für Suche erzwingen",
-        "search_max_result": {
-          "label": "Anzahl Suchergebnisse",
-          "tooltip": "Bei deaktiviertem Suchergebnis-Komprimierung kann die Anzahl zu groß sein, was zu vielen Tokens führen kann"
-        },
-        "search_provider": "Suchanbieter",
-        "search_provider_placeholder": "Einen Suchanbieter auswählen",
-        "search_with_time": "Suche mit Datum",
-        "set_as_default": "Als Standard festlegen",
-        "subscribe": "Schwarze Liste-Abonnement",
-        "subscribe_add": "Abonnement hinzufügen",
-        "subscribe_add_failed": "Abonnement-Quelle hinzufügen fehlgeschlagen",
-        "subscribe_add_success": "Abonnement-Quelle hinzufügen erfolgreich!",
-        "subscribe_delete": "Abonnement löschen",
-        "subscribe_name": {
-          "label": "Alternativer Name",
-          "placeholder": "Alternativer Name wenn heruntergeladenes Abonnement keinen Namen hat"
-        },
-        "subscribe_update": "Jetzt aktualisieren",
-        "subscribe_update_failed": "Abonnement-Quelle aktualisieren fehlgeschlagen",
-        "subscribe_update_success": "Abonnement-Quelle aktualisieren erfolgreich",
-        "subscribe_url": "Abonnement-Quelle-Adresse",
-        "tavily": {
-          "api_key": {
-            "label": "Tavily API-Schlüssel",
-            "placeholder": "Bitte Tavily API-Schlüssel eingeben"
-          },
-          "description": "Tavily ist ein für AI-Agenten spezifiziertes Suchmaschinen-Tool, das realtime, präzise Ergebnisse, intelligente Suchvorschläge und tiefergehende Forschungsmöglichkeiten bietet",
-          "title": "Tavily"
-        },
-        "title": "Websuche",
-        "url_invalid": "Ungültige URL eingegeben",
-        "url_required": "URL eingeben"
-      }
+      "title": "Weitere Einstellungen"
     },
     "topic": {
       "pin_to_top": "Thema anpinnen",

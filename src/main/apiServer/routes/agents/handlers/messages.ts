@@ -1,8 +1,6 @@
 import { loggerService } from '@logger'
-import { MESSAGE_STREAM_TIMEOUT_MS } from '@main/apiServer/config/timeouts'
 import {
   createStreamAbortController,
-  STREAM_TIMEOUT_REASON,
   type StreamAbortController
 } from '@main/apiServer/utils/createStreamAbortController'
 import { agentService, sessionMessageService, sessionService } from '@main/services/agents'
@@ -49,9 +47,7 @@ export const createMessage = async (req: Request, res: Response): Promise<void> 
     res.setHeader('Access-Control-Allow-Origin', '*')
     res.setHeader('Access-Control-Allow-Headers', 'Cache-Control')
 
-    streamController = createStreamAbortController({
-      timeoutMs: MESSAGE_STREAM_TIMEOUT_MS
-    })
+    streamController = createStreamAbortController()
     const { abortController, registerAbortHandler, dispose } = streamController
     const { stream, completion } = await sessionMessageService.createSessionMessage(
       session,
@@ -114,23 +110,7 @@ export const createMessage = async (req: Request, res: Response): Promise<void> 
 
       responseEnded = true
 
-      if (abortReason === STREAM_TIMEOUT_REASON) {
-        logger.error('Streaming message timeout', { agentId, sessionId })
-        try {
-          res.write(
-            `data: ${JSON.stringify({
-              type: 'error',
-              error: {
-                message: 'Stream timeout',
-                type: 'timeout_error',
-                code: 'stream_timeout'
-              }
-            })}\n\n`
-          )
-        } catch (writeError) {
-          logger.error('Error writing timeout to SSE stream', { error: writeError })
-        }
-      } else if (abortReason === 'Client disconnected') {
+      if (abortReason === 'Client disconnected') {
         logger.info('Streaming client disconnected', { agentId, sessionId })
       } else {
         logger.warn('Streaming aborted', { agentId, sessionId, reason: abortReason })

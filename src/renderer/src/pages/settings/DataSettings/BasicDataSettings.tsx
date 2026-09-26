@@ -1,7 +1,6 @@
-import { LoadingOutlined, WifiOutlined } from '@ant-design/icons'
+import { LoadingOutlined } from '@ant-design/icons'
 import { HStack } from '@renderer/components/Layout'
 import BackupPopup from '@renderer/components/Popups/BackupPopup'
-import LanTransferPopup from '@renderer/components/Popups/LanTransferPopup'
 import RestorePopup from '@renderer/components/Popups/RestorePopup'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import { useTimer } from '@renderer/hooks/useTimer'
@@ -11,7 +10,7 @@ import { setSkipBackupFile as _setSkipBackupFile } from '@renderer/store/setting
 import type { AppInfo } from '@renderer/types'
 import { occupiedDirs } from '@shared/config/constant'
 import { Button, Progress, Switch, Tooltip, Typography } from 'antd'
-import { FolderInput, FolderOpen, FolderOutput, SaveIcon } from 'lucide-react'
+import { FolderOpen, FolderOutput, SaveIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
@@ -457,27 +456,6 @@ const BasicDataSettings: React.FC = () => {
         </SettingRow>
         <SettingRow>
           <SettingHelpText>{t('settings.data.backup.skip_file_data_help')}</SettingHelpText>
-        </SettingRow>
-      </SettingGroup>
-      <SettingGroup theme={theme}>
-        <SettingTitle>{t('settings.data.export_to_phone.title')}</SettingTitle>
-        <SettingDivider />
-        <SettingRow>
-          <SettingRowTitle>{t('settings.data.export_to_phone.lan.title')}</SettingRowTitle>
-          <HStack gap="5px" justifyContent="space-between">
-            <Button onClick={LanTransferPopup.show} icon={<WifiOutlined size={14} />}>
-              {t('settings.data.export_to_phone.lan.button')}
-            </Button>
-          </HStack>
-        </SettingRow>
-        <SettingDivider />
-        <SettingRow>
-          <SettingRowTitle>{t('settings.data.export_to_phone.file.title')}</SettingRowTitle>
-          <HStack gap="5px" justifyContent="space-between">
-            <Button onClick={() => BackupPopup.show('lan-transfer')} icon={<FolderInput size={14} />}>
-              {t('settings.data.export_to_phone.file.button')}
-            </Button>
-          </HStack>
         </SettingRow>
       </SettingGroup>
       <SettingGroup theme={theme}>

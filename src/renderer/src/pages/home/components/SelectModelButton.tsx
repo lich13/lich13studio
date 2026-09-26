@@ -1,7 +1,7 @@
 import ModelAvatar from '@renderer/components/Avatar/ModelAvatar'
 import { SelectChatModelPopup } from '@renderer/components/Popups/SelectModelPopup'
 import { isLocalAi } from '@renderer/config/env'
-import { isEmbeddingModel, isRerankModel, isWebSearchModel } from '@renderer/config/models'
+import { isEmbeddingModel, isRerankModel } from '@renderer/config/models'
 import { useAssistant } from '@renderer/hooks/useAssistant'
 import { useAllProviders, useProvider } from '@renderer/hooks/useProvider'
 import { getProviderName } from '@renderer/services/ProviderService'
@@ -37,11 +37,7 @@ const SelectModelButton: FC<Props> = ({ assistant }) => {
       // 避免更新数据造成关闭弹框的卡顿
       clearTimeout(timerRef.current)
       timerRef.current = setTimeout(() => {
-        const enabledWebSearch = isWebSearchModel(selectedModel)
-        updateAssistant({
-          model: selectedModel,
-          enableWebSearch: enabledWebSearch && assistant.enableWebSearch
-        })
+        updateAssistant({ model: selectedModel })
       }, 200)
     }
   }

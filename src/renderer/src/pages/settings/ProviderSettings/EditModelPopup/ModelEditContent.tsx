@@ -1,12 +1,5 @@
 import CopyIcon from '@renderer/components/Icons/CopyIcon'
-import {
-  EmbeddingTag,
-  ReasoningTag,
-  RerankerTag,
-  ToolsCallingTag,
-  VisionTag,
-  WebSearchTag
-} from '@renderer/components/Tags/Model'
+import { EmbeddingTag, ReasoningTag, RerankerTag, ToolsCallingTag, VisionTag } from '@renderer/components/Tags/Model'
 import { WarnTooltip } from '@renderer/components/TooltipIcons'
 import { endpointTypeOptions } from '@renderer/config/endpointTypes'
 import {
@@ -14,8 +7,7 @@ import {
   isFunctionCallingModel,
   isReasoningModel,
   isRerankModel,
-  isVisionModel,
-  isWebSearchModel
+  isVisionModel
 } from '@renderer/config/models'
 import { useDynamicLabelWidth } from '@renderer/hooks/useDynamicLabelWidth'
 import type { Model, ModelCapability, ModelType, Provider } from '@renderer/types'
@@ -111,7 +103,6 @@ const ModelEditContent: FC<ModelEditContentProps & ModalProps> = ({ provider, mo
       ...(isVisionModel(model) ? (['vision'] as const) : []),
       ...(isReasoningModel(model) ? (['reasoning'] as const) : []),
       ...(isFunctionCallingModel(model) ? (['function_calling'] as const) : []),
-      ...(isWebSearchModel(model) ? (['web_search'] as const) : []),
       ...(isEmbeddingModel(model) ? (['embedding'] as const) : []),
       ...(isRerankModel(model) ? (['rerank'] as const) : [])
     ],
@@ -199,12 +190,6 @@ const ModelEditContent: FC<ModelEditContentProps & ModalProps> = ({ provider, mo
             inactive={isOtherDisabled || !selectedTypes.includes('vision')}
             disabled={isOtherDisabled}
             onClick={() => updateType('vision')}
-          />
-          <WebSearchTag
-            showLabel
-            inactive={isOtherDisabled || !selectedTypes.includes('web_search')}
-            disabled={isOtherDisabled}
-            onClick={() => updateType('web_search')}
           />
           <ReasoningTag
             showLabel

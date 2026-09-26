@@ -19,7 +19,6 @@ import {
 import { handleZoomFactor } from '@main/utils/zoom'
 import type { UpgradeChannel } from '@shared/config/constant'
 import { MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH } from '@shared/config/constant'
-import type { LocalTransferConnectPayload } from '@shared/config/types'
 import { IpcChannel } from '@shared/IpcChannel'
 import { extractPdfText } from '@shared/utils/pdf'
 import type { SpanEntity, TokenUsage } from '@trace/trace-core'
@@ -51,8 +50,6 @@ import { ExportService } from './services/ExportService'
 import { externalAppsService } from './services/ExternalAppsService'
 import { fileStorage as fileManager } from './services/FileStorage'
 import FileService from './services/FileSystemService'
-import { lanTransferClientService } from './services/lanTransfer'
-import { localTransferService } from './services/LocalTransferService'
 import { openTraceWindow, setTraceWindowTitle } from './services/NodeTraceService'
 import NotificationService from './services/NotificationService'
 import ObsidianVaultService from './services/ObsidianVaultService'
@@ -63,7 +60,6 @@ import powerMonitorService from './services/PowerMonitorService'
 import { proxyManager } from './services/ProxyManager'
 import { pythonService } from './services/PythonService'
 import { FileServiceManager } from './services/remotefile/FileServiceManager'
-import { searchService } from './services/SearchService'
 import { isSafeExternalUrl } from './services/security'
 import { SelectionService } from './services/SelectionService'
 import {
@@ -542,8 +538,6 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
   ipcMain.handle(IpcChannel.Backup_RestoreFromLocalBackup, backupManager.restoreFromLocalBackup.bind(backupManager))
   ipcMain.handle(IpcChannel.Backup_ListLocalBackupFiles, backupManager.listLocalBackupFiles.bind(backupManager))
   ipcMain.handle(IpcChannel.Backup_DeleteLocalBackupFile, backupManager.deleteLocalBackupFile.bind(backupManager))
-  ipcMain.handle(IpcChannel.Backup_CreateLanTransferBackup, backupManager.createLanTransferBackup.bind(backupManager))
-  ipcMain.handle(IpcChannel.Backup_DeleteLanTransferBackup, backupManager.deleteLanTransferBackup.bind(backupManager))
 
   // file
   ipcMain.handle(IpcChannel.File_Open, fileManager.open.bind(fileManager))
@@ -760,17 +754,6 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
 
   ipcMain.handle(IpcChannel.Obsidian_GetFiles, (_event, vaultName) => {
     return obsidianVaultService.getFilesByVaultName(vaultName)
-  })
-
-  // search window
-  ipcMain.handle(IpcChannel.SearchWindow_Open, async (_, uid: string, show?: boolean) => {
-    await searchService.openSearchWindow(uid, show)
-  })
-  ipcMain.handle(IpcChannel.SearchWindow_Close, async (_, uid: string) => {
-    await searchService.closeSearchWindow(uid)
-  })
-  ipcMain.handle(IpcChannel.SearchWindow_OpenUrl, async (_, uid: string, url: string) => {
-    return await searchService.openUrlInSearchWindow(uid, url)
   })
 
   // webview
@@ -1014,18 +997,6 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
       return { success: false, error }
     }
   })
-
-  ipcMain.handle(IpcChannel.LocalTransfer_ListServices, () => localTransferService.getState())
-  ipcMain.handle(IpcChannel.LocalTransfer_StartScan, () => localTransferService.startDiscovery({ resetList: true }))
-  ipcMain.handle(IpcChannel.LocalTransfer_StopScan, () => localTransferService.stopDiscovery())
-  ipcMain.handle(IpcChannel.LocalTransfer_Connect, (_, payload: LocalTransferConnectPayload) =>
-    lanTransferClientService.connectAndHandshake(payload)
-  )
-  ipcMain.handle(IpcChannel.LocalTransfer_Disconnect, () => lanTransferClientService.disconnect())
-  ipcMain.handle(IpcChannel.LocalTransfer_SendFile, (_, payload: { filePath: string }) =>
-    lanTransferClientService.sendFile(payload.filePath)
-  )
-  ipcMain.handle(IpcChannel.LocalTransfer_CancelTransfer, () => lanTransferClientService.cancelTransfer())
 
   ipcMain.handle(IpcChannel.APP_CrashRenderProcess, () => {
     mainWindow.webContents.forcefullyCrashRenderer()

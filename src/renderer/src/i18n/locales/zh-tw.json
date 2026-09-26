@@ -637,9 +637,6 @@
         "WebFetch": {
           "description": "從指定 URL 取得內容"
         },
-        "WebSearch": {
-          "description": "執行帶有網域過濾的網路搜尋"
-        },
         "Write": {
           "description": "建立或覆寫檔案"
         }
@@ -1143,25 +1140,7 @@
         "image_or_document": "上傳圖片或檔案",
         "upload_from_local": "上傳本機檔案..."
       },
-      "url_context": "網頁上下文",
-      "web_search": {
-        "builtin": {
-          "disabled_content": "目前模型不支援網路搜尋功能",
-          "enabled_content": "使用模型內建的網路搜尋功能",
-          "label": "模型內建"
-        },
-        "button": {
-          "ok": "前往設定"
-        },
-        "enable": "開啟網路搜尋",
-        "enable_content": "需要先在設定中開啟網路搜尋",
-        "label": "網路搜尋",
-        "no_web_search": {
-          "description": "關閉網路搜尋",
-          "label": "關閉網路搜尋"
-        },
-        "settings": "網路搜尋設定"
-      }
+      "url_context": "網頁上下文"
     },
     "message": {
       "new": {
@@ -1455,12 +1434,7 @@
       "title": "話題",
       "unpin": "取消固定"
     },
-    "translate": "翻譯",
-    "web_search": {
-      "warning": {
-        "openai": "GPT-5 模型的最小推理力度不支援網路搜尋。"
-      }
-    }
+    "translate": "翻譯"
   },
   "code": {
     "auto_update_to_latest": "檢查更新並安裝最新版本",
@@ -2534,13 +2508,6 @@
       "rate": {
         "limit": "傳送過於頻繁，請在 {{seconds}} 秒後再嘗試"
       }
-    },
-    "websearch": {
-      "cutoff": "正在截斷搜尋內容...",
-      "fetch_complete": "{{count}} 個搜尋結果",
-      "rag": "正在執行 RAG...",
-      "rag_complete": "保留 {{countBefore}} 個結果中的 {{countAfter}} 個...",
-      "rag_failed": "RAG 失敗，回傳空結果..."
     }
   },
   "minapp": {
@@ -2682,8 +2649,7 @@
       "rerank": "重排",
       "select": "模型類型",
       "text": "文字",
-      "vision": "視覺",
-      "websearch": "網路搜尋"
+      "vision": "視覺"
     }
   },
   "navbar": {
@@ -4024,75 +3990,6 @@
         "title": "匯出選單設定",
         "yuque": "匯出到語雀"
       },
-      "export_to_phone": {
-        "confirm": {
-          "button": "選擇備份檔案"
-        },
-        "content": "匯出部分資料，包括聊天記錄與設定。請注意，備份過程可能需要一些時間，感謝耐心等候。",
-        "file": {
-          "button": "匯出至檔案",
-          "content": "將資料匯出為備份檔案，可透過檔案在行動裝置上匯入。",
-          "export_failed": "匯出失敗",
-          "export_success": "匯出成功",
-          "title": "匯出為檔案"
-        },
-        "lan": {
-          "button": "開始傳輸",
-          "connected": "已連線",
-          "connection_failed": "連線失敗",
-          "content": "請確保電腦和手機處於同一網路以使用區域網路傳輸。",
-          "device_list_title": "區域網路裝置",
-          "discovered_devices": "已發現的裝置",
-          "error": {
-            "file_too_large": "檔案過大，僅支援最大 500MB",
-            "init_failed": "初始化失敗",
-            "invalid_file_type": "僅支援 ZIP 檔案",
-            "no_file": "未選擇檔案",
-            "no_ip": "無法取得 IP 位址",
-            "not_connected": "請先完成握手",
-            "send_failed": "無法傳送檔案"
-          },
-          "file_transfer": {
-            "cancelled": "傳輸已取消",
-            "failed": "檔案傳輸失敗：{{message}}",
-            "progress": "傳送中... {{progress}}%",
-            "success": "檔案傳送成功"
-          },
-          "handshake": {
-            "button": "握手",
-            "failed": "握手失敗：{{message}}",
-            "in_progress": "握手中...",
-            "success": "已與 {{device}} 完成握手",
-            "test_message_received": "收到來自 {{device}} 的 pong",
-            "test_message_sent": "已送出 hello world 測試封包"
-          },
-          "idle_hint": "掃描已暫停。開始掃描以尋找區域網路中的 Cherry Studio 裝置。",
-          "ip_addresses": "IP 位址",
-          "last_seen": "上次看到：{{time}}",
-          "metadata": "中繼資料",
-          "no_connection_warning": "請在 Cherry Studio 行動裝置開啟區域網路傳輸",
-          "no_devices": "尚未找到區域網路節點",
-          "scan_devices": "掃描裝置",
-          "scanning_hint": "正在掃描區域網路中的 Cherry Studio 裝置...",
-          "send_file": "傳送檔案",
-          "status": {
-            "completed": "傳輸完成",
-            "connected": "已連線",
-            "connecting": "連線中...",
-            "disconnected": "已斷線",
-            "error": "連線錯誤",
-            "initializing": "正在初始化連線...",
-            "preparing": "正在準備傳輸...",
-            "sending": "傳輸中 {{progress}}%"
-          },
-          "status_badge_idle": "閒置",
-          "status_badge_scanning": "掃描中",
-          "stop_scan": "停止掃描",
-          "title": "區域網路傳輸",
-          "transfer_progress": "傳輸進度"
-        },
-        "title": "匯出手機"
-      },
       "hour_interval_one": "{{count}} 小時",
       "hour_interval_other": "{{count}} 小時",
       "import_settings": {
@@ -5234,100 +5131,7 @@
         "title": "文件處理",
         "tooltip": "在「設定」->「工具」中設定文件處理服務供應商。文件處理可有效提升複雜格式文件及掃描文件的檢索效能"
       },
-      "title": "其他設定",
-      "websearch": {
-        "api_key_required": {
-          "content": "{{provider}} 需要 API 金鑰才能運作。您現在要設定嗎？",
-          "ok": "設定",
-          "title": "需要 API 金鑰"
-        },
-        "api_providers": "API 服務商",
-        "apikey": "API 金鑰",
-        "blacklist": "黑名單",
-        "blacklist_description": "以下網站不會出現在搜尋結果中",
-        "blacklist_tooltip": "請使用以下格式 (換行符號分隔)\nexample.com\nhttps://www.example.com\nhttps://example.com\n*://*.example.com",
-        "check": "檢查",
-        "check_failed": "驗證失敗",
-        "check_success": "驗證成功",
-        "compression": {
-          "cutoff": {
-            "limit": {
-              "label": "截斷長度",
-              "placeholder": "輸入長度",
-              "tooltip": "限制搜尋結果的內容長度，超過限制的內容將被截斷（例如 2000 字元）"
-            },
-            "unit": {
-              "char": "字元",
-              "token": "Token"
-            }
-          },
-          "error": {
-            "rag_failed": "RAG 失敗"
-          },
-          "info": {
-            "dimensions_auto_success": "維度自動取得成功，維度為 {{dimensions}}"
-          },
-          "method": {
-            "cutoff": "截斷",
-            "label": "壓縮方法",
-            "none": "不壓縮",
-            "rag": "RAG"
-          },
-          "rag": {
-            "document_count": {
-              "label": "文件片段數量",
-              "tooltip": "預期從單個搜尋結果中提取的文件片段數量，實際提取的總數量是這個值乘以搜尋結果數量。"
-            }
-          },
-          "title": "搜尋結果壓縮"
-        },
-        "content_limit": "內容長度限制",
-        "content_limit_tooltip": "限制搜尋結果的內容長度；超過限制的內容將被截斷。",
-        "default_provider": "預設搜尋引擎",
-        "free": "免費",
-        "is_default": "預設",
-        "local_provider": {
-          "hint": "登入網站以獲得更佳搜尋結果並個人化您的搜尋設定。",
-          "open_settings": "開啟 {{provider}} 設定",
-          "settings": "本地搜尋設定"
-        },
-        "local_providers": "本地搜尋",
-        "no_provider_selected": "請選擇搜尋供應商後再檢查",
-        "overwrite": "覆蓋搜尋服務",
-        "overwrite_tooltip": "強制使用搜尋服務而不是 LLM",
-        "search_max_result": {
-          "label": "搜尋結果個數",
-          "tooltip": "未開啟搜尋結果壓縮的情況下，數量過大可能會消耗過多 tokens"
-        },
-        "search_provider": "搜尋供應商",
-        "search_provider_placeholder": "選擇一個搜尋供應商",
-        "search_with_time": "搜尋包含日期",
-        "set_as_default": "設為預設",
-        "subscribe": "黑名單訂閱",
-        "subscribe_add": "新增訂閱",
-        "subscribe_add_failed": "訂閱來源新增失敗",
-        "subscribe_add_success": "訂閱來源新增成功！",
-        "subscribe_delete": "刪除",
-        "subscribe_name": {
-          "label": "替代名稱",
-          "placeholder": "下載的訂閱來源沒有名稱時使用的替代名稱。"
-        },
-        "subscribe_update": "更新",
-        "subscribe_update_failed": "訂閱來源更新失敗",
-        "subscribe_update_success": "訂閱來源更新成功",
-        "subscribe_url": "訂閱網址",
-        "tavily": {
-          "api_key": {
-            "label": "Tavily API 金鑰",
-            "placeholder": "請輸入 Tavily API 金鑰"
-          },
-          "description": "Tavily 是一個為 AI 代理量身訂製的搜尋引擎，提供即時、準確的結果、智慧查詢建議和深入的研究能力",
-          "title": "Tavily"
-        },
-        "title": "網路搜尋",
-        "url_invalid": "輸入了無效的 URL",
-        "url_required": "需要輸入 URL"
-      }
+      "title": "其他設定"
     },
     "topic": {
       "pin_to_top": "固定話題置頂",

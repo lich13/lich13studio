@@ -3,8 +3,7 @@ import {
   isFunctionCallingModel,
   isReasoningModel,
   isRerankModel,
-  isVisionModel,
-  isWebSearchModel
+  isVisionModel
 } from '@renderer/config/models'
 import type { Model, ModelTag } from '@renderer/types'
 import { objectEntries } from '@renderer/types'
@@ -18,7 +17,6 @@ const initialTagSelection: Record<ModelTag, boolean> = {
   embedding: false,
   reasoning: false,
   function_calling: false,
-  web_search: false,
   rerank: false,
   free: false
 }
@@ -33,7 +31,6 @@ export function useModelTagFilter() {
       embedding: isEmbeddingModel,
       reasoning: isReasoningModel,
       function_calling: isFunctionCallingModel,
-      web_search: isWebSearchModel,
       rerank: isRerankModel,
       free: isFreeModel
     }),

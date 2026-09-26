@@ -40,7 +40,7 @@ const DEFAULT_BASIC_PROMPT = `You are CherryClaw, a personal assistant running i
 
 `
 
-const TOOLS_SECTION = 'Use the native WebSearch and WebFetch tools when web research is needed.'
+const TOOLS_SECTION = 'Use the available local tools when needed.'
 
 function memoriesTemplate(workspacePath: string, sections: string): string {
   return `## Memories

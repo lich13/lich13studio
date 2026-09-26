@@ -3,7 +3,7 @@ import Scrollbar from '@renderer/components/Scrollbar'
 import ModelSettings from '@renderer/pages/settings/ModelSettings/ModelSettings'
 import ModelTestPage from '@renderer/pages/settings/ModelTestPage'
 import { Divider as AntDivider } from 'antd'
-import { Cloud, FlaskConical, HardDrive, MonitorCog, Package, Search, Settings2, Zap } from 'lucide-react'
+import { Cloud, FlaskConical, HardDrive, MonitorCog, Package, Settings2, Zap } from 'lucide-react'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom'
@@ -14,7 +14,6 @@ import DisplaySettings from './DisplaySettings/DisplaySettings'
 import GeneralSettings from './GeneralSettings'
 import { ProviderList } from './ProviderSettings'
 import QuickPhraseSettings from './QuickPhraseSettings'
-import WebSearchSettings from './WebSearchSettings'
 
 const SettingsPage: FC = () => {
   const { pathname } = useLocation()
@@ -66,13 +65,6 @@ const SettingsPage: FC = () => {
               {t('settings.data.title')}
             </MenuItem>
           </MenuItemLink>
-          <Divider />
-          <MenuItemLink to="/settings/websearch">
-            <MenuItem className={isRoute('/settings/websearch')}>
-              <Search size={18} />
-              {t('settings.tool.websearch.title')}
-            </MenuItem>
-          </MenuItemLink>
           <MenuItemLink to="/settings/quickphrase">
             <MenuItem className={isRoute('/settings/quickphrase')}>
               <Zap size={18} />
@@ -85,7 +77,6 @@ const SettingsPage: FC = () => {
             <Route path="provider" element={<ProviderList />} />
             <Route path="model" element={<ModelSettings />} />
             <Route path="model-test" element={<ModelTestPage />} />
-            <Route path="websearch/*" element={<WebSearchSettings />} />
             <Route path="quickphrase" element={<QuickPhraseSettings />} />
             <Route path="general/*" element={<GeneralSettings />} />
             <Route path="display" element={<DisplaySettings />} />

@@ -64,8 +64,4 @@ export class ConversationService {
       uiMessages
     }
   }
-
-  static needsWebSearch(assistant: Assistant): boolean {
-    return !!assistant.webSearchProviderId
-  }
 }

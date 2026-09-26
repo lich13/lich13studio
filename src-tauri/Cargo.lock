@@ -2442,7 +2442,7 @@ dependencies = [
 
 [[package]]
 name = "lich13studio"
-version = "0.1.18"
+version = "0.1.19"
 dependencies = [
  "auto-launch",
  "base64 0.22.1",

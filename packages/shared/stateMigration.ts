@@ -11,12 +11,14 @@ import { normalizeReasoningEffort } from './reasoning'
 
 export const PROVIDER_RESET_VERSION = 216
 export const PLATFORM_MIGRATION_VERSION = 217
+export const SEARCH_REMOVAL_VERSION = 218
 
 type State = Record<string, any>
 
 /** Runs at both rehydration and backup restore boundaries. Never traverses chat messages. */
 export function sanitizeState<T extends State>(state: T, resetProviders = false): T {
   delete state.mcp
+  delete state.websearch
   if (resetProviders && state.llm) {
     state.llm.providers = []
     for (const key of ['defaultModel', 'topicNamingModel', 'quickModel', 'translateModel']) delete state.llm[key]
@@ -45,6 +47,8 @@ export function sanitizeState<T extends State>(state: T, resetProviders = false)
   const entries = [assistants?.defaultAssistant, ...(assistants?.assistants ?? []), ...(assistants?.presets ?? [])]
   for (const assistant of entries) {
     if (!assistant || typeof assistant !== 'object') continue
+    delete assistant.enableWebSearch
+    delete assistant.webSearchProviderId
     delete assistant.mcpMode
     delete assistant.mcpServers
     for (const key of ['model', 'defaultModel']) {
@@ -62,14 +66,10 @@ export function sanitizeState<T extends State>(state: T, resetProviders = false)
       assistant.settings.reasoning_effort_cache = normalizeReasoningEffort(assistant.settings.reasoning_effort_cache)
     assistant.settings.reasoning_effort = normalizeReasoningEffort(assistant.settings.reasoning_effort)
   }
-  if (state.websearch?.providers) {
-    state.websearch.providers = state.websearch.providers.filter((p) => p.id !== 'exa-mcp')
-    if (state.websearch.defaultProvider === 'exa-mcp') state.websearch.defaultProvider = 'local-google'
-  }
   for (const order of Object.values(state.inputTools ?? {}) as any[]) {
     if (!order || typeof order !== 'object') continue
     for (const key of ['visible', 'hidden']) {
-      if (Array.isArray(order[key])) order[key] = order[key].filter((id) => id !== 'mcp_tools')
+      if (Array.isArray(order[key])) order[key] = order[key].filter((id) => id !== 'mcp_tools' && id !== 'web_search')
     }
   }
   return state

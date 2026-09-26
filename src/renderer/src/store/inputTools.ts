@@ -26,7 +26,7 @@ type ToolOrder = {
 }
 
 export const DEFAULT_TOOL_ORDER: ToolOrder = {
-  visible: ['new_topic', 'attachment', 'window_capture', 'quick_phrases', 'thinking', 'web_search', 'url_context'],
+  visible: ['new_topic', 'attachment', 'window_capture', 'quick_phrases', 'thinking', 'url_context'],
   hidden: []
 }
 

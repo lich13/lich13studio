@@ -637,9 +637,6 @@
         "WebFetch": {
           "description": "Fetches content from a specified URL"
         },
-        "WebSearch": {
-          "description": "Performs web searches with domain filtering"
-        },
         "Write": {
           "description": "Creates or overwrites files"
         }
@@ -1143,25 +1140,7 @@
         "image_or_document": "Upload image or document file",
         "upload_from_local": "Upload local file..."
       },
-      "url_context": "URL Context",
-      "web_search": {
-        "builtin": {
-          "disabled_content": "The current model does not support web search",
-          "enabled_content": "Use the built-in web search function of the model",
-          "label": "Model Built-in"
-        },
-        "button": {
-          "ok": "Go to Settings"
-        },
-        "enable": "Enable web search",
-        "enable_content": "Need to check web search connectivity in settings first",
-        "label": "Web Search",
-        "no_web_search": {
-          "description": "Do not enable web search",
-          "label": "Disable Web Search"
-        },
-        "settings": "Web Search Settings"
-      }
+      "url_context": "URL Context"
     },
     "message": {
       "new": {
@@ -1455,12 +1434,7 @@
       "title": "Topics",
       "unpin": "Unpin Topic"
     },
-    "translate": "Translate",
-    "web_search": {
-      "warning": {
-        "openai": "The GPT-5 model's minimal reasoning effort does not support web search."
-      }
-    }
+    "translate": "Translate"
   },
   "code": {
     "auto_update_to_latest": "Automatically update to latest version",
@@ -2534,13 +2508,6 @@
       "rate": {
         "limit": "Too many requests. Please wait {{seconds}} seconds before trying again."
       }
-    },
-    "websearch": {
-      "cutoff": "Truncating search content...",
-      "fetch_complete": "{{count}} search result(s)",
-      "rag": "Executing RAG...",
-      "rag_complete": "Keeping {{countAfter}} out of {{countBefore}} results...",
-      "rag_failed": "RAG failed, returning empty results..."
     }
   },
   "minapp": {
@@ -2682,8 +2649,7 @@
       "rerank": "Reranker",
       "select": "Model Types",
       "text": "Text",
-      "vision": "Vision",
-      "websearch": "WebSearch"
+      "vision": "Vision"
     }
   },
   "navbar": {
@@ -4024,75 +3990,6 @@
         "title": "Export Menu Settings",
         "yuque": "Export to Yuque"
       },
-      "export_to_phone": {
-        "confirm": {
-          "button": "Select backup file"
-        },
-        "content": "Export some data, including chat logs and settings. Please note that the backup process may take some time. Thank you for your patience.",
-        "file": {
-          "button": "Export to file",
-          "content": "Export data as a backup file that can be imported on mobile via file.",
-          "export_failed": "Export failed",
-          "export_success": "Export successful",
-          "title": "Export as file"
-        },
-        "lan": {
-          "button": "Start Transfer",
-          "connected": "Connected",
-          "connection_failed": "Connection failed",
-          "content": "Please ensure your computer and phone are on the same network for LAN transfer.",
-          "device_list_title": "Local network devices",
-          "discovered_devices": "Discovered devices",
-          "error": {
-            "file_too_large": "File too large, maximum 500MB supported",
-            "init_failed": "Initialization failed",
-            "invalid_file_type": "Only ZIP files are supported",
-            "no_file": "No file selected",
-            "no_ip": "Unable to get IP address",
-            "not_connected": "Please complete handshake first",
-            "send_failed": "Failed to send file"
-          },
-          "file_transfer": {
-            "cancelled": "Transfer cancelled",
-            "failed": "File transfer failed: {{message}}",
-            "progress": "Sending... {{progress}}%",
-            "success": "File sent successfully"
-          },
-          "handshake": {
-            "button": "Handshake",
-            "failed": "Handshake failed: {{message}}",
-            "in_progress": "Handshaking...",
-            "success": "Handshake completed with {{device}}",
-            "test_message_received": "Received pong from {{device}}",
-            "test_message_sent": "Sent hello world test payload"
-          },
-          "idle_hint": "Scan paused. Start scanning to find Cherry Studio peers on your LAN.",
-          "ip_addresses": "IP addresses",
-          "last_seen": "Last seen at {{time}}",
-          "metadata": "Metadata",
-          "no_connection_warning": "Please open LAN Transfer on Cherry Studio mobile",
-          "no_devices": "No LAN peers found yet",
-          "scan_devices": "Scan devices",
-          "scanning_hint": "Scanning your local network for Cherry Studio peers...",
-          "send_file": "Send File",
-          "status": {
-            "completed": "Transfer completed",
-            "connected": "Connected",
-            "connecting": "Connecting...",
-            "disconnected": "Disconnected",
-            "error": "Connection error",
-            "initializing": "Initializing connection...",
-            "preparing": "Preparing transfer...",
-            "sending": "Transferring {{progress}}%"
-          },
-          "status_badge_idle": "Idle",
-          "status_badge_scanning": "Scanning",
-          "stop_scan": "Stop scan",
-          "title": "LAN transmission",
-          "transfer_progress": "Transfer progress"
-        },
-        "title": "Export to phone"
-      },
       "hour_interval_one": "{{count}} hour",
       "hour_interval_other": "{{count}} hours",
       "import_settings": {
@@ -5234,100 +5131,7 @@
         "title": "Document Processing",
         "tooltip": "In Settings -> Tools, set a document processing service provider. Document processing can effectively improve the retrieval performance of complex format documents and scanned documents."
       },
-      "title": "Other Settings",
-      "websearch": {
-        "api_key_required": {
-          "content": "{{provider}} requires an API key to work. Would you like to configure it now?",
-          "ok": "Configure",
-          "title": "API Key Required"
-        },
-        "api_providers": "API Providers",
-        "apikey": "API key",
-        "blacklist": "Blacklist",
-        "blacklist_description": "Results from the following websites will not appear in search results",
-        "blacklist_tooltip": "Please use the following format (separated by newlines)\nPattern matching: *://*.example.com/*\nRegular expression: /example\\.(net|org)/",
-        "check": "Check",
-        "check_failed": "Verification failed",
-        "check_success": "Verification successful",
-        "compression": {
-          "cutoff": {
-            "limit": {
-              "label": "Cutoff Limit",
-              "placeholder": "Enter length",
-              "tooltip": "Limit the content length of search results, content exceeding the limit will be truncated (e.g., 2000 characters)"
-            },
-            "unit": {
-              "char": "Char",
-              "token": "Token"
-            }
-          },
-          "error": {
-            "rag_failed": "RAG failed"
-          },
-          "info": {
-            "dimensions_auto_success": "Dimensions auto-obtained successfully, dimensions: {{dimensions}}"
-          },
-          "method": {
-            "cutoff": "Cutoff",
-            "label": "Compression Method",
-            "none": "None",
-            "rag": "RAG"
-          },
-          "rag": {
-            "document_count": {
-              "label": "Document Chunks Count",
-              "tooltip": "Expected number of document chunks to extract from each search result, the actual total number of extracted document chunks is this value multiplied by the number of search results."
-            }
-          },
-          "title": "Search Result Compression"
-        },
-        "content_limit": "Content length limit",
-        "content_limit_tooltip": "Limit the content length of the search results; content that exceeds the limit will be truncated.",
-        "default_provider": "Default Provider",
-        "free": "Free",
-        "is_default": "Default",
-        "local_provider": {
-          "hint": "Log in to the website to get better search results and personalize your search settings.",
-          "open_settings": "Open {{provider}} Settings",
-          "settings": "Local Search Settings"
-        },
-        "local_providers": "Local Providers",
-        "no_provider_selected": "Please select a search service provider before checking.",
-        "overwrite": "Override search service",
-        "overwrite_tooltip": "Force use search service instead of LLM",
-        "search_max_result": {
-          "label": "Number of search results",
-          "tooltip": "When search result compression is disabled, the number of results may be too large, which may lead to insufficient tokens"
-        },
-        "search_provider": "Search service provider",
-        "search_provider_placeholder": "Choose a search service provider.",
-        "search_with_time": "Search with dates included",
-        "set_as_default": "Set as Default",
-        "subscribe": "Blacklist Subscription",
-        "subscribe_add": "Add Subscription",
-        "subscribe_add_failed": "Failed to add feed source",
-        "subscribe_add_success": "Subscription feed added successfully!",
-        "subscribe_delete": "Delete",
-        "subscribe_name": {
-          "label": "Alternative name",
-          "placeholder": "Alternative name used when the downloaded subscription feed has no name."
-        },
-        "subscribe_update": "Update",
-        "subscribe_update_failed": "Subscription source update failed",
-        "subscribe_update_success": "Subscription source updated successfully",
-        "subscribe_url": "Subscription Url",
-        "tavily": {
-          "api_key": {
-            "label": "Tavily API Key",
-            "placeholder": "Enter Tavily API Key"
-          },
-          "description": "Tavily is a search engine tailored for AI agents, delivering real-time, accurate results, intelligent query suggestions, and in-depth research capabilities.",
-          "title": "Tavily"
-        },
-        "title": "Web Search",
-        "url_invalid": "Entered an invalid URL",
-        "url_required": "Please enter a URL"
-      }
+      "title": "Other Settings"
     },
     "topic": {
       "pin_to_top": "Pin Topics to Top",

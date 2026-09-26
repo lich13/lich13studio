@@ -45,6 +45,8 @@ const ModelTestPage = () => {
     setSelectedModel(defaultModel || allModels[0])
   }, [allModels, defaultModel, selectedModel])
 
+  useEffect(() => () => controllerRef.current?.abort(), [])
+
   const updateOutput = (index: number, text: string) => {
     setOutputs((current) => {
       const next = [...current]
@@ -69,6 +71,7 @@ const ModelTestPage = () => {
       const result = await runModelTraceTest({
         model: selectedModel,
         transport,
+        challenges,
         signal: controller.signal,
         onProgress: ({ index, text }) => updateOutput(index, text)
       })
@@ -133,12 +136,14 @@ const ModelTestPage = () => {
             providers={providers}
             value={selectedValue}
             defaultValue={selectedValue}
+            disabled={running}
             onChange={(value) => setSelectedModel(allModels.find((model) => getModelUniqId(model) === value))}
             placeholder={t('settings.models.empty')}
           />
           <Select<ModelTestTransport>
             value={transport}
             style={{ width: '100%' }}
+            disabled={running}
             onChange={setTransport}
             options={[
               { value: 'direct', label: t('settings.modelTest.transport.direct') },

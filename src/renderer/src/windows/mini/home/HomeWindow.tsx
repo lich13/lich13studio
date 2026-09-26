@@ -504,7 +504,6 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
         }
         newAssistant.settings.streamOutput = true
         // 显式关闭这些功能
-        newAssistant.webSearchProviderId = undefined
         // replace prompt vars
         newAssistant.prompt = await replacePromptVariables(
           currentAssistant.prompt,

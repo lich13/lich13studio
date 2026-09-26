@@ -5,8 +5,7 @@ import {
   ReasoningTag,
   RerankerTag,
   ToolsCallingTag,
-  VisionTag,
-  WebSearchTag
+  VisionTag
 } from '@renderer/components/Tags/Model'
 import type { ModelTag } from '@renderer/types'
 import { Flex } from 'antd'
@@ -39,7 +38,6 @@ const TagFilterSection: React.FC<TagFilterSectionProps> = ({ availableTags, tagS
       embedding: EmbeddingTag,
       reasoning: ReasoningTag,
       function_calling: ToolsCallingTag,
-      web_search: WebSearchTag,
       rerank: RerankerTag,
       free: FreeTag
     }),

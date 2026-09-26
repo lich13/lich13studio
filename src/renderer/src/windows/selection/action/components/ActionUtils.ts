@@ -74,7 +74,6 @@ export const processMessages = async (
     }
     newAssistant.settings.streamOutput = true
     // 显式关闭这些功能
-    newAssistant.webSearchProviderId = undefined
     const { modelMessages, uiMessages } = await ConversationService.prepareMessagesForModel([userMessage], newAssistant)
 
     await fetchChatCompletion({

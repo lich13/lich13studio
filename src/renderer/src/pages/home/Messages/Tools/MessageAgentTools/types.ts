@@ -9,7 +9,6 @@ export enum AgentToolsType {
   Search = 'Search',
   Glob = 'Glob',
   TodoWrite = 'TodoWrite',
-  WebSearch = 'WebSearch',
   Grep = 'Grep',
   Write = 'Write',
   WebFetch = 'WebFetch',
@@ -135,23 +134,6 @@ export type TodoWriteToolInput = {
 }
 
 export type TodoWriteToolOutput = string
-
-// WebSearch 工具的类型定义
-export interface WebSearchToolInput {
-  /**
-   * The search query to use
-   */
-  query: string
-  /**
-   * Only include results from these domains
-   */
-  allowed_domains?: string[]
-  /**
-   * Never include results from these domains
-   */
-  blocked_domains?: string[]
-}
-export type WebSearchToolOutput = string
 
 // WebFetch 工具的类型定义
 export type WebFetchToolInput = {
@@ -411,7 +393,6 @@ export type ToolInput =
   | KillBashToolInput
   | NotebookEditToolInput
   | WebFetchToolInput
-  | WebSearchToolInput
   | TodoWriteToolInput
   | ExitPlanModeToolInput
   | AskUserQuestionToolInput
@@ -423,7 +404,6 @@ export type ToolOutput = ReadToolOutput | TaskToolOutput | BashToolOutput | Tool
 // | SearchToolOutput
 // | GlobToolOutput
 // | TodoWriteToolOutput
-// | WebSearchToolOutput
 // | GrepToolOutput
 // | WebFetchToolOutput
 // | WriteToolOutput
@@ -447,7 +427,6 @@ export interface ToolInputMap {
   [AgentToolsType.Search]: SearchToolInput
   [AgentToolsType.Glob]: GlobToolInput
   [AgentToolsType.TodoWrite]: TodoWriteToolInput
-  [AgentToolsType.WebSearch]: WebSearchToolInput
   [AgentToolsType.Grep]: GrepToolInput
   [AgentToolsType.Write]: WriteToolInput
   [AgentToolsType.WebFetch]: WebFetchToolInput
@@ -468,7 +447,6 @@ export interface ToolOutputMap {
   [AgentToolsType.Search]: SearchToolOutput
   [AgentToolsType.Glob]: GlobToolOutput
   [AgentToolsType.TodoWrite]: TodoWriteToolOutput
-  [AgentToolsType.WebSearch]: WebSearchToolOutput
   [AgentToolsType.Grep]: GrepToolOutput
   [AgentToolsType.Write]: WriteToolOutput
   [AgentToolsType.WebFetch]: WebFetchToolOutput

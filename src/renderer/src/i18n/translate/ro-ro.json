@@ -637,9 +637,6 @@
         "WebFetch": {
           "description": "Preia conținutul de la o adresă URL specificată"
         },
-        "WebSearch": {
-          "description": "Efectuează căutări pe web cu filtrare pe domeniu"
-        },
         "Write": {
           "description": "Creează sau suprascrie fișiere"
         }
@@ -1143,25 +1140,7 @@
         "image_or_document": "Încarcă imagine sau fișier document",
         "upload_from_local": "Încarcă fișier local..."
       },
-      "url_context": "Context URL",
-      "web_search": {
-        "builtin": {
-          "disabled_content": "Modelul curent nu acceptă căutarea web",
-          "enabled_content": "Folosește funcția de căutare web integrată a modelului",
-          "label": "Integrat în model"
-        },
-        "button": {
-          "ok": "Mergi la Setări"
-        },
-        "enable": "Activează căutarea web",
-        "enable_content": "Trebuie să verifici mai întâi conectivitatea căutării web în setări",
-        "label": "Căutare web",
-        "no_web_search": {
-          "description": "Nu activa căutarea web",
-          "label": "Dezactivează căutarea web"
-        },
-        "settings": "Setări căutare web"
-      }
+      "url_context": "Context URL"
     },
     "message": {
       "new": {
@@ -1455,12 +1434,7 @@
       "title": "Subiecte",
       "unpin": "Detașează subiectul"
     },
-    "translate": "Tradu",
-    "web_search": {
-      "warning": {
-        "openai": "Efortul minim de raționament al modelului GPT-5 nu acceptă căutarea web."
-      }
-    }
+    "translate": "Tradu"
   },
   "code": {
     "auto_update_to_latest": "Actualizează automat la cea mai recentă versiune",
@@ -2534,13 +2508,6 @@
       "rate": {
         "limit": "Prea multe cereri. Te rugăm să aștepți {{seconds}} secunde înainte de a încerca din nou."
       }
-    },
-    "websearch": {
-      "cutoff": "Se trunchiază conținutul căutării...",
-      "fetch_complete": "{{count}} rezultat(e) căutare",
-      "rag": "Se execută RAG...",
-      "rag_complete": "Se păstrează {{countAfter}} din {{countBefore}} rezultate...",
-      "rag_failed": "RAG a eșuat, se returnează rezultate goale..."
     }
   },
   "minapp": {
@@ -2682,8 +2649,7 @@
       "rerank": "Reranker",
       "select": "Tipuri de modele",
       "text": "Text",
-      "vision": "Vizual",
-      "websearch": "Căutare Web"
+      "vision": "Vizual"
     }
   },
   "navbar": {
@@ -4024,75 +3990,6 @@
         "title": "Setări meniu export",
         "yuque": "Exportă în Yuque"
       },
-      "export_to_phone": {
-        "confirm": {
-          "button": "Selectează fișierul de backup"
-        },
-        "content": "Exportă unele date, inclusiv jurnalele de chat și setările. Te rugăm să reții că procesul de backup poate dura ceva timp. Îți mulțumim pentru răbdare.",
-        "file": {
-          "button": "Exportă în fișier",
-          "content": "Exportă datele ca fișier de rezervă care poate fi importat pe mobil prin fișier.",
-          "export_failed": "Exportul a eșuat",
-          "export_success": "Export reușit",
-          "title": "Exportă ca fișier"
-        },
-        "lan": {
-          "button": "Începe Transferul",
-          "connected": "Conectat",
-          "connection_failed": "Conexiune eșuată",
-          "content": "Te rugăm să te asiguri că computerul și telefonul sunt în aceeași rețea pentru transferul LAN.",
-          "device_list_title": "Dispozitive în rețeaua locală",
-          "discovered_devices": "Dispozitive descoperite",
-          "error": {
-            "file_too_large": "Fișier prea mare, maxim 500MB acceptat",
-            "init_failed": "Inițializare eșuată",
-            "invalid_file_type": "Doar fișierele ZIP sunt acceptate",
-            "no_file": "Niciun fișier selectat",
-            "no_ip": "Nu se poate obține adresa IP",
-            "not_connected": "Te rugăm să finalizezi handshake-ul mai întâi",
-            "send_failed": "Trimiterea fișierului a eșuat"
-          },
-          "file_transfer": {
-            "cancelled": "Transfer anulat",
-            "failed": "Transfer fișier eșuat: {{message}}",
-            "progress": "Se trimite... {{progress}}%",
-            "success": "Fișier trimis cu succes"
-          },
-          "handshake": {
-            "button": "Handshake",
-            "failed": "Handshake eșuat: {{message}}",
-            "in_progress": "Se efectuează handshake...",
-            "success": "Handshake finalizat cu {{device}}",
-            "test_message_received": "Primit pong de la {{device}}",
-            "test_message_sent": "Trimis payload test hello world"
-          },
-          "idle_hint": "Scanare în pauză. Începe scanarea pentru a găsi parteneri Cherry Studio în LAN.",
-          "ip_addresses": "Adrese IP",
-          "last_seen": "Văzut ultima dată la {{time}}",
-          "metadata": "Metadate",
-          "no_connection_warning": "Te rugăm să deschizi Transfer LAN pe mobil în Cherry Studio",
-          "no_devices": "Încă nu s-au găsit parteneri LAN",
-          "scan_devices": "Scanează dispozitive",
-          "scanning_hint": "Se scanează rețeaua locală pentru parteneri Cherry Studio...",
-          "send_file": "Trimite fișier",
-          "status": {
-            "completed": "Transfer finalizat",
-            "connected": "Conectat",
-            "connecting": "Se conectează...",
-            "disconnected": "Deconectat",
-            "error": "Eroare de conexiune",
-            "initializing": "Se inițializează conexiunea...",
-            "preparing": "Se pregătește transferul...",
-            "sending": "Se transferă {{progress}}%"
-          },
-          "status_badge_idle": "Inactiv",
-          "status_badge_scanning": "Se scanează",
-          "stop_scan": "Oprește scanarea",
-          "title": "Transmisie LAN",
-          "transfer_progress": "Progres transfer"
-        },
-        "title": "Exportă pe telefon"
-      },
       "hour_interval_one": "{{count}} oră",
       "hour_interval_other": "{{count}} ore",
       "import_settings": {
@@ -5234,100 +5131,7 @@
         "title": "Procesare documente",
         "tooltip": "În Setări -> Instrumente, setează un furnizor de servicii de procesare a documentelor. Procesarea documentelor poate îmbunătăți eficient performanța de recuperare a documentelor cu format complex și a documentelor scanate."
       },
-      "title": "Alte setări",
-      "websearch": {
-        "api_key_required": {
-          "content": "{{provider}} necesită o cheie API pentru a funcționa. Dorești să o configurezi acum?",
-          "ok": "Configurează",
-          "title": "Cheie API necesară"
-        },
-        "api_providers": "Furnizori API",
-        "apikey": "Cheie API",
-        "blacklist": "Listă neagră",
-        "blacklist_description": "Rezultatele de pe următoarele site-uri web nu vor apărea în rezultatele căutării",
-        "blacklist_tooltip": "Te rugăm să folosești următorul format (separate prin linie nouă)\nPotrivire model: *://*.exemplu.com/*\nExpresie regulată: /exemplu\\.(net|org)/",
-        "check": "Verifică",
-        "check_failed": "Verificare eșuată",
-        "check_success": "Verificare reușită",
-        "compression": {
-          "cutoff": {
-            "limit": {
-              "label": "Limită trunchiere",
-              "placeholder": "Introdu lungimea",
-              "tooltip": "Limitează lungimea conținutului rezultatelor căutării, conținutul care depășește limita va fi trunchiat (de ex., 2000 caractere)"
-            },
-            "unit": {
-              "char": "Caractere",
-              "token": "Token"
-            }
-          },
-          "error": {
-            "rag_failed": "RAG eșuat"
-          },
-          "info": {
-            "dimensions_auto_success": "Dimensiuni obținute automat cu succes, dimensiuni: {{dimensions}}"
-          },
-          "method": {
-            "cutoff": "Trunchiere",
-            "label": "Metodă compresie",
-            "none": "Niciuna",
-            "rag": "RAG"
-          },
-          "rag": {
-            "document_count": {
-              "label": "Număr fragmente document",
-              "tooltip": "Numărul așteptat de fragmente de document de extras din fiecare rezultat al căutării; numărul total real de fragmente extrase este această valoare înmulțită cu numărul de rezultate ale căutării."
-            }
-          },
-          "title": "Compresie rezultate căutare"
-        },
-        "content_limit": "Limită lungime conținut",
-        "content_limit_tooltip": "Limitează lungimea conținutului rezultatelor căutării; conținutul care depășește limita va fi trunchiat.",
-        "default_provider": "Furnizor implicit",
-        "free": "Gratuit",
-        "is_default": "Implicit",
-        "local_provider": {
-          "hint": "Conectează-te la site pentru a obține rezultate mai bune ale căutării și pentru a personaliza setările de căutare.",
-          "open_settings": "Deschide setările {{provider}}",
-          "settings": "Setări căutare locală"
-        },
-        "local_providers": "Furnizori locali",
-        "no_provider_selected": "Te rugăm să selectezi un furnizor de servicii de căutare înainte de a verifica.",
-        "overwrite": "Suprascrie serviciul de căutare",
-        "overwrite_tooltip": "Forțează utilizarea serviciului de căutare în loc de LLM",
-        "search_max_result": {
-          "label": "Număr de rezultate căutare",
-          "tooltip": "Când compresia rezultatelor căutării este dezactivată, numărul de rezultate poate fi prea mare, ceea ce poate duce la tokeni insuficienți"
-        },
-        "search_provider": "Furnizor serviciu căutare",
-        "search_provider_placeholder": "Alege un furnizor de servicii de căutare.",
-        "search_with_time": "Caută cu date incluse",
-        "set_as_default": "Setează ca implicit",
-        "subscribe": "Abonare listă neagră",
-        "subscribe_add": "Adaugă abonament",
-        "subscribe_add_failed": "Adăugarea sursei fluxului a eșuat",
-        "subscribe_add_success": "Flux de abonament adăugat cu succes!",
-        "subscribe_delete": "Șterge",
-        "subscribe_name": {
-          "label": "Nume alternativ",
-          "placeholder": "Nume alternativ folosit când fluxul de abonament descărcat nu are nume."
-        },
-        "subscribe_update": "Actualizează",
-        "subscribe_update_failed": "Actualizarea sursei abonamentului a eșuat",
-        "subscribe_update_success": "Sursa abonamentului a fost actualizată cu succes",
-        "subscribe_url": "Url abonament",
-        "tavily": {
-          "api_key": {
-            "label": "Cheie API Tavily",
-            "placeholder": "Introdu cheia API Tavily"
-          },
-          "description": "Tavily este un motor de căutare adaptat pentru agenți AI, oferind rezultate în timp real, precise, sugestii inteligente de interogare și capacități de cercetare aprofundată.",
-          "title": "Tavily"
-        },
-        "title": "Căutare web",
-        "url_invalid": "S-a introdus un URL invalid",
-        "url_required": "Te rugăm să introduci un URL"
-      }
+      "title": "Alte setări"
     },
     "topic": {
       "pin_to_top": "Fixează subiectele sus",

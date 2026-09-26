@@ -5,7 +5,6 @@ export type InputBarToolType =
   | 'attachment'
   | 'window_capture'
   | 'thinking'
-  | 'web_search'
   | 'url_context'
   | 'knowledge_base'
   | 'generate_image'

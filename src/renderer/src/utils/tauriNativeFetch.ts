@@ -18,7 +18,6 @@ type NativeHttpRequest = {
   method: string
   headers: NativeHttpHeader[]
   body?: number[]
-  timeoutMs?: number
 }
 
 type NativeHttpResponseStart = {
@@ -163,8 +162,7 @@ async function tauriNativeFetch(input: RequestInfo | URL, init?: RequestInit): P
     url,
     method: request.method,
     headers: Array.from(request.headers.entries()).map(([name, value]) => ({ name, value })),
-    body: bodyBuffer && bodyBuffer.length > 0 ? Array.from(bodyBuffer) : undefined,
-    timeoutMs: 600_000
+    body: bodyBuffer && bodyBuffer.length > 0 ? Array.from(bodyBuffer) : undefined
   }
 
   let responseStart: NativeHttpResponseStart

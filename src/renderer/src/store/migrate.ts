@@ -39,8 +39,7 @@ import type {
   Provider,
   ProviderApiOptions,
   SidebarIcon,
-  TranslateLanguageCode,
-  WebSearchProvider
+  TranslateLanguageCode
 } from '@renderer/types'
 import { isSystemProvider, SystemProviderIds } from '@renderer/types'
 import { getDefaultGroupName, getLeadingEmoji, runAsyncFunction, uuid } from '@renderer/utils'
@@ -62,7 +61,6 @@ import { initialState as notesInitialState } from './note'
 import { defaultActionItems } from './selectionStore'
 import { initialState as settingsInitialState } from './settings'
 import { initialState as shortcutsInitialState } from './shortcuts'
-import { defaultWebSearchProviders } from './websearch'
 
 type RootState = Omit<CurrentRootState, 'llm'> & {
   llm: Omit<CurrentRootState['llm'], 'providers'> & { providers: (Omit<Provider, 'type'> & { type: any })[] }
@@ -139,31 +137,6 @@ function updateProvider(state: RootState, id: string, provider: Partial<Provider
     if (index !== -1) {
       state.llm.providers[index] = {
         ...state.llm.providers[index],
-        ...provider
-      }
-    }
-  }
-}
-
-function addWebSearchProvider(state: RootState, id: string) {
-  if (state.websearch && state.websearch.providers) {
-    if (!state.websearch.providers.find((p) => p.id === id)) {
-      const provider = defaultWebSearchProviders.find((p) => p.id === id)
-      if (provider) {
-        // Prevent mutating read only property of object
-        // Otherwise, it will cause the error: Cannot assign to read only property 'apiKey' of object '#<Object>'
-        state.websearch.providers.push({ ...provider })
-      }
-    }
-  }
-}
-
-function updateWebSearchProvider(state: RootState, provider: Partial<WebSearchProvider>) {
-  if (state.websearch && state.websearch.providers) {
-    const index = state.websearch.providers.findIndex((p) => p.id === provider.id)
-    if (index !== -1) {
-      state.websearch.providers[index] = {
-        ...state.websearch.providers[index],
         ...provider
       }
     }
@@ -1112,12 +1085,6 @@ const migrateConfig = {
   },
   '73': (state: RootState) => {
     try {
-      if (state.websearch) {
-        state.websearch.searchWithTime = true
-        state.websearch.maxResults = 5
-        state.websearch.excludeDomains = []
-      }
-
       addProvider(state, 'lmstudio')
       addProvider(state, 'o3')
       state.llm.providers = moveProvider(state.llm.providers, 'o3', 2)
@@ -1181,14 +1148,6 @@ const migrateConfig = {
   },
   '77': (state: RootState) => {
     try {
-      addWebSearchProvider(state, 'searxng')
-      addWebSearchProvider(state, 'exa')
-      if (state.websearch) {
-        state.websearch.providers.forEach((p) => {
-          // @ts-ignore eslint-disable-next-line
-          delete p.enabled
-        })
-      }
       return state
     } catch (error) {
       return state
@@ -1353,16 +1312,6 @@ const migrateConfig = {
   },
   '95': (state: RootState) => {
     try {
-      addWebSearchProvider(state, 'local-google')
-      addWebSearchProvider(state, 'local-bing')
-      addWebSearchProvider(state, 'local-baidu')
-
-      if (state.websearch) {
-        if (isEmpty(state.websearch.subscribeSources)) {
-          state.websearch.subscribeSources = []
-        }
-      }
-
       const qiniuProvider = state.llm.providers.find((provider) => provider.id === 'qiniu')
       if (qiniuProvider && isEmpty(qiniuProvider.models)) {
         qiniuProvider.models = SYSTEM_MODELS.qiniu
@@ -1387,12 +1336,6 @@ const migrateConfig = {
     try {
       addMiniApp(state, 'zai')
       state.settings.webdavMaxBackups = 0
-      if (state.websearch && state.websearch.providers) {
-        state.websearch.providers.forEach((provider) => {
-          provider.basicAuthUsername = ''
-          provider.basicAuthPassword = ''
-        })
-      }
       return state
     } catch (error) {
       return state
@@ -1415,29 +1358,6 @@ const migrateConfig = {
     try {
       state.settings.showPrompt = true
 
-      addWebSearchProvider(state, 'bocha')
-
-      updateWebSearchProvider(state, {
-        id: 'exa',
-        apiHost: 'https://api.exa.ai'
-      })
-
-      updateWebSearchProvider(state, {
-        id: 'tavily',
-        apiHost: 'https://api.tavily.com'
-      })
-
-      // Remove basic auth fields from exa and tavily
-      if (state.websearch?.providers) {
-        state.websearch.providers = state.websearch.providers.map((provider) => {
-          if (provider.id === 'exa' || provider.id === 'tavily') {
-            // oxlint-disable-next-line @typescript-eslint/no-unused-vars
-            const { basicAuthUsername, basicAuthPassword, ...rest } = provider
-            return rest
-          }
-          return provider
-        })
-      }
       return state
     } catch (error) {
       return state
@@ -1739,26 +1659,6 @@ const migrateConfig = {
   },
   '116': (state: RootState) => {
     try {
-      if (state.websearch) {
-        // migrate contentLimit to cutoffLimit
-        // @ts-ignore eslint-disable-next-line
-        if (state.websearch.contentLimit) {
-          state.websearch.compressionConfig = {
-            method: 'cutoff',
-            cutoffUnit: 'char',
-            // @ts-ignore eslint-disable-next-line
-            cutoffLimit: state.websearch.contentLimit
-          }
-        } else {
-          state.websearch.compressionConfig = {
-            method: 'none',
-            cutoffUnit: 'char'
-          }
-        }
-
-        // @ts-ignore eslint-disable-next-line
-        delete state.websearch.contentLimit
-      }
       if (state.settings) {
         state.settings.testChannel = UpgradeChannel.LATEST
       }
@@ -1897,13 +1797,8 @@ const migrateConfig = {
       // @ts-ignore
       if (!toolOrder.visible.includes(urlContextKey)) {
         // @ts-ignore
-        const webSearchIndex = toolOrder.visible.indexOf('web_search')
-        // @ts-ignore
         const knowledgeBaseIndex = toolOrder.visible.indexOf('knowledge_base')
-        if (webSearchIndex !== -1) {
-          // @ts-ignore
-          toolOrder.visible.splice(webSearchIndex, 0, urlContextKey)
-        } else if (knowledgeBaseIndex !== -1) {
+        if (knowledgeBaseIndex !== -1) {
           // @ts-ignore
           toolOrder.visible.splice(knowledgeBaseIndex, 0, urlContextKey)
         } else {
@@ -2343,18 +2238,6 @@ const migrateConfig = {
 
         // Update default painting provider to zhipu
         state.settings.defaultPaintingProvider = 'zhipu'
-
-        // Add zhipu web search provider
-        addWebSearchProvider(state, 'zhipu')
-
-        // Update zhipu web search provider api key
-        if (zhipuProvider.apiKey) {
-          state?.websearch?.providers.forEach((provider) => {
-            if (provider.id === 'zhipu') {
-              provider.apiKey = zhipuProvider.apiKey
-            }
-          })
-        }
       }
 
       return state
@@ -3280,7 +3163,6 @@ const migrateConfig = {
   },
   '201': (state: RootState) => {
     try {
-      addWebSearchProvider(state, 'querit')
       return state
     } catch (error) {
       logger.error('migrate 201 error', error as Error)
@@ -3462,11 +3344,6 @@ const migrateConfig = {
         delete (state.settings as any).customCss
       }
 
-      if (state.websearch) {
-        state.websearch.defaultProvider = 'local-google'
-        state.websearch.providers = state.websearch.providers.filter((provider) => provider.id === 'local-google')
-      }
-
       logger.info('migrate 211 success')
       return state
     } catch (error) {
@@ -3475,7 +3352,8 @@ const migrateConfig = {
     }
   },
   '216': (state: RootState) => sanitizeState(state, true),
-  '217': (state: RootState) => migratePlatformState(state)
+  '217': (state: RootState) => migratePlatformState(state),
+  '218': (state: RootState) => sanitizeState(state)
 }
 
 // 注意：添加新迁移时，记得同时更新 persistReducer

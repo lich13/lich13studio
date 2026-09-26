@@ -73,12 +73,5 @@ export const builtinTools: Tool[] = [
     requirePermissions: true,
     type: 'builtin'
   },
-  {
-    id: 'WebSearch',
-    name: 'WebSearch',
-    description: 'Performs web searches with domain filtering',
-    requirePermissions: true,
-    type: 'builtin'
-  },
   { id: 'Write', name: 'Write', description: 'Creates or overwrites files', requirePermissions: true, type: 'builtin' }
 ]

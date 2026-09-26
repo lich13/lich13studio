@@ -3,8 +3,7 @@ import type {
   ExternalToolResult,
   GenerateImageResponse,
   HistoricalToolResponse,
-  NormalToolResponse,
-  WebSearchResponse
+  NormalToolResponse
 } from '@renderer/types'
 import type { Chunk, ProviderMetadata } from '@renderer/types/chunk'
 import { ChunkType } from '@renderer/types/chunk'
@@ -38,12 +37,8 @@ export interface StreamProcessorCallbacks {
   onToolArgumentStreaming?: (toolResponse: HistoricalToolResponse | NormalToolResponse) => MaybePromise
   // External tool call in progress
   onExternalToolInProgress?: () => MaybePromise
-  // Citation data received (e.g., from Internet and  Knowledge Base)
+  // Citation data received from retained local knowledge integrations.
   onExternalToolComplete?: (externalToolResult: ExternalToolResult) => MaybePromise
-  // LLM Web search in progress
-  onLLMWebSearchInProgress?: () => MaybePromise
-  // LLM Web search complete
-  onLLMWebSearchComplete?: (llmWebSearchResult: WebSearchResponse) => MaybePromise
   // Get citation block ID
   getCitationBlockId?: () => string | null
   // Set citation block ID
@@ -135,12 +130,6 @@ export function createStreamProcessor(callbacks: StreamProcessorCallbacks = {}):
           break
         case ChunkType.EXTERNEL_TOOL_COMPLETE:
           await callbacks.onExternalToolComplete?.(data.external_tool)
-          break
-        case ChunkType.LLM_WEB_SEARCH_IN_PROGRESS:
-          await callbacks.onLLMWebSearchInProgress?.()
-          break
-        case ChunkType.LLM_WEB_SEARCH_COMPLETE:
-          await callbacks.onLLMWebSearchComplete?.(data.llm_web_search)
           break
         case ChunkType.IMAGE_CREATED:
           await callbacks.onImageCreated?.()

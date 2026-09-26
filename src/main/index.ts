@@ -22,8 +22,6 @@ import { registerSessionStreamIpc } from './services/agents/services/channels/se
 import { analyticsService } from './services/AnalyticsService'
 import { appMenuService } from './services/AppMenuService'
 import { configManager } from './services/ConfigManager'
-import { lanTransferClientService } from './services/lanTransfer'
-import { localTransferService } from './services/LocalTransferService'
 import { openClawService } from './services/OpenClawService'
 import { nodeTraceService } from './services/NodeTraceService'
 import powerMonitorService from './services/PowerMonitorService'
@@ -181,7 +179,6 @@ if (!app.requestSingleInstanceLock()) {
       }
     })
     await registerIpc(mainWindow, app)
-    localTransferService.startDiscovery({ resetList: true })
 
     replaceDevtoolsFont(mainWindow)
 
@@ -256,9 +253,6 @@ if (!app.requestSingleInstanceLock()) {
     if (selectionService) {
       selectionService.quit()
     }
-
-    lanTransferClientService.dispose()
-    localTransferService.dispose()
   })
 
   app.on('will-quit', async () => {

@@ -1,10 +1,4 @@
-import type {
-  ExternalToolResult,
-  HistoricalToolResponse,
-  KnowledgeReference,
-  NormalToolResponse,
-  WebSearchResponse
-} from '.'
+import type { ExternalToolResult, HistoricalToolResponse, KnowledgeReference, NormalToolResponse } from '.'
 import type { Response, ResponseError } from './newMessage'
 
 /**
@@ -25,8 +19,6 @@ export enum ChunkType {
   BLOCK_CREATED = 'block_created',
   BLOCK_IN_PROGRESS = 'block_in_progress',
   EXTERNEL_TOOL_IN_PROGRESS = 'externel_tool_in_progress',
-  WEB_SEARCH_IN_PROGRESS = 'web_search_in_progress',
-  WEB_SEARCH_COMPLETE = 'web_search_complete',
   KNOWLEDGE_SEARCH_IN_PROGRESS = 'knowledge_search_in_progress',
   KNOWLEDGE_SEARCH_COMPLETE = 'knowledge_search_complete',
   TOOL_CREATED = 'tool_created',
@@ -49,8 +41,6 @@ export enum ChunkType {
   THINKING_START = 'thinking.start',
   THINKING_DELTA = 'thinking.delta',
   THINKING_COMPLETE = 'thinking.complete',
-  LLM_WEB_SEARCH_IN_PROGRESS = 'llm_websearch_in_progress',
-  LLM_WEB_SEARCH_COMPLETE = 'llm_websearch_complete',
   LLM_RESPONSE_COMPLETE = 'llm_response_complete',
   BLOCK_COMPLETE = 'block_complete',
   ERROR = 'error',
@@ -239,50 +229,6 @@ export interface ThinkingCompleteChunk {
   type: ChunkType.THINKING_COMPLETE
 }
 
-export interface WebSearchInProgressChunk {
-  /**
-   * The type of the chunk
-   */
-  type: ChunkType.WEB_SEARCH_IN_PROGRESS
-}
-
-export interface WebSearchCompleteChunk {
-  /**
-   * The web search response of the chunk
-   */
-  web_search: WebSearchResponse
-
-  /**
-   * The ID of the chunk
-   */
-  chunk_id?: number
-
-  /**
-   * The type of the chunk
-   */
-  type: ChunkType.WEB_SEARCH_COMPLETE
-}
-
-// 区分一下大模型内部搜索和外部搜索，因为时机不同
-export interface LLMWebSearchInProgressChunk {
-  /**
-   * The type of the chunk
-   */
-  type: ChunkType.LLM_WEB_SEARCH_IN_PROGRESS
-}
-
-export interface LLMWebSearchCompleteChunk {
-  /**
-   * The LLM web search response of the chunk
-   */
-  llm_web_search: WebSearchResponse
-
-  /**
-   * The type of the chunk
-   */
-  type: ChunkType.LLM_WEB_SEARCH_COMPLETE
-}
-
 export interface KnowledgeSearchInProgressChunk {
   /**
    * The type of the chunk
@@ -463,15 +409,13 @@ export type Chunk =
   | BlockCreatedChunk // 消息块创建，无意义
   | BlockInProgressChunk // 消息块进行中，无意义
   | ExternalToolInProgressChunk // 外部工具调用中
-  | WebSearchInProgressChunk // 互联网搜索进行中
-  | WebSearchCompleteChunk // 互联网搜索完成
   | KnowledgeSearchInProgressChunk // 知识库搜索进行中
   | KnowledgeSearchCompleteChunk // 知识库搜索完成
   | ToolPendingChunk // MCP工具调用等待中
   | ToolInProgressChunk // MCP工具调用中
   | ToolCompleteChunk // MCP工具调用完成
   | ToolStreamingChunk // MCP工具参数流式传输中
-  | ExternalToolCompleteChunk // 外部工具调用完成，外部工具包含搜索互联网，知识库，MCP服务器
+  | ExternalToolCompleteChunk // 外部工具调用完成，保留知识库结果
   | LLMResponseCreatedChunk // 大模型响应创建，返回即将创建的块类型
   | LLMResponseInProgressChunk // 大模型响应进行中
   | TextStartChunk // 文本内容生成开始
@@ -486,8 +430,6 @@ export type Chunk =
   | ThinkingStartChunk // 思考内容生成开始
   | ThinkingDeltaChunk // 思考内容生成中
   | ThinkingCompleteChunk // 思考内容生成完成
-  | LLMWebSearchInProgressChunk // 大模型内部搜索进行中，无明显特征
-  | LLMWebSearchCompleteChunk // 大模型内部搜索完成
   | LLMResponseCompleteChunk // 大模型响应完成，未来用于作为流式处理的完成标记
   | BlockCompleteChunk // 所有块创建完成，通常用于非流式处理；目前没有做区分
   | ErrorChunk // 错误

@@ -77,7 +77,6 @@ export function getSdkClient(
         'user-agent': 'claude-cli/1.0.118 (external, sdk-ts)',
         'x-app': 'cli',
         'x-stainless-retry-count': '0',
-        'x-stainless-timeout': '600',
         'x-stainless-lang': 'js',
         'x-stainless-package-version': '0.60.0',
         'x-stainless-os': 'MacOS',

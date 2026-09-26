@@ -6,7 +6,6 @@ export enum QuickPanelReservedSymbol {
   MentionModels = '@',
   QuickPhrases = 'quick-phrases',
   Thinking = 'thinking',
-  WebSearch = '?',
   SlashCommands = 'slash-commands'
 }
 

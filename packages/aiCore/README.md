@@ -16,7 +16,7 @@ Cherry Studio AI Core 是一个基于 Vercel AI SDK 的统一 AI Provider 接口
 - **生命周期钩子**：支持请求全生命周期的扩展点
 - **流转换支持**：基于 AI SDK 的 `experimental_transform` 实现流处理
 - **插件分类**：First、Sequential、Parallel 三种钩子类型，满足不同场景
-- **内置插件**：webSearch、logging、toolUse 等开箱即用的功能
+- **内置插件**：logging、toolUse 等开箱即用的功能
 
 ### 🌐 统一多 Provider 接口
 
@@ -42,7 +42,6 @@ Cherry Studio AI Core 是一个基于 Vercel AI SDK 的统一 AI Provider 接口
 - 🔄 动态导入支持
 - 🛠️ TypeScript 支持
 - 📦 强大的插件系统
-- 🌍 内置webSearch(Openai,Google,Anthropic,xAI)
 - 🎯 多种使用模式（函数式/实例式/静态工厂）
 - 🔌 可扩展的 Provider 注册系统
 - 🧩 完整的中间件支持
@@ -184,32 +183,6 @@ const mistralExecutor = AiCore.create('mistral', { apiKey: 'mistral-key' })
 AI Core 提供了强大的插件系统，支持请求全生命周期的扩展。
 
 ### 内置插件
-
-#### webSearchPlugin - 网络搜索插件
-
-为不同 AI Provider 提供统一的网络搜索能力：
-
-```typescript
-import { webSearchPlugin } from '@cherrystudio/ai-core/built-in/plugins'
-
-const executor = AiCore.create('openai', { apiKey: 'your-key' }, [
-  webSearchPlugin({
-    openai: {
-      /* OpenAI 搜索配置 */
-    },
-    anthropic: { maxUses: 5 },
-    google: {
-      /* Google 搜索配置 */
-    },
-    xai: {
-      mode: 'on',
-      returnCitations: true,
-      maxSearchResults: 5,
-      sources: [{ type: 'web' }, { type: 'x' }, { type: 'news' }]
-    }
-  })
-])
-```
 
 #### loggingPlugin - 日志插件
 

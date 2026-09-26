@@ -2,7 +2,7 @@ import type { LanguageModelV3Source } from '@ai-sdk/provider'
 import type { WebSearchResultBlock } from '@anthropic-ai/sdk/resources'
 import type OpenAI from '@cherrystudio/openai'
 import type { GenerateImagesConfig, GroundingMetadata, PersonGeneration } from '@google/genai'
-import type { ReasoningEffort } from '@shared/reasoning'
+import type { ReasoningEffort, ReasoningMode } from '@shared/reasoning'
 import type { CSSProperties } from 'react'
 
 export * from './file'
@@ -41,9 +41,6 @@ export type Assistant = {
   // This field should be considered as not Partial and not optional in v2
   settings?: Partial<AssistantSettings>
   messages?: AssistantMessage[]
-  /** enableWebSearch 代表使用模型内置网络搜索功能 */
-  enableWebSearch?: boolean
-  webSearchProviderId?: WebSearchProvider['id']
   // enableUrlContext 是 Gemini/Anthropic 的特有功能
   enableUrlContext?: boolean
   enableGenerateImage?: boolean
@@ -262,7 +259,7 @@ export type User = {
   email: string
 }
 
-export type ModelType = 'text' | 'vision' | 'embedding' | 'reasoning' | 'function_calling' | 'web_search' | 'rerank'
+export type ModelType = 'text' | 'vision' | 'embedding' | 'reasoning' | 'function_calling' | 'rerank'
 
 export type ModelTag = Exclude<ModelType, 'text'> | 'free'
 
@@ -676,43 +673,8 @@ export type SidebarIcon =
 
 export type ExternalToolResult = {
   toolUse?: HistoricalToolResponse[]
-  webSearch?: WebSearchResponse
   knowledge?: KnowledgeReference[]
   memories?: MemoryItem[]
-}
-
-export const WebSearchProviderIds = {
-  zhipu: 'zhipu',
-  tavily: 'tavily',
-  searxng: 'searxng',
-  exa: 'exa',
-  bocha: 'bocha',
-  querit: 'querit',
-  'local-google': 'local-google',
-  'local-bing': 'local-bing',
-  'local-baidu': 'local-baidu'
-} as const
-
-export type WebSearchProviderId = keyof typeof WebSearchProviderIds
-
-export const isWebSearchProviderId = (id: string): id is WebSearchProviderId => {
-  return Object.hasOwn(WebSearchProviderIds, id)
-}
-
-export type WebSearchProvider = {
-  id: WebSearchProviderId
-  name: string
-  apiKey?: string
-  apiHost?: string
-  engines?: string[]
-  url?: string
-  basicAuthUsername?: string
-  basicAuthPassword?: string
-  usingBrowser?: boolean
-  topicId?: string
-  allowedTools?: string[]
-  parentSpanId?: string
-  modelName?: string
 }
 
 export type WebSearchProviderResult = {
@@ -759,14 +721,6 @@ export type WebSearchSource = z.infer<typeof WebSearchSourceSchema>
 export type WebSearchResponse = {
   results?: WebSearchResults
   source: WebSearchSource
-}
-
-export type WebSearchPhase = 'default' | 'fetch_complete' | 'rag' | 'rag_complete' | 'rag_failed' | 'cutoff'
-
-export type WebSearchStatus = {
-  phase: WebSearchPhase
-  countBefore?: number
-  countAfter?: number
 }
 
 export type ToolResponseStatus = 'pending' | 'streaming' | 'cancelled' | 'invoking' | 'done' | 'error'
@@ -1052,8 +1006,8 @@ export const isHexColor = (value: string): value is HexColor => {
 
 export type FetchChatCompletionRequestOptions = {
   signal?: AbortSignal
-  timeout?: number
   headers?: Record<string, string>
+  reasoningMode?: ReasoningMode
 }
 
 type BaseParams = {

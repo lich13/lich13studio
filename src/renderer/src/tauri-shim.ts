@@ -1105,13 +1105,6 @@ const api = {
       return invoke('get_obsidian_files', { vaultName })
     }
   },
-  searchService: {
-    openUrlInSearchWindow: async (_uid: string, url: string) => {
-      await openExternalUrl(url)
-      return url
-    },
-    closeSearchWindow: noOpAsync
-  },
   file: {
     select: async (options?: AnyRecord) =>
       pickFiles(Boolean(options?.properties?.includes?.('multiSelections')), options?.filters),
@@ -1446,9 +1439,7 @@ const api = {
         return invoke('check_webdav_connection', { config: mapWebdavConfig(webdavConfig) })
       }
       return Boolean(webdavConfig?.webdavHost)
-    },
-    createLanTransferBackup: async () => '',
-    deleteLanTransferBackup: async () => true
+    }
   },
   protocol: {
     onReceiveData: (callback: (data: ProtocolPayload) => void) => {
