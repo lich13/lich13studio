@@ -452,11 +452,11 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
           }}
           itemContainerStyle={{ paddingBottom: 5 }}>
           {(provider) => (
-            <Dropdown menu={{ items: getDropdownMenus(provider as Provider) }} trigger={['contextMenu']}>
+            <Dropdown menu={{ items: getDropdownMenus(provider) }} trigger={['contextMenu']}>
               <ProviderListItem
-                key={(provider as Provider).id}
-                className={(provider as Provider).id === selectedProvider?.id ? 'active' : ''}
-                onClick={() => setSelectedProvider(provider as Provider)}>
+                key={provider.id}
+                className={provider.id === selectedProvider?.id ? 'active' : ''}
+                onClick={() => setSelectedProvider(provider)}>
                 <DragHandle>
                   <GripVertical size={12} />
                 </DragHandle>
@@ -465,13 +465,11 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
                     width: 24,
                     height: 24
                   }}
-                  provider={provider as Provider}
+                  provider={provider}
                   customLogos={providerLogos}
                 />
-                <ProviderItemName className="text-nowrap">
-                  {getFancyProviderName(provider as Provider)}
-                </ProviderItemName>
-                {(provider as Provider).enabled && (
+                <ProviderItemName className="text-nowrap">{getFancyProviderName(provider)}</ProviderItemName>
+                {provider.enabled && (
                   <Tag color="green" style={{ marginLeft: 'auto', marginRight: 0, borderRadius: 16 }}>
                     ON
                   </Tag>

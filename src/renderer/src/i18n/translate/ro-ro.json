@@ -537,6 +537,7 @@
           "empty": "Niciun instrument nu corespunde filtrelor tale.",
           "requiresApproval": "Necesită aprobare când este dezactivat",
           "search": "Caută instrumente",
+          "title": "[to be translated]:Pre-approved Tools",
           "toggle": "Comută {{name}}"
         }
       },
@@ -894,6 +895,7 @@
       "reasoning_effort": {
         "auto": "Auto",
         "auto_description": "Determină flexibil efortul de raționament",
+        "budget_description": "[to be translated]:Mapped to a thinking token budget",
         "default": "Implicit",
         "default_description": "Depinde de comportamentul implicit al modelului, fără nicio configurare.",
         "high": "Ridicat",
@@ -901,6 +903,9 @@
         "label": "Efort de raționament",
         "low": "Scăzut",
         "low_description": "Raționament de nivel scăzut",
+        "mapped_description": "[to be translated]:This model uses {{effort}}",
+        "max": "[to be translated]:max",
+        "max_description": "[to be translated]:Maximum reasoning effort",
         "medium": "Mediu",
         "medium_description": "Raționament de nivel mediu",
         "minimal": "Minim",
@@ -1470,6 +1475,8 @@
     "env_vars_help": "Introdu variabile de mediu personalizate (una pe rând, format: CHEIE=valoare)",
     "environment_variables": "Variabile de mediu",
     "folder_placeholder": "Selectează directorul de lucru",
+    "installError": "[to be translated]:Failed to install dependencies",
+    "installSuccess": "[to be translated]:Dependencies installed successfully",
     "install_bun": "Instalează Bun",
     "installing_bun": "Se instalează...",
     "launch": {
@@ -2435,6 +2442,7 @@
       "abort_failed": "Anularea apelului instrumentului a eșuat",
       "aborted": "Apelul instrumentului a fost anulat",
       "approvalRequired": "Instrumentul „{{tool}}” necesită aprobare",
+      "autoApprove": "[to be translated]:Auto Approve",
       "autoApproveEnabled": "Aprobare automată activată pentru acest instrument",
       "cancelled": "Anulat",
       "completed": "Finalizat",
@@ -2463,6 +2471,7 @@
       "pending": "În așteptare",
       "preview": "Previzualizare",
       "raw": "Brut",
+      "run": "[to be translated]:Run",
       "runningCount": "{{count}} instrumente în execuție",
       "sections": {
         "args": "Argumente",
@@ -4637,6 +4646,26 @@
       "visible": "Mini-aplicații vizibile"
     },
     "model": "Model implicit",
+    "modelTest": {
+      "analyzeManual": "[to be translated]:Analyze pasted output",
+      "challenge": "[to be translated]:Challenge {{index}} · {{count}} numbers",
+      "challenges": "[to be translated]:Number challenges",
+      "description": "[to be translated]:Estimate model fingerprints with three non-semantic number challenges. Results are advisory and are not saved to chat history.",
+      "familyResult": "[to be translated]:Model family: {{family}} ({{probability}}%)",
+      "localNotice": "[to be translated]:Direct mode uses the configured provider. Prompts and results are not written to chat history.",
+      "pastePlaceholder": "[to be translated]:Paste the complete model response here",
+      "proxyWarning": "[to be translated]:Proxy mode sends test prompts and outputs to a third party. The API key is used only for this run and is not stored.",
+      "regenerate": "[to be translated]:New challenges",
+      "result": "[to be translated]:Attribution result",
+      "run": "[to be translated]:Run three tests",
+      "stop": "[to be translated]:Stop test",
+      "title": "[to be translated]:Model Test",
+      "transport": {
+        "direct": "[to be translated]:Direct provider",
+        "proxy": "[to be translated]:iq.nullatoms proxy"
+      },
+      "usedOutputs": "[to be translated]:Valid outputs: {{count}}"
+    },
     "models": {
       "add": {
         "add_model": "Adaugă model",
@@ -4953,12 +4982,16 @@
       },
       "docs_check": "Verifică",
       "docs_more_details": "pentru mai multe detalii",
+      "empty": "[to be translated]:Add a provider, then select a model to get started.",
       "filter": {
         "agent": "Asistat de agent",
         "all": "Toți furnizorii"
       },
       "filter_agent": "Furnizori acceptați de agentul de filtrare",
       "get_api_key": "Obține cheie API",
+      "import_duplicate": "[to be translated]:This provider is already imported.",
+      "import_invalid": "[to be translated]:Import failed. Use a valid Responses or Anthropic provider link.",
+      "import_success": "[to be translated]:Provider imported.",
       "misc": "Altele",
       "no_models_for_check": "Nu există modele disponibile pentru verificare (de ex. modele chat)",
       "not_checked": "Neverificat",

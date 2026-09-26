@@ -27,6 +27,15 @@ import { BlockManager } from '@renderer/services/messageStreaming/BlockManager'
 import { createCallbacks } from '@renderer/services/messageStreaming/callbacks'
 import { endSpan } from '@renderer/services/SpanManagerService'
 import { createStreamProcessor, type StreamProcessorCallbacks } from '@renderer/services/StreamProcessingService'
+import {
+  beginStream,
+  createStreamTerminalGuard,
+  finishStream,
+  isCurrentStream,
+  markStreamContent,
+  setStreamAbort,
+  setStreamPhase
+} from '@renderer/services/StreamRegistry'
 import store from '@renderer/store'
 import { updateTopicUpdatedAt } from '@renderer/store/assistants'
 import { type ApiServerConfig, type Assistant, type FileMetadata, type Model, type Topic } from '@renderer/types'
@@ -46,6 +55,7 @@ import {
 } from '@renderer/types/newMessage'
 import { uuid } from '@renderer/utils'
 import { addAbortController } from '@renderer/utils/abortController'
+import { removeAbortController } from '@renderer/utils/abortController'
 import {
   buildAgentSessionTopicId,
   extractAgentSessionIdFromTopicId,
@@ -58,6 +68,7 @@ import {
 } from '@renderer/utils/messageUtils/create'
 import { getMainTextContent } from '@renderer/utils/messageUtils/find'
 import { getTopicQueue, hasTopicPendingRequests, waitForTopicQueue } from '@renderer/utils/queue'
+import { createSSEReadableStream } from '@renderer/utils/sse'
 import { getTopicFulfilledActiveTopicId, shouldMarkTopicFulfilled } from '@renderer/utils/topicStatus'
 import { defaultAppHeaders } from '@shared/utils'
 import type { TextStreamPart } from 'ai'
@@ -360,103 +371,6 @@ export const renameAgentSessionIfNeeded = async (
   }
 }
 
-const createSSEReadableStream = (
-  source: ReadableStream<Uint8Array>,
-  signal: AbortSignal
-): ReadableStream<TextStreamPart<Record<string, any>>> => {
-  return new ReadableStream<TextStreamPart<Record<string, any>>>({
-    start(controller) {
-      const reader = source.getReader()
-      const decoder = new TextDecoder()
-      let buffer = ''
-
-      const cancelReader = (reason?: any) => reader.cancel(reason).catch(() => {})
-
-      const abortHandler = () => {
-        void cancelReader(signal.reason ?? 'aborted')
-        controller.error(new DOMException('Aborted', 'AbortError'))
-      }
-
-      if (signal.aborted) {
-        abortHandler()
-        return
-      }
-
-      signal.addEventListener('abort', abortHandler, { once: true })
-
-      const emitEvent = (eventString: string): boolean => {
-        const lines = eventString.split(/\r?\n/)
-        let dataPayload = ''
-        for (const line of lines) {
-          if (line.startsWith('data:')) {
-            dataPayload += line.slice(5).trimStart()
-          }
-        }
-
-        if (!dataPayload) {
-          return false
-        }
-
-        if (dataPayload === '[DONE]') {
-          signal.removeEventListener('abort', abortHandler)
-          void cancelReader()
-          controller.close()
-          return true
-        }
-
-        try {
-          const parsed = JSON.parse(dataPayload) as TextStreamPart<Record<string, any>>
-          controller.enqueue(parsed)
-        } catch (error) {
-          logger.warn('Failed to parse agent SSE chunk', { dataPayload })
-        }
-        return false
-      }
-
-      const pump = async () => {
-        try {
-          while (true) {
-            const { value, done } = await reader.read()
-            if (done) break
-            buffer += decoder.decode(value, { stream: true })
-
-            let separatorIndex = buffer.indexOf('\n\n')
-            while (separatorIndex !== -1) {
-              const rawEvent = buffer.slice(0, separatorIndex).trim()
-              buffer = buffer.slice(separatorIndex + 2)
-              if (rawEvent) {
-                const shouldStop = emitEvent(rawEvent)
-                if (shouldStop) {
-                  return
-                }
-              }
-              separatorIndex = buffer.indexOf('\n\n')
-            }
-          }
-
-          buffer += decoder.decode()
-          if (buffer.trim()) {
-            emitEvent(buffer.trim())
-          }
-          signal.removeEventListener('abort', abortHandler)
-          controller.close()
-        } catch (error) {
-          signal.removeEventListener('abort', abortHandler)
-          controller.error(error)
-        }
-      }
-
-      pump().catch((error) => {
-        signal.removeEventListener('abort', abortHandler)
-        controller.error(error)
-      })
-    },
-    cancel(reason) {
-      return source.cancel(reason).catch(() => {})
-    }
-  })
-}
-
 /**
  * Wraps a parsed stream with abort-signal lifecycle handling.
  * In the normal chat pipeline the AI SDK runtime converts abort signals into
@@ -538,7 +452,16 @@ const createAgentMessageStream = async (
     throw new Error('Agent message stream has no body')
   }
 
-  const sseStream = createSSEReadableStream(response.body, signal)
+  const sseStream = createSSEReadableStream<TextStreamPart<Record<string, any>>>(
+    response.body,
+    signal,
+    (error, payloadLength) => {
+      logger.warn('Failed to parse agent SSE chunk', {
+        error: error instanceof Error ? error.message : String(error),
+        payloadLength
+      })
+    }
+  )
   return withAbortStreamPart(sseStream, signal)
 }
 // TODO: 后续可以将db操作移到Listener Middleware中
@@ -956,8 +879,15 @@ const fetchAndProcessAssistantResponseImpl = async (
     ? { ...origAssistant, prompt: `${origAssistant.prompt}\n${topic.prompt}` }
     : origAssistant
   const assistantMsgId = assistantMessage.id
+  const streamEntry = beginStream(topicId, assistantMsgId)
+  if (!streamEntry) return
+
   let callbacks: StreamProcessorCallbacks = {}
+  const terminalGuard = createStreamTerminalGuard()
+  let abortKey: string | undefined
+  let abortFn: (() => void) | undefined
   try {
+    setStreamPhase(streamEntry, 'connecting')
     dispatch(newMessagesActions.setTopicLoading({ topicId, loading: true }))
 
     // 创建 BlockManager 实例
@@ -976,6 +906,7 @@ const fetchAndProcessAssistantResponseImpl = async (
 
     let messagesForContext: Message[] = []
     const userMessageId = assistantMessage.askId
+    abortKey = userMessageId
     const userMessageIndex = allMessagesForTopic.findIndex((m) => m?.id === userMessageId)
 
     if (userMessageIndex === -1) {
@@ -1011,11 +942,33 @@ const fetchAndProcessAssistantResponseImpl = async (
       saveUpdatesToDB,
       assistant
     })
-    const streamProcessorCallbacks = createStreamProcessor(callbacks)
+    const guardedCallbacks: StreamProcessorCallbacks = {
+      ...callbacks,
+      onTextChunk: async (text, providerMetadata) => {
+        if (!isCurrentStream(streamEntry) || terminalGuard.isTerminal()) return
+        markStreamContent(streamEntry)
+        await callbacks.onTextChunk?.(text, providerMetadata)
+      },
+      onError: async (error) => {
+        if (!isCurrentStream(streamEntry)) return
+        if (!terminalGuard.acceptError()) return
+        await callbacks.onError?.(error)
+      },
+      onComplete: async (status, response) => {
+        if (!isCurrentStream(streamEntry)) return
+        if (!terminalGuard.acceptComplete()) return
+        await callbacks.onComplete?.(status, response)
+      }
+    }
+    const streamProcessorCallbacks = createStreamProcessor(guardedCallbacks)
 
     const abortController = new AbortController()
+    abortFn = () => abortController.abort()
     logger.silly('Add Abort Controller', { id: userMessageId })
-    addAbortController(userMessageId!, () => abortController.abort())
+    if (userMessageId) {
+      addAbortController(userMessageId, abortFn)
+    }
+    setStreamAbort(streamEntry, abortFn)
 
     // Fetch agent allowed_tools for tool permission handling
     let allowedTools: string[] | undefined
@@ -1053,6 +1006,12 @@ const fetchAndProcessAssistantResponseImpl = async (
       },
       streamProcessorCallbacks
     )
+
+    if (!terminalGuard.isTerminal()) {
+      const error = new Error('Stream ended without a terminal event')
+      terminalGuard.acceptError()
+      await callbacks.onError?.(error)
+    }
   } catch (error: any) {
     logger.error('Error in fetchAndProcessAssistantResponseImpl:', error)
     endSpan({
@@ -1061,14 +1020,28 @@ const fetchAndProcessAssistantResponseImpl = async (
       modelName: assistant.model?.name
     })
     // 统一错误处理：确保 loading 状态被正确设置，避免队列任务卡住
-    try {
-      await callbacks.onError?.(error)
-    } catch (callbackError) {
-      logger.error('Error in onError callback:', callbackError as Error)
-    } finally {
-      // 确保无论如何都设置 loading 为 false（onError 回调中已设置，这里是保险）
-      dispatch(newMessagesActions.setTopicLoading({ topicId, loading: false }))
+    if (terminalGuard.acceptError()) {
+      try {
+        await callbacks.onError?.(error)
+      } catch (callbackError) {
+        logger.error('Error in onError callback:', callbackError as Error)
+      }
     }
+    // 确保无论如何都设置 loading 为 false（onError 回调中已设置，这里是保险）
+    dispatch(newMessagesActions.setTopicLoading({ topicId, loading: false }))
+  } finally {
+    if (abortKey && abortFn) removeAbortController(abortKey, abortFn)
+    const finalStatus = getState().messages.entities[assistantMsgId]?.status
+    const reason =
+      finalStatus === AssistantMessageStatus.SUCCESS
+        ? 'completed'
+        : finalStatus === AssistantMessageStatus.PAUSED
+          ? 'paused'
+          : finalStatus === AssistantMessageStatus.ERROR
+            ? 'error'
+            : 'error'
+    finishStream(streamEntry, reason)
+    dispatch(newMessagesActions.setTopicLoading({ topicId, loading: false }))
   }
 }
 

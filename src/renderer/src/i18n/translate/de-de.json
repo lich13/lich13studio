@@ -537,6 +537,7 @@
           "empty": "Keine Tools entsprechen den Filterkriterien.",
           "requiresApproval": "Erfordert bei Deaktivierung manuelle Genehmigung",
           "search": "Tools suchen",
+          "title": "[to be translated]:Pre-approved Tools",
           "toggle": "{{name}} umschalten"
         }
       },
@@ -894,6 +895,7 @@
       "reasoning_effort": {
         "auto": "Auto",
         "auto_description": "Denkaufwand flexibel bestimmen",
+        "budget_description": "[to be translated]:Mapped to a thinking token budget",
         "default": "Standard",
         "default_description": "Vom Standardverhalten des Modells abhängen, ohne Konfiguration.",
         "high": "Tiefes Nachdenken",
@@ -901,6 +903,9 @@
         "label": "Gedankenkettenlänge",
         "low": "Spontan",
         "low_description": "Geringfügige Argumentation",
+        "mapped_description": "[to be translated]:This model uses {{effort}}",
+        "max": "[to be translated]:max",
+        "max_description": "[to be translated]:Maximum reasoning effort",
         "medium": "Überlegt",
         "medium_description": "Denken auf mittlerem Niveau",
         "minimal": "Minimal",
@@ -1470,6 +1475,8 @@
     "env_vars_help": "Benutzerdefinierte Umgebungsvariablen eingeben (eine pro Zeile, Format: KEY=value)",
     "environment_variables": "Umgebungsvariablen",
     "folder_placeholder": "Arbeitsverzeichnis auswählen",
+    "installError": "[to be translated]:Failed to install dependencies",
+    "installSuccess": "[to be translated]:Dependencies installed successfully",
     "install_bun": "Bun installieren",
     "installing_bun": "Wird installiert...",
     "launch": {
@@ -2435,6 +2442,7 @@
       "abort_failed": "Tool-Aufruf abbrechen fehlgeschlagen",
       "aborted": "Tool-Aufruf abgebrochen",
       "approvalRequired": "Das Tool \"{{tool}}\" erfordert eine Genehmigung",
+      "autoApprove": "[to be translated]:Auto Approve",
       "autoApproveEnabled": "Automatische Genehmigung für dieses Tool aktiviert",
       "cancelled": "Abgebrochen",
       "completed": "Abgeschlossen",
@@ -2463,6 +2471,7 @@
       "pending": "Wartend",
       "preview": "Vorschau",
       "raw": "Roh",
+      "run": "[to be translated]:Run",
       "runningCount": "{{count}} Werkzeuge laufen",
       "sections": {
         "args": "Argumente",
@@ -4637,6 +4646,26 @@
       "visible": "Angezeigte Mini-Apps"
     },
     "model": "Standardmodell",
+    "modelTest": {
+      "analyzeManual": "[to be translated]:Analyze pasted output",
+      "challenge": "[to be translated]:Challenge {{index}} · {{count}} numbers",
+      "challenges": "[to be translated]:Number challenges",
+      "description": "[to be translated]:Estimate model fingerprints with three non-semantic number challenges. Results are advisory and are not saved to chat history.",
+      "familyResult": "[to be translated]:Model family: {{family}} ({{probability}}%)",
+      "localNotice": "[to be translated]:Direct mode uses the configured provider. Prompts and results are not written to chat history.",
+      "pastePlaceholder": "[to be translated]:Paste the complete model response here",
+      "proxyWarning": "[to be translated]:Proxy mode sends test prompts and outputs to a third party. The API key is used only for this run and is not stored.",
+      "regenerate": "[to be translated]:New challenges",
+      "result": "[to be translated]:Attribution result",
+      "run": "[to be translated]:Run three tests",
+      "stop": "[to be translated]:Stop test",
+      "title": "[to be translated]:Model Test",
+      "transport": {
+        "direct": "[to be translated]:Direct provider",
+        "proxy": "[to be translated]:iq.nullatoms proxy"
+      },
+      "usedOutputs": "[to be translated]:Valid outputs: {{count}}"
+    },
     "models": {
       "add": {
         "add_model": "Modell hinzufügen",
@@ -4953,12 +4982,16 @@
       },
       "docs_check": "Anzeigen",
       "docs_more_details": "Weitere Details anzeigen",
+      "empty": "[to be translated]:Add a provider, then select a model to get started.",
       "filter": {
         "agent": "Vom Agenten unterstützt",
         "all": "Alle Anbieter"
       },
       "filter_agent": "Von Filter-Agent unterstützte Anbieter",
       "get_api_key": "Hier klicken um Schlüssel zu erhalten",
+      "import_duplicate": "[to be translated]:This provider is already imported.",
+      "import_invalid": "[to be translated]:Import failed. Use a valid Responses or Anthropic provider link.",
+      "import_success": "[to be translated]:Provider imported.",
       "misc": "Sonstige",
       "no_models_for_check": "Keine testbaren Modelle (z.B. Chat-Modelle)",
       "not_checked": "Nicht getestet",

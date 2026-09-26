@@ -537,6 +537,7 @@
           "empty": "Нет инструментов, соответствующих вашим фильтрам.",
           "requiresApproval": "Требует одобрения при отключении",
           "search": "Инструменты поиска",
+          "title": "[to be translated]:Pre-approved Tools",
           "toggle": "Переключить {{name}}"
         }
       },
@@ -894,6 +895,7 @@
       "reasoning_effort": {
         "auto": "Авто",
         "auto_description": "Гибко определяйте усилие на рассуждение",
+        "budget_description": "[to be translated]:Mapped to a thinking token budget",
         "default": "По умолчанию",
         "default_description": "Полагаться на поведение модели по умолчанию, без какой-либо конфигурации.",
         "high": "Стараюсь думать",
@@ -901,6 +903,9 @@
         "label": "Настройки размышлений",
         "low": "Меньше думать",
         "low_description": "Низкоуровневое рассуждение",
+        "mapped_description": "[to be translated]:This model uses {{effort}}",
+        "max": "[to be translated]:max",
+        "max_description": "[to be translated]:Maximum reasoning effort",
         "medium": "Среднее",
         "medium_description": "Средний уровень рассуждения",
         "minimal": "минимальный",
@@ -1470,6 +1475,8 @@
     "env_vars_help": "Установите переменные окружения для использования при запуске CLI-инструментов. Каждая переменная должна быть на отдельной строке в формате KEY=value",
     "environment_variables": "Переменные окружения",
     "folder_placeholder": "Выберите рабочую директорию",
+    "installError": "[to be translated]:Failed to install dependencies",
+    "installSuccess": "[to be translated]:Dependencies installed successfully",
     "install_bun": "Установить Bun",
     "installing_bun": "Установка...",
     "launch": {
@@ -2435,6 +2442,7 @@
       "abort_failed": "Вызов инструмента прерван",
       "aborted": "Вызов инструмента прерван",
       "approvalRequired": "Инструмент \"{{tool}}\" требует одобрения",
+      "autoApprove": "[to be translated]:Auto Approve",
       "autoApproveEnabled": "Для этого инструмента включен автоматический одобрен",
       "cancelled": "Отменено",
       "completed": "Завершено",
@@ -2463,6 +2471,7 @@
       "pending": "Ожидание",
       "preview": "Предпросмотр",
       "raw": "Исходный",
+      "run": "[to be translated]:Run",
       "runningCount": "{{count}} инструментов запущено",
       "sections": {
         "args": "Аргументы",
@@ -4637,6 +4646,26 @@
       "visible": "Отображаемые мини-приложения"
     },
     "model": "Модель по умолчанию",
+    "modelTest": {
+      "analyzeManual": "[to be translated]:Analyze pasted output",
+      "challenge": "[to be translated]:Challenge {{index}} · {{count}} numbers",
+      "challenges": "[to be translated]:Number challenges",
+      "description": "[to be translated]:Estimate model fingerprints with three non-semantic number challenges. Results are advisory and are not saved to chat history.",
+      "familyResult": "[to be translated]:Model family: {{family}} ({{probability}}%)",
+      "localNotice": "[to be translated]:Direct mode uses the configured provider. Prompts and results are not written to chat history.",
+      "pastePlaceholder": "[to be translated]:Paste the complete model response here",
+      "proxyWarning": "[to be translated]:Proxy mode sends test prompts and outputs to a third party. The API key is used only for this run and is not stored.",
+      "regenerate": "[to be translated]:New challenges",
+      "result": "[to be translated]:Attribution result",
+      "run": "[to be translated]:Run three tests",
+      "stop": "[to be translated]:Stop test",
+      "title": "[to be translated]:Model Test",
+      "transport": {
+        "direct": "[to be translated]:Direct provider",
+        "proxy": "[to be translated]:iq.nullatoms proxy"
+      },
+      "usedOutputs": "[to be translated]:Valid outputs: {{count}}"
+    },
     "models": {
       "add": {
         "add_model": "Добавить модель",
@@ -4953,12 +4982,16 @@
       },
       "docs_check": "Проверить",
       "docs_more_details": "для получения дополнительной информации",
+      "empty": "[to be translated]:Add a provider, then select a model to get started.",
       "filter": {
         "agent": "Поддержка агента",
         "all": "Все поставщики"
       },
       "filter_agent": "Поддерживаемые поставщики агента фильтрации",
       "get_api_key": "Получить ключ API",
+      "import_duplicate": "[to be translated]:This provider is already imported.",
+      "import_invalid": "[to be translated]:Import failed. Use a valid Responses or Anthropic provider link.",
+      "import_success": "[to be translated]:Provider imported.",
       "misc": "другие",
       "no_models_for_check": "Нет моделей для проверки (например, диалоговые модели)",
       "not_checked": "Не проверено",

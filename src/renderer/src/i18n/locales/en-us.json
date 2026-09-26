@@ -4646,6 +4646,26 @@
       "visible": "Visible Mini Apps"
     },
     "model": "Default Model",
+    "modelTest": {
+      "analyzeManual": "Analyze pasted output",
+      "challenge": "Challenge {{index}} · {{count}} numbers",
+      "challenges": "Number challenges",
+      "description": "Estimate model fingerprints with three non-semantic number challenges. Results are advisory and are not saved to chat history.",
+      "familyResult": "Model family: {{family}} ({{probability}}%)",
+      "localNotice": "Direct mode uses the configured provider. Prompts and results are not written to chat history.",
+      "pastePlaceholder": "Paste the complete model response here",
+      "proxyWarning": "Proxy mode sends test prompts and outputs to a third party. The API key is used only for this run and is not stored.",
+      "regenerate": "New challenges",
+      "result": "Attribution result",
+      "run": "Run three tests",
+      "stop": "Stop test",
+      "title": "Model Test",
+      "transport": {
+        "direct": "Direct provider",
+        "proxy": "iq.nullatoms proxy"
+      },
+      "usedOutputs": "Valid outputs: {{count}}"
+    },
     "models": {
       "add": {
         "add_model": "Add Model",

@@ -1,4 +1,5 @@
 import { endTrace } from '@renderer/services/SpanManagerService'
+import { abortTopicStream } from '@renderer/services/StreamRegistry'
 import PQueue from 'p-queue'
 
 // Queue configuration - managed by topic
@@ -24,6 +25,7 @@ export const getTopicQueue = (topicId: string, options = {}): PQueue => {
  * @param topicId The ID of the topic
  */
 export const clearTopicQueue = (topicId: string): void => {
+  abortTopicStream(topicId)
   if (requestQueues[topicId]) {
     requestQueues[topicId].clear()
     delete requestQueues[topicId]
@@ -35,6 +37,7 @@ export const clearTopicQueue = (topicId: string): void => {
  */
 export const clearAllQueues = (): void => {
   Object.keys(requestQueues).forEach((topicId) => {
+    abortTopicStream(topicId)
     requestQueues[topicId].clear()
     delete requestQueues[topicId]
   })

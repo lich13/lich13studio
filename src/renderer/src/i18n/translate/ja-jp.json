@@ -537,6 +537,7 @@
           "empty": "フィルターに一致するツールはありません。",
           "requiresApproval": "無効にするには承認が必要",
           "search": "検索ツール",
+          "title": "[to be translated]:Pre-approved Tools",
           "toggle": "{{name}}を切り替える"
         }
       },
@@ -894,6 +895,7 @@
       "reasoning_effort": {
         "auto": "自動",
         "auto_description": "推論にかける労力を柔軟に調整する",
+        "budget_description": "[to be translated]:Mapped to a thinking token budget",
         "default": "デフォルト",
         "default_description": "設定なしで、モデルの既定の動作に依存する。",
         "high": "最大限の思考",
@@ -901,6 +903,9 @@
         "label": "思考連鎖の長さ",
         "low": "少しの思考",
         "low_description": "低レベル推論",
+        "mapped_description": "[to be translated]:This model uses {{effort}}",
+        "max": "[to be translated]:max",
+        "max_description": "[to be translated]:Maximum reasoning effort",
         "medium": "普通の思考",
         "medium_description": "中レベル推論",
         "minimal": "最小限の思考",
@@ -1470,6 +1475,8 @@
     "env_vars_help": "環境変数を設定して、CLI ツールの実行時に使用します。各変数は 1 行ごとに設定してください。",
     "environment_variables": "環境変数",
     "folder_placeholder": "作業ディレクトリを選択してください",
+    "installError": "[to be translated]:Failed to install dependencies",
+    "installSuccess": "[to be translated]:Dependencies installed successfully",
     "install_bun": "Bun をインストール",
     "installing_bun": "インストール中...",
     "launch": {
@@ -2435,6 +2442,7 @@
       "abort_failed": "ツール呼び出し中断失敗",
       "aborted": "ツール呼び出し中断",
       "approvalRequired": "ツール「{{tool}}」は承認が必要です",
+      "autoApprove": "[to be translated]:Auto Approve",
       "autoApproveEnabled": "このツールは自動承認が有効になっています",
       "cancelled": "キャンセル",
       "completed": "完了",
@@ -2463,6 +2471,7 @@
       "pending": "保留中",
       "preview": "プレビュー",
       "raw": "生データ",
+      "run": "[to be translated]:Run",
       "runningCount": "{{count}}個のツールが実行中",
       "sections": {
         "args": "議論",
@@ -4637,6 +4646,26 @@
       "visible": "表示するミニアプリ"
     },
     "model": "デフォルトモデル",
+    "modelTest": {
+      "analyzeManual": "[to be translated]:Analyze pasted output",
+      "challenge": "[to be translated]:Challenge {{index}} · {{count}} numbers",
+      "challenges": "[to be translated]:Number challenges",
+      "description": "[to be translated]:Estimate model fingerprints with three non-semantic number challenges. Results are advisory and are not saved to chat history.",
+      "familyResult": "[to be translated]:Model family: {{family}} ({{probability}}%)",
+      "localNotice": "[to be translated]:Direct mode uses the configured provider. Prompts and results are not written to chat history.",
+      "pastePlaceholder": "[to be translated]:Paste the complete model response here",
+      "proxyWarning": "[to be translated]:Proxy mode sends test prompts and outputs to a third party. The API key is used only for this run and is not stored.",
+      "regenerate": "[to be translated]:New challenges",
+      "result": "[to be translated]:Attribution result",
+      "run": "[to be translated]:Run three tests",
+      "stop": "[to be translated]:Stop test",
+      "title": "[to be translated]:Model Test",
+      "transport": {
+        "direct": "[to be translated]:Direct provider",
+        "proxy": "[to be translated]:iq.nullatoms proxy"
+      },
+      "usedOutputs": "[to be translated]:Valid outputs: {{count}}"
+    },
     "models": {
       "add": {
         "add_model": "モデルを追加",
@@ -4953,12 +4982,16 @@
       },
       "docs_check": "チェック",
       "docs_more_details": "詳細を確認",
+      "empty": "[to be translated]:Add a provider, then select a model to get started.",
       "filter": {
         "agent": "エージェントサポート",
         "all": "すべてのプロバイダー"
       },
       "filter_agent": "フィルターエージェント対応プロバイダー",
       "get_api_key": "APIキーを取得",
+      "import_duplicate": "[to be translated]:This provider is already imported.",
+      "import_invalid": "[to be translated]:Import failed. Use a valid Responses or Anthropic provider link.",
+      "import_success": "[to be translated]:Provider imported.",
       "misc": "その他",
       "no_models_for_check": "チェックするモデルがありません（例：会話モデル）",
       "not_checked": "未チェック",

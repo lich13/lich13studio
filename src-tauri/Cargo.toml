@@ -1,6 +1,6 @@
 [package]
 name = "lich13studio"
-version = "0.1.17"
+version = "0.1.18"
 description = "lich13studio Tauri Lite runtime"
 authors = ["lich13studio"]
 edition = "2021"
@@ -39,3 +39,8 @@ zip = { version = "2.2.0", default-features = false, features = ["deflate"] }
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6"
 objc2-app-kit = { version = "0.3", default-features = false, features = ["NSApplication", "NSResponder"] }
+
+[patch.crates-io]
+# macOS 27 drops tray-icon click forwarding while an NSMenu is permanently
+# attached. This is the 0.21.3-compatible backport of tray-icon PR #365.
+tray-icon = { path = "../vendor/tray-icon-0.21.3" }

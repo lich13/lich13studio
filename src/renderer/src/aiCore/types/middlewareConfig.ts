@@ -1,6 +1,7 @@
 import type { WebSearchPluginConfig } from '@cherrystudio/ai-core/built-in/plugins'
 import type { Assistant, Message } from '@renderer/types'
 import type { Chunk } from '@renderer/types/chunk'
+import type { IdleTimeoutHandle } from '@renderer/utils/IdleTimeoutController'
 
 /**
  * AI SDK 中间件配置项（用于插件构建）
@@ -22,4 +23,5 @@ export interface AiSdkMiddlewareConfig {
   uiMessages?: Message[]
   webSearchPluginConfig?: WebSearchPluginConfig
   urlContextConfig?: Record<string, any>
+  idleTimeout?: IdleTimeoutHandle
 }

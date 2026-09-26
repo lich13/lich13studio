@@ -57,6 +57,7 @@ export class AiSdkToChunkAdapter {
   private markFirstTokenIfNeeded() {
     if (this.firstTokenTimestamp === null && this.responseStartTimestamp !== null) {
       this.firstTokenTimestamp = Date.now()
+      this.idleTimeout?.markFirstToken?.()
     }
   }
 

@@ -55,8 +55,7 @@ export function startCliVersionSync(): () => void {
   void window.api
     .getAppInfo()
     .then((info) => {
-      const native = info as typeof info & { platform?: string }
-      environment = `${native.platform || globalThis.navigator?.platform || 'unknown'}; ${native.arch || 'unknown'}`
+      environment = `${info.platform || globalThis.navigator?.platform || 'unknown'}; ${info.arch || 'unknown'}`
     })
     .catch(() => {})
   const sync = () => {

@@ -18,6 +18,10 @@ import BytedanceModelLogo from '@renderer/assets/images/models/byte_dance.svg'
 import ChatGLMModelLogo from '@renderer/assets/images/models/chatglm.png'
 import ChatGLMModelLogoDark from '@renderer/assets/images/models/chatglm_dark.png'
 import ChatGptModelLogo from '@renderer/assets/images/models/chatgpt.jpeg'
+import GPT56LunaModelLogo from '@renderer/assets/images/models/cherry/gpt-5-6-luna.svg'
+import GPT56SolModelLogo from '@renderer/assets/images/models/cherry/gpt-5-6-sol.svg'
+import GPT56TerraModelLogo from '@renderer/assets/images/models/cherry/gpt-5-6-terra.svg'
+import GPT6AstraModelLogo from '@renderer/assets/images/models/cherry/gpt-6-astra.svg'
 import ClaudeModelLogo from '@renderer/assets/images/models/claude.png'
 import ClaudeModelLogoDark from '@renderer/assets/images/models/claude_dark.png'
 import CodegeexModelLogo from '@renderer/assets/images/models/codegeex.png'
@@ -164,6 +168,10 @@ import NomicLogo from '@renderer/assets/images/providers/nomic.png'
 import ZhipuProviderLogo from '@renderer/assets/images/providers/zhipu.png'
 import type { Model } from '@renderer/types'
 
+export function normalizeModelLogoKey(modelId: string): string {
+  return modelId.trim().toLowerCase().replace(/_/g, '-')
+}
+
 export function getModelLogoById(modelId: string): string | undefined {
   // FIXME: This is always true. Either remove it or fetch it.
   const isLight = true
@@ -171,6 +179,8 @@ export function getModelLogoById(modelId: string): string | undefined {
   if (!modelId) {
     return undefined
   }
+
+  const normalizedModelId = normalizeModelLogoKey(modelId)
 
   // key is regex
   const logoMap = {
@@ -191,11 +201,18 @@ export function getModelLogoById(modelId: string): string | undefined {
     'gpt-5-nano': GPT5NanoModelLogo,
     'gpt-5-chat': GPT5ChatModelLogo,
     'gpt-5-codex': GPT5CodexModelLogo,
+    'gpt-5\\.6-sol': GPT56SolModelLogo,
+    'gpt-5\\.6-terra': GPT56TerraModelLogo,
+    'gpt-5\\.6-luna': GPT56LunaModelLogo,
+    'gpt-5\\.6': GPT5ModelLogo,
     'gpt-5.1-codex-mini': GPT51CodexMiniModelLogo,
     'gpt-5.1-codex': GPT51CodexModelLogo,
     'gpt-5.1-chat': GPT51ChatModelLogo,
     'gpt-5.1': GPT51ModelLogo,
     'gpt-5': GPT5ModelLogo,
+    'gpt-6-astra': GPT6AstraModelLogo,
+    'gpt-6-(sol|luna)': GPT6AstraModelLogo,
+    'gpt-6': GPT6AstraModelLogo,
     gpts: isLight ? ChatGPT4ModelLogo : ChatGPT4ModelLogoDark,
     'gpt-oss(?::|-[\\w-]+)': isLight ? ChatGptModelLogo : ChatGptModelLogoDark,
     'text-moderation': isLight ? ChatGptModelLogo : ChatGptModelLogoDark,
@@ -311,9 +328,16 @@ export function getModelLogoById(modelId: string): string | undefined {
 
   for (const key in logoMap) {
     const regex = new RegExp(key, 'i')
-    if (regex.test(modelId)) {
+    if (regex.test(normalizedModelId)) {
       return logoMap[key]
     }
+  }
+
+  // New provider aliases can appear before the application ships a dedicated
+  // asset. Keep every GPT-family model branded instead of falling back to a
+  // single-letter avatar.
+  if (/(^|[/:.-])gpt-\d+(?:[.-]|$)/i.test(normalizedModelId)) {
+    return ChatGPT4ModelLogo
   }
 
   return undefined

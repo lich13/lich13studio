@@ -158,7 +158,8 @@ export async function fetchChatCompletion({
     params: aiSdkParams,
     modelId,
     capabilities,
-    webSearchPluginConfig
+    webSearchPluginConfig,
+    idleTimeout
   } = await buildStreamTextParams(messages, assistant, provider, {
     allowedTools,
     webSearchProviderId: assistant.webSearchProviderId,
@@ -175,7 +176,8 @@ export async function fetchChatCompletion({
     enableWebSearch: capabilities.enableWebSearch,
     enableGenerateImage: capabilities.enableGenerateImage,
     enableUrlContext: capabilities.enableUrlContext,
-    uiMessages
+    uiMessages,
+    idleTimeout
   }
 
   // Wrap onChunkReceived to automatically track token usage on completion

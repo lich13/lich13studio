@@ -75,7 +75,8 @@ export function createPlatformModels(): PlatformModels {
 }
 
 export function catalogModel(model: PlatformModel | Model): PlatformModel {
-  const { provider: _provider, ...definition } = model as Model
+  const { provider, ...definition } = model as Model
+  void provider
   return definition
 }
 
@@ -97,12 +98,10 @@ export function resolveProviders(llm: {
 }
 
 export function storedProvider(provider: StoredProvider | Provider): StoredProvider {
-  const {
-    models: _models,
-    userAgent: _ua,
-    cliVersion: _version,
-    ...record
-  } = provider as Provider & { userAgent?: string }
+  const { models, userAgent, cliVersion, ...record } = provider as Provider & { userAgent?: string }
+  void models
+  void userAgent
+  void cliVersion
   const platform = inferProviderPlatform(provider)
   return {
     ...record,

@@ -4646,6 +4646,26 @@
       "visible": "顯示的小程式"
     },
     "model": "預設模型",
+    "modelTest": {
+      "analyzeManual": "分析貼上結果",
+      "challenge": "挑戰 {{index}} · 目標 {{count}} 個數字",
+      "challenges": "數字挑戰",
+      "description": "使用三組無語義數字挑戰估計模型指紋。結果僅供參考，不會寫入聊天記錄。",
+      "familyResult": "模型家族：{{family}}（{{probability}}%）",
+      "localNotice": "本機直連使用目前服務商設定，提示詞和結果不會寫入聊天記錄。",
+      "pastePlaceholder": "將模型完整回答貼到這裡",
+      "proxyWarning": "代理模式會將測試提示詞和模型輸出傳送到第三方服務；API Key 僅用於本次請求，不會保存。",
+      "regenerate": "換一組挑戰",
+      "result": "歸因結果",
+      "run": "開始三次測試",
+      "stop": "停止測試",
+      "title": "模型測試",
+      "transport": {
+        "direct": "本機直連",
+        "proxy": "iq.nullatoms 代理"
+      },
+      "usedOutputs": "有效回答：{{count}} 組"
+    },
     "models": {
       "add": {
         "add_model": "新增模型",

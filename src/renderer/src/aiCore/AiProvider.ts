@@ -265,16 +265,30 @@ export default class AiProvider {
         middlewareConfig.enableWebSearch,
         undefined,
         undefined,
-        providerConfig.providerId
+        providerConfig.providerId,
+        middlewareConfig.idleTimeout
       )
 
+      let streamError: unknown
       const streamResult = await executor.streamText({
         ...params,
         model: modelId,
-        experimental_context: { onChunk: middlewareConfig.onChunk }
+        experimental_context: { onChunk: middlewareConfig.onChunk },
+        onError({ error }) {
+          streamError = error
+        }
       })
 
-      const finalText = await adapter.processStream(streamResult)
+      let finalText: string
+      try {
+        finalText = await adapter.processStream(streamResult)
+      } catch (error) {
+        throw streamError ?? error
+      }
+
+      if (streamError) {
+        throw streamError
+      }
 
       return {
         getText: () => finalText

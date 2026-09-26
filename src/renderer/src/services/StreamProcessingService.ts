@@ -68,6 +68,8 @@ export type StreamProcessor = (chunk: Chunk) => Promise<void>
 
 // Function to create a stream processor instance
 export function createStreamProcessor(callbacks: StreamProcessorCallbacks = {}): StreamProcessor {
+  let terminal = false
+
   const handleError = async (error: any) => {
     logger.error('Error processing stream chunk:', error as Error)
     try {
@@ -83,6 +85,8 @@ export function createStreamProcessor(callbacks: StreamProcessorCallbacks = {}):
       // logger.debug('data: ', data)
       switch (data.type) {
         case ChunkType.BLOCK_COMPLETE:
+          if (terminal) break
+          terminal = true
           await callbacks.onComplete?.(AssistantMessageStatus.SUCCESS, data?.response)
           break
         case ChunkType.LLM_RESPONSE_CREATED:
@@ -151,6 +155,8 @@ export function createStreamProcessor(callbacks: StreamProcessorCallbacks = {}):
           await callbacks.onLLMResponseComplete?.(data.response)
           break
         case ChunkType.ERROR:
+          if (terminal) break
+          terminal = true
           try {
             await callbacks.onError?.(data.error)
           } catch (callbackError) {

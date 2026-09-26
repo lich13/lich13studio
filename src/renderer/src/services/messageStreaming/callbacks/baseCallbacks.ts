@@ -26,7 +26,6 @@ import { createBaseMessageBlock, createErrorBlock } from '@renderer/utils/messag
 import { findAllBlocks, getMainTextContent } from '@renderer/utils/messageUtils/find'
 import { isFocused } from '@renderer/utils/window'
 import type { AISDKError } from 'ai'
-import { NoOutputGeneratedError } from 'ai'
 
 import type { BlockManager } from '../BlockManager'
 
@@ -175,9 +174,6 @@ export const createBaseCallbacks = (deps: BaseCallbacksDependencies) => {
 
     onError: async (error: AISDKError) => {
       logger.debug('onError', error)
-      if (NoOutputGeneratedError.isInstance(error)) {
-        return
-      }
       const isErrorTypeAbort = isAbortError(error)
       const isErrorTypeTimeout = isTimeoutError(error)
       const serializableError = serializeError(error)

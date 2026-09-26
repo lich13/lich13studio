@@ -4646,6 +4646,26 @@
       "visible": "显示的小程序"
     },
     "model": "默认模型",
+    "modelTest": {
+      "analyzeManual": "分析粘贴结果",
+      "challenge": "挑战 {{index}} · 目标 {{count}} 个数字",
+      "challenges": "数字挑战",
+      "description": "使用三组无语义数字挑战估计模型指纹。结果仅供参考，不会写入聊天记录。",
+      "familyResult": "模型家族：{{family}}（{{probability}}%）",
+      "localNotice": "本机直连使用当前服务商配置，提示词和结果不会写入聊天记录。",
+      "pastePlaceholder": "将模型完整回答粘贴到这里",
+      "proxyWarning": "代理模式会将测试提示词和模型输出发送到第三方服务；API Key 仅用于本次请求，不会保存。",
+      "regenerate": "换一组挑战",
+      "result": "归因结果",
+      "run": "开始三次测试",
+      "stop": "停止测试",
+      "title": "模型测试",
+      "transport": {
+        "direct": "本机直连",
+        "proxy": "iq.nullatoms 代理"
+      },
+      "usedOutputs": "有效回答：{{count}} 组"
+    },
     "models": {
       "add": {
         "add_model": "添加模型",
