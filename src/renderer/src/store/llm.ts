@@ -19,6 +19,7 @@ import { createSlice } from '@reduxjs/toolkit'
 import { SYSTEM_PROVIDERS } from '@renderer/config/providers'
 import { type AwsBedrockAuthType, type Model, type Provider, ProviderTypeSchema } from '@renderer/types'
 import type { CliVersionCache, CliVersions } from '@shared/cliIdentity'
+import type { ModelTestSelection } from '@shared/modelTestSelection'
 import {
   catalogModel,
   createPlatformModels,
@@ -67,6 +68,7 @@ export interface LlmState {
   platformModels: PlatformModels
   cliVersions: CliVersions
   defaultModel?: Model
+  modelTestSelection?: ModelTestSelection
   /** @deprecated */
   topicNamingModel?: Model
   quickModel?: Model
@@ -194,6 +196,9 @@ const llmSlice = createSlice({
     setDefaultModel: (state, action: PayloadAction<{ model: Model }>) => {
       state.defaultModel = action.payload.model
     },
+    setModelTestSelection: (state, action: PayloadAction<ModelTestSelection>) => {
+      state.modelTestSelection = { ...state.modelTestSelection, ...action.payload }
+    },
     setQuickModel: (state, action: PayloadAction<{ model: Model }>) => {
       state.quickModel = action.payload.model
     },
@@ -278,6 +283,7 @@ const llmSlice = createSlice({
 })
 
 export const {
+  setModelTestSelection,
   setPlatformModels,
   setCliVersion,
   importPlatformProvider,

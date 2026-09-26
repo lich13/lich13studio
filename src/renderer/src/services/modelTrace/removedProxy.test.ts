@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 describe('direct-only model testing', () => {
   it('has no relay transport, endpoint, selector or localized setting', () => {
     const root = path.resolve(import.meta.dirname, '../..')
-    const sources = [path.join(root, 'pages/settings/ModelTestPage.tsx')]
+    const sources = [path.join(root, 'pages/model-test/ModelTestPage.tsx')]
     for (const entry of fs.readdirSync(import.meta.dirname)) {
       if (entry.endsWith('.ts') && !entry.endsWith('.test.ts')) sources.push(path.join(import.meta.dirname, entry))
     }

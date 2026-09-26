@@ -4546,8 +4546,11 @@
     "modelTest": {
       "analyzeManual": "分析粘贴结果",
       "attempts": "尝试 {{count}} / {{max}}",
+      "backHome": "返回首页",
+      "backgroundNotice": "切换页面后测试会在后台静默完成，返回此页查看结果。退出应用会停止测试。",
       "challenge": "挑战 {{index}} · 目标 {{count}} 个数字",
       "challenges": "数字挑战",
+      "completed": "本轮测试已结束，结果保留在此页。",
       "count": "数字数量：{{actual}} / {{expected}}",
       "description": "使用三组无语义数字挑战估计模型指纹。结果仅供参考，不会写入聊天记录。",
       "familyResult": "模型家族：{{family}}（{{probability}}%）",
@@ -4561,11 +4564,18 @@
         "reasoning-tag": "思考标签不完整或不匹配。"
       },
       "localNotice": "仅本机直连；每组最多请求 3 次，不设请求超时。提示词和结果不会写入聊天记录。",
+      "modelLabel": "模型",
+      "modelUnavailable": "请选择平台目录中有效的模型。",
+      "nextSelection": "当前选择仅影响下一轮；本轮目标已锁定。",
       "pastePlaceholder": "将模型完整回答粘贴到这里",
+      "providerLabel": "提供商",
+      "providerPlaceholder": "请选择提供商",
+      "providerUnavailable": "请选择该模型平台下已启用的提供商。当前选择不会自动替换。",
       "regenerate": "换一组挑战",
       "result": "归因结果",
       "retryFailed": "仅重试失败组",
       "run": "开始三组测试",
+      "runTarget": "本轮目标：{{provider}} · 模型 ID：{{model}}",
       "status": {
         "aborted": "已停止",
         "error": "请求失败",
@@ -4578,6 +4588,7 @@
       "stop": "停止测试",
       "target": "服务商：{{provider}} · 模型 ID：{{model}}",
       "title": "模型测试",
+      "unavailable": "不可用",
       "usedOutputs": "有效回答：{{count}} 组"
     },
     "models": {

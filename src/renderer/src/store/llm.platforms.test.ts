@@ -1,7 +1,13 @@
 import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('@renderer/config/providers', () => ({ SYSTEM_PROVIDERS: [] }))
-import reducer, { addProvider, importPlatformProvider, initialState, setPlatformModels } from '@renderer/store/llm'
+import reducer, {
+  addProvider,
+  importPlatformProvider,
+  initialState,
+  setModelTestSelection,
+  setPlatformModels
+} from '@renderer/store/llm'
 import { inferProviderPlatform, resolveProviders } from '@shared/platforms'
 import { matchesProviderImport, parseProviderImport } from '@shared/providerImport'
 import type { Provider } from '@types'
@@ -17,6 +23,18 @@ const provider = (id: string): Provider => ({
   enabled: true
 })
 describe('shared platform catalogs', () => {
+  it('remembers test model and provider independently without overwriting chat defaults', () => {
+    let state = reducer(
+      initialState,
+      setModelTestSelection({ platform: 'openai', modelId: 'gpt-6-sol', providerId: 'one' })
+    )
+    state = reducer(state, setModelTestSelection({ providerId: 'two' }))
+    expect(state.modelTestSelection).toEqual({ platform: 'openai', modelId: 'gpt-6-sol', providerId: 'two' })
+    state = reducer(state, setModelTestSelection({ platform: 'anthropic', modelId: 'claude-sonnet-4-6' }))
+    expect(state.modelTestSelection?.providerId).toBe('two')
+    expect(state.defaultModel).toEqual(initialState.defaultModel)
+    expect(JSON.parse(JSON.stringify(state)).modelTestSelection).toEqual(state.modelTestSelection)
+  })
   it('has no default providers and shares edits immediately while retaining provider binding', () => {
     expect(initialState.providers).toEqual([])
     let state = reducer(initialState, addProvider(provider('one')))

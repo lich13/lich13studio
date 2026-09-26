@@ -50,7 +50,7 @@ import {
 } from '@renderer/utils/provider'
 import { API_SERVER_DEFAULTS } from '@shared/config/constant'
 import { defaultByPassRules, UpgradeChannel } from '@shared/config/constant'
-import { migratePlatformState, sanitizeState } from '@shared/stateMigration'
+import { migrateModelTestState, migratePlatformState, sanitizeState } from '@shared/stateMigration'
 import { isEmpty } from 'lodash'
 import { createMigrate } from 'redux-persist'
 
@@ -3353,7 +3353,8 @@ const migrateConfig = {
   },
   '216': (state: RootState) => sanitizeState(state, true),
   '217': (state: RootState) => migratePlatformState(state),
-  '218': (state: RootState) => sanitizeState(state)
+  '218': (state: RootState) => sanitizeState(state),
+  '219': (state: RootState) => migrateModelTestState(state)
 }
 
 // 注意：添加新迁移时，记得同时更新 persistReducer

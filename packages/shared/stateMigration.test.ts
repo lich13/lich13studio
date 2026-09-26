@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { migratePlatformState, sanitizePersistedState, sanitizeState } from './stateMigration'
+import { migrateModelTestState, migratePlatformState, sanitizePersistedState, sanitizeState } from './stateMigration'
 
 const provider = { id: 'new', type: 'openai-response', apiHost: 'http://localhost/v1', apiKey: 'test-key', models: [] }
 const fixture = (version: number) => ({
@@ -28,6 +28,36 @@ const encode = (state: object) =>
   JSON.stringify(Object.fromEntries(Object.entries(state).map(([k, v]) => [k, JSON.stringify(v)])))
 const decode = (raw: string) =>
   Object.fromEntries(Object.entries(JSON.parse(raw)).map(([k, v]) => [k, JSON.parse(v as string)]))
+
+describe('219 model-test preferences', () => {
+  it('initializes from 218 defaults without changing providers, assistants or chat records', () => {
+    const state = { ...fixture(218), topics: [{ id: 't', messages: ['original'] }] }
+    const before = structuredClone(state)
+    const next = migrateModelTestState(state) as any
+    expect(next.llm.modelTestSelection).toEqual({ platform: 'openai', modelId: 'gpt-test', providerId: 'new' })
+    expect(next.llm.providers).toEqual(before.llm.providers)
+    expect(next.assistants).toEqual(before.assistants)
+    expect(next.topics).toEqual(before.topics)
+    expect(migrateModelTestState(structuredClone(next))).toEqual(next)
+  })
+
+  it('preserves the last test choice through restart and current backup restore', () => {
+    const state: any = fixture(219)
+    state.llm.modelTestSelection = { platform: 'grok', modelId: 'missing-model', providerId: 'removed-provider' }
+    const restored = decode(sanitizePersistedState(encode(state)))
+    expect(restored.llm.modelTestSelection).toEqual(state.llm.modelTestSelection)
+    expect(migrateModelTestState(restored).llm.modelTestSelection).toEqual(state.llm.modelTestSelection)
+  })
+
+  it('initializes restored 218 backups, and does not resurrect providers from pre-216 backups', () => {
+    expect(decode(sanitizePersistedState(encode(fixture(218)))).llm.modelTestSelection).toEqual({
+      platform: 'openai',
+      modelId: 'gpt-test',
+      providerId: 'new'
+    })
+    expect(decode(sanitizePersistedState(encode(fixture(215)))).llm.modelTestSelection).toEqual({})
+  })
+})
 
 describe('216 state boundary', () => {
   it('removes providers, credentials and invalid references from old backups without deleting user content', () => {

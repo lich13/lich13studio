@@ -1,43 +1,43 @@
 {
-  "productName": "lich13studio",
-  "version": "0.1.20",
-  "identifier": "com.lich13.studio",
-  "build": {
-    "frontendDist": "../out/renderer"
-  },
   "app": {
-    "withGlobalTauri": true,
     "security": {
       "csp": null
     },
     "windows": [
       {
-        "label": "main",
-        "title": "lich13studio",
-        "width": 1420,
+        "fullscreen": false,
         "height": 920,
-        "visible": false,
-        "minWidth": 1120,
+        "label": "main",
         "minHeight": 720,
+        "minWidth": 1120,
         "resizable": true,
-        "fullscreen": false
+        "title": "lich13studio",
+        "visible": false,
+        "width": 1420
       }
-    ]
+    ],
+    "withGlobalTauri": true
+  },
+  "build": {
+    "frontendDist": "../out/renderer"
   },
   "bundle": {
     "active": true,
-    "targets": ["app", "dmg"],
     "createUpdaterArtifacts": false,
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
     "macOS": {
       "minimumSystemVersion": "12.0"
     },
-    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"]
+    "targets": ["app", "dmg"]
   },
+  "identifier": "com.lich13.studio",
   "plugins": {
     "deep-link": {
       "desktop": {
         "schemes": ["ccswitch"]
       }
     }
-  }
+  },
+  "productName": "lich13studio",
+  "version": "0.1.21"
 }

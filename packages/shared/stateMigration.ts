@@ -1,4 +1,5 @@
 import { platformRequestHeaders } from './cliIdentity'
+import { initialModelTestSelection } from './modelTestSelection'
 import {
   catalogModel,
   createPlatformModels,
@@ -12,6 +13,7 @@ import { normalizeReasoningEffort } from './reasoning'
 export const PROVIDER_RESET_VERSION = 216
 export const PLATFORM_MIGRATION_VERSION = 217
 export const SEARCH_REMOVAL_VERSION = 218
+export const MODEL_TEST_SELECTION_VERSION = 219
 
 type State = Record<string, any>
 
@@ -84,7 +86,16 @@ export function sanitizePersistedState(raw: string): string {
   }
   sanitizeState(decoded, (decoded._persist?.version ?? -1) < PROVIDER_RESET_VERSION)
   migratePlatformState(decoded)
+  migrateModelTestState(decoded)
   return JSON.stringify(Object.fromEntries(Object.entries(decoded).map(([key, value]) => [key, JSON.stringify(value)])))
+}
+
+/** Add independent test preferences once; retain unavailable selections for explicit correction. */
+export function migrateModelTestState<T extends State>(state: T): T {
+  if (state.llm && state.llm.modelTestSelection === undefined) {
+    state.llm.modelTestSelection = initialModelTestSelection(state.llm)
+  }
+  return state
 }
 
 /** Idempotent across Redux upgrades and backup restore. Chat records are never traversed. */

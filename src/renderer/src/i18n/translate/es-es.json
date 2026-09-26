@@ -4546,8 +4546,11 @@
     "modelTest": {
       "analyzeManual": "[to be translated]:Analyze pasted output",
       "attempts": "Attempt {{count}} / {{max}}",
+      "backHome": "Volver al inicio",
+      "backgroundNotice": "Las pruebas continúan en segundo plano al cambiar de página. Vuelve aquí para ver los resultados. Cerrar la aplicación detiene la prueba.",
       "challenge": "[to be translated]:Challenge {{index}} · {{count}} numbers",
       "challenges": "[to be translated]:Number challenges",
+      "completed": "La prueba ha terminado. Sus resultados permanecen en esta página.",
       "count": "Numbers: {{actual}} / {{expected}}",
       "description": "[to be translated]:Estimate model fingerprints with three non-semantic number challenges. Results are advisory and are not saved to chat history.",
       "familyResult": "[to be translated]:Model family: {{family}} ({{probability}}%)",
@@ -4561,11 +4564,18 @@
         "reasoning-tag": "Incomplete or mismatched thinking tags."
       },
       "localNotice": "Direct connection only. Each challenge has at most 3 attempts, with no request timeout. Prompts and results stay out of chat history.",
+      "modelLabel": "Modelo",
+      "modelUnavailable": "Selecciona un modelo válido del catálogo de la plataforma.",
+      "nextSelection": "Los cambios se aplican a la próxima prueba. El destino actual está fijado.",
       "pastePlaceholder": "[to be translated]:Paste the complete model response here",
+      "providerLabel": "Proveedor",
+      "providerPlaceholder": "Seleccionar proveedor",
+      "providerUnavailable": "Selecciona un proveedor habilitado para esta plataforma. Tu selección no se sustituirá automáticamente.",
       "regenerate": "[to be translated]:New challenges",
       "result": "[to be translated]:Attribution result",
       "retryFailed": "Retry failed challenges only",
       "run": "Start three challenges",
+      "runTarget": "Destino: {{provider}} · ID de modelo: {{model}}",
       "status": {
         "aborted": "Stopped",
         "error": "Request failed",
@@ -4578,6 +4588,7 @@
       "stop": "[to be translated]:Stop test",
       "target": "Provider: {{provider}} · Model ID: {{model}}",
       "title": "[to be translated]:Model Test",
+      "unavailable": "No disponible",
       "usedOutputs": "[to be translated]:Valid outputs: {{count}}"
     },
     "models": {
