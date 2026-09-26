@@ -6,7 +6,7 @@
     "range": [1, 355],
     "alpha": 0.5,
     "ordered_block_weight": 0.25,
-    "parser": "longest digit run; alphabetic separators split runs; retain values 1..355",
+    "parser": "application admission requires one complete integer sequence; scoring receives validated values 1..355",
     "response_score": "shared nuisance-Hellinger and ordered-block environment/nuisance fusion",
     "aggregation": "mean of response-wise fused class z-scores",
     "probability": "uniform-prior softmax with fusion-specific grouped cross-validation temperature scaling"
