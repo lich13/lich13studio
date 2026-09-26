@@ -19,6 +19,7 @@ export interface AiSdkMiddlewareConfig {
   enableGenerateImage: boolean
   enableUrlContext: boolean
   reasoningMode?: ReasoningMode
+  textDeltaMode?: 'delta' | 'cumulative'
   uiMessages?: Message[]
   urlContextConfig?: Record<string, any>
 }

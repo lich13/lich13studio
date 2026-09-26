@@ -63,7 +63,7 @@ export function buildPlugins({ provider, model, config }: BuildPluginsContext): 
 
   // 0.1 Reasoning extraction for OpenAI/Azure providers
   const providerType = provider.type
-  if (providerType === 'openai-response') {
+  if (providerType === 'openai-response' && config.reasoningMode !== 'disabled') {
     const tagName = getReasoningTagName(model.id.toLowerCase())
     plugins.push(createReasoningExtractionPlugin({ tagName }))
   }
@@ -78,19 +78,19 @@ export function buildPlugins({ provider, model, config }: BuildPluginsContext): 
   }
 
   // 0.3 OpenRouter reasoning redaction
-  if (provider.id === SystemProviderIds.openrouter) {
+  if (provider.id === SystemProviderIds.openrouter && config.reasoningMode !== 'disabled') {
     plugins.push(createOpenrouterReasoningPlugin())
   }
 
   // 0.5 Qwen thinking control for providers without enable_thinking support
   if (
+    config.reasoningMode !== 'disabled' &&
     !isOllamaProvider(provider) &&
     isSupportedThinkingTokenQwenModel(model) &&
     !isQwen35to39Model(model) &&
     !isSupportEnableThinkingProvider(provider)
   ) {
-    const enableThinking =
-      config.reasoningMode !== 'disabled' && config.assistant?.settings?.reasoning_effort !== undefined
+    const enableThinking = config.assistant?.settings?.reasoning_effort !== undefined
     plugins.push(createQwenThinkingPlugin(enableThinking))
   }
 

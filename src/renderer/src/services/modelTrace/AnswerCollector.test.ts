@@ -1,0 +1,56 @@
+import { ChunkType } from '@renderer/types/chunk'
+import { describe, expect, it } from 'vitest'
+
+import { AnswerCollector } from './AnswerCollector'
+
+describe('ModelTrace answer collector', () => {
+  it('excludes explicit commentary and does not reintroduce it from the final snapshot', () => {
+    const collector = new AnswerCollector()
+    collector.accept({ type: ChunkType.TEXT_START, providerMetadata: { openai: { phase: 'commentary' } } })
+    collector.accept({ type: ChunkType.TEXT_DELTA, text: 'Planning 330 integers' })
+    collector.accept({ type: ChunkType.TEXT_COMPLETE, text: 'Planning 330 integers' })
+    collector.accept({ type: ChunkType.TEXT_START, providerMetadata: { openai: { phase: 'final_answer' } } })
+    collector.accept({ type: ChunkType.TEXT_DELTA, text: '1 2 3' })
+    collector.accept({ type: ChunkType.TEXT_COMPLETE, text: '1 2 3' })
+    collector.accept({ type: ChunkType.LLM_RESPONSE_COMPLETE, response: { text: 'Planning 330 integers1 2 3' } })
+    expect(collector.preview).toBe('1 2 3')
+    expect(collector.completed).toBe(true)
+  })
+  it('rejects truncated completions even if a valid-looking sequence was received', () => {
+    const collector = new AnswerCollector()
+    collector.accept({ type: ChunkType.LLM_RESPONSE_COMPLETE, finishReason: 'length', response: { text: '1 2 3' } })
+    expect(collector.completed).toBe(false)
+  })
+  it('uses deltas once and replaces complete snapshots across multiple blocks', () => {
+    const collector = new AnswerCollector()
+    for (const text of ['24', '7 ', '18']) collector.accept({ type: ChunkType.TEXT_DELTA, text })
+    collector.accept({ type: ChunkType.TEXT_COMPLETE, text: '247 18' })
+    collector.accept({ type: ChunkType.TEXT_COMPLETE, text: '247 18' })
+    collector.accept({ type: ChunkType.TEXT_START })
+    collector.accept({ type: ChunkType.TEXT_DELTA, text: ' 331' })
+    collector.accept({ type: ChunkType.TEXT_COMPLETE, text: ' 331' })
+    collector.accept({ type: ChunkType.LLM_RESPONSE_COMPLETE, response: { text: '247 18 331' } })
+    collector.accept({ type: ChunkType.LLM_RESPONSE_COMPLETE, response: { text: 'duplicate' } })
+    collector.accept({ type: ChunkType.TEXT_DELTA, text: 'late' })
+    expect(collector.rawText).toBe('247 18 331')
+    expect(collector.completed).toBe(true)
+  })
+  it('ignores native reasoning and withholds split inline thought tags', () => {
+    const collector = new AnswerCollector()
+    collector.accept({ type: ChunkType.THINKING_DELTA, text: 'secret 330' })
+    collector.accept({ type: ChunkType.TEXT_DELTA, text: '<thi' })
+    expect(collector.preview).toBe('')
+    collector.accept({ type: ChunkType.TEXT_DELTA, text: 'nk>123</think>1 2 3' })
+    expect(collector.preview).toBe('1 2 3')
+  })
+  it('does not turn partial content or terminal errors into success', () => {
+    const collector = new AnswerCollector()
+    collector.accept({ type: ChunkType.TEXT_DELTA, text: '1 2 3' })
+    expect(collector.completed).toBe(false)
+    const error = new Error('connection reset')
+    collector.accept({ type: ChunkType.ERROR, error })
+    collector.accept({ type: ChunkType.LLM_RESPONSE_COMPLETE, response: { text: '1 2 3' } })
+    expect(collector.error).toBe(error)
+    expect(collector.completed).toBe(false)
+  })
+})

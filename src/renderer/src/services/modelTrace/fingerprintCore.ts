@@ -1,5 +1,6 @@
 // Derived from ModelTrace (MIT, xqy2006). See MODELTRACE-LICENSE.txt.
 // @ts-nocheck
+import { isolateAnswer, validateModelTraceOutput } from './outputValidation'
 export const VALUE_MIN = 1
 export const VALUE_MAX = 355
 export const DIMENSION = VALUE_MAX - VALUE_MIN + 1
@@ -7,21 +8,10 @@ export const ALPHA = 0.5
 export const ORDERED_BLOCK_WEIGHT = 0.25
 
 export function parseNumbers(text) {
-  const runs = []
-  let current = []
-  let previousEnd = 0
-  for (const match of String(text).matchAll(/\d+/g)) {
-    const separator = String(text).slice(previousEnd, match.index)
-    const value = Number(match[0])
-    if (current.length && /\p{L}/u.test(separator)) {
-      runs.push(current)
-      current = []
-    }
-    if (value >= VALUE_MIN && value <= VALUE_MAX) current.push(value)
-    previousEnd = match.index + match[0].length
-  }
-  if (current.length) runs.push(current)
-  return runs.reduce((best, run) => (run.length > best.length ? run : best), [])
+  // Parsing itself is strict; never mine a numeric run out of prose.
+  const count = isolateAnswer(String(text)).text.match(/\d+/g)?.length || 0
+  const validation = validateModelTraceOutput(text, count)
+  return validation.accepted ? validation.numbers : []
 }
 
 export function countNumbers(numbers) {
@@ -162,18 +152,24 @@ function jsSimilarity(left, right) {
 }
 
 export function analyzeGlobalOutputs(outputs, bank) {
+  if (outputs.length !== 3) throw new Error('需要三组完整有效的回答才能分析')
   const modelIds = bank.models.map((model) => model.id)
   const valid = []
   const diagnostics = []
   outputs.forEach((item, index) => {
     const expected = Number(item.expected_count || 0)
-    const numbers = parseNumbers(item.text || '')
-    const minimum = expected ? Math.max(80, Math.ceil(expected * 0.55)) : 80
-    const accepted = numbers.length >= minimum
-    diagnostics.push({ index, parsed_numbers: numbers.length, minimum_numbers: minimum, accepted })
+    const validation = validateModelTraceOutput(item.text || '', expected)
+    const { numbers, accepted } = validation
+    diagnostics.push({
+      index,
+      parsed_numbers: validation.parsedCount,
+      expected_numbers: expected,
+      accepted,
+      issue: validation.issue
+    })
     if (accepted) valid.push({ numbers, counts: countNumbers(numbers), scores: robustScoreNumbers(numbers, bank) })
   })
-  if (!valid.length) throw new Error('没有可用回答：请粘贴完整数字序列；拒答或严重截断的回答不会计入。')
+  if (valid.length !== 3) throw new Error('需要三组完整有效的回答才能分析')
 
   const combinedScores = modelIds.map((_, modelIndex) => mean(valid.map((item) => item.scores[modelIndex])))
   const calibrationKey = String(Math.min(valid.length, 3))

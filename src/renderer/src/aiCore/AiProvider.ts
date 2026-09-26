@@ -258,7 +258,9 @@ export default class AiProvider {
 
     // 创建带有中间件的执行器
     if (middlewareConfig.onChunk) {
-      const accumulate = this.model!.supported_text_delta !== false // true and undefined
+      const accumulate = middlewareConfig.textDeltaMode
+        ? middlewareConfig.textDeltaMode === 'cumulative'
+        : this.model!.supported_text_delta !== false
       const adapter = new AiSdkToChunkAdapter(middlewareConfig.onChunk, accumulate, undefined, undefined)
 
       let streamError: unknown

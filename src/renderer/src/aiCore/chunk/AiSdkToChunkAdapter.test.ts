@@ -12,6 +12,26 @@ const streamFrom = (parts: unknown[]) =>
   })
 
 describe('AiSdkToChunkAdapter', () => {
+  it.each([false, true])('keeps text-end complete while accumulate=%s', async (accumulate) => {
+    const chunks: any[] = []
+    const adapter = new AiSdkToChunkAdapter((chunk) => {
+      chunks.push(chunk)
+    }, accumulate)
+    await adapter.processStream({
+      fullStream: streamFrom([
+        { type: 'text-start', providerMetadata: { openai: { phase: 'final_answer' } } },
+        { type: 'text-delta', text: '247 ' },
+        { type: 'text-delta', text: '18' },
+        { type: 'text-end' }
+      ]),
+      text: Promise.resolve('247 18')
+    })
+    expect(chunks.filter((chunk) => chunk.type === ChunkType.TEXT_DELTA).map((chunk) => chunk.text)).toEqual(
+      accumulate ? ['247 ', '247 18'] : ['247 ', '18']
+    )
+    expect(chunks.find((chunk) => chunk.type === ChunkType.TEXT_COMPLETE).text).toBe('247 18')
+    expect(chunks[0].providerMetadata.openai.phase).toBe('final_answer')
+  })
   beforeAll(() => {
     vi.stubGlobal('window', { __LICH13_TAURI_SHIM__: true })
   })

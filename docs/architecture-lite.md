@@ -10,6 +10,14 @@ Provider types are `openai-response` (Responses) and `anthropic`. There are no b
 
 Reasoning levels are `low / medium / high / xhigh / max`, defaulting to `max`. Responses forwards the value without fallback. Anthropic maps only where model capabilities require it; older thinking budgets stay below the total output limit. SDK request tests cover the actual serialized payloads.
 
+## Model testing
+
+ModelTrace runs directly against the selected provider; no third-party test relay exists. A session freezes the provider credentials, actual model ID and all three challenges. Its requests disable reasoning, tools and SDK retries, use incremental text events, and have no model-request timeout. Cancellation ends active requests and scheduled retries.
+
+Each attempt has its own answer collector. Complete text events replace snapshots, native reasoning and explicit commentary stay outside the answer, and inline thought tags are isolated across chunks. A provider-confirmed successful finish is required. Automatic and pasted outputs share a strict validator: exactly the requested count of integers from 1 to 355, with no explanatory text or repaired numbers. Only three valid groups reach the unchanged bundled ModelTrace scoring algorithm.
+
+Invalid or temporarily failed requests get at most two extra attempts after 1 and 3 seconds. Authentication, missing-model and other permanent request errors stop immediately. Successful groups survive exhaustion; retrying failed groups opens a new bounded attempt sequence using the original target and prompts. Results are memory-only and never create chat records. Persistence version remains 218.
+
 ## Imports and persistence
 
 The installed app registers `ccswitch://v1/import`. A native queue retains every pending provider link in memory until the main renderer is ready; mini windows cannot drain it. A renderer queue serializes confirmation dialogs. Only provider resources for codex (OpenAI), grokbuild (grok) and claude (Anthropic) are accepted. Both Sub2API and New API CCS links are supported, including `model`, `haikuModel`, `sonnetModel` and `opusModel`. Platform, normalized address and key define import identity. Confirmation allows platform correction; duplicate imports may add catalog models. Only `ccswitch` is registered, never `cherrystudio`. Keys are masked at confirmation and never placed in routes or import logs. Usage scripts are ignored.
@@ -30,4 +38,4 @@ There are no MCP settings, server runtimes, OAuth flows, installers, Redux slice
 
 ## Validation
 
-`pnpm test:upgrade`, `pnpm test:renderer`, `pnpm typecheck`, `pnpm openapi:check`, `pnpm build:tauri:web`, and `cargo test --manifest-path src-tauri/Cargo.toml`. Local acceptance uses a loopback mock; real provider/API billing is outside that acceptance.
+`pnpm test:upgrade`, `pnpm test:renderer`, `pnpm typecheck`, `pnpm i18n:check`, `pnpm openapi:check`, `pnpm build:tauri:web`, and `cargo test --manifest-path src-tauri/Cargo.toml`. Automated transport tests use local mocks. The v0.1.20 installed-app acceptance additionally uses the explicitly authorized Happy Code provider and actual `gpt-6-sol` model ID; no other provider is called.

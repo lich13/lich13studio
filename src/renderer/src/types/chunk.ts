@@ -309,6 +309,7 @@ export interface ToolStreamingChunk {
 }
 
 export interface LLMResponseCompleteChunk {
+  finishReason?: string
   /**
    * The response
    */

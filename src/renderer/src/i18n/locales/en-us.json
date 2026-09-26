@@ -4545,22 +4545,39 @@
     "model": "Default Model",
     "modelTest": {
       "analyzeManual": "Analyze pasted output",
+      "attempts": "Attempt {{count}} / {{max}}",
       "challenge": "Challenge {{index}} · {{count}} numbers",
       "challenges": "Number challenges",
+      "count": "Numbers: {{actual}} / {{expected}}",
       "description": "Estimate model fingerprints with three non-semantic number challenges. Results are advisory and are not saved to chat history.",
       "familyResult": "Model family: {{family}} ({{probability}}%)",
-      "localNotice": "Direct mode uses the configured provider. Prompts and results are not written to chat history.",
+      "incomplete": "All three challenges must pass exact validation before attribution is available.",
+      "issue": {
+        "count": "The number count does not match the challenge.",
+        "empty": "No answer text received.",
+        "format": "Answer contains non-numeric text or unsupported formatting.",
+        "incomplete": "The response did not finish normally.",
+        "range": "Every value must be an integer from 1 to 355.",
+        "reasoning-tag": "Incomplete or mismatched thinking tags."
+      },
+      "localNotice": "Direct connection only. Each challenge has at most 3 attempts, with no request timeout. Prompts and results stay out of chat history.",
       "pastePlaceholder": "Paste the complete model response here",
-      "proxyWarning": "Proxy mode sends test prompts and outputs to a third party. The API key is used only for this run and is not stored.",
       "regenerate": "New challenges",
       "result": "Attribution result",
-      "run": "Run three tests",
-      "stop": "Stop test",
-      "title": "Model Test",
-      "transport": {
-        "direct": "Direct provider",
-        "proxy": "iq.nullatoms proxy"
+      "retryFailed": "Retry failed challenges only",
+      "run": "Start three challenges",
+      "status": {
+        "aborted": "Stopped",
+        "error": "Request failed",
+        "invalid": "Invalid answer",
+        "pending": "Pending",
+        "retrying": "Waiting to retry",
+        "running": "Receiving",
+        "valid": "Valid"
       },
+      "stop": "Stop test",
+      "target": "Provider: {{provider}} · Model ID: {{model}}",
+      "title": "Model Test",
       "usedOutputs": "Valid outputs: {{count}}"
     },
     "models": {

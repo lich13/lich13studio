@@ -1008,6 +1008,7 @@ export type FetchChatCompletionRequestOptions = {
   signal?: AbortSignal
   headers?: Record<string, string>
   reasoningMode?: ReasoningMode
+  textDeltaMode?: 'delta' | 'cumulative'
 }
 
 type BaseParams = {

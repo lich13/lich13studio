@@ -78,7 +78,7 @@ jobs:
         run: node scripts/set-app-version.mjs --version "${{ steps.app_version.outputs.version }}"
 
       - name: Build renderer bundle
-        run: pnpm test:upgrade && pnpm test:renderer && pnpm build:tauri:web
+        run: pnpm test:upgrade && pnpm test:renderer && pnpm i18n:check && pnpm build:tauri:web
 
       - name: Upload frontend assets
         uses: actions/upload-artifact@v7

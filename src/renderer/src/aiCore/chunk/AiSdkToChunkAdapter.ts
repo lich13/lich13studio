@@ -132,7 +132,9 @@ export class AiSdkToChunkAdapter {
               reasoning_content: final.responseReasoningContent || final.reasoningContent || ''
             }
             this.emitChunk({ type: ChunkType.BLOCK_COMPLETE, response })
-            this.emitChunk({ type: ChunkType.LLM_RESPONSE_COMPLETE, response })
+            // Keep chat EOF recovery, but let strict consumers distinguish it
+            // from a provider-confirmed finish (an EOF can also be truncation).
+            this.emitChunk({ type: ChunkType.LLM_RESPONSE_COMPLETE, response, finishReason: 'unknown' })
           }
           break
         }
@@ -197,8 +199,10 @@ export class AiSdkToChunkAdapter {
         // 如果有未完成的思考内容，先生成 THINKING_COMPLETE
         // 这处理了某些提供商不发送 reasoning-end 事件的情况
         this.emitThinkingCompleteIfNeeded(final)
+        final.providerMetadata = chunk.providerMetadata
         this.emitChunk({
-          type: ChunkType.TEXT_START
+          type: ChunkType.TEXT_START,
+          providerMetadata: final.providerMetadata
         })
         break
       case 'text-delta': {
@@ -208,11 +212,8 @@ export class AiSdkToChunkAdapter {
 
         final.responseText += finalText
 
-        if (this.accumulate) {
-          final.text += finalText
-        } else {
-          final.text = finalText
-        }
+        // Keep the complete block for text-end even when emitted deltas are incremental.
+        final.text += finalText
 
         // Extract thoughtSignature from providerMetadata.google and preserve it
         const newSignature = chunk.providerMetadata?.google?.thoughtSignature as string | undefined
@@ -238,6 +239,7 @@ export class AiSdkToChunkAdapter {
         break
       }
       case 'text-end':
+        final.providerMetadata = { ...final.providerMetadata, ...chunk.providerMetadata }
         if (chunk.providerMetadata?.text?.value) {
           final.responseText = chunk.providerMetadata.text.value as string
         }
@@ -349,6 +351,7 @@ export class AiSdkToChunkAdapter {
         })
         this.emitChunk({
           type: ChunkType.LLM_RESPONSE_COMPLETE,
+          finishReason: chunk.finishReason,
           response: {
             ...baseResponse,
             usage: { ...usage },

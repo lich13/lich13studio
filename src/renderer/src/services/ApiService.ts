@@ -167,6 +167,7 @@ export async function fetchChatCompletion({
     onChunk: onChunkReceived,
     enableReasoning: capabilities.enableReasoning,
     reasoningMode: requestOptions?.reasoningMode,
+    textDeltaMode: requestOptions?.textDeltaMode,
     isPromptToolUse: false,
     isSupportedToolUse: true,
     enableGenerateImage: capabilities.enableGenerateImage,

@@ -4545,22 +4545,39 @@
     "model": "默认模型",
     "modelTest": {
       "analyzeManual": "分析粘贴结果",
+      "attempts": "尝试 {{count}} / {{max}}",
       "challenge": "挑战 {{index}} · 目标 {{count}} 个数字",
       "challenges": "数字挑战",
+      "count": "数字数量：{{actual}} / {{expected}}",
       "description": "使用三组无语义数字挑战估计模型指纹。结果仅供参考，不会写入聊天记录。",
       "familyResult": "模型家族：{{family}}（{{probability}}%）",
-      "localNotice": "本机直连使用当前服务商配置，提示词和结果不会写入聊天记录。",
+      "incomplete": "三组均通过精确校验后才会显示归因概率。",
+      "issue": {
+        "count": "数字数量与挑战目标不一致。",
+        "empty": "没有收到回答正文。",
+        "format": "回答混有非数字文字或不支持的格式。",
+        "incomplete": "响应未正常完成。",
+        "range": "所有数字必须是 1–355 范围内的整数。",
+        "reasoning-tag": "思考标签不完整或不匹配。"
+      },
+      "localNotice": "仅本机直连；每组最多请求 3 次，不设请求超时。提示词和结果不会写入聊天记录。",
       "pastePlaceholder": "将模型完整回答粘贴到这里",
-      "proxyWarning": "代理模式会将测试提示词和模型输出发送到第三方服务；API Key 仅用于本次请求，不会保存。",
       "regenerate": "换一组挑战",
       "result": "归因结果",
-      "run": "开始三次测试",
-      "stop": "停止测试",
-      "title": "模型测试",
-      "transport": {
-        "direct": "本机直连",
-        "proxy": "iq.nullatoms 代理"
+      "retryFailed": "仅重试失败组",
+      "run": "开始三组测试",
+      "status": {
+        "aborted": "已停止",
+        "error": "请求失败",
+        "invalid": "回答无效",
+        "pending": "待测试",
+        "retrying": "等待重试",
+        "running": "接收中",
+        "valid": "校验通过"
       },
+      "stop": "停止测试",
+      "target": "服务商：{{provider}} · 模型 ID：{{model}}",
+      "title": "模型测试",
       "usedOutputs": "有效回答：{{count}} 组"
     },
     "models": {
