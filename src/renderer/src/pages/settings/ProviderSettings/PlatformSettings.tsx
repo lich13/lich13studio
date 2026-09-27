@@ -143,7 +143,20 @@ export default function PlatformSettings({ platform }: { platform: ProviderPlatf
                   <Button type="text" danger aria-label={t('common.delete')} icon={<Trash2 size={16} />} />
                 </Popconfirm>
               ]}>
-              <List.Item.Meta title={model.name} description={model.id} />
+              <List.Item.Meta
+                avatar={<ModelAvatar model={{ ...model, provider: editorProvider.id }} size={32} />}
+                title={
+                  <Flex align="center" gap={8} wrap>
+                    <span>{model.name}</span>
+                    <ModelTagsWithLabel
+                      model={{ ...model, provider: editorProvider.id }}
+                      showLabel={false}
+                      showFree={false}
+                    />
+                  </Flex>
+                }
+                description={model.id}
+              />
             </List.Item>
           )
         }}
@@ -176,3 +189,5 @@ export default function PlatformSettings({ platform }: { platform: ProviderPlatf
     </SettingContainer>
   )
 }
+import ModelAvatar from '@renderer/components/Avatar/ModelAvatar'
+import ModelTagsWithLabel from '@renderer/components/ModelTagsWithLabel'

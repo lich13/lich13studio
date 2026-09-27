@@ -2648,6 +2648,7 @@
       "function_calling": "Tool",
       "reasoning": "Reasoning",
       "rerank": "Reranker",
+      "restore_auto": "Restore automatic detection",
       "select": "Model Types",
       "text": "Text",
       "vision": "Vision"

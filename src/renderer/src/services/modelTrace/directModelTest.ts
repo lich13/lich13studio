@@ -8,7 +8,7 @@ import { MODEL_TEST_MAX_OUTPUT_TOKENS } from './OutputGuard'
 
 /** Freeze routing, credentials and model settings once for the whole test session. */
 export async function prepareDirectModelTest(selectedModel: Model) {
-  const model = structuredClone(requireCurrentModel(selectedModel))
+  const model = structuredClone(requireCurrentModel(selectedModel, true))
   const provider = structuredClone(getProviderByModel(model))
   // Model tests never rotate to another key during a retry.
   provider.apiKey =

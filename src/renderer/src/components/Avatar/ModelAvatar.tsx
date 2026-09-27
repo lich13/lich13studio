@@ -1,4 +1,5 @@
 import { getModelLogo } from '@renderer/config/models'
+import { useTheme } from '@renderer/context/ThemeProvider'
 import type { Model } from '@renderer/types'
 import type { AvatarProps } from 'antd'
 import { Avatar } from 'antd'
@@ -13,9 +14,10 @@ interface Props {
 }
 
 const ModelAvatar: FC<Props> = ({ model, size, props, className }) => {
+  const { theme } = useTheme()
   return (
     <Avatar
-      src={getModelLogo(model)}
+      src={getModelLogo(model, theme)}
       style={{
         width: size,
         height: size,

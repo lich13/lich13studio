@@ -29,7 +29,9 @@ Excluded:
 
 ## Current release
 
-Version 0.1.24 keeps the chat model and provider selectors on one horizontal row. ModelTrace coalesces preview updates, isolates view failures from requests, and restores a failed view without restarting its background session. Unknown request errors now receive bounded retries; authentication, exhausted quota, missing models and invalid requests stop with an explicit reason.
+Version 0.1.25 resolves model capabilities from a pinned, local Cherry Studio registry snapshot, with explicit user switches taking priority. GPT-6 and GPT-5.6 variants support image input, reasoning and tools; embedding and rerank models are excluded from chat and ModelTrace. Unknown IDs remain available for text chat without guessed advanced capabilities. Capability aliases never change the model ID sent to the provider.
+
+GPT/Codex avatars use the local OpenAI brand SVG in both themes. Catalogs, selectors, attachment gates and request conversion share the same capability resolver. The model editor can restore automatic detection without writing inferred fields to user data. See the [snapshot source, license and update procedure](./src/renderer/src/config/models/registry/README.md). Persistence remains at version 220.
 
 ModelTrace answers exceeding twice the requested integer count or 32 KiB are cancelled and retried, with at most three attempts per challenge. Tests request at most 4096 output tokens, keep running in the background, and send no reasoning parameters.
 

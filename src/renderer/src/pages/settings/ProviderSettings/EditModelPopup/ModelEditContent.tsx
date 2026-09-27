@@ -2,23 +2,16 @@ import CopyIcon from '@renderer/components/Icons/CopyIcon'
 import { EmbeddingTag, ReasoningTag, RerankerTag, ToolsCallingTag, VisionTag } from '@renderer/components/Tags/Model'
 import { WarnTooltip } from '@renderer/components/TooltipIcons'
 import { endpointTypeOptions } from '@renderer/config/endpointTypes'
-import {
-  isEmbeddingModel,
-  isFunctionCallingModel,
-  isReasoningModel,
-  isRerankModel,
-  isVisionModel
-} from '@renderer/config/models'
+import { resolveModelCapabilities, restoreAutomaticCapabilities } from '@renderer/config/models/capabilities'
 import { useDynamicLabelWidth } from '@renderer/hooks/useDynamicLabelWidth'
 import type { Model, ModelCapability, ModelType, Provider } from '@renderer/types'
-import { getDefaultGroupName, getDifference, getUnion, uniqueObjectArray } from '@renderer/utils'
+import { getDefaultGroupName } from '@renderer/utils'
 import { isNewApiProvider } from '@renderer/utils/provider'
 import type { ModalProps } from 'antd'
 import { Button, Divider, Flex, Form, Input, InputNumber, message, Modal, Select, Switch, Tooltip } from 'antd'
-import { cloneDeep } from 'lodash'
 import { ChevronDown, ChevronUp, RotateCcw, SaveIcon } from 'lucide-react'
 import type { FC } from 'react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
@@ -36,9 +29,7 @@ const ModelEditContent: FC<ModelEditContentProps & ModalProps> = ({ provider, mo
   const [currencySymbol, setCurrencySymbol] = useState(model.pricing?.currencySymbol || '$')
   const [isCustomCurrency, setIsCustomCurrency] = useState(!symbols.includes(model.pricing?.currencySymbol || '$'))
   const [modelCapabilities, setModelCapabilities] = useState(model.capabilities || [])
-  const originalModelCapabilities = cloneDeep(model.capabilities || [])
   const [supportedTextDelta, setSupportedTextDelta] = useState(model.supported_text_delta)
-  const [hasUserModified, setHasUserModified] = useState(false)
 
   const labelWidth = useDynamicLabelWidth([t('settings.models.add.endpoint_type.label')])
 
@@ -98,77 +89,29 @@ const ModelEditContent: FC<ModelEditContentProps & ModalProps> = ({ provider, mo
     { label: t('models.price.custom'), value: 'custom' }
   ]
 
-  const defaultTypes: ModelType[] = useMemo(
-    () => [
-      ...(isVisionModel(model) ? (['vision'] as const) : []),
-      ...(isReasoningModel(model) ? (['reasoning'] as const) : []),
-      ...(isFunctionCallingModel(model) ? (['function_calling'] as const) : []),
-      ...(isEmbeddingModel(model) ? (['embedding'] as const) : []),
-      ...(isRerankModel(model) ? (['rerank'] as const) : [])
-    ],
-    [model]
-  )
-
-  const selectedTypes: ModelType[] = useMemo(
-    () =>
-      getUnion(
-        modelCapabilities?.filter((t) => t.isUserSelected).map((t) => t.type) || [],
-        getDifference(
-          defaultTypes,
-          modelCapabilities?.filter((t) => t.isUserSelected === false).map((t) => t.type) || []
-        )
-      ),
-    [defaultTypes, modelCapabilities]
-  )
-
-  // 被rerank/embedding改变的类型
-  // const changedTypesRef = useRef<string[]>([])
-
-  useEffect(() => {
-    if (showMoreSettings) {
-      const newModelCapabilities = getUnion(
-        selectedTypes.map((type) => {
-          const existingCapability = modelCapabilities?.find((m) => m.type === type)
-          return {
-            type: type,
-            isUserSelected: existingCapability?.isUserSelected ?? undefined
-          }
-        }),
-        modelCapabilities?.filter((t) => t.isUserSelected === false),
-        (item) => item.type
-      )
-      setModelCapabilities(newModelCapabilities)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showMoreSettings])
-
-  // 监听modelCapabilities变化，自动保存（但跳过初始化时的保存）
-  useEffect(() => {
-    if (hasUserModified && showMoreSettings) {
-      autoSave()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [modelCapabilities])
+  const selectedTypes = useMemo(() => {
+    const resolved = resolveModelCapabilities({ ...model, capabilities: modelCapabilities })
+    return (['vision', 'reasoning', 'function_calling', 'embedding', 'rerank'] as ModelType[]).filter(
+      (type) => resolved[type]
+    )
+  }, [model, modelCapabilities])
+  const hasOverrides = modelCapabilities.some((capability) => typeof capability.isUserSelected === 'boolean')
 
   const ModelCapability = () => {
     const isRerankDisabled = selectedTypes.includes('embedding')
     const isEmbeddingDisabled = selectedTypes.includes('rerank')
     const isOtherDisabled = selectedTypes.includes('rerank') || selectedTypes.includes('embedding')
 
-    const handleResetTypes = () => {
-      setModelCapabilities(originalModelCapabilities)
-      setHasUserModified(false) // 重置后清除修改标志
+    const saveCapabilities = (capabilities: ModelCapability[]) => {
+      setModelCapabilities(capabilities)
+      autoSave({ capabilities })
     }
-
-    const updateType = useCallback((type: ModelType) => {
-      setHasUserModified(true)
-      setModelCapabilities((prev) =>
-        uniqueObjectArray([
-          ...prev.filter((t) => t.type !== type),
-          { type, isUserSelected: !selectedTypes.includes(type) }
-        ])
-      )
-    }, [])
+    const handleResetTypes = () => saveCapabilities(restoreAutomaticCapabilities(modelCapabilities))
+    const updateType = (type: ModelType) =>
+      saveCapabilities([
+        ...modelCapabilities.filter((capability) => capability.type !== type),
+        { type, isUserSelected: !selectedTypes.includes(type) }
+      ])
 
     return (
       <>
@@ -178,9 +121,11 @@ const ModelEditContent: FC<ModelEditContentProps & ModalProps> = ({ provider, mo
             <WarnTooltip title={t('settings.moresetting.check.warn')} />
           </Flex>
 
-          {hasUserModified && (
-            <Tooltip title={t('common.reset')}>
-              <Button size="small" icon={<RotateCcw size={14} />} onClick={handleResetTypes} type="text" />
+          {hasOverrides && (
+            <Tooltip title={t('models.type.restore_auto')}>
+              <Button size="small" icon={<RotateCcw size={14} />} onClick={handleResetTypes} type="text">
+                {t('models.type.restore_auto')}
+              </Button>
             </Tooltip>
           )}
         </TypeTitle>

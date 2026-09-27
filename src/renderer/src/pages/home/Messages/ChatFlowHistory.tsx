@@ -3,7 +3,7 @@ import '@xyflow/react/dist/style.css'
 import { RobotOutlined, UserOutlined } from '@ant-design/icons'
 import EmojiAvatar from '@renderer/components/Avatar/EmojiAvatar'
 import ModelAvatar from '@renderer/components/Avatar/ModelAvatar'
-import { getModelLogo, getModelLogoById } from '@renderer/config/models'
+import { getModelLogoById } from '@renderer/config/models'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import useAvatar from '@renderer/hooks/useAvatar'
 import { useSettings } from '@renderer/hooks/useSettings'
@@ -54,6 +54,7 @@ const TooltipFooter = styled.div`
 // FIXME: no any plz...
 const CustomNode: FC<{ data: any }> = ({ data }) => {
   const { t } = useTranslation()
+  const { theme: iconTheme } = useTheme()
   const { setTimeoutTimer } = useTimer()
 
   const nodeType = data.type
@@ -90,7 +91,7 @@ const CustomNode: FC<{ data: any }> = ({ data }) => {
     if (data.modelInfo) {
       avatar = <ModelAvatar model={data.modelInfo} size={32} />
     } else if (data.modelId) {
-      const modelLogo = getModelLogo(data.modelInfo) ?? getModelLogoById(data.modelId)
+      const modelLogo = getModelLogoById(data.modelId, iconTheme)
       avatar = (
         <Avatar
           src={modelLogo}

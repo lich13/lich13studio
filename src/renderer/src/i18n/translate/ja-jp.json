@@ -2647,6 +2647,7 @@
       "function_calling": "ツール",
       "reasoning": "推論",
       "rerank": "再順序付け",
+      "restore_auto": "自動判定に戻す",
       "select": "モデルタイプ",
       "text": "テキスト",
       "vision": "画像"

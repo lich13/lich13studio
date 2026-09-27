@@ -1,8 +1,10 @@
 import { loggerService } from '@logger'
 import {
   isAutoEnableImageGenerationModel,
+  isEmbeddingModel,
   isGenerateImageModel,
   isGenerateImageModels,
+  isRerankModel,
   isVisionModel,
   isVisionModels
 } from '@renderer/config/models'
@@ -222,7 +224,8 @@ const InputbarInner: FC<InputbarInnerProps> = ({ assistant: initialAssistant, se
 
   const sendMessage = useCallback(async () => {
     try {
-      for (const target of mentionedModels.length ? mentionedModels : [assistant.model]) requireCurrentModel(target)
+      for (const target of mentionedModels.length ? mentionedModels : [assistant.model])
+        requireCurrentModel(target, true)
     } catch {
       window.toast.warning(t('platform.select_model'))
       return
@@ -485,7 +488,9 @@ const InputbarInner: FC<InputbarInnerProps> = ({ assistant: initialAssistant, se
       resizeTextArea={resizeTextArea}
       focusTextarea={focusTextarea}
       isLoading={loading}
-      targetUnavailable={!mentionedModels.length && !assistant.model?.provider}
+      targetUnavailable={
+        !mentionedModels.length && (!assistant.model?.provider || isEmbeddingModel(model) || isRerankModel(model))
+      }
       supportedExts={supportedExts}
       onPause={onPause}
       handleSendMessage={sendMessage}

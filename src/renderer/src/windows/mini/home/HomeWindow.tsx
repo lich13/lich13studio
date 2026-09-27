@@ -64,6 +64,7 @@ import {
   getMiniWindowPersistedTopic,
   getMiniWindowResetState,
   getMiniWindowSupportExts,
+  isMiniWindowChatModel,
   isMiniWindowComposingInput,
   isMiniWindowRequestCurrent,
   isMiniWindowSendKeyPressed,
@@ -126,7 +127,9 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
     }
     return userInputText.trim()
   }, [isFirstMessage, referenceText, userInputText])
-  const canSend = Boolean(resolvedSelection.model) && (userContent.trim().length > 0 || files.length > 0)
+  const canSend =
+    Boolean(resolvedSelection.model && isMiniWindowChatModel(resolvedSelection.model)) &&
+    (userContent.trim().length > 0 || files.length > 0)
 
   useEffect(() => {
     const nextTopic = getDefaultTopic(currentAssistant.id)

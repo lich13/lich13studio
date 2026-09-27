@@ -24,9 +24,9 @@ interface MessageLineProps {
   messages: Message[]
 }
 
-const getAvatarSource = (isLocalAi: boolean, modelId: string | undefined) => {
+const getAvatarSource = (isLocalAi: boolean, modelId: string | undefined, theme: 'light' | 'dark' | 'system') => {
   if (isLocalAi) return AppLogo
-  return modelId ? getModelLogoById(modelId) : undefined
+  return modelId ? getModelLogoById(modelId, theme) : undefined
 }
 
 const MessageAnchorLine: FC<MessageLineProps> = ({ messages }) => {
@@ -203,7 +203,7 @@ const MessageAnchorLine: FC<MessageLineProps> = ({ messages }) => {
           const opacity = 0.5 + calculateValueByDistance(message.id, 1)
           const scale = 1 + calculateValueByDistance(message.id, 1.2)
           const size = 10 + calculateValueByDistance(message.id, 20)
-          const avatarSource = getAvatarSource(isLocalAi, getMessageModelId(message))
+          const avatarSource = getAvatarSource(isLocalAi, getMessageModelId(message), theme)
           const username = removeLeadingEmoji(getUserName(message))
           const content = getMainTextContent(message)
 

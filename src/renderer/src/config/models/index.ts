@@ -1,3 +1,4 @@
+export * from './capabilities'
 export * from './default'
 export * from './embedding'
 export * from './logo'

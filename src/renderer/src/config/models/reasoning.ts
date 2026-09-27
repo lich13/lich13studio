@@ -5,10 +5,10 @@ import type {
   ThinkingModelType,
   ThinkingOptionConfig
 } from '@renderer/types'
-import { getLowerBaseModelName, isUserSelectedModelType } from '@renderer/utils'
+import { getLowerBaseModelName } from '@renderer/utils'
 import { REASONING_EFFORTS } from '@shared/reasoning'
 
-import { isEmbeddingModel, isRerankModel } from './embedding'
+import { resolveModelCapabilities } from './capabilities'
 import {
   isGPT5FamilyModel,
   isGPT5ProModel,
@@ -31,7 +31,6 @@ import {
   isKimi25Model,
   withModelIdAndNameAsId
 } from './utils'
-import { isTextToImageModel } from './vision'
 
 // Reasoning models
 export const REASONING_REGEX =
@@ -664,14 +663,11 @@ export function isKimiReasoningModel(model?: Model): boolean {
 }
 
 export function isReasoningModel(model?: Model): boolean {
-  if (!model || isEmbeddingModel(model) || isRerankModel(model) || isTextToImageModel(model)) {
-    return false
-  }
+  return resolveModelCapabilities(model).reasoning
+}
 
-  if (isUserSelectedModelType(model, 'reasoning') !== undefined) {
-    return isUserSelectedModelType(model, 'reasoning')!
-  }
-
+// Called only by the resolver, with the display name replaced by the real ID.
+export function hasLegacyReasoningCapability(model: Model): boolean {
   const modelId = getLowerBaseModelName(model.id)
 
   if (model.provider === 'doubao' || modelId.includes('doubao')) {

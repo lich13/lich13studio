@@ -6,6 +6,7 @@ import {
   MAX_CONTEXT_COUNT,
   UNLIMITED_CONTEXT_COUNT
 } from '@renderer/config/constant'
+import { isEmbeddingModel, isRerankModel } from '@renderer/config/models/embedding'
 import { isQwenMTModel } from '@renderer/config/models/qwen'
 import { UNKNOWN } from '@renderer/config/translate'
 import { getStoreProviders } from '@renderer/hooks/useStore'
@@ -217,10 +218,11 @@ export function getProviderByModel(model?: Model): Provider {
 }
 
 /** Resolve a saved reference against the latest shared catalog before sending. */
-export function requireCurrentModel(model: Model): Model {
+export function requireCurrentModel(model: Model, chatOnly = false): Model {
   const provider = getProviderByModel(model)
   const current = provider.models.find((entry) => entry.id === model.id)
-  if (!provider.enabled || !current) throw new Error(i18n.t('platform.select_model'))
+  if (!provider.enabled || !current || (chatOnly && (isEmbeddingModel(current) || isRerankModel(current))))
+    throw new Error(i18n.t('platform.select_model'))
   return current
 }
 

@@ -1,7 +1,8 @@
+import ModelAvatar from '@renderer/components/Avatar/ModelAvatar'
 import ModelTagsWithLabel from '@renderer/components/ModelTagsWithLabel'
 import type { QuickPanelListItem } from '@renderer/components/QuickPanel'
 import { QuickPanelReservedSymbol } from '@renderer/components/QuickPanel'
-import { getModelLogo, isEmbeddingModel, isRerankModel, isVisionModel } from '@renderer/config/models'
+import { isEmbeddingModel, isRerankModel, isVisionModel } from '@renderer/config/models'
 import db from '@renderer/databases'
 import { useProviders } from '@renderer/hooks/useProvider'
 import type { ToolQuickPanelApi, ToolQuickPanelController } from '@renderer/pages/home/Inputbar/types'
@@ -9,9 +10,8 @@ import { getModelUniqId } from '@renderer/services/ModelService'
 import type { FileMetadata, Model } from '@renderer/types'
 import { FILE_TYPE } from '@renderer/types'
 import { getFancyProviderName } from '@renderer/utils'
-import { Avatar } from 'antd'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { first, sortBy } from 'lodash'
+import { sortBy } from 'lodash'
 import { AtSign, CircleX, Plus } from 'lucide-react'
 import type React from 'react'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
@@ -143,11 +143,7 @@ export const useMentionModelsPanel = (params: Params, role: 'button' | 'manager'
               </>
             ),
             description: <ModelTagsWithLabel model={model} showLabel={false} size={10} style={{ opacity: 0.8 }} />,
-            icon: (
-              <Avatar src={getModelLogo(model)} size={20}>
-                {first(model.name)}
-              </Avatar>
-            ),
+            icon: <ModelAvatar model={model} size={20} />,
             filterText: getFancyProviderName(provider) + model.name,
             action: () => onMentionModel(model),
             isSelected: mentionedModels.some((selected) => getModelUniqId(selected) === getModelUniqId(model))
@@ -176,11 +172,7 @@ export const useMentionModelsPanel = (params: Params, role: 'button' | 'manager'
           </>
         ),
         description: <ModelTagsWithLabel model={model} showLabel={false} size={10} style={{ opacity: 0.8 }} />,
-        icon: (
-          <Avatar src={getModelLogo(model)} size={20}>
-            {first(model.name)}
-          </Avatar>
-        ),
+        icon: <ModelAvatar model={model} size={20} />,
         filterText: getFancyProviderName(provider) + model.name,
         action: () => onMentionModel(model),
         isSelected: mentionedModels.some((selected) => getModelUniqId(selected) === getModelUniqId(model))

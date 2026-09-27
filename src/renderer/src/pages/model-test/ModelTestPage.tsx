@@ -1,6 +1,7 @@
 import { Navbar, NavbarCenter } from '@renderer/components/app/Navbar'
 import { HStack } from '@renderer/components/Layout'
 import ModelProviderSelect from '@renderer/components/ModelProviderSelect'
+import { isEmbeddingModel, isRerankModel } from '@renderer/config/models'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import { useModelTestSession } from '@renderer/hooks/useModelTestSession'
 import { SettingContainer, SettingDescription, SettingGroup, SettingTitle } from '@renderer/pages/settings'
@@ -50,6 +51,7 @@ const ModelTestPage = () => {
   const llm = useAppSelector((state) => state.llm)
   const selection = useMemo(() => llm.modelTestSelection ?? initialModelTestSelection(llm), [llm])
   const resolved = resolveModelTestSelection(selection, llm)
+  const canStart = resolved.model && !isEmbeddingModel(resolved.model) && !isRerankModel(resolved.model)
   const { challenges, outputs, report, error, phase, target, canRetry } = useModelTestSession()
   const running = phase === 'running'
 
@@ -91,8 +93,8 @@ const ModelTestPage = () => {
                   <Button
                     type="primary"
                     icon={<Play size={15} />}
-                    onClick={() => resolved.model && void modelTestSession.start(resolved.model)}
-                    disabled={!resolved.model}>
+                    onClick={() => canStart && resolved.model && void modelTestSession.start(resolved.model)}
+                    disabled={!canStart}>
                     {t('settings.modelTest.run')}
                   </Button>
                 )}

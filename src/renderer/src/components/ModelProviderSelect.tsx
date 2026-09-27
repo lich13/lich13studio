@@ -10,6 +10,9 @@ import { useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
+import ModelAvatar from './Avatar/ModelAvatar'
+import ModelTagsWithLabel from './ModelTagsWithLabel'
+
 export default function ModelProviderSelect({
   selection,
   onChange,
@@ -41,6 +44,7 @@ export default function ModelProviderSelect({
       .map((model) => ({
         value: JSON.stringify([platform, model.id]),
         label: model.id === model.name ? model.id : `${model.name} · ${model.id}`,
+        model: { ...model, provider: '' } as Model | undefined,
         disabled: false
       }))
   }))
@@ -48,7 +52,12 @@ export default function ModelProviderSelect({
     models.push({
       label: t('settings.modelTest.unavailable'),
       options: [
-        { value: JSON.stringify([selection.platform, selection.modelId]), label: selection.modelId, disabled: true }
+        {
+          value: JSON.stringify([selection.platform, selection.modelId]),
+          label: selection.modelId,
+          model: undefined,
+          disabled: true
+        }
       ]
     })
   const providers = resolved.providers.map((provider) => ({
@@ -62,12 +71,12 @@ export default function ModelProviderSelect({
       label: `${llm.providers.find((provider) => provider.id === selection.providerId)?.name || selection.providerId} (${t('settings.modelTest.unavailable')})`,
       disabled: true
     })
-  const issueText = resolved.issue
-    ? t(
-        resolved.issue === 'modelUnavailable'
-          ? 'settings.modelTest.modelUnavailable'
-          : 'settings.modelTest.providerUnavailable'
-      )
+  const issue =
+    resolved.model && (isEmbeddingModel(resolved.model) || isRerankModel(resolved.model))
+      ? 'modelUnavailable'
+      : resolved.issue
+  const issueText = issue
+    ? t(issue === 'modelUnavailable' ? 'settings.modelTest.modelUnavailable' : 'settings.modelTest.providerUnavailable')
     : undefined
   const effortText =
     effort && t('chat.effectiveReasoning', { requested: effort.requested, effective: effort.effective })
@@ -81,6 +90,18 @@ export default function ModelProviderSelect({
           optionFilterProp="label"
           size={compact ? 'small' : 'middle'}
           options={models}
+          optionRender={(option) => {
+            const model = (option.data as { model?: Model }).model
+            return (
+              <ModelOption>
+                <ModelAvatar model={model} size={24} />
+                <span className="model-name" title={String(option.label)}>
+                  {option.label}
+                </span>
+                {model && <ModelTagsWithLabel model={model} showLabel={false} showFree={false} />}
+              </ModelOption>
+            )
+          }}
           value={selection.modelId ? JSON.stringify([selection.platform, selection.modelId]) : undefined}
           placeholder={t('button.select_model')}
           onChange={(value: string) => {
@@ -118,6 +139,14 @@ export default function ModelProviderSelect({
     </Controls>
   )
 }
+
+const ModelOption = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  .model-name { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+`
 
 const Controls = styled.div<{ $compact: boolean; $inline: boolean }>`
   display: flex;

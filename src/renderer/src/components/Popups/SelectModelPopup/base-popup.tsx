@@ -1,9 +1,9 @@
 import { PushpinOutlined } from '@ant-design/icons'
+import ModelAvatar from '@renderer/components/Avatar/ModelAvatar'
 import { FreeTrialModelTag } from '@renderer/components/FreeTrialModelTag'
 import ModelTagsWithLabel from '@renderer/components/ModelTagsWithLabel'
 import { TopView } from '@renderer/components/TopView'
 import { DynamicVirtualList, type DynamicVirtualListRef } from '@renderer/components/VirtualList'
-import { getModelLogo } from '@renderer/config/models'
 import { usePinnedModels } from '@renderer/hooks/usePinnedModels'
 import { getModelUniqId } from '@renderer/services/ModelService'
 import { getProviderById } from '@renderer/services/ProviderService'
@@ -11,8 +11,8 @@ import type { Model, Provider } from '@renderer/types'
 import { objectEntries } from '@renderer/types'
 import { classNames, filterModelsByKeywords, getFancyProviderName } from '@renderer/utils'
 import { getDuplicateModelNames, getModelTags } from '@renderer/utils/model'
-import { Avatar, Divider, Empty, Modal, Tooltip } from 'antd'
-import { first, sortBy } from 'lodash'
+import { Divider, Empty, Modal, Tooltip } from 'antd'
+import { sortBy } from 'lodash'
 import { Settings2 } from 'lucide-react'
 import React, {
   startTransition,
@@ -154,11 +154,7 @@ const SelectModelPopupView: React.FC<Props> = ({
             <ModelTagsWithLabel model={model} size={11} showLabel={true} />
           </TagsContainer>
         ),
-        icon: (
-          <Avatar src={getModelLogo(model)} size={24}>
-            {first(model.name) || 'M'}
-          </Avatar>
-        ),
+        icon: <ModelAvatar model={model} size={24} />,
         model,
         isPinned,
         isSelected: modelId === currentModelId

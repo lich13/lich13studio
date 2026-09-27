@@ -2648,6 +2648,7 @@
       "function_calling": "工具",
       "reasoning": "推理",
       "rerank": "重排",
+      "restore_auto": "恢复自动识别",
       "select": "模型类型",
       "text": "文本",
       "vision": "视觉"

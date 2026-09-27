@@ -28,6 +28,7 @@ vi.mock('@renderer/config/models', () => ({
   isGenerateImageModel: () => false,
   isPureGenerateImageModel: () => false,
   isClaudeReasoningModel: () => false,
+  isReasoningModel: () => true,
   isMaxTemperatureOneModel: () => false,
   isSupportTemperatureModel: () => false,
   isSupportTopPModel: () => false,

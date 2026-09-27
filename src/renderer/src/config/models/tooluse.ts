@@ -1,10 +1,9 @@
 import type { Model } from '@renderer/types'
 import { isSystemProviderId } from '@renderer/types'
-import { getLowerBaseModelName, isUserSelectedModelType } from '@renderer/utils'
+import { getLowerBaseModelName } from '@renderer/utils'
 
-import { isEmbeddingModel, isRerankModel } from './embedding'
+import { resolveModelCapabilities } from './capabilities'
 import { isDeepSeekHybridInferenceModel } from './reasoning'
-import { isTextToImageModel } from './vision'
 
 // Tool calling models
 export const FUNCTION_CALLING_MODELS = [
@@ -64,15 +63,11 @@ export const FUNCTION_CALLING_REGEX = new RegExp(
 )
 
 export function isFunctionCallingModel(model?: Model): boolean {
-  if (!model || isEmbeddingModel(model) || isRerankModel(model) || isTextToImageModel(model)) {
-    return false
-  }
+  return resolveModelCapabilities(model).function_calling
+}
 
+export function hasLegacyToolCapability(model: Model): boolean {
   const modelId = getLowerBaseModelName(model.id)
-
-  if (isUserSelectedModelType(model, 'function_calling') !== undefined) {
-    return isUserSelectedModelType(model, 'function_calling')!
-  }
 
   if (model.provider === 'doubao' || modelId.includes('doubao')) {
     return FUNCTION_CALLING_REGEX.test(modelId) || FUNCTION_CALLING_REGEX.test(model.name)

@@ -10,7 +10,8 @@ import {
   isAnthropicModel,
   isGeminiModel,
   isGenerateImageModel,
-  isPureGenerateImageModel
+  isPureGenerateImageModel,
+  isReasoningModel
 } from '@renderer/config/models'
 import { DEFAULT_ASSISTANT_SETTINGS, getDefaultModel, requireCurrentModel } from '@renderer/services/AssistantService'
 import { type Assistant, type Provider } from '@renderer/types'
@@ -65,12 +66,11 @@ export async function buildStreamTextParams(
   const { requestOptions = {} } = options
   const { signal: externalSignal, headers: inputHeaders = {}, reasoningMode = 'configured' } = requestOptions
 
-  const model = requireCurrentModel(assistant.model || getDefaultModel())
+  const model = requireCurrentModel(assistant.model || getDefaultModel(), true)
 
   // 这三个变量透传出来，交给下面启用插件/中间件
   // 也可以在外部构建好再传入buildStreamTextParams
-  // FIXME: qwen3即使关闭思考仍然会导致enableReasoning的结果为true
-  const enableReasoning = reasoningMode === 'configured'
+  const enableReasoning = reasoningMode === 'configured' && isReasoningModel(model)
 
   // Validate provider and model support to prevent stale state from triggering urlContext
   const enableUrlContext = !!(
@@ -96,7 +96,7 @@ export async function buildStreamTextParams(
 
   let headers = inputHeaders
 
-  if (isAnthropicModel(model) && !isAwsBedrockProvider(provider)) {
+  if (enableReasoning && isAnthropicModel(model) && !isAwsBedrockProvider(provider)) {
     const betaHeaders = addAnthropicHeaders(assistant, model)
     // Only add the anthropic-beta header if there are actual beta headers to include
     if (betaHeaders.length > 0) {
@@ -117,7 +117,7 @@ export async function buildStreamTextParams(
 
   const params: StreamTextParams = {
     messages: sdkMessages,
-    maxOutputTokens: getMaxTokens(assistant, model, reasoningMode),
+    maxOutputTokens: getMaxTokens(assistant, model, enableReasoning ? reasoningMode : 'disabled'),
     temperature: getTemperature(assistant, model),
     topP: getTopP(assistant, model),
     // Include AI SDK standard params extracted from custom parameters

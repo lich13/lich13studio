@@ -5,7 +5,7 @@ import { loggerService } from '@logger'
 import { buildStreamTextParams } from '@renderer/aiCore/prepareParams'
 import type { AiSdkMiddlewareConfig } from '@renderer/aiCore/types/middlewareConfig'
 import { buildProviderOptions } from '@renderer/aiCore/utils/options'
-import { isDedicatedImageGenerationModel } from '@renderer/config/models'
+import { isDedicatedImageGenerationModel, isFunctionCallingModel } from '@renderer/config/models'
 import { getStoreSetting } from '@renderer/hooks/useSettings'
 import i18n from '@renderer/i18n'
 import type { Assistant, Model, Provider } from '@renderer/types'
@@ -73,7 +73,7 @@ export async function transformMessagesAndFetch(
   const assistant = { ...request.assistant }
 
   try {
-    assistant.model = requireCurrentModel(assistant.model || getDefaultModel())
+    assistant.model = requireCurrentModel(assistant.model || getDefaultModel(), true)
     const { modelMessages, uiMessages } = await ConversationService.prepareMessagesForModel(messages, assistant)
 
     // replace prompt variables
@@ -118,7 +118,7 @@ export async function fetchChatCompletion({
   uiMessages,
   allowedTools
 }: FetchChatCompletionParams) {
-  assistant = { ...assistant, model: requireCurrentModel(assistant.model || getDefaultModel()) }
+  assistant = { ...assistant, model: requireCurrentModel(assistant.model || getDefaultModel(), true) }
   logger.info('fetchChatCompletion called with detailed context', {
     messageCount: messages?.length || 0,
     prompt: prompt,
@@ -169,7 +169,7 @@ export async function fetchChatCompletion({
     reasoningMode: requestOptions?.reasoningMode,
     textDeltaMode: requestOptions?.textDeltaMode,
     isPromptToolUse: false,
-    isSupportedToolUse: true,
+    isSupportedToolUse: isFunctionCallingModel(assistant.model),
     enableGenerateImage: capabilities.enableGenerateImage,
     enableUrlContext: capabilities.enableUrlContext,
     uiMessages

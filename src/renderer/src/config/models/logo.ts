@@ -18,10 +18,8 @@ import BytedanceModelLogo from '@renderer/assets/images/models/byte_dance.svg'
 import ChatGLMModelLogo from '@renderer/assets/images/models/chatglm.png'
 import ChatGLMModelLogoDark from '@renderer/assets/images/models/chatglm_dark.png'
 import ChatGptModelLogo from '@renderer/assets/images/models/chatgpt.jpeg'
-import GPT56LunaModelLogo from '@renderer/assets/images/models/cherry/gpt-5-6-luna.svg'
-import GPT56SolModelLogo from '@renderer/assets/images/models/cherry/gpt-5-6-sol.svg'
-import GPT56TerraModelLogo from '@renderer/assets/images/models/cherry/gpt-5-6-terra.svg'
-import GPT6AstraModelLogo from '@renderer/assets/images/models/cherry/gpt-6-astra.svg'
+import OpenAIDark from '@renderer/assets/images/models/cherry/openai-dark.svg'
+import OpenAILight from '@renderer/assets/images/models/cherry/openai-light.svg'
 import ClaudeModelLogo from '@renderer/assets/images/models/claude.png'
 import ClaudeModelLogoDark from '@renderer/assets/images/models/claude_dark.png'
 import CodegeexModelLogo from '@renderer/assets/images/models/codegeex.png'
@@ -53,26 +51,11 @@ import GeminiModelLogoDark from '@renderer/assets/images/models/gemini_dark.png'
 import GemmaModelLogo from '@renderer/assets/images/models/gemma.png'
 import GemmaModelLogoDark from '@renderer/assets/images/models/gemma_dark.png'
 import { default as GoogleModelLogo, default as GoogleModelLogoDark } from '@renderer/assets/images/models/google.png'
-import ChatGPT35ModelLogo from '@renderer/assets/images/models/gpt_3.5.png'
-import ChatGPT4ModelLogo from '@renderer/assets/images/models/gpt_4.png'
 import {
-  default as ChatGPT4ModelLogoDark,
-  default as ChatGPT35ModelLogoDark,
   default as ChatGptModelLogoDark,
   default as ChatGPTo1ModelLogoDark
 } from '@renderer/assets/images/models/gpt_dark.png'
-import ChatGPTImageModelLogo from '@renderer/assets/images/models/gpt_image_1.png'
-import ChatGPTImage2ModelLogo from '@renderer/assets/images/models/gpt_image_2.png'
 import ChatGPTo1ModelLogo from '@renderer/assets/images/models/gpt_o1.png'
-import GPT51ModelLogo from '@renderer/assets/images/models/gpt-5.1.png'
-import GPT51ChatModelLogo from '@renderer/assets/images/models/gpt-5.1-chat.png'
-import GPT51CodexModelLogo from '@renderer/assets/images/models/gpt-5.1-codex.png'
-import GPT51CodexMiniModelLogo from '@renderer/assets/images/models/gpt-5.1-codex-mini.png'
-import GPT5ModelLogo from '@renderer/assets/images/models/gpt-5.png'
-import GPT5ChatModelLogo from '@renderer/assets/images/models/gpt-5-chat.png'
-import GPT5CodexModelLogo from '@renderer/assets/images/models/gpt-5-codex.png'
-import GPT5MiniModelLogo from '@renderer/assets/images/models/gpt-5-mini.png'
-import GPT5NanoModelLogo from '@renderer/assets/images/models/gpt-5-nano.png'
 import GrokModelLogo from '@renderer/assets/images/models/grok.png'
 import GrokModelLogoDark from '@renderer/assets/images/models/grok_dark.png'
 import GrypheModelLogo from '@renderer/assets/images/models/gryphe.png'
@@ -172,15 +155,17 @@ export function normalizeModelLogoKey(modelId: string): string {
   return modelId.trim().toLowerCase().replace(/_/g, '-')
 }
 
-export function getModelLogoById(modelId: string): string | undefined {
-  // FIXME: This is always true. Either remove it or fetch it.
-  const isLight = true
+export function getModelLogoById(modelId: string, theme: 'light' | 'dark' | 'system' = 'light'): string | undefined {
+  const isLight = theme !== 'dark'
 
   if (!modelId) {
     return undefined
   }
 
   const normalizedModelId = normalizeModelLogoKey(modelId)
+  if (/(^|[/:])(?:gpt(?:[-.\d]|s$)|codex(?:[-/:]|$))/.test(normalizedModelId)) {
+    return isLight ? OpenAILight : OpenAIDark
+  }
 
   // key is regex
   const logoMap = {
@@ -193,28 +178,6 @@ export function getModelLogoById(modelId: string): string | undefined {
     o1: isLight ? ChatGPTo1ModelLogo : ChatGPTo1ModelLogoDark,
     o3: isLight ? ChatGPTo1ModelLogo : ChatGPTo1ModelLogoDark,
     o4: isLight ? ChatGPTo1ModelLogo : ChatGPTo1ModelLogoDark,
-    'gpt-image-2': ChatGPTImage2ModelLogo,
-    'gpt-image': ChatGPTImageModelLogo,
-    'gpt-3': isLight ? ChatGPT35ModelLogo : ChatGPT35ModelLogoDark,
-    'gpt-4': isLight ? ChatGPT4ModelLogo : ChatGPT4ModelLogoDark,
-    'gpt-5-mini': GPT5MiniModelLogo,
-    'gpt-5-nano': GPT5NanoModelLogo,
-    'gpt-5-chat': GPT5ChatModelLogo,
-    'gpt-5-codex': GPT5CodexModelLogo,
-    'gpt-5\\.6-sol': GPT56SolModelLogo,
-    'gpt-5\\.6-terra': GPT56TerraModelLogo,
-    'gpt-5\\.6-luna': GPT56LunaModelLogo,
-    'gpt-5\\.6': GPT5ModelLogo,
-    'gpt-5.1-codex-mini': GPT51CodexMiniModelLogo,
-    'gpt-5.1-codex': GPT51CodexModelLogo,
-    'gpt-5.1-chat': GPT51ChatModelLogo,
-    'gpt-5.1': GPT51ModelLogo,
-    'gpt-5': GPT5ModelLogo,
-    'gpt-6-astra': GPT6AstraModelLogo,
-    'gpt-6-(sol|luna)': GPT6AstraModelLogo,
-    'gpt-6': GPT6AstraModelLogo,
-    gpts: isLight ? ChatGPT4ModelLogo : ChatGPT4ModelLogoDark,
-    'gpt-oss(?::|-[\\w-]+)': isLight ? ChatGptModelLogo : ChatGptModelLogoDark,
     'text-moderation': isLight ? ChatGptModelLogo : ChatGptModelLogoDark,
     'babbage-': isLight ? ChatGptModelLogo : ChatGptModelLogoDark,
     '(sora-|sora_)': isLight ? ChatGptModelLogo : ChatGptModelLogoDark,
@@ -333,16 +296,12 @@ export function getModelLogoById(modelId: string): string | undefined {
     }
   }
 
-  // New provider aliases can appear before the application ships a dedicated
-  // asset. Keep every GPT-family model branded instead of falling back to a
-  // single-letter avatar.
-  if (/(^|[/:.-])gpt-\d+(?:[.-]|$)/i.test(normalizedModelId)) {
-    return ChatGPT4ModelLogo
-  }
-
   return undefined
 }
 
-export function getModelLogo(model: Model | undefined | null): string | undefined {
-  return model ? (getModelLogoById(model.id) ?? getModelLogoById(model.name)) : undefined
+export function getModelLogo(
+  model: Model | undefined | null,
+  theme: 'light' | 'dark' | 'system' = 'light'
+): string | undefined {
+  return model ? (getModelLogoById(model.id, theme) ?? getModelLogoById(model.name, theme)) : undefined
 }

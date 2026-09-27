@@ -1,7 +1,8 @@
 import { getProviderByModel } from '@renderer/services/AssistantService'
 import type { Model } from '@renderer/types'
-import { getLowerBaseModelName, isUserSelectedModelType } from '@renderer/utils'
+import { getLowerBaseModelName } from '@renderer/utils'
 
+import { resolveModelCapabilities } from './capabilities'
 import { isEmbeddingModel, isRerankModel } from './embedding'
 import { isFunctionCallingModel } from './tooluse'
 
@@ -247,22 +248,11 @@ export function isImageEnhancementModel(model: Model): boolean {
   return IMAGE_ENHANCEMENT_MODELS_REGEX.test(modelId)
 }
 
-export function isVisionModel(model: Model): boolean {
-  if (!model || isEmbeddingModel(model) || isRerankModel(model)) {
-    return false
-  }
-  // 新添字段 copilot-vision-request 后可使用 vision
-  // if (model.provider === 'copilot') {
-  //   return false
-  // }
-  if (isUserSelectedModelType(model, 'vision') !== undefined) {
-    return isUserSelectedModelType(model, 'vision')!
-  }
+export function isVisionModel(model?: Model): boolean {
+  return resolveModelCapabilities(model).vision
+}
 
+export function hasLegacyVisionCapability(model: Model): boolean {
   const modelId = getLowerBaseModelName(model.id)
-  if (model.provider === 'doubao' || modelId.includes('doubao')) {
-    return VISION_REGEX.test(model.name) || VISION_REGEX.test(modelId) || false
-  }
-
-  return VISION_REGEX.test(modelId) || IMAGE_ENHANCEMENT_MODELS_REGEX.test(modelId) || false
+  return VISION_REGEX.test(modelId) || IMAGE_ENHANCEMENT_MODELS_REGEX.test(modelId)
 }

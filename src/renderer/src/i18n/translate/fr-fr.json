@@ -2647,6 +2647,7 @@
       "function_calling": "Appel de fonction",
       "reasoning": "Raisonnement",
       "rerank": "Reclasser",
+      "restore_auto": "Rétablir la détection automatique",
       "select": "Types de modèle",
       "text": "Texte",
       "vision": "Image"

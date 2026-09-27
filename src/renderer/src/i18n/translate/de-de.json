@@ -2647,6 +2647,7 @@
       "function_calling": "Tools",
       "reasoning": "Reasoning",
       "rerank": "Rerank",
+      "restore_auto": "Automatische Erkennung wiederherstellen",
       "select": "Modelltyp",
       "text": "Text",
       "vision": "Vision"

@@ -12,10 +12,9 @@ export function buildProviderOptions(
   assistant: Assistant,
   model: Model,
   provider: Provider,
-  _capabilities: Pick<ProviderCapabilities, 'enableReasoning' | 'enableGenerateImage'>,
+  capabilities: Pick<ProviderCapabilities, 'enableReasoning' | 'enableGenerateImage'>,
   reasoningMode: ReasoningMode = 'configured'
 ): { providerOptions: Record<string, Record<string, JSONValue>>; standardParams: Partial<Record<AiSdkParam, any>> } {
-  void _capabilities
   const id = getAiSdkProviderId(provider)
   const { standardParams, providerParams } = extractAiSdkStandardParams(getCustomParameters(assistant))
   // Strength has one source of truth; custom parameters must not override the selector.
@@ -32,7 +31,7 @@ export function buildProviderOptions(
     delete providerParams[key]
   const options = {
     ...providerParams,
-    ...(reasoningMode === 'configured'
+    ...(reasoningMode === 'configured' && capabilities.enableReasoning
       ? id === 'openai'
         ? {
             ...getOpenAIReasoningParams(assistant, model),

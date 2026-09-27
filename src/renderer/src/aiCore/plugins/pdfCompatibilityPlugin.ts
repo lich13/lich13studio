@@ -7,8 +7,7 @@
 import type { LanguageModelV3FilePart, LanguageModelV3Message } from '@ai-sdk/provider'
 import { definePlugin } from '@cherrystudio/ai-core/core/plugins'
 import { loggerService } from '@logger'
-import { isAnthropicModel, isGeminiModel } from '@renderer/config/models'
-import { isOpenAILLMModel } from '@renderer/config/models/openai'
+import { resolveModelCapabilities } from '@renderer/config/models/capabilities'
 import type { Model, Provider, ProviderType } from '@renderer/types'
 import { extractPdfText } from '@shared/utils/pdf'
 import type { LanguageModelMiddleware } from 'ai'
@@ -30,16 +29,9 @@ function isPdfFilePart(part: ContentPart): part is LanguageModelV3FilePart & { m
   return part.type === 'file' && part.mediaType === 'application/pdf'
 }
 
-function supportsNativePdf(provider: Provider, model: Model): boolean {
-  // OpenAI, Claude, and Gemini models always support native PDF regardless of provider
-  if (isOpenAILLMModel(model) || isAnthropicModel(model) || isGeminiModel(model)) {
-    return true
-  }
-  if (PDF_NATIVE_PROVIDER_TYPES.has(provider.type)) {
-    return true
-  }
-  // TODO: allow user to configure native pdf compatibility for provider/model
-  return false
+export function supportsNativePdf(provider: Provider, model: Model): boolean {
+  // Image input alone does not imply native document input.
+  return PDF_NATIVE_PROVIDER_TYPES.has(provider.type) && resolveModelCapabilities(model).fileInput
 }
 
 function pdfCompatibilityMiddleware(provider: Provider, model: Model): LanguageModelMiddleware {

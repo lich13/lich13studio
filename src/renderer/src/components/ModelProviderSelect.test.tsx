@@ -19,6 +19,8 @@ const fixture = vi.hoisted(() => ({
   }
 }))
 vi.mock('@renderer/store', () => ({ useAppSelector: (fn: any) => fn({ llm: fixture.catalog }) }))
+vi.mock('@renderer/components/Avatar/ModelAvatar', () => ({ default: () => null }))
+vi.mock('@renderer/components/ModelTagsWithLabel', () => ({ default: () => null }))
 vi.mock('@renderer/config/models', () => ({ isEmbeddingModel: () => false, isRerankModel: () => false }))
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
 vi.mock('antd', () => ({

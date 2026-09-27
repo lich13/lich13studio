@@ -1,0 +1,5557 @@
+{
+  "source": "https://github.com/CherryHQ/cherry-studio/blob/5846b0e6b71adfd46baf094259823e1519e3afd6/packages/provider-registry/data/models.json",
+  "revision": "5846b0e6b71adfd46baf094259823e1519e3afd6",
+  "sourceSha256": "9412bf8ebf60a655d8f421cd8fcd6c1d644d145f2342518f49589d174c3fd910",
+  "models": [
+    {
+      "id": "active-speaker-detection",
+      "input": ["video"],
+      "output": ["text"],
+      "capabilities": ["file-input"]
+    },
+    {
+      "id": "arrow-1-1",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "bce-embedding-base-v1",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "bce-reranker-base-v1",
+      "input": ["text"],
+      "output": [],
+      "capabilities": ["rerank"]
+    },
+    {
+      "id": "bevformer",
+      "input": ["video"],
+      "output": ["text"],
+      "capabilities": ["file-input"]
+    },
+    {
+      "id": "bge-base-en-v1-5",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "bge-base-zh-v1-5",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "bge-large-en-v1-5",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "bge-large-zh-v1-5",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "bge-m3",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "bge-multilingual-gemma2",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "bge-reranker-base",
+      "input": ["text"],
+      "output": [],
+      "capabilities": ["rerank"]
+    },
+    {
+      "id": "bge-reranker-large",
+      "input": ["text"],
+      "output": [],
+      "capabilities": ["rerank"]
+    },
+    {
+      "id": "bge-reranker-v2-gemma",
+      "input": ["text"],
+      "output": [],
+      "capabilities": ["rerank"]
+    },
+    {
+      "id": "bge-reranker-v2-m3",
+      "input": ["text"],
+      "output": [],
+      "capabilities": ["rerank"]
+    },
+    {
+      "id": "bge-small-en-v1-5",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "bge-small-zh-v1-5",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "c4ai-aya-expanse-32b",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "c4ai-aya-expanse-8b",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "c4ai-aya-vision-32b",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition"]
+    },
+    {
+      "id": "c4ai-aya-vision-8b",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition"]
+    },
+    {
+      "id": "chatgpt-image-latest",
+      "input": ["text", "image"],
+      "output": ["text", "image"],
+      "capabilities": ["file-input", "image-generation", "image-recognition"]
+    },
+    {
+      "id": "claude-3-haiku",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition"]
+    },
+    {
+      "id": "claude-fable-5",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "claude-fable-5-1",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "claude-fable-latest",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "claude-haiku-4-5",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "claude-haiku-latest",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "claude-opus-4",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "claude-opus-4-1",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "claude-opus-4-5",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "claude-opus-4-6",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "claude-opus-4-6-v1",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "claude-opus-4-7",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "claude-opus-4-8",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "claude-opus-4-8-fast",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "claude-opus-5",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "claude-opus-5-5",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "claude-opus-5-fast",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "claude-opus-latest",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "claude-sonnet-4",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "claude-sonnet-4-5",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "claude-sonnet-4-6",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "claude-sonnet-5",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "claude-sonnet-latest",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "codestral",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call"]
+    },
+    {
+      "id": "codestral-embed",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "codestral-latest",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "cogview-4",
+      "input": [],
+      "output": [],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "command",
+      "input": [],
+      "output": [],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "command-a",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "command-a-03-2025",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "command-a-plus-05-2026",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "command-a-reasoning-08-2025",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "command-a-translate-08-2025",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "command-a-vision-07-2025",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition"]
+    },
+    {
+      "id": "command-light",
+      "input": [],
+      "output": [],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "command-r",
+      "input": [],
+      "output": [],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "command-r-08-2024",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "command-r-plus",
+      "input": [],
+      "output": [],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "command-r-plus-08-2024",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "command-r7b-12-2024",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "command-r7b-arabic-02-2025",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "cosmos-predict1-5b",
+      "input": ["text", "image", "video"],
+      "output": ["video"],
+      "capabilities": ["file-input", "image-recognition"]
+    },
+    {
+      "id": "cosmos-reason2-8b",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "cosmos-transfer1-7b",
+      "input": ["text", "image", "video"],
+      "output": ["video"],
+      "capabilities": ["file-input", "image-recognition"]
+    },
+    {
+      "id": "cosmos-transfer2-5-2b",
+      "input": ["text", "image", "video"],
+      "output": ["video"],
+      "capabilities": ["file-input", "image-recognition"]
+    },
+    {
+      "id": "dall-e-2",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "dall-e-3",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["file-input", "function-call", "image-generation"]
+    },
+    {
+      "id": "deep-research-max-preview-04-2026",
+      "input": ["text", "image", "video", "audio"],
+      "output": ["text", "image"],
+      "capabilities": ["file-input", "function-call", "image-generation", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "deep-research-preview-04-2026",
+      "input": ["text", "image", "video", "audio"],
+      "output": ["text", "image"],
+      "capabilities": ["file-input", "function-call", "image-generation", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "deepseek-chat",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "deepseek-chat-v3",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "deepseek-chat-v3-1",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "deepseek-flash",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "deepseek-r1",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "deepseek-r1-distill-llama-70b",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "deepseek-r1-distill-llama-8b",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "deepseek-r1-distill-qwen-1-5b",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "deepseek-r1-distill-qwen-14b",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "deepseek-r1-distill-qwen-32b",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "deepseek-r1-distill-qwen-7b",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "deepseek-v3",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "deepseek-v3-1",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "deepseek-v3-1-maas",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "deepseek-v3-1-terminus",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "deepseek-v3-2",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "deepseek-v3-2-exp",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "deepseek-v3-2-maas",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "deepseek-v4-1-flash",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "deepseek-v4-1-flash-beta",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "deepseek-v4-flash",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "deepseek-v4-flash-vision-exp",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "deepseek-v4-pro",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "devstral",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call"]
+    },
+    {
+      "id": "devstral-2",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "devstral-2-123b",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "devstral-latest",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "devstral-medium",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "devstral-medium-latest",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "devstral-small",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition"]
+    },
+    {
+      "id": "devstral-small-2",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition"]
+    },
+    {
+      "id": "doubao-1-5-lite-32k",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "doubao-1-5-pro-256k",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "doubao-1-5-pro-32k",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "doubao-1-5-thinking-pro",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "doubao-1-5-thinking-pro-m",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "doubao-1-5-thinking-vision-pro",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "doubao-1-5-ui-tars",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition"]
+    },
+    {
+      "id": "doubao-1-5-vision-lite",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition"]
+    },
+    {
+      "id": "doubao-1-5-vision-pro",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition"]
+    },
+    {
+      "id": "doubao-1-5-vision-pro-32k",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition"]
+    },
+    {
+      "id": "doubao-embedding-large-text",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "doubao-embedding-text",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "doubao-embedding-vision",
+      "input": ["text", "image", "video"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "doubao-seed-1-6",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "doubao-seed-1-6-flash",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "doubao-seed-1-6-lite",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "doubao-seed-1-6-vision",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "doubao-seed-2-0-code-preview",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "doubao-seed-2-0-lite",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "doubao-seed-2-0-mini",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "doubao-seed-2-0-pro",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "doubao-seed-2-1-pro",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "doubao-seed-2-1-turbo",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "doubao-seed-character",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "doubao-seed-code-preview",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "doubao-seed-evolving",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "doubao-seed-translation",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": []
+    },
+    {
+      "id": "doubao-seedance-1-0-lite-i2v",
+      "input": ["text", "image"],
+      "output": ["video"],
+      "capabilities": ["file-input", "image-recognition"]
+    },
+    {
+      "id": "doubao-seedance-1-0-lite-t2v",
+      "input": ["text"],
+      "output": ["video"],
+      "capabilities": []
+    },
+    {
+      "id": "doubao-seedance-1-0-pro",
+      "input": ["text", "image"],
+      "output": ["video"],
+      "capabilities": ["file-input", "image-recognition"]
+    },
+    {
+      "id": "doubao-seedance-1-0-pro-fast",
+      "input": ["text", "image"],
+      "output": ["video"],
+      "capabilities": ["file-input", "image-recognition"]
+    },
+    {
+      "id": "doubao-seedance-2-0",
+      "input": ["text", "image", "video", "audio"],
+      "output": ["video"],
+      "capabilities": ["file-input", "image-recognition"]
+    },
+    {
+      "id": "doubao-seedance-2-0-fast",
+      "input": ["text", "image", "video", "audio"],
+      "output": ["video"],
+      "capabilities": ["file-input", "image-recognition"]
+    },
+    {
+      "id": "doubao-seedance-2-0-mini",
+      "input": ["text", "image", "video"],
+      "output": ["video"],
+      "capabilities": ["file-input", "image-recognition"]
+    },
+    {
+      "id": "doubao-seededit-3-0-i2i",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "doubao-seedream-3-0-t2i",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "doubao-seedream-4-0",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "doubao-seedream-4-5",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "doubao-seedream-5-0-lite",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "doubao-seedream-5-0-pro",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "elevenlabs-music",
+      "input": ["text"],
+      "output": ["audio"],
+      "capabilities": []
+    },
+    {
+      "id": "elevenlabs-v2-5-turbo",
+      "input": ["text"],
+      "output": ["audio"],
+      "capabilities": []
+    },
+    {
+      "id": "elevenlabs-v3",
+      "input": ["text"],
+      "output": ["audio"],
+      "capabilities": []
+    },
+    {
+      "id": "embed-english-light-v3-0",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "embed-english-v3-0",
+      "input": ["text", "image"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "embed-multilingual-light-v3-0",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "embed-multilingual-v3-0",
+      "input": ["text", "image"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "embed-v4-0",
+      "input": ["text", "image"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "embedding-3",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "eraser",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "ernie-3-5-128k",
+      "input": [],
+      "output": [],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "ernie-3-5-8k",
+      "input": [],
+      "output": [],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "ernie-4-0-8k",
+      "input": [],
+      "output": [],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "ernie-4-0-turbo-128k",
+      "input": [],
+      "output": [],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "ernie-4-0-turbo-8k",
+      "input": [],
+      "output": [],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "ernie-4-5",
+      "input": [],
+      "output": [],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "ernie-4-5-a3b",
+      "input": [],
+      "output": [],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "ernie-4-5-a47b",
+      "input": [],
+      "output": [],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "ernie-4-5-turbo",
+      "input": [],
+      "output": [],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "ernie-4-5-turbo-vl",
+      "input": ["text", "image"],
+      "output": [],
+      "capabilities": ["function-call", "image-recognition"]
+    },
+    {
+      "id": "ernie-4-5-vl-424b-a47b",
+      "input": ["image", "text"],
+      "output": ["text"],
+      "capabilities": ["image-recognition", "reasoning"]
+    },
+    {
+      "id": "ernie-4-5-vl-a3b",
+      "input": ["text", "image"],
+      "output": [],
+      "capabilities": ["image-recognition", "reasoning"]
+    },
+    {
+      "id": "ernie-5-0",
+      "input": [],
+      "output": [],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "ernie-x1-1-preview",
+      "input": [],
+      "output": [],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "ernie-x1-turbo",
+      "input": [],
+      "output": [],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "esm2-650m",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": []
+    },
+    {
+      "id": "esmfold",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": []
+    },
+    {
+      "id": "expand-image",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "fibo",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "fibo-edit",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "flux-1-1-pro-ultra",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "flux-1-dev",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "flux-1-kontext-dev",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["file-input", "image-generation", "image-recognition"]
+    },
+    {
+      "id": "flux-1-schnell",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "flux-2-flex",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "flux-2-klein-4b",
+      "input": ["image", "text"],
+      "output": ["image"],
+      "capabilities": ["image-generation", "image-recognition"]
+    },
+    {
+      "id": "flux-2-klein-9b",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "flux-2-max",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation", "image-recognition"]
+    },
+    {
+      "id": "flux-2-pro",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "flux-3-video",
+      "input": ["text"],
+      "output": ["video"],
+      "capabilities": []
+    },
+    {
+      "id": "flux-dev",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "flux-fast-schnell",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "flux-fill-pro",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "flux-kontext-dev",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "flux-kontext-max",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "flux-kontext-pro",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "flux-pro",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "flux-pro-1-0-fill",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "flux-pro-1-1",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "flux-pro-1-1-ultra",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "flux-schnell",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "fugu-ultra",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gemini-2-5-computer-use-preview-10-2025",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gemini-2-5-flash",
+      "input": ["text", "image", "audio", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gemini-2-5-flash-image",
+      "input": ["text", "image"],
+      "output": ["text", "image"],
+      "capabilities": ["file-input", "image-generation", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gemini-2-5-flash-image-preview",
+      "input": ["text", "image"],
+      "output": ["text", "image"],
+      "capabilities": ["file-input", "image-generation", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gemini-2-5-flash-lite",
+      "input": ["text", "image", "audio", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gemini-2-5-flash-preview-tts",
+      "input": ["text"],
+      "output": ["audio"],
+      "capabilities": []
+    },
+    {
+      "id": "gemini-2-5-flash-tts",
+      "input": ["text"],
+      "output": ["audio"],
+      "capabilities": []
+    },
+    {
+      "id": "gemini-2-5-pro",
+      "input": ["text", "image", "audio", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gemini-2-5-pro-preview",
+      "input": ["image", "text", "audio"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gemini-2-5-pro-preview-05-06",
+      "input": ["text", "image", "audio", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gemini-2-5-pro-preview-tts",
+      "input": ["text"],
+      "output": ["audio"],
+      "capabilities": []
+    },
+    {
+      "id": "gemini-2-5-pro-tts",
+      "input": ["text"],
+      "output": ["audio"],
+      "capabilities": []
+    },
+    {
+      "id": "gemini-3-1-flash-image",
+      "input": ["text", "image", "video"],
+      "output": ["text", "image"],
+      "capabilities": ["file-input", "image-generation", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gemini-3-1-flash-image-preview",
+      "input": ["text", "image"],
+      "output": ["text", "image"],
+      "capabilities": ["file-input", "image-generation", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gemini-3-1-flash-lite",
+      "input": ["text", "image", "video", "audio"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gemini-3-1-flash-lite-image",
+      "input": ["text", "image"],
+      "output": ["text", "image"],
+      "capabilities": ["file-input", "function-call", "image-generation", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gemini-3-1-flash-lite-preview",
+      "input": ["text", "image", "video", "audio"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gemini-3-1-flash-live-preview",
+      "input": ["text", "image", "video", "audio"],
+      "output": ["text", "audio"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gemini-3-1-flash-tts-preview",
+      "input": ["text"],
+      "output": ["audio"],
+      "capabilities": ["reasoning"]
+    },
+    {
+      "id": "gemini-3-1-pro-preview",
+      "input": ["text", "image", "video", "audio"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gemini-3-1-pro-preview-customtools",
+      "input": ["text", "image", "video", "audio"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gemini-3-5-flash",
+      "input": ["text", "image", "video", "audio"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gemini-3-5-flash-lite",
+      "input": ["text", "image", "video", "audio"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gemini-3-5-live-translate-preview",
+      "input": ["audio"],
+      "output": ["audio", "text"],
+      "capabilities": []
+    },
+    {
+      "id": "gemini-3-5-transcribe",
+      "input": ["audio"],
+      "output": ["text"],
+      "capabilities": []
+    },
+    {
+      "id": "gemini-3-5-transcribe-live",
+      "input": ["audio"],
+      "output": ["text"],
+      "capabilities": []
+    },
+    {
+      "id": "gemini-3-6-flash",
+      "input": ["text", "image", "video", "audio"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gemini-3-7-flash",
+      "input": ["text", "image", "video", "audio"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gemini-3-8-flash",
+      "input": ["text", "image", "video", "audio"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gemini-3-flash",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gemini-3-flash-preview",
+      "input": ["text", "image", "video", "audio"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gemini-3-pro-image",
+      "input": ["image", "text"],
+      "output": ["text", "image"],
+      "capabilities": ["file-input", "function-call", "image-generation", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gemini-3-pro-image-preview",
+      "input": ["text", "image"],
+      "output": ["text", "image"],
+      "capabilities": ["file-input", "image-generation", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gemini-embedding-001",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "gemini-embedding-2",
+      "input": ["text", "image", "audio", "video"],
+      "output": ["vector"],
+      "capabilities": ["embedding", "file-input", "image-recognition"]
+    },
+    {
+      "id": "gemini-flash-latest",
+      "input": ["text", "image", "video", "audio"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gemini-flash-lite-latest",
+      "input": ["text", "image", "video", "audio"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gemini-omni-flash-preview",
+      "input": ["text", "image", "video"],
+      "output": ["video", "text"],
+      "capabilities": ["file-input", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gemini-pro-latest",
+      "input": ["audio", "image", "text", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gemma-2-27b-it",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": []
+    },
+    {
+      "id": "gemma-2-2b-it",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "gemma-3-12b-it",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition"]
+    },
+    {
+      "id": "gemma-3-27b-it",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition"]
+    },
+    {
+      "id": "gemma-3-4b-it",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition"]
+    },
+    {
+      "id": "gemma-3n-e2b-it",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition"]
+    },
+    {
+      "id": "gemma-3n-e4b-it",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition"]
+    },
+    {
+      "id": "gemma-4-26b-a4b-it",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gemma-4-31b-it",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "generate-background",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "genfill",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "gliner-pii",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": []
+    },
+    {
+      "id": "glm-3-turbo",
+      "input": [],
+      "output": [],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "glm-4",
+      "input": [],
+      "output": [],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "glm-4-1v",
+      "input": ["text", "image"],
+      "output": [],
+      "capabilities": ["image-recognition", "reasoning"]
+    },
+    {
+      "id": "glm-4-5",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "glm-4-5-air",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "glm-4-5-flash",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "glm-4-5v",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "glm-4-6",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "glm-4-6v",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "glm-4-7",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "glm-4-7-flash",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "glm-4-7-flashx",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "glm-4-7-maas",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "glm-4-air",
+      "input": [],
+      "output": [],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "glm-4-airx",
+      "input": [],
+      "output": [],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "glm-4-flash",
+      "input": [],
+      "output": [],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "glm-4-flashx",
+      "input": [],
+      "output": [],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "glm-4-long",
+      "input": [],
+      "output": [],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "glm-4-plus",
+      "input": [],
+      "output": [],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "glm-4v",
+      "input": ["text", "image"],
+      "output": [],
+      "capabilities": ["image-recognition"]
+    },
+    {
+      "id": "glm-4v-flash",
+      "input": ["text", "image"],
+      "output": [],
+      "capabilities": ["image-recognition"]
+    },
+    {
+      "id": "glm-4v-plus",
+      "input": ["text", "image"],
+      "output": [],
+      "capabilities": ["image-recognition"]
+    },
+    {
+      "id": "glm-5",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "glm-5-1",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "reasoning"]
+    },
+    {
+      "id": "glm-5-2",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "glm-5-2-fast",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "glm-5-3",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "glm-5-3-fast",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "glm-5-3-flash",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "glm-5-maas",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "glm-5-turbo",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "glm-5v-turbo",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "glm-flash-latest",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "glm-image",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "glm-latest",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "glm-z1",
+      "input": [],
+      "output": [],
+      "capabilities": ["reasoning"]
+    },
+    {
+      "id": "glm-z1-air",
+      "input": [],
+      "output": [],
+      "capabilities": ["reasoning"]
+    },
+    {
+      "id": "glm-z1-airx",
+      "input": [],
+      "output": [],
+      "capabilities": ["reasoning"]
+    },
+    {
+      "id": "glm-z1-flash",
+      "input": [],
+      "output": [],
+      "capabilities": ["reasoning"]
+    },
+    {
+      "id": "gpt-3-5-turbo",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "gpt-3-5-turbo-16k",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "gpt-3-5-turbo-instruct",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": []
+    },
+    {
+      "id": "gpt-4",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call"]
+    },
+    {
+      "id": "gpt-4-1",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition"]
+    },
+    {
+      "id": "gpt-4-1-mini",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition"]
+    },
+    {
+      "id": "gpt-4-1-nano",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition"]
+    },
+    {
+      "id": "gpt-4-turbo",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition"]
+    },
+    {
+      "id": "gpt-4-turbo-preview",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "gpt-4o",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition"]
+    },
+    {
+      "id": "gpt-4o-mini",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition"]
+    },
+    {
+      "id": "gpt-4o-mini-transcribe",
+      "input": ["audio"],
+      "output": ["text"],
+      "capabilities": []
+    },
+    {
+      "id": "gpt-4o-transcribe",
+      "input": ["audio"],
+      "output": ["text"],
+      "capabilities": []
+    },
+    {
+      "id": "gpt-5",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gpt-5-1",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gpt-5-1-codex",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gpt-5-1-codex-max",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gpt-5-1-codex-mini",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gpt-5-2",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gpt-5-2-chat",
+      "input": ["image", "text"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition"]
+    },
+    {
+      "id": "gpt-5-2-chat-latest",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gpt-5-2-codex",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gpt-5-2-pro",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gpt-5-3-chat-latest",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition"]
+    },
+    {
+      "id": "gpt-5-3-codex",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gpt-5-3-codex-spark",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gpt-5-4",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gpt-5-4-mini",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gpt-5-4-nano",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gpt-5-4-pro",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gpt-5-5",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gpt-5-5-pro",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gpt-5-6",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gpt-5-6-luna",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gpt-5-6-luna-pro",
+      "input": ["image", "text"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gpt-5-6-sol",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gpt-5-6-sol-pro",
+      "input": ["image", "text"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gpt-5-6-terra",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gpt-5-6-terra-pro",
+      "input": ["image", "text"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gpt-5-chat",
+      "input": [],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gpt-5-codex",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gpt-5-image",
+      "input": ["image", "text"],
+      "output": ["image", "text"],
+      "capabilities": ["file-input", "image-generation", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gpt-5-image-mini",
+      "input": ["image", "text"],
+      "output": ["image", "text"],
+      "capabilities": ["file-input", "image-generation", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gpt-5-mini",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gpt-5-nano",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gpt-5-pro",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gpt-6-astra",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gpt-6-astra-pro",
+      "input": ["image", "text"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gpt-6-luna",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gpt-6-sol",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gpt-audio",
+      "input": ["text", "audio"],
+      "output": ["text", "audio"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "gpt-audio-mini",
+      "input": ["text", "audio"],
+      "output": ["text", "audio"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "gpt-chat-latest",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition"]
+    },
+    {
+      "id": "gpt-image-1",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["file-input", "image-generation", "image-recognition"]
+    },
+    {
+      "id": "gpt-image-1-5",
+      "input": ["text", "image"],
+      "output": ["image", "text"],
+      "capabilities": ["file-input", "image-generation", "image-recognition"]
+    },
+    {
+      "id": "gpt-image-1-mini",
+      "input": ["text", "image"],
+      "output": ["text", "image"],
+      "capabilities": ["file-input", "image-generation", "image-recognition"]
+    },
+    {
+      "id": "gpt-image-2",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["file-input", "image-generation", "image-recognition"]
+    },
+    {
+      "id": "gpt-image-2-5-flare",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation", "image-recognition"]
+    },
+    {
+      "id": "gpt-image-2-5-sunburst",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation", "image-recognition"]
+    },
+    {
+      "id": "gpt-latest",
+      "input": ["image", "text"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gpt-mini-latest",
+      "input": ["image", "text"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gpt-oss-120b",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "gpt-oss-120b-maas",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "gpt-oss-20b",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "gpt-oss-20b-maas",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "gpt-oss-safeguard-120b",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "gpt-oss-safeguard-20b",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "gpt-realtime-1-5",
+      "input": ["text", "audio"],
+      "output": ["text", "audio"],
+      "capabilities": []
+    },
+    {
+      "id": "gpt-realtime-2",
+      "input": ["text", "audio"],
+      "output": ["text", "audio"],
+      "capabilities": []
+    },
+    {
+      "id": "gpt-realtime-2-1",
+      "input": ["text", "audio", "image"],
+      "output": ["text", "audio"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "gpt-realtime-mini",
+      "input": ["text", "audio"],
+      "output": ["text", "audio"],
+      "capabilities": []
+    },
+    {
+      "id": "gpt-realtime-whisper",
+      "input": ["audio"],
+      "output": ["text"],
+      "capabilities": []
+    },
+    {
+      "id": "grok-2",
+      "input": [],
+      "output": [],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "grok-2-vision",
+      "input": ["text", "image"],
+      "output": [],
+      "capabilities": ["function-call", "image-recognition"]
+    },
+    {
+      "id": "grok-3",
+      "input": [],
+      "output": [],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "grok-3-fast",
+      "input": [],
+      "output": [],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "grok-3-mini",
+      "input": [],
+      "output": [],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "grok-3-mini-fast",
+      "input": [],
+      "output": [],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "grok-4",
+      "input": [],
+      "output": [],
+      "capabilities": ["function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "grok-4-1",
+      "input": [],
+      "output": [],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "grok-4-1-fast",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "grok-4-1-fast-non-reasoning",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition"]
+    },
+    {
+      "id": "grok-4-20",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "grok-4-20-0309-non-reasoning",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition"]
+    },
+    {
+      "id": "grok-4-20-multi-agent",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "grok-4-20-multi-agent-beta",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "grok-4-20-non-reasoning",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition"]
+    },
+    {
+      "id": "grok-4-20-non-reasoning-beta",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition"]
+    },
+    {
+      "id": "grok-4-20-reasoning-beta",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "grok-4-3",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "grok-4-5",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "grok-4-6",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "grok-4-7",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "grok-4-fast",
+      "input": [],
+      "output": [],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "grok-beta",
+      "input": [],
+      "output": [],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "grok-build-0-1",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "grok-code-fast-1",
+      "input": [],
+      "output": [],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "grok-imagine-image",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["file-input", "image-generation", "image-recognition"]
+    },
+    {
+      "id": "grok-imagine-image-2-0",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["file-input", "image-generation", "image-recognition"]
+    },
+    {
+      "id": "grok-imagine-image-quality",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["file-input", "image-generation", "image-recognition"]
+    },
+    {
+      "id": "grok-imagine-video",
+      "input": ["text", "image", "video"],
+      "output": ["video"],
+      "capabilities": ["file-input", "image-recognition"]
+    },
+    {
+      "id": "grok-imagine-video-1-5",
+      "input": ["text", "image", "audio"],
+      "output": ["video"],
+      "capabilities": ["file-input", "image-recognition"]
+    },
+    {
+      "id": "grok-latest",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "grok-stt",
+      "input": ["audio"],
+      "output": ["text"],
+      "capabilities": []
+    },
+    {
+      "id": "grok-tts",
+      "input": ["text"],
+      "output": ["audio"],
+      "capabilities": []
+    },
+    {
+      "id": "grok-vision-beta",
+      "input": ["text", "image"],
+      "output": [],
+      "capabilities": ["image-recognition"]
+    },
+    {
+      "id": "grok-voice-think-fast-1-0",
+      "input": ["text", "audio"],
+      "output": ["text", "audio"],
+      "capabilities": []
+    },
+    {
+      "id": "grok-voice-think-fast-2-0",
+      "input": ["text", "audio"],
+      "output": ["text", "audio"],
+      "capabilities": []
+    },
+    {
+      "id": "hermes-3-llama-3-1-405b",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": []
+    },
+    {
+      "id": "hermes-4-405b",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["reasoning"]
+    },
+    {
+      "id": "hunyuan-2-0",
+      "input": [],
+      "output": [],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "hunyuan-2-0-instruct",
+      "input": [],
+      "output": [],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "hunyuan-a13b-instruct",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "hunyuan-t1",
+      "input": [],
+      "output": [],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "hunyuan-turbos",
+      "input": [],
+      "output": [],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "hy-image-lite",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "hy-image-v3-0",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "hy-mt2-1-8b",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": []
+    },
+    {
+      "id": "hy-mt2-30b-a3b",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": []
+    },
+    {
+      "id": "hy-mt2-7b",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": []
+    },
+    {
+      "id": "hy-mt2-lite",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": []
+    },
+    {
+      "id": "hy-mt2-plus",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": []
+    },
+    {
+      "id": "hy-mt2-pro",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": []
+    },
+    {
+      "id": "hy3",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "hy3-preview",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "hy4-preview",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "ideogram-v2",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "ideogram-v2a",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "ideogram-v2a-turbo",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "ideogram-v3",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "ideogram-v4",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "image-01",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "image-01-live",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "image-3-2",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "imagen-3",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["file-input", "function-call", "image-generation"]
+    },
+    {
+      "id": "imagen-3-fast",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["file-input", "function-call", "image-generation"]
+    },
+    {
+      "id": "imagen-4",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["file-input", "function-call", "image-generation"]
+    },
+    {
+      "id": "imagen-4-0",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "imagen-4-0-fast-generate-001",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "imagen-4-0-fast-generate-preview-06-06",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "imagen-4-0-generate-001",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "imagen-4-0-generate-preview-06-06",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "imagen-4-0-ultra",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "imagen-4-0-ultra-generate-001",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "imagen-4-0-ultra-generate-preview-06-06",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "imagen-4-fast",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["file-input", "function-call", "image-generation"]
+    },
+    {
+      "id": "imagen-4-ultra",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["file-input", "function-call", "image-generation"]
+    },
+    {
+      "id": "inkling",
+      "input": ["text", "image", "audio"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "inkling-small",
+      "input": ["text", "image", "audio"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "interfaze-beta",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["image-recognition", "reasoning"]
+    },
+    {
+      "id": "jina-clip-v1",
+      "input": ["text", "image"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "jina-clip-v2",
+      "input": ["text", "image"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "jina-code-embeddings-0-5b",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "jina-code-embeddings-1-5b",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "jina-colbert-v1-en",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding", "rerank"]
+    },
+    {
+      "id": "jina-colbert-v2",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding", "rerank"]
+    },
+    {
+      "id": "jina-embedding-b-en-v1",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "jina-embeddings-v2-base-code",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "jina-embeddings-v2-base-de",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "jina-embeddings-v2-base-en",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "jina-embeddings-v2-base-es",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "jina-embeddings-v2-base-zh",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "jina-embeddings-v3",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "jina-embeddings-v4",
+      "input": ["text", "image"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "jina-embeddings-v5-omni-nano",
+      "input": ["text", "image"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "jina-embeddings-v5-omni-small",
+      "input": ["text", "image"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "jina-embeddings-v5-text-nano",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "jina-embeddings-v5-text-small",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "jina-reranker-m0",
+      "input": ["text", "image"],
+      "output": [],
+      "capabilities": ["rerank"]
+    },
+    {
+      "id": "jina-reranker-v1-base-en",
+      "input": ["text"],
+      "output": [],
+      "capabilities": ["rerank"]
+    },
+    {
+      "id": "jina-reranker-v1-tiny-en",
+      "input": ["text"],
+      "output": [],
+      "capabilities": ["rerank"]
+    },
+    {
+      "id": "jina-reranker-v1-turbo-en",
+      "input": ["text"],
+      "output": [],
+      "capabilities": ["rerank"]
+    },
+    {
+      "id": "jina-reranker-v2-base-multilingual",
+      "input": ["text"],
+      "output": [],
+      "capabilities": ["rerank"]
+    },
+    {
+      "id": "jina-reranker-v3",
+      "input": ["text"],
+      "output": [],
+      "capabilities": ["rerank"]
+    },
+    {
+      "id": "kat-coder-air-v2-5",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "kat-coder-pro-v1",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["reasoning"]
+    },
+    {
+      "id": "kat-coder-pro-v2",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "kat-coder-pro-v2-5",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "kimi-k2",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "kimi-k2-5",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "kimi-k2-6",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "kimi-k2-7-code",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "kimi-k2-7-code-highspeed",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "kimi-k2-instruct",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "kimi-k2-thinking-maas",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "kimi-k3",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "kimi-k3-fast",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "kimi-latest",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "kling-v1",
+      "input": ["text", "image"],
+      "output": ["video"],
+      "capabilities": []
+    },
+    {
+      "id": "kling-v1-5",
+      "input": ["text", "image"],
+      "output": ["video"],
+      "capabilities": []
+    },
+    {
+      "id": "kling-v1-6",
+      "input": ["text", "image"],
+      "output": ["video"],
+      "capabilities": []
+    },
+    {
+      "id": "kling-v2-1",
+      "input": ["text", "image"],
+      "output": ["video"],
+      "capabilities": []
+    },
+    {
+      "id": "kling-v2-1-master",
+      "input": ["text", "image"],
+      "output": ["video"],
+      "capabilities": []
+    },
+    {
+      "id": "kling-v2-5-turbo",
+      "input": ["text", "image"],
+      "output": ["video"],
+      "capabilities": []
+    },
+    {
+      "id": "kling-v2-5-turbo-i2v",
+      "input": ["text"],
+      "output": ["video"],
+      "capabilities": []
+    },
+    {
+      "id": "kling-v2-5-turbo-t2v",
+      "input": ["text"],
+      "output": ["video"],
+      "capabilities": []
+    },
+    {
+      "id": "kling-v2-6",
+      "input": ["text", "image"],
+      "output": ["video"],
+      "capabilities": []
+    },
+    {
+      "id": "kling-v2-6-i2v",
+      "input": ["text"],
+      "output": ["video"],
+      "capabilities": []
+    },
+    {
+      "id": "kling-v2-6-motion-control",
+      "input": ["text"],
+      "output": ["video"],
+      "capabilities": []
+    },
+    {
+      "id": "kling-v2-6-t2v",
+      "input": ["text"],
+      "output": ["video"],
+      "capabilities": []
+    },
+    {
+      "id": "kling-v2-master",
+      "input": ["text", "image"],
+      "output": ["video"],
+      "capabilities": []
+    },
+    {
+      "id": "kling-v3-0-i2v",
+      "input": ["text"],
+      "output": ["video"],
+      "capabilities": []
+    },
+    {
+      "id": "kling-v3-0-motion-control",
+      "input": ["text"],
+      "output": ["video"],
+      "capabilities": []
+    },
+    {
+      "id": "kling-v3-0-t2v",
+      "input": ["text"],
+      "output": ["video"],
+      "capabilities": []
+    },
+    {
+      "id": "kolors",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "laguna-s-2-1",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "laguna-xs-2-1",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "lfm-2-5-2-6b",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "ling-1t",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "ling-3-0-flash",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "ling-3-0-flash-fin",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "ling-3-0-flash-sante",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "llama-3-1-70b",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "llama-3-1-70b-instruct",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "llama-3-1-8b",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "llama-3-1-8b-instruct",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "llama-3-1-nemotron-70b-instruct",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "llama-3-1-nemotron-nano-8b-v1",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "llama-3-1-nemotron-nano-vl-8b-v1",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "llama-3-1-nemotron-safety-guard-8b-v3",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": []
+    },
+    {
+      "id": "llama-3-1-nemotron-ultra-253b-v1",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "llama-3-2-11b-vision-instruct",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition"]
+    },
+    {
+      "id": "llama-3-2-1b-instruct",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "llama-3-2-3b-instruct",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": []
+    },
+    {
+      "id": "llama-3-2-90b-vision-instruct",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition"]
+    },
+    {
+      "id": "llama-3-2-nemoretriever-300m-embed-v1",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "llama-3-3-70b",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call"]
+    },
+    {
+      "id": "llama-3-3-70b-instruct",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "llama-3-3-70b-instruct-maas",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "llama-3-3-nemotron-super-49b-v1",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "llama-3-3-nemotron-super-49b-v1-5",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "llama-4-maverick",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition"]
+    },
+    {
+      "id": "llama-4-maverick-17b-128e-instruct",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition"]
+    },
+    {
+      "id": "llama-4-maverick-17b-128e-instruct-maas",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition"]
+    },
+    {
+      "id": "llama-4-scout",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition"]
+    },
+    {
+      "id": "llama-guard-4-12b",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "image-recognition"]
+    },
+    {
+      "id": "llama-nemotron-embed-vl-1b-v2",
+      "input": ["text", "image"],
+      "output": ["vector"],
+      "capabilities": ["embedding", "file-input", "image-recognition"]
+    },
+    {
+      "id": "llama-nemotron-rerank-vl-1b-v2",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "image-recognition", "rerank"]
+    },
+    {
+      "id": "llama3-1-70b-instruct",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "llama3-1-8b-instruct",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "llama3-3-70b-instruct",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "llama4-maverick-17b-instruct",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition"]
+    },
+    {
+      "id": "llama4-scout-17b-instruct",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition"]
+    },
+    {
+      "id": "longcat-2-0",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "lyria-3-clip-preview",
+      "input": ["text", "image"],
+      "output": ["text", "audio"],
+      "capabilities": ["file-input", "image-recognition"]
+    },
+    {
+      "id": "lyria-3-pro-preview",
+      "input": ["text", "image"],
+      "output": ["text", "audio"],
+      "capabilities": ["file-input", "image-recognition"]
+    },
+    {
+      "id": "magistral-medium-latest",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "magistral-small",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "magpie-tts-zeroshot",
+      "input": ["text", "audio"],
+      "output": ["audio"],
+      "capabilities": ["file-input"]
+    },
+    {
+      "id": "mai-image-2-5",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation", "image-recognition"]
+    },
+    {
+      "id": "mai-image-2-5-pro",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation", "image-recognition"]
+    },
+    {
+      "id": "mai-image-2-6",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation", "image-recognition"]
+    },
+    {
+      "id": "mai-image-2-6-flash",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation", "image-recognition"]
+    },
+    {
+      "id": "mercury-2",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "mercury-2-5",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "mercury-coder-small",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "mercury-edit-2",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["reasoning"]
+    },
+    {
+      "id": "mimo-v2-5",
+      "input": ["text", "image", "audio", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "mimo-v2-5-pro",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "reasoning"]
+    },
+    {
+      "id": "mimo-v2-5-pro-ultraspeed",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "mimo-v2-6-flash",
+      "input": ["text", "image", "audio", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "mimo-v2-6-pro",
+      "input": ["text", "image", "audio", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "mimo-v2-6-pro-ultraspeed",
+      "input": ["text", "image", "audio", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "mimo-v2-flash",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "mimo-v2-omni",
+      "input": ["text", "image", "audio", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "mimo-v2-pro",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "minimax-01",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["image-recognition"]
+    },
+    {
+      "id": "minimax-h3",
+      "input": ["text", "image"],
+      "output": ["video"],
+      "capabilities": ["file-input", "image-recognition"]
+    },
+    {
+      "id": "minimax-h3-max",
+      "input": ["text", "image"],
+      "output": ["video"],
+      "capabilities": ["file-input", "image-recognition"]
+    },
+    {
+      "id": "minimax-m1",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "minimax-m2",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "minimax-m2-1",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "minimax-m2-1-lightning",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "minimax-m2-5",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "minimax-m2-5-highspeed",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "minimax-m2-7",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "reasoning"]
+    },
+    {
+      "id": "minimax-m2-7-highspeed",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "reasoning"]
+    },
+    {
+      "id": "minimax-m2-her",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": []
+    },
+    {
+      "id": "minimax-m3",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "ministral-14b",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition"]
+    },
+    {
+      "id": "ministral-14b-instruct",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition"]
+    },
+    {
+      "id": "ministral-3-14b-instruct",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "ministral-3-3b-instruct",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition"]
+    },
+    {
+      "id": "ministral-3-8b-instruct",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "ministral-3b",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition"]
+    },
+    {
+      "id": "ministral-3b-latest",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "ministral-8b",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition"]
+    },
+    {
+      "id": "ministral-8b-latest",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "mistral-7b-instruct-v0-3",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "mistral-embed",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "mistral-large",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition"]
+    },
+    {
+      "id": "mistral-large-3",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "image-recognition"]
+    },
+    {
+      "id": "mistral-large-3-675b-instruct",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition"]
+    },
+    {
+      "id": "mistral-large-latest",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition"]
+    },
+    {
+      "id": "mistral-medium",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "mistral-medium-3",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition"]
+    },
+    {
+      "id": "mistral-medium-3-1",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition"]
+    },
+    {
+      "id": "mistral-medium-3-5",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "mistral-medium-3-5-128b",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "mistral-medium-3-instruct",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "image-recognition"]
+    },
+    {
+      "id": "mistral-medium-latest",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "mistral-nemo",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition"]
+    },
+    {
+      "id": "mistral-nemotron",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "mistral-saba",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call"]
+    },
+    {
+      "id": "mistral-small",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "mistral-small-24b-instruct",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": []
+    },
+    {
+      "id": "mistral-small-3-1-24b-instruct",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["image-recognition"]
+    },
+    {
+      "id": "mistral-small-3-2-24b-instruct",
+      "input": ["image", "text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition"]
+    },
+    {
+      "id": "mistral-small-4-119b",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "mistral-small-latest",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "mixtral-8x22b-instruct",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call"]
+    },
+    {
+      "id": "mixtral-8x7b-instruct",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "morph-v3-fast",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": []
+    },
+    {
+      "id": "morph-v3-large",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": []
+    },
+    {
+      "id": "muse-glimmer-30b",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "muse-image-1-0",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["file-input", "image-generation", "image-recognition"]
+    },
+    {
+      "id": "muse-spark-1-1",
+      "input": ["text", "image", "video", "audio"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "muse-spark-1-2",
+      "input": ["text", "image", "video", "audio"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "muse-spark-1-2-contributor",
+      "input": ["text", "image", "video", "audio"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "muse-spark-1-3",
+      "input": ["text", "image", "video", "audio"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "muse-spark-1-3-contributor",
+      "input": ["text", "image", "video", "audio"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "namazu",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "nemotron-3-5-content-safety",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["image-recognition", "reasoning"]
+    },
+    {
+      "id": "nemotron-3-5-lightning",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "nemotron-3-5-lightning-30b-a3b",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "nemotron-3-content-safety",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": []
+    },
+    {
+      "id": "nemotron-3-nano-30b-a3b",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "nemotron-3-nano-omni-30b-a3b",
+      "input": ["text", "image", "video", "audio"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "nemotron-3-super-120b-a12b",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "nemotron-3-ultra-550b-a55b",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "nemotron-content-safety-reasoning-4b",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["reasoning"]
+    },
+    {
+      "id": "nemotron-mini-4b-instruct",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "nemotron-nano-12b-v2",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition"]
+    },
+    {
+      "id": "nemotron-nano-12b-v2-vl",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "nemotron-nano-3-30b",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "nemotron-nano-9b-v2",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "nemotron-super-3-120b",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "nemotron-voicechat",
+      "input": ["text", "audio"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call"]
+    },
+    {
+      "id": "north-mini-code",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "north-mini-code-1-0",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "nova-2-lite",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "nova-2-lite-v1",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "nova-lite",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition"]
+    },
+    {
+      "id": "nova-lite-v1",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition"]
+    },
+    {
+      "id": "nova-micro",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "nova-micro-v1",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "nova-premier-v1",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition"]
+    },
+    {
+      "id": "nova-pro",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition"]
+    },
+    {
+      "id": "nova-pro-v1",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition"]
+    },
+    {
+      "id": "nv-embed-v1",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "nv-embedcode-7b-v1",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "o1",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "o1-pro",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "o3",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "o3-mini",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "reasoning"]
+    },
+    {
+      "id": "o3-pro",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "o4-mini",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "open-mistral-7b",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "open-mixtral-8x22b",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "open-mixtral-8x7b",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "paligemma",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "image-recognition"]
+    },
+    {
+      "id": "palmyra-x4",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "palmyra-x5",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "phi-4",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": []
+    },
+    {
+      "id": "phi-4-mini-instruct",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "phi-4-multimodal-instruct",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": []
+    },
+    {
+      "id": "photon",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "photon-flash",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "pixtral-12b",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition"]
+    },
+    {
+      "id": "pixtral-large",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition"]
+    },
+    {
+      "id": "pixtral-large-latest",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition"]
+    },
+    {
+      "id": "pplx-embed-v1-0-6b",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "pplx-embed-v1-4b",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "qvq-max",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "qwen-2-5-72b-instruct",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "qwen-2-5-7b-instruct",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "qwen-2-5-coder-32b-instruct",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": []
+    },
+    {
+      "id": "qwen-3-14b",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "qwen-3-235b",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "qwen-3-30b",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "qwen-3-32b",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "qwen-3-6-max-preview",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "reasoning"]
+    },
+    {
+      "id": "qwen-deep-research",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "qwen-doc-turbo",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "qwen-flash",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "qwen-image",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "qwen-image-3",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation", "image-recognition"]
+    },
+    {
+      "id": "qwen-image-3-0",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation", "image-recognition"]
+    },
+    {
+      "id": "qwen-image-3-0-pro",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation", "image-recognition"]
+    },
+    {
+      "id": "qwen-image-3-pro",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation", "image-recognition"]
+    },
+    {
+      "id": "qwen-image-edit",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["file-input", "image-generation", "image-recognition"]
+    },
+    {
+      "id": "qwen-long",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "qwen-math-plus",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "qwen-math-turbo",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "qwen-max",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "qwen-mt-plus",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": []
+    },
+    {
+      "id": "qwen-mt-turbo",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": []
+    },
+    {
+      "id": "qwen-omni-turbo",
+      "input": ["text", "image", "audio", "video"],
+      "output": ["text", "audio"],
+      "capabilities": ["function-call", "image-recognition"]
+    },
+    {
+      "id": "qwen-omni-turbo-realtime",
+      "input": ["text", "image", "audio"],
+      "output": ["text", "audio"],
+      "capabilities": ["function-call", "image-recognition"]
+    },
+    {
+      "id": "qwen-plus",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "qwen-plus-character",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "qwen-plus-character-ja",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "qwen-turbo",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "qwen-vl-max",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition"]
+    },
+    {
+      "id": "qwen-vl-ocr",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["image-recognition"]
+    },
+    {
+      "id": "qwen-vl-plus",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition"]
+    },
+    {
+      "id": "qwen2-5-14b-instruct",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "qwen2-5-32b-instruct",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "qwen2-5-72b-instruct",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "qwen2-5-7b-instruct",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "qwen2-5-coder-32b-instruct",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "qwen2-5-coder-7b-instruct",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "qwen2-5-math-72b-instruct",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "qwen2-5-math-7b-instruct",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "qwen2-5-omni-7b",
+      "input": ["text", "image", "audio", "video"],
+      "output": ["text", "audio"],
+      "capabilities": ["function-call", "image-recognition"]
+    },
+    {
+      "id": "qwen2-5-vl-72b-instruct",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition"]
+    },
+    {
+      "id": "qwen2-5-vl-7b-instruct",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition"]
+    },
+    {
+      "id": "qwen3-14b",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "qwen3-235b-a22b",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "qwen3-235b-a22b-instruct-2507-maas",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "qwen3-30b-a3b",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "qwen3-30b-a3b-instruct",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "qwen3-32b",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "qwen3-5-122b-a10b",
+      "input": ["text", "image", "video", "audio"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "qwen3-5-27b",
+      "input": ["text", "image", "video", "audio"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "qwen3-5-35b-a3b",
+      "input": ["text", "image", "video", "audio"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "qwen3-5-397b-a17b",
+      "input": ["text", "image", "video", "audio"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "qwen3-5-4b",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "qwen3-5-9b",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "qwen3-5-flash",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "qwen3-5-flash-02-23",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "qwen3-5-plus",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "qwen3-5-plus-02-15",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "qwen3-6-27b",
+      "input": ["text", "image", "video", "audio"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "qwen3-6-35b-a3b",
+      "input": ["text", "image", "video", "audio"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "qwen3-6-flash",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "qwen3-6-max-preview",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "qwen3-6-plus",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "qwen3-7-flash",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "qwen3-7-max",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "reasoning"]
+    },
+    {
+      "id": "qwen3-7-plus",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "qwen3-8-2-4t-a95b",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "qwen3-8-27b",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "qwen3-8-flash",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "qwen3-8-flash-next",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "qwen3-8-max",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "qwen3-8-max-preview",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "qwen3-8b",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "qwen3-asr-flash",
+      "input": ["audio"],
+      "output": ["text"],
+      "capabilities": []
+    },
+    {
+      "id": "qwen3-coder",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "qwen3-coder-30b-a3b",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "qwen3-coder-30b-a3b-instruct",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "qwen3-coder-480b-a35b",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "qwen3-coder-480b-a35b-instruct",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "qwen3-coder-flash",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "qwen3-coder-next",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "qwen3-coder-plus",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "qwen3-embedding-0-6b",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "qwen3-embedding-4b",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "qwen3-embedding-8b",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "qwen3-livetranslate-flash-realtime",
+      "input": ["text", "image", "audio", "video"],
+      "output": ["text", "audio"],
+      "capabilities": ["image-recognition"]
+    },
+    {
+      "id": "qwen3-max",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "qwen3-max-preview",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "qwen3-next-80b-a3b",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "qwen3-next-80b-a3b-instruct",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "qwen3-omni-flash",
+      "input": ["text", "image", "audio", "video"],
+      "output": ["text", "audio"],
+      "capabilities": ["function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "qwen3-omni-flash-realtime",
+      "input": ["text", "image", "audio", "video"],
+      "output": ["text", "audio"],
+      "capabilities": ["function-call", "image-recognition"]
+    },
+    {
+      "id": "qwen3-reranker-0-6b",
+      "input": ["text"],
+      "output": [],
+      "capabilities": ["rerank"]
+    },
+    {
+      "id": "qwen3-reranker-4b",
+      "input": ["text"],
+      "output": [],
+      "capabilities": ["rerank"]
+    },
+    {
+      "id": "qwen3-reranker-8b",
+      "input": ["text"],
+      "output": [],
+      "capabilities": ["rerank"]
+    },
+    {
+      "id": "qwen3-vl",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "qwen3-vl-235b-a22b",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "qwen3-vl-235b-a22b-instruct",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition"]
+    },
+    {
+      "id": "qwen3-vl-30b-a3b",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "qwen3-vl-30b-a3b-instruct",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition"]
+    },
+    {
+      "id": "qwen3-vl-32b-instruct",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition"]
+    },
+    {
+      "id": "qwen3-vl-8b",
+      "input": ["image", "text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "qwen3-vl-8b-instruct",
+      "input": ["image", "text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition"]
+    },
+    {
+      "id": "qwen3-vl-instruct",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition"]
+    },
+    {
+      "id": "qwen3-vl-plus",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "qwq-32b",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "qwq-plus",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "recraft-v2",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "recraft-v3",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation", "image-recognition"]
+    },
+    {
+      "id": "recraft-v4",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation", "image-recognition"]
+    },
+    {
+      "id": "recraft-v4-1",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation", "image-recognition"]
+    },
+    {
+      "id": "recraft-v4-1-pro",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation", "image-recognition"]
+    },
+    {
+      "id": "recraft-v4-1-pro-vector",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation", "image-recognition"]
+    },
+    {
+      "id": "recraft-v4-1-utility",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation", "image-recognition"]
+    },
+    {
+      "id": "recraft-v4-1-utility-pro",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation", "image-recognition"]
+    },
+    {
+      "id": "recraft-v4-1-vector",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation", "image-recognition"]
+    },
+    {
+      "id": "recraft-v4-pro",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation", "image-recognition"]
+    },
+    {
+      "id": "recraft-v4-pro-vector",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation", "image-recognition"]
+    },
+    {
+      "id": "recraft-v4-styles",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation", "image-recognition"]
+    },
+    {
+      "id": "recraft-v4-styles-pro",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation", "image-recognition"]
+    },
+    {
+      "id": "recraft-v4-styles-pro-vector",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation", "image-recognition"]
+    },
+    {
+      "id": "recraft-v4-styles-vector",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation", "image-recognition"]
+    },
+    {
+      "id": "recraft-v4-vector",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation", "image-recognition"]
+    },
+    {
+      "id": "reka-edge",
+      "input": ["image", "text", "video"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition"]
+    },
+    {
+      "id": "reka-flash-3",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["reasoning"]
+    },
+    {
+      "id": "rerank-1",
+      "input": ["text"],
+      "output": [],
+      "capabilities": ["rerank"]
+    },
+    {
+      "id": "rerank-2",
+      "input": ["text"],
+      "output": [],
+      "capabilities": ["rerank"]
+    },
+    {
+      "id": "rerank-2-5",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["rerank"]
+    },
+    {
+      "id": "rerank-2-5-lite",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["rerank"]
+    },
+    {
+      "id": "rerank-2-lite",
+      "input": ["text"],
+      "output": [],
+      "capabilities": ["rerank"]
+    },
+    {
+      "id": "rerank-english-v3-0",
+      "input": ["text"],
+      "output": [],
+      "capabilities": ["rerank"]
+    },
+    {
+      "id": "rerank-lite-1",
+      "input": ["text"],
+      "output": [],
+      "capabilities": ["rerank"]
+    },
+    {
+      "id": "rerank-multilingual-v3-0",
+      "input": ["text"],
+      "output": [],
+      "capabilities": ["rerank"]
+    },
+    {
+      "id": "rerank-qa-mistral-4b",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["rerank"]
+    },
+    {
+      "id": "rerank-v3-5",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["rerank"]
+    },
+    {
+      "id": "rerank-v4-fast",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["rerank"]
+    },
+    {
+      "id": "rerank-v4-pro",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["rerank"]
+    },
+    {
+      "id": "ring-1t",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["reasoning"]
+    },
+    {
+      "id": "riva-translate-4b-instruct-v1-1",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": []
+    },
+    {
+      "id": "riverflow-v2-5-fast",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation", "image-recognition"]
+    },
+    {
+      "id": "riverflow-v2-5-pro",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation", "image-recognition"]
+    },
+    {
+      "id": "riverflow-v2-fast",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation", "image-recognition"]
+    },
+    {
+      "id": "riverflow-v2-pro",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation", "image-recognition"]
+    },
+    {
+      "id": "runway-aleph",
+      "input": ["text", "image"],
+      "output": ["video"],
+      "capabilities": []
+    },
+    {
+      "id": "runway-gen-3a-turbo",
+      "input": ["text", "image"],
+      "output": ["video"],
+      "capabilities": []
+    },
+    {
+      "id": "runway-gen-4-turbo",
+      "input": ["text", "image"],
+      "output": ["video"],
+      "capabilities": []
+    },
+    {
+      "id": "s1",
+      "input": ["text"],
+      "output": ["audio"],
+      "capabilities": []
+    },
+    {
+      "id": "s2-1-pro",
+      "input": ["text"],
+      "output": ["audio"],
+      "capabilities": []
+    },
+    {
+      "id": "s2-pro",
+      "input": ["text"],
+      "output": ["audio"],
+      "capabilities": []
+    },
+    {
+      "id": "sarvam-m",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "seed-1-6",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "seed-1-8",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "seed-oss-36b-instruct",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "seedance-2-0",
+      "input": ["text", "image"],
+      "output": ["video"],
+      "capabilities": ["file-input", "image-recognition"]
+    },
+    {
+      "id": "seedance-2-0-fast",
+      "input": ["text", "image"],
+      "output": ["video"],
+      "capabilities": ["file-input", "image-recognition"]
+    },
+    {
+      "id": "seedance-2-0-mini",
+      "input": ["text", "image"],
+      "output": ["video"],
+      "capabilities": ["file-input", "image-recognition"]
+    },
+    {
+      "id": "seedance-2-5",
+      "input": ["text"],
+      "output": ["video"],
+      "capabilities": []
+    },
+    {
+      "id": "seedance-v1-0-pro",
+      "input": ["text"],
+      "output": ["video"],
+      "capabilities": []
+    },
+    {
+      "id": "seedance-v1-0-pro-fast",
+      "input": ["text"],
+      "output": ["video"],
+      "capabilities": []
+    },
+    {
+      "id": "seedance-v1-5-pro",
+      "input": ["text"],
+      "output": ["video"],
+      "capabilities": []
+    },
+    {
+      "id": "seedream-4-0",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "seedream-4-5",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation", "image-recognition"]
+    },
+    {
+      "id": "seedream-5-0-lite",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation", "image-recognition"]
+    },
+    {
+      "id": "seedream-5-0-pro",
+      "input": ["text", "image"],
+      "output": ["image"],
+      "capabilities": ["image-generation", "image-recognition"]
+    },
+    {
+      "id": "solar-10-7b-instruct",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "solar-mini",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "solar-pro-3",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "solar-pro2",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "solar-pro3",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "solar-pro4",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "sonar",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition"]
+    },
+    {
+      "id": "sonar-deep-research",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["reasoning"]
+    },
+    {
+      "id": "sonar-pro",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "sonar-reasoning-pro",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["file-input", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "sparsedrive",
+      "input": ["video"],
+      "output": ["text"],
+      "capabilities": ["file-input"]
+    },
+    {
+      "id": "stable-diffusion-3",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "stable-diffusion-3-5-large",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "stable-diffusion-3-5-large-turbo",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "stable-diffusion-v1-4",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "stable-diffusion-v1-5",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "stable-diffusion-xl-base-1-0",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "step-1-32k",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "step-2-16k",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "step-3-5-flash",
+      "input": ["text", "image"],
+      "output": ["text"],
+      "capabilities": ["function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "step-3-7-flash",
+      "input": ["text", "image", "video"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call", "image-recognition", "reasoning"]
+    },
+    {
+      "id": "step-tts-2",
+      "input": ["text"],
+      "output": ["audio"],
+      "capabilities": []
+    },
+    {
+      "id": "stepaudio-2-5-asr",
+      "input": ["audio"],
+      "output": ["text"],
+      "capabilities": []
+    },
+    {
+      "id": "stepaudio-2-5-tts",
+      "input": ["text"],
+      "output": ["audio"],
+      "capabilities": []
+    },
+    {
+      "id": "streampetr",
+      "input": ["video"],
+      "output": ["text"],
+      "capabilities": ["file-input"]
+    },
+    {
+      "id": "studiovoice",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": []
+    },
+    {
+      "id": "suno-v3",
+      "input": ["text"],
+      "output": ["audio"],
+      "capabilities": []
+    },
+    {
+      "id": "suno-v3-5",
+      "input": ["text"],
+      "output": ["audio"],
+      "capabilities": []
+    },
+    {
+      "id": "suno-v4",
+      "input": ["text"],
+      "output": ["audio"],
+      "capabilities": []
+    },
+    {
+      "id": "suno-v4-5",
+      "input": ["text"],
+      "output": ["audio"],
+      "capabilities": []
+    },
+    {
+      "id": "synthetic-video-detector",
+      "input": ["video"],
+      "output": ["text"],
+      "capabilities": ["file-input"]
+    },
+    {
+      "id": "tc-code",
+      "input": [],
+      "output": [],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "text-embedding-005",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "text-embedding-3-large",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "text-embedding-3-small",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "text-embedding-ada-002",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "text-multilingual-embedding-002",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "tiny-aya-earth",
+      "input": [],
+      "output": [],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "tiny-aya-fire",
+      "input": [],
+      "output": [],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "tiny-aya-global",
+      "input": [],
+      "output": [],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "tiny-aya-water",
+      "input": [],
+      "output": [],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "titan-embed-text-v2",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "tongyi-intent-detect-v3",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": []
+    },
+    {
+      "id": "transcribe-1",
+      "input": ["audio"],
+      "output": ["text"],
+      "capabilities": []
+    },
+    {
+      "id": "trinity-large",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": ["function-call", "reasoning"]
+    },
+    {
+      "id": "tts-1",
+      "input": ["text"],
+      "output": ["audio"],
+      "capabilities": []
+    },
+    {
+      "id": "tts-1-hd",
+      "input": ["text"],
+      "output": ["audio"],
+      "capabilities": []
+    },
+    {
+      "id": "usdcode",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": []
+    },
+    {
+      "id": "usdvalidate",
+      "input": ["text"],
+      "output": ["text"],
+      "capabilities": []
+    },
+    {
+      "id": "veo-3-0-fast-generate-001",
+      "input": ["text"],
+      "output": ["video"],
+      "capabilities": []
+    },
+    {
+      "id": "veo-3-0-generate-001",
+      "input": ["text"],
+      "output": ["video"],
+      "capabilities": []
+    },
+    {
+      "id": "veo-3-1-fast-generate-001",
+      "input": ["text"],
+      "output": ["video"],
+      "capabilities": []
+    },
+    {
+      "id": "veo-3-1-fast-generate-preview",
+      "input": ["text", "image", "video"],
+      "output": ["video"],
+      "capabilities": ["file-input", "image-recognition"]
+    },
+    {
+      "id": "veo-3-1-generate-001",
+      "input": ["text"],
+      "output": ["video"],
+      "capabilities": []
+    },
+    {
+      "id": "veo-3-1-generate-preview",
+      "input": ["text", "image"],
+      "output": ["video"],
+      "capabilities": ["file-input", "image-recognition"]
+    },
+    {
+      "id": "veo-3-1-lite-generate-001",
+      "input": ["text"],
+      "output": ["video"],
+      "capabilities": []
+    },
+    {
+      "id": "veo-3-1-lite-generate-preview",
+      "input": ["text", "image"],
+      "output": ["video"],
+      "capabilities": ["file-input", "image-recognition"]
+    },
+    {
+      "id": "viduq1",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "viduq2",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "viduq3-pro",
+      "input": ["text", "image"],
+      "output": ["video"],
+      "capabilities": []
+    },
+    {
+      "id": "viduq3-pro-fast",
+      "input": ["text", "image"],
+      "output": ["video"],
+      "capabilities": []
+    },
+    {
+      "id": "viduq3-turbo",
+      "input": ["text", "image"],
+      "output": ["video"],
+      "capabilities": []
+    },
+    {
+      "id": "voxtral-mini-3b",
+      "input": ["audio", "text"],
+      "output": ["text"],
+      "capabilities": ["function-call"]
+    },
+    {
+      "id": "voxtral-mini-latest",
+      "input": ["audio"],
+      "output": ["text"],
+      "capabilities": []
+    },
+    {
+      "id": "voxtral-mini-tts-latest",
+      "input": ["text"],
+      "output": ["audio"],
+      "capabilities": []
+    },
+    {
+      "id": "voxtral-small-24b",
+      "input": ["text", "audio"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call"]
+    },
+    {
+      "id": "voxtral-small-latest",
+      "input": ["text", "audio"],
+      "output": ["text"],
+      "capabilities": ["file-input", "function-call"]
+    },
+    {
+      "id": "voyage-2",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "voyage-3",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "voyage-3-5",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "voyage-3-5-lite",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "voyage-3-large",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "voyage-3-lite",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "voyage-4",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "voyage-4-large",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "voyage-4-lite",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "voyage-4-nano",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "voyage-code-2",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "voyage-code-3",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "voyage-finance-2",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "voyage-large-2",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "voyage-large-2-instruct",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "voyage-law-2",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "voyage-multilingual-2",
+      "input": ["text"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "voyage-multimodal-3",
+      "input": ["text", "image"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "voyage-multimodal-3-5",
+      "input": ["text", "image", "video"],
+      "output": ["vector"],
+      "capabilities": ["embedding"]
+    },
+    {
+      "id": "wan-v2-5-t2v-preview",
+      "input": ["text"],
+      "output": ["video"],
+      "capabilities": []
+    },
+    {
+      "id": "wan-v2-6-i2v",
+      "input": ["text"],
+      "output": ["video"],
+      "capabilities": []
+    },
+    {
+      "id": "wan-v2-6-i2v-flash",
+      "input": ["text"],
+      "output": ["video"],
+      "capabilities": []
+    },
+    {
+      "id": "wan-v2-6-r2v",
+      "input": ["text"],
+      "output": ["video"],
+      "capabilities": []
+    },
+    {
+      "id": "wan-v2-6-r2v-flash",
+      "input": ["text"],
+      "output": ["video"],
+      "capabilities": []
+    },
+    {
+      "id": "wan-v2-6-t2v",
+      "input": ["text"],
+      "output": ["video"],
+      "capabilities": []
+    },
+    {
+      "id": "wan-v2-7-r2v",
+      "input": ["text"],
+      "output": ["video"],
+      "capabilities": []
+    },
+    {
+      "id": "wan-v2-7-t2v",
+      "input": ["text"],
+      "output": ["video"],
+      "capabilities": []
+    },
+    {
+      "id": "wan-v3-0-video",
+      "input": ["text", "image"],
+      "output": ["video"],
+      "capabilities": ["file-input", "image-recognition"]
+    },
+    {
+      "id": "wan-v3-0-video-prime",
+      "input": ["text", "image"],
+      "output": ["video"],
+      "capabilities": ["file-input", "image-recognition"]
+    },
+    {
+      "id": "wan2-6-image",
+      "input": ["text", "image"],
+      "output": [],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "wan2-6-t2i",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "wan2-7-image",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "wan2-7-image-pro",
+      "input": ["text"],
+      "output": ["image"],
+      "capabilities": ["image-generation"]
+    },
+    {
+      "id": "whisper-1",
+      "input": ["audio"],
+      "output": ["text"],
+      "capabilities": []
+    },
+    {
+      "id": "whisper-large-v3",
+      "input": ["audio"],
+      "output": ["text"],
+      "capabilities": []
+    }
+  ]
+}

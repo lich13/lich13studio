@@ -2647,6 +2647,7 @@
       "function_calling": "Instrument",
       "reasoning": "Raționament",
       "rerank": "Reranker",
+      "restore_auto": "Restabilește detectarea automată",
       "select": "Tipuri de modele",
       "text": "Text",
       "vision": "Vizual"

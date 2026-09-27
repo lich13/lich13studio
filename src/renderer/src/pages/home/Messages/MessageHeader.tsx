@@ -33,9 +33,9 @@ interface Props {
   isGroupContextMessage?: boolean
 }
 
-const getAvatarSource = (isLocalAi: boolean, modelId: string | undefined) => {
+const getAvatarSource = (isLocalAi: boolean, modelId: string | undefined, theme: 'light' | 'dark' | 'system') => {
   if (isLocalAi) return AppLogo
-  return modelId ? getModelLogoById(modelId) : undefined
+  return modelId ? getModelLogoById(modelId, theme) : undefined
 }
 
 const MessageHeader: FC<Props> = memo(({ assistant, model, message, topic, isGroupContextMessage }) => {
@@ -54,7 +54,7 @@ const MessageHeader: FC<Props> = memo(({ assistant, model, message, topic, isGro
 
   const isSelected = selectedMessageIds?.includes(message.id)
 
-  const avatarSource = useMemo(() => getAvatarSource(isLocalAi, getMessageModelId(message)), [message])
+  const avatarSource = useMemo(() => getAvatarSource(isLocalAi, getMessageModelId(message), theme), [message, theme])
 
   const getUserName = useCallback(() => {
     if (isLocalAi && message.role !== 'user') {

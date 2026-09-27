@@ -20,6 +20,8 @@ vi.mock('@renderer/store', () => ({
   useAppDispatch: () => vi.fn()
 }))
 vi.mock('@renderer/store/llm', () => ({ setModelTestSelection: vi.fn() }))
+vi.mock('@renderer/components/Avatar/ModelAvatar', () => ({ default: () => null }))
+vi.mock('@renderer/components/ModelTagsWithLabel', () => ({ default: () => null }))
 vi.mock('@renderer/config/models', () => ({ isEmbeddingModel: () => false, isRerankModel: () => false }))
 vi.mock('@renderer/context/ThemeProvider', () => ({ useTheme: () => ({ theme: 'dark' }) }))
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))

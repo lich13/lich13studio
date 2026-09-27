@@ -85,6 +85,7 @@ export function buildPlugins({ provider, model, config }: BuildPluginsContext): 
   // 0.5 Qwen thinking control for providers without enable_thinking support
   if (
     config.reasoningMode !== 'disabled' &&
+    config.enableReasoning &&
     !isOllamaProvider(provider) &&
     isSupportedThinkingTokenQwenModel(model) &&
     !isQwen35to39Model(model) &&
