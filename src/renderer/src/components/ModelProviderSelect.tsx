@@ -88,6 +88,8 @@ export default function ModelProviderSelect({
           title={selection.modelId}
           showSearch
           optionFilterProp="label"
+          popupMatchSelectWidth={420}
+          styles={{ popup: { root: { maxWidth: 'calc(100vw - 24px)' } } }}
           size={compact ? 'small' : 'middle'}
           options={models}
           optionRender={(option) => {
@@ -145,7 +147,7 @@ const ModelOption = styled.div`
   align-items: center;
   gap: 8px;
   min-width: 0;
-  .model-name { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+  .model-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 `
 
 const Controls = styled.div<{ $compact: boolean; $inline: boolean }>`
