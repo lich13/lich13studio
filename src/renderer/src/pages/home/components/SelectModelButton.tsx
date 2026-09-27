@@ -1,94 +1,22 @@
-import ModelAvatar from '@renderer/components/Avatar/ModelAvatar'
-import { SelectChatModelPopup } from '@renderer/components/Popups/SelectModelPopup'
+import ModelProviderSelect from '@renderer/components/ModelProviderSelect'
 import { isLocalAi } from '@renderer/config/env'
-import { isEmbeddingModel, isRerankModel } from '@renderer/config/models'
 import { useAssistant } from '@renderer/hooks/useAssistant'
-import { useAllProviders, useProvider } from '@renderer/hooks/useProvider'
-import { getProviderName } from '@renderer/services/ProviderService'
-import type { Assistant, Model } from '@renderer/types'
-import { Button, Tag } from 'antd'
-import { ChevronsUpDown } from 'lucide-react'
-import type { FC } from 'react'
-import { useEffect, useRef } from 'react'
-import { useTranslation } from 'react-i18next'
-import styled from 'styled-components'
+import { useAppSelector } from '@renderer/store'
+import type { Assistant } from '@renderer/types'
+import { assistantModelSelection, selectionModelReference } from '@shared/modelProviderSelection'
 
-interface Props {
-  assistant: Assistant
-}
-
-const SelectModelButton: FC<Props> = ({ assistant }) => {
-  const { model, updateAssistant } = useAssistant(assistant.id)
-  const { t } = useTranslation()
-  const timerRef = useRef<NodeJS.Timeout>(undefined)
-  const provider = useProvider(model?.provider)
-  const providers = useAllProviders()
-
-  const modelFilter = (model: Model) => !isEmbeddingModel(model) && !isRerankModel(model)
-
-  const onSelectModel = async (event: React.MouseEvent<HTMLElement>) => {
-    event.currentTarget.blur()
-    if (!providers.some((provider) => provider.enabled && provider.models.length > 0)) {
-      window.navigate('/settings/provider')
-      return
-    }
-    const selectedModel = await SelectChatModelPopup.show({ model, filter: modelFilter })
-    if (selectedModel) {
-      // 避免更新数据造成关闭弹框的卡顿
-      clearTimeout(timerRef.current)
-      timerRef.current = setTimeout(() => {
-        updateAssistant({ model: selectedModel })
-      }, 200)
-    }
-  }
-
-  useEffect(() => {
-    return () => {
-      clearTimeout(timerRef.current)
-    }
-  }, [])
-
-  if (isLocalAi) {
-    return null
-  }
-
-  const providerName = getProviderName(model)
-
+export default function SelectModelButton({ assistant }: { assistant: Assistant }) {
+  const { updateAssistant } = useAssistant(assistant.id)
+  const llm = useAppSelector((state) => state.llm)
+  if (isLocalAi) return null
   return (
-    <DropdownButton size="small" type="text" onClick={onSelectModel}>
-      <ButtonContent>
-        <ModelAvatar model={model} size={20} />
-        <ModelName>
-          {model?.id ? model.name : t('button.select_model')} {providerName ? ' | ' + providerName : ''}
-        </ModelName>
-      </ButtonContent>
-      <ChevronsUpDown size={14} color="var(--color-icon)" />
-      {model?.id && !provider && <Tag color="error">{t('models.invalid_model')}</Tag>}
-    </DropdownButton>
+    <ModelProviderSelect
+      compact
+      showEffort
+      selection={assistantModelSelection(assistant, llm)}
+      onChange={(modelSelection) => {
+        updateAssistant({ modelSelection, model: selectionModelReference(modelSelection, llm) })
+      }}
+    />
   )
 }
-
-const DropdownButton = styled(Button)`
-  font-size: 11px;
-  border-radius: 15px;
-  padding: 13px 5px;
-  -webkit-app-region: none;
-  box-shadow: none;
-  background-color: transparent;
-  border: 1px solid transparent;
-  margin-top: 1px;
-`
-
-const ButtonContent = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 6px;
-`
-
-const ModelName = styled.span`
-  font-weight: 500;
-  margin-right: -2px;
-  font-size: 12px;
-`
-
-export default SelectModelButton

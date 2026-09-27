@@ -13,7 +13,7 @@ export interface OutputValidation {
 }
 
 /** Only explicit thought tags are removed. Untagged prose is never guessed away. */
-export function isolateAnswer(text: string, complete = true): { text: string; malformed: boolean } {
+export function isolateAnswer(text: string, complete = true, trim = true): { text: string; malformed: boolean } {
   const tags = /<\s*(\/?)\s*(think|thinking|reasoning|analysis|seed:think)\s*>/gi
   const stack: string[] = []
   let answer = ''
@@ -38,7 +38,7 @@ export function isolateAnswer(text: string, complete = true): { text: string; ma
     const pendingTag = answer.lastIndexOf('<')
     if (pendingTag >= 0 && !answer.slice(pendingTag).includes('>')) answer = answer.slice(0, pendingTag)
   }
-  return { text: answer.trim(), malformed }
+  return { text: trim ? answer.trim() : answer, malformed }
 }
 
 /** Content eligibility is independent of whether the provider request completed. */

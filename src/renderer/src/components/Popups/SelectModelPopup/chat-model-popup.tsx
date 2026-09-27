@@ -1,9 +1,12 @@
-import { useAllProviders, useProviders } from '@renderer/hooks/useProvider'
-import type { Model, Provider } from '@renderer/types'
-import { sortBy } from 'lodash'
-import React, { useMemo } from 'react'
+import ModelProviderSelect from '@renderer/components/ModelProviderSelect'
+import { useAppSelector } from '@renderer/store'
+import type { Model } from '@renderer/types'
+import { resolveModelProviderSelection, selectionFromModel } from '@shared/modelProviderSelection'
+import { Modal } from 'antd'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
-import SelectModelPopupView, { createModelPopup } from './base-popup'
+import { createModelPopup } from './base-popup'
 
 interface PopupParams {
   model?: Model
@@ -11,33 +14,27 @@ interface PopupParams {
   showTagFilter?: boolean
 }
 
-interface Props extends PopupParams {
-  resolve: (value: Model | undefined) => void
-}
-
-const PopupContainer: React.FC<Props> = ({ model, filter, showTagFilter = true, resolve }) => {
-  const { providers } = useProviders()
-  const allProviders = useAllProviders()
-
-  const filteredProviders = useMemo(() => {
-    const providerOrderMap = new Map(allProviders.map((provider, i) => [provider.id, i]))
-    const filtered = providers.reduce<Provider[]>((result, provider) => {
-      const models = filter ? provider.models.filter(filter) : provider.models
-      if (models.length === 0) return result
-      result.push({ ...provider, models })
-      return result
-    }, [])
-    return sortBy(filtered, (provider) => providerOrderMap.get(provider.id) ?? Infinity)
-  }, [providers, allProviders, filter])
-
+const PopupContainer = ({ model, filter, resolve }: PopupParams & { resolve: (value: Model | undefined) => void }) => {
+  const { t } = useTranslation()
+  const llm = useAppSelector((state) => state.llm)
+  const [selection, setSelection] = useState(() => selectionFromModel(model, llm.providers))
+  const [open, setOpen] = useState(true)
+  const resolved = resolveModelProviderSelection(selection, llm)
+  const close = (value?: Model) => {
+    resolve(value)
+    setOpen(false)
+  }
   return (
-    <SelectModelPopupView
-      providers={filteredProviders}
-      model={model}
-      showTagFilter={showTagFilter}
-      showPinnedModels={true}
-      resolve={resolve}
-    />
+    <Modal
+      centered
+      open={open}
+      title={t('button.select_model')}
+      onCancel={() => close()}
+      afterClose={() => SelectChatModelPopup.hide()}
+      onOk={() => close(resolved.model)}
+      okButtonProps={{ disabled: !resolved.model || Boolean(filter && !filter(resolved.model)) }}>
+      <ModelProviderSelect selection={selection} onChange={setSelection} filter={filter} />
+    </Modal>
   )
 }
 

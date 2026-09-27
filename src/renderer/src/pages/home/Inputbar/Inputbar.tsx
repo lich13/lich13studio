@@ -20,7 +20,7 @@ import {
   useInputbarToolsInternalDispatch,
   useInputbarToolsState
 } from '@renderer/pages/home/Inputbar/context/InputbarToolsProvider'
-import { getDefaultTopic } from '@renderer/services/AssistantService'
+import { getDefaultTopic, requireCurrentModel } from '@renderer/services/AssistantService'
 import { CacheService } from '@renderer/services/CacheService'
 import { EVENT_NAMES, EventEmitter } from '@renderer/services/EventService'
 import FileManager from '@renderer/services/FileManager'
@@ -221,6 +221,12 @@ const InputbarInner: FC<InputbarInnerProps> = ({ assistant: initialAssistant, se
       })
 
   const sendMessage = useCallback(async () => {
+    try {
+      for (const target of mentionedModels.length ? mentionedModels : [assistant.model]) requireCurrentModel(target)
+    } catch {
+      window.toast.warning(t('platform.select_model'))
+      return
+    }
     if (checkRateLimit(assistant)) {
       return
     }
@@ -272,7 +278,8 @@ const InputbarInner: FC<InputbarInnerProps> = ({ assistant: initialAssistant, se
     setFiles,
     setTimeoutTimer,
     resizeTextArea,
-    focusTextarea
+    focusTextarea,
+    t
   ])
 
   const tokenCountProps = useMemo(() => {
@@ -478,6 +485,7 @@ const InputbarInner: FC<InputbarInnerProps> = ({ assistant: initialAssistant, se
       resizeTextArea={resizeTextArea}
       focusTextarea={focusTextarea}
       isLoading={loading}
+      targetUnavailable={!mentionedModels.length && !assistant.model?.provider}
       supportedExts={supportedExts}
       onPause={onPause}
       handleSendMessage={sendMessage}

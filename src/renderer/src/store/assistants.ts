@@ -74,6 +74,8 @@ const assistantsSlice = createSlice({
     },
     updateAssistant: (state, action: PayloadAction<Partial<Assistant> & { id: string }>) => {
       const { id, ...update } = action.payload
+      // Legacy callers still pass a complete Model; infer its independent selection next render.
+      if ('model' in update && !('modelSelection' in update)) update.modelSelection = undefined
       // @ts-ignore ts2589
       state.assistants = state.assistants.map((c) => (c.id === id ? { ...c, ...update } : c))
     },
@@ -200,7 +202,8 @@ const assistantsSlice = createSlice({
         assistant.id === action.payload.assistantId
           ? {
               ...assistant,
-              model: action.payload.model
+              model: action.payload.model,
+              modelSelection: undefined
             }
           : assistant
       )

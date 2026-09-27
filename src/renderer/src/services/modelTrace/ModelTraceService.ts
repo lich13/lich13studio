@@ -5,6 +5,7 @@ import { generateChallenges } from './challenge'
 import bank from './data/unified_bank.json'
 import { prepareDirectModelTest } from './directModelTest'
 import { analyzeGlobalOutputs } from './fingerprintCore'
+import { type ModelTestLimit, ModelTestOutputGuard, ModelTestOutputLimitError } from './OutputGuard'
 import { type OutputIssue, validateModelTraceOutput } from './outputValidation'
 
 export interface ModelTestChallenge {
@@ -26,6 +27,8 @@ export interface ModelTestOutput {
   excludedCount?: number
   issue?: OutputIssue
   error?: string
+  failureCode?: 'output-limit' | 'request-error'
+  limit?: ModelTestLimit
 }
 
 export interface ModelTestTarget {
@@ -85,6 +88,7 @@ const errorMessage = (error: unknown): string =>
 
 /** Recognize temporary failures without retrying auth, missing models or invalid parameters. */
 export function isRetryableModelTestError(error: unknown): boolean {
+  if (error instanceof ModelTestOutputLimitError) return true
   let current = error
   const seen = new Set<unknown>()
   const messages = [errorMessage(error)]
@@ -169,6 +173,8 @@ export class ModelTestRunner {
         for (let attempt = 1; attempt <= MODELTRACE_MAX_ATTEMPTS; attempt += 1) {
           signal.throwIfAborted()
           const collector = new AnswerCollector()
+          const guard = new ModelTestOutputGuard(challenge.expected_count)
+          let limitError: ModelTestOutputLimitError | undefined
           const attemptController = new AbortController()
           const abortAttempt = () => attemptController.abort(signal.reason)
           signal.addEventListener('abort', abortAttempt, { once: true })
@@ -181,6 +187,8 @@ export class ModelTestRunner {
             usableCount: 0,
             excludedCount: 0,
             issue: undefined,
+            failureCode: undefined,
+            limit: undefined,
             error: undefined
           })
           let retryable = true
@@ -188,6 +196,11 @@ export class ModelTestRunner {
             await this.prepared.execute(challenge.prompt, attemptController.signal, (chunk) => {
               if (!accepting || !current()) return
               collector.accept(chunk)
+              limitError = guard.accept(chunk, collector.rawText)
+              if (limitError) {
+                accepting = false
+                attemptController.abort(limitError)
+              }
               const validation = validateModelTraceOutput(collector.rawText, challenge.expected_count)
               this.update(index, {
                 text: collector.preview,
@@ -197,6 +210,7 @@ export class ModelTestRunner {
               })
             })
             signal.throwIfAborted()
+            if (limitError) throw limitError
             if (collector.error) throw collector.error
             if (!collector.completed)
               throw new Error('Incomplete stream: response ended without a provider terminal event')
@@ -212,9 +226,14 @@ export class ModelTestRunner {
             break
           } catch (error) {
             if (!current()) throw signal.reason ?? error
-            const failure = collector.error ?? error
+            const failure = limitError ?? collector.error ?? error
             retryable = isRetryableModelTestError(failure)
-            this.update(index, { status: 'error', error: errorMessage(failure) })
+            this.update(index, {
+              status: 'error',
+              error: errorMessage(failure),
+              failureCode: limitError ? 'output-limit' : 'request-error',
+              limit: limitError?.limit
+            })
             if (!retryable) fatalError = errorMessage(failure)
           } finally {
             accepting = false

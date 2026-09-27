@@ -4,6 +4,7 @@ import { loggerService } from '@logger'
 import { getEnableDeveloperMode } from '@renderer/hooks/useSettings'
 import { requireCurrentModel } from '@renderer/services/AssistantService'
 import { normalizeGatewayModels } from '@renderer/services/models/ModelAdapter'
+import { reasoningUsage } from '@renderer/services/ReasoningUsageService'
 import { addSpan, endSpan } from '@renderer/services/SpanManagerService'
 import type { StartSpanParams } from '@renderer/trace/types/ModelSpanEntity'
 import {
@@ -17,6 +18,7 @@ import {
 import type { StreamTextParams } from '@renderer/types/aiCoreTypes'
 import { getLowerBaseModelName } from '@renderer/utils'
 import { buildClaudeCodeSystemModelMessage } from '@shared/anthropic'
+import { normalizeReasoningEffort } from '@shared/reasoning'
 import { gateway } from 'ai'
 
 import AiSdkToChunkAdapter from './chunk/AiSdkToChunkAdapter'
@@ -25,6 +27,7 @@ import { adaptProvider, getActualProvider, providerToAiSdkConfig } from './provi
 import { listModels } from './services/listModels'
 import type { AppProviderSettingsMap, CompletionsResult, ProviderConfig } from './types'
 import type { AiSdkMiddlewareConfig } from './types/middlewareConfig'
+import { withReasoningFallback } from './utils/reasoningFallback'
 
 const logger = loggerService.withContext('AiProvider')
 
@@ -243,6 +246,26 @@ export default class AiProvider {
     middlewareConfig: AiProviderConfig,
     providerConfig: ProviderConfig
   ): Promise<CompletionsResult> {
+    const requested = normalizeReasoningEffort(middlewareConfig.assistant.settings?.reasoning_effort)
+    return withReasoningFallback({
+      provider: this.actualProvider,
+      modelId,
+      params,
+      requested,
+      disabled: middlewareConfig.reasoningMode === 'disabled',
+      onChunk: middlewareConfig.onChunk,
+      onEffective: (effective) => reasoningUsage.set(this.actualProvider.id, modelId, { requested, effective }),
+      execute: (attemptParams, onChunk) =>
+        this.executeCompletions(modelId, attemptParams, { ...middlewareConfig, onChunk }, providerConfig)
+    })
+  }
+
+  private async executeCompletions(
+    modelId: string,
+    params: StreamTextParams,
+    middlewareConfig: AiProviderConfig,
+    providerConfig: ProviderConfig
+  ): Promise<CompletionsResult> {
     const plugins = buildPlugins({
       provider: this.actualProvider,
       model: this.model!,
@@ -285,7 +308,8 @@ export default class AiProvider {
       }
 
       return {
-        getText: () => finalText
+        getText: () => finalText,
+        usage: await streamResult.totalUsage
       }
     } else {
       // Since no onChunk is provided, the external consumer would not handle error chunk.

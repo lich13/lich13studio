@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
-import { migrateModelTestState, migratePlatformState, sanitizePersistedState, sanitizeState } from './stateMigration'
+import {
+  migrateAssistantSelectionState,
+  migrateModelTestState,
+  migratePlatformState,
+  sanitizePersistedState,
+  sanitizeState
+} from './stateMigration'
 
 const provider = { id: 'new', type: 'openai-response', apiHost: 'http://localhost/v1', apiKey: 'test-key', models: [] }
 const fixture = (version: number) => ({
@@ -171,5 +177,34 @@ describe('218 network search removal', () => {
     expect(next.chats).toEqual(state.chats)
     expect(JSON.stringify(next)).not.toContain('search-secret')
     expect(sanitizePersistedState(raw)).toBe(raw)
+  })
+})
+
+describe('220 assistant selections', () => {
+  it('derives selections by existing priority, preserves history, and is idempotent', () => {
+    const state: any = fixture(219)
+    state.assistants.defaultAssistant = { defaultModel: { id: 'mini', provider: 'new' } }
+    state.assistants.assistants.push({ id: 'other' })
+    const topics = structuredClone(state.assistants.assistants[0].topics)
+    migrateAssistantSelectionState(state)
+    expect(state.assistants.defaultAssistant.modelSelection).toEqual({
+      platform: 'openai',
+      modelId: 'mini',
+      providerId: 'new'
+    })
+    expect(state.assistants.assistants[0].modelSelection.modelId).toBe('gpt-test')
+    expect(state.assistants.assistants[1].modelSelection.modelId).toBe('gpt-test')
+    expect(state.assistants.assistants[0].topics).toEqual(topics)
+    const before = structuredClone(state)
+    expect(migrateAssistantSelectionState(state)).toEqual(before)
+  })
+  it('retains invalid independent choices after backup restore without resurrecting a provider', () => {
+    const state: any = fixture(220)
+    state.assistants.assistants[0].modelSelection = { platform: 'grok', modelId: 'custom', providerId: 'gone' }
+    const restored = decode(sanitizePersistedState(encode(state)))
+    expect(restored.assistants.assistants[0].modelSelection).toEqual(state.assistants.assistants[0].modelSelection)
+    expect(sanitizePersistedState(encode(restored))).toBe(encode(restored))
+    const old = decode(sanitizePersistedState(encode({ ...state, _persist: { version: 215 } })))
+    expect(old.assistants.assistants[0].modelSelection).toEqual({})
   })
 })

@@ -1,5 +1,6 @@
 import { Navbar, NavbarCenter } from '@renderer/components/app/Navbar'
 import { HStack } from '@renderer/components/Layout'
+import ModelProviderSelect from '@renderer/components/ModelProviderSelect'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import { useModelTestSession } from '@renderer/hooks/useModelTestSession'
 import { SettingContainer, SettingDescription, SettingGroup, SettingTitle } from '@renderer/pages/settings'
@@ -7,8 +8,7 @@ import { modelTestSession } from '@renderer/services/modelTrace/ModelTestSession
 import { useAppDispatch, useAppSelector } from '@renderer/store'
 import { setModelTestSelection } from '@renderer/store/llm'
 import { initialModelTestSelection, resolveModelTestSelection } from '@shared/modelTestSelection'
-import { PLATFORM_NAMES, PROVIDER_PLATFORMS, type ProviderPlatform } from '@shared/platforms'
-import { Alert, Button, Card, Input, Select, Space, Tag, Typography } from 'antd'
+import { Alert, Button, Card, Input, Space, Tag, Typography } from 'antd'
 import { ArrowLeft, FlaskConical, Play, Square } from 'lucide-react'
 import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -47,38 +47,6 @@ const ModelTestPage = () => {
     if (llm.modelTestSelection === undefined) dispatch(setModelTestSelection(selection))
   }, [dispatch, llm.modelTestSelection, selection])
 
-  const modelOptions = PROVIDER_PLATFORMS.map((platform) => ({
-    label: PLATFORM_NAMES[platform],
-    options: llm.platformModels[platform].map((model) => ({
-      value: JSON.stringify([platform, model.id]),
-      label: model.id === model.name ? model.id : `${model.name} · ${model.id}`,
-      disabled: false
-    }))
-  }))
-  if (selection.modelId && !llm.platformModels[selection.platform!]?.some((model) => model.id === selection.modelId)) {
-    modelOptions.push({
-      label: t('settings.modelTest.unavailable'),
-      options: [
-        {
-          value: JSON.stringify([selection.platform, selection.modelId]),
-          label: selection.modelId,
-          disabled: true
-        }
-      ]
-    })
-  }
-  const providerOptions = resolved.providers.map((provider) => ({
-    value: provider.id,
-    label: provider.name,
-    disabled: false
-  }))
-  if (selection.providerId && !resolved.provider)
-    providerOptions.push({
-      value: selection.providerId,
-      label: `${llm.providers.find((provider) => provider.id === selection.providerId)?.name || selection.providerId} (${t('settings.modelTest.unavailable')})`,
-      disabled: true
-    })
-
   return (
     <Page>
       <Navbar>
@@ -98,50 +66,7 @@ const ModelTestPage = () => {
             </SettingTitle>
             <SettingDescription>{t('settings.modelTest.description')}</SettingDescription>
             <Space direction="vertical" style={{ width: '100%', marginTop: 16 }} size="middle">
-              <Space wrap style={{ width: '100%' }}>
-                <div>
-                  <Typography.Text>{t('settings.modelTest.modelLabel')}</Typography.Text>
-                  <Select
-                    aria-label={t('settings.modelTest.modelLabel')}
-                    showSearch
-                    optionFilterProp="label"
-                    style={{ width: 280, maxWidth: '100%', display: 'block', marginTop: 6 }}
-                    value={
-                      selection.platform && selection.modelId
-                        ? JSON.stringify([selection.platform, selection.modelId])
-                        : undefined
-                    }
-                    options={modelOptions}
-                    placeholder={t('button.select_model')}
-                    onChange={(value: string) => {
-                      const [platform, modelId] = JSON.parse(value) as [ProviderPlatform, string]
-                      dispatch(setModelTestSelection({ platform, modelId }))
-                    }}
-                  />
-                </div>
-                <div>
-                  <Typography.Text>{t('settings.modelTest.providerLabel')}</Typography.Text>
-                  <Select
-                    aria-label={t('settings.modelTest.providerLabel')}
-                    style={{ width: 240, maxWidth: '100%', display: 'block', marginTop: 6 }}
-                    value={selection.providerId}
-                    options={providerOptions}
-                    placeholder={t('settings.modelTest.providerPlaceholder')}
-                    onChange={(providerId: string) => dispatch(setModelTestSelection({ providerId }))}
-                  />
-                </div>
-              </Space>
-              {resolved.issue && (
-                <Alert
-                  type="warning"
-                  showIcon
-                  message={
-                    resolved.issue === 'modelUnavailable'
-                      ? t('settings.modelTest.modelUnavailable')
-                      : t('settings.modelTest.providerUnavailable')
-                  }
-                />
-              )}
+              <ModelProviderSelect selection={selection} onChange={(next) => dispatch(setModelTestSelection(next))} />
               {target && (
                 <Typography.Text strong>
                   {t('settings.modelTest.runTarget', { provider: target.providerName, model: target.modelId })}
@@ -248,7 +173,24 @@ const ModelTestPage = () => {
                   </Typography.Paragraph>
                 )}
                 {outputs[index]?.error && (
-                  <Alert showIcon type="warning" style={{ marginBottom: 8 }} message={outputs[index]?.error} />
+                  <Alert
+                    showIcon
+                    type="warning"
+                    style={{ marginBottom: 8 }}
+                    message={
+                      outputs[index]?.failureCode === 'output-limit'
+                        ? t('settings.modelTest.outputLimit', {
+                            actual: outputs[index]?.limit?.actual,
+                            maximum: outputs[index]?.limit?.maximum,
+                            unit: t(
+                              outputs[index]?.limit?.kind === 'integers'
+                                ? 'settings.modelTest.integerUnit'
+                                : 'settings.modelTest.byteUnit'
+                            )
+                          })
+                        : outputs[index]?.error
+                    }
+                  />
                 )}
                 <TextArea
                   rows={5}

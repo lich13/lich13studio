@@ -1,11 +1,10 @@
 import { loggerService } from '@logger'
 import ModelAvatar from '@renderer/components/Avatar/ModelAvatar'
-import ModelSelector from '@renderer/components/ModelSelector'
+import ModelProviderSelect from '@renderer/components/ModelProviderSelect'
 import { isMac } from '@renderer/config/constant'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import db from '@renderer/databases'
-import { useDefaultAssistant, useDefaultModel } from '@renderer/hooks/useAssistant'
-import { useProviders } from '@renderer/hooks/useProvider'
+import { useDefaultAssistant } from '@renderer/hooks/useAssistant'
 import { useSettings } from '@renderer/hooks/useSettings'
 import i18n from '@renderer/i18n'
 import { fetchChatCompletion } from '@renderer/services/ApiService'
@@ -13,9 +12,8 @@ import { getDefaultTopic } from '@renderer/services/AssistantService'
 import { ConversationService } from '@renderer/services/ConversationService'
 import FileManager from '@renderer/services/FileManager'
 import { getAssistantMessage, getUserMessage } from '@renderer/services/MessagesService'
-import { getModelUniqId } from '@renderer/services/ModelService'
 import PasteService from '@renderer/services/PasteService'
-import store from '@renderer/store'
+import store, { useAppSelector } from '@renderer/store'
 import { addTopic } from '@renderer/store/assistants'
 import { updateOneBlock, upsertManyBlocks, upsertOneBlock } from '@renderer/store/messageBlock'
 import { newMessagesActions, selectMessagesForTopic } from '@renderer/store/newMessage'
@@ -38,6 +36,12 @@ import { createMainTextBlock, createThinkingBlock } from '@renderer/utils/messag
 import { getMainTextContent } from '@renderer/utils/messageUtils/find'
 import { replacePromptVariables } from '@renderer/utils/prompt'
 import { defaultLanguage } from '@shared/config/constant'
+import {
+  assistantModelSelection,
+  type ModelProviderSelection,
+  resolveModelProviderSelection,
+  selectionModelReference
+} from '@shared/modelProviderSelection'
 import { Button, Tooltip } from 'antd'
 import { cloneDeep, isEmpty } from 'lodash'
 import { last } from 'lodash'
@@ -56,18 +60,15 @@ import MiniWindowCaptureButton from './components/MiniWindowCaptureButton'
 import {
   captureMiniWindowScreenshot,
   captureMiniWindowSelectedWindow,
-  getMiniWindowChatModels,
   getMiniWindowMessageWithBlock,
   getMiniWindowPersistedTopic,
   getMiniWindowResetState,
   getMiniWindowSupportExts,
-  isMiniWindowChatModel,
   isMiniWindowComposingInput,
   isMiniWindowRequestCurrent,
   isMiniWindowSendKeyPressed,
   type MiniCaptureWindowInfo,
-  type MiniWindowCaptureNotice,
-  updateMiniWindowDefaultAssistantModel
+  type MiniWindowCaptureNotice
 } from './miniWindowHelpers'
 
 const logger = loggerService.withContext('HomeWindow')
@@ -98,16 +99,16 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
   const [error, setError] = useState<string | null>(null)
 
   const { defaultAssistant, updateDefaultAssistant } = useDefaultAssistant()
-  const { defaultModel } = useDefaultModel()
-  const { providers } = useProviders()
+  const llm = useAppSelector((state) => state.llm)
+  const selection = assistantModelSelection(defaultAssistant, llm)
+  const resolvedSelection = resolveModelProviderSelection(selection, llm)
   const currentAssistant = useMemo(
     () => ({
       ...defaultAssistant,
-      model: defaultAssistant.model ?? defaultAssistant.defaultModel ?? defaultModel
+      model: selectionModelReference(assistantModelSelection(defaultAssistant, llm), llm)
     }),
-    [defaultAssistant, defaultModel]
+    [defaultAssistant, llm]
   )
-  const chatModels = useMemo(() => getMiniWindowChatModels(providers), [providers])
   const supportedExts = useMemo(() => getMiniWindowSupportExts(currentAssistant), [currentAssistant])
   const canCaptureImage = supportedExts.length > 0
 
@@ -125,7 +126,7 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
     }
     return userInputText.trim()
   }, [isFirstMessage, referenceText, userInputText])
-  const canSend = userContent.trim().length > 0 || files.length > 0
+  const canSend = Boolean(resolvedSelection.model) && (userContent.trim().length > 0 || files.length > 0)
 
   useEffect(() => {
     const nextTopic = getDefaultTopic(currentAssistant.id)
@@ -338,15 +339,12 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
   }, [addCapturedFile, canCaptureImage, capturingWindow, notifyCapture])
 
   const handleModelChange = useCallback(
-    (value: string) => {
-      const selectedModel = chatModels.find((model) => getModelUniqId(model) === value)
-      if (!selectedModel) return
-      updateDefaultAssistant(updateMiniWindowDefaultAssistantModel(defaultAssistant, selectedModel))
-      setFiles((prevFiles) =>
-        getMiniWindowSupportExts({ ...currentAssistant, model: selectedModel }).length ? prevFiles : []
-      )
+    (modelSelection: ModelProviderSelection) => {
+      const model = selectionModelReference(modelSelection, llm)
+      updateDefaultAssistant({ ...defaultAssistant, modelSelection, model })
+      setFiles((prevFiles) => (getMiniWindowSupportExts({ ...currentAssistant, model }).length ? prevFiles : []))
     },
-    [chatModels, currentAssistant, defaultAssistant, updateDefaultAssistant]
+    [llm, currentAssistant, defaultAssistant, updateDefaultAssistant]
   )
 
   const removeFile = useCallback((fileId: string) => {
@@ -807,17 +805,7 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
         </BrandText>
       </BrandArea>
       <HeaderActions className="nodrag">
-        <ModelSelector
-          size="small"
-          style={{ width: 'clamp(132px, 42vw, 180px)' }}
-          providers={providers}
-          predicate={isMiniWindowChatModel}
-          grouped
-          showAvatar
-          showSuffix={false}
-          value={currentAssistant.model ? getModelUniqId(currentAssistant.model) : undefined}
-          onChange={handleModelChange}
-        />
+        <ModelProviderSelect compact showEffort selection={selection} onChange={handleModelChange} />
         <Tooltip placement="bottomRight" title={newTopicLabel} mouseLeaveDelay={0} arrow>
           <HeaderIconButton type="text" aria-label={newTopicLabel} onClick={() => void handleNewTopic()}>
             <MessageSquareDiff size={16} />

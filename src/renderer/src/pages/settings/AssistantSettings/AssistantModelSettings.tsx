@@ -227,6 +227,7 @@ const AssistantModelSettings: FC<Props> = ({ assistant, updateAssistant, updateA
       updateAssistant({
         ...assistant,
         model: selectedModel,
+        modelSelection: undefined,
         defaultModel: selectedModel
       })
       // TODO: 移除根据模型自动修改参数的逻辑

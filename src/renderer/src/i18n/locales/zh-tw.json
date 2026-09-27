@@ -1029,6 +1029,7 @@
         "name": "預設話題"
       }
     },
+    "effectiveReasoning": "思考強度：{{requested}} → {{effective}}",
     "history": {
       "assistant_node": "助手",
       "click_to_navigate": "點選以前往對應訊息",
@@ -4547,11 +4548,13 @@
       "analyzeManual": "分析貼上結果",
       "attempts": "嘗試 {{count}} / {{max}}",
       "backHome": "返回首頁",
+      "byteUnit": "位元組",
       "challenge": "挑戰 {{index}} · 目標 {{count}} 個數字",
       "challenges": "數字挑戰",
       "count": "數字數量：{{actual}} / {{expected}}",
       "description": "使用三組無語義數字挑戰估計模型指紋。結果僅供參考，不會寫入聊天記錄。",
       "familyResult": "模型家族：{{family}}（{{probability}}%）",
+      "integerUnit": "個整數",
       "issue": {
         "empty": "沒有收到回答正文。",
         "format": "回答混有非數字文字或不支援的格式。",
@@ -4562,6 +4565,7 @@
       "modelUnavailable": "請選擇平台目錄中有效的模型。",
       "noSamples": "已完成，暫無可分析樣本",
       "noUsableSamples": "暫無可分析樣本",
+      "outputLimit": "輸出超限：{{actual}} / {{maximum}} {{unit}}，本次嘗試不參與分析。",
       "pastePlaceholder": "將模型完整回答貼到這裡",
       "providerLabel": "供應商",
       "providerPlaceholder": "請選擇供應商",

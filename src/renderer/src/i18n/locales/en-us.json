@@ -1029,6 +1029,7 @@
         "name": "Default Topic"
       }
     },
+    "effectiveReasoning": "Reasoning: {{requested}} → {{effective}}",
     "history": {
       "assistant_node": "Assistant",
       "click_to_navigate": "Click to navigate to the message",
@@ -4547,11 +4548,13 @@
       "analyzeManual": "Analyze pasted output",
       "attempts": "Attempt {{count}} / {{max}}",
       "backHome": "Back to home",
+      "byteUnit": "bytes",
       "challenge": "Challenge {{index}} · {{count}} numbers",
       "challenges": "Number challenges",
       "count": "Numbers: {{actual}} / {{expected}}",
       "description": "Estimate model fingerprints with three non-semantic number challenges. Results are advisory and are not saved to chat history.",
       "familyResult": "Model family: {{family}} ({{probability}}%)",
+      "integerUnit": "integers",
       "issue": {
         "empty": "No answer text received.",
         "format": "Answer contains non-numeric text or unsupported formatting.",
@@ -4562,6 +4565,7 @@
       "modelUnavailable": "Select a valid model from the platform catalog.",
       "noSamples": "Completed; no samples available for analysis",
       "noUsableSamples": "No samples available for analysis",
+      "outputLimit": "Output limit reached: {{actual}} / {{maximum}} {{unit}}. This attempt is excluded from analysis.",
       "pastePlaceholder": "Paste the complete model response here",
       "providerLabel": "Provider",
       "providerPlaceholder": "Select a provider",

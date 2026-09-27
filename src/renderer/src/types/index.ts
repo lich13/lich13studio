@@ -29,6 +29,7 @@ export * from './serialize'
 export * from './skill'
 
 export type Assistant = {
+  modelSelection?: import('@shared/modelProviderSelection').ModelProviderSelection
   id: string
   name: string
   prompt: string

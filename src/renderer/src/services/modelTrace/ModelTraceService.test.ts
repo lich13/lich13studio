@@ -73,6 +73,43 @@ describe('bounded ModelTrace sessions', () => {
     expect(result.report?.used_outputs).toBe(3)
   })
 
+  it('aborts endless output, retries independently, and excludes all failed attempts', async () => {
+    const aborted: boolean[] = []
+    mocks.execute.mockImplementation((prompt, signal, onChunk) => {
+      const index = Number(prompt.slice(-1))
+      if (index !== 0) return success(prompt, signal, onChunk)
+      return new Promise<void>((_resolve, reject) => {
+        signal.addEventListener(
+          'abort',
+          () => {
+            aborted.push(true)
+            reject(signal.reason)
+          },
+          { once: true }
+        )
+        onChunk({ type: ChunkType.TEXT_DELTA, text: '1 '.repeat(607) })
+        onChunk({ type: ChunkType.TEXT_DELTA, text: 'late output ignored' })
+      })
+    })
+    const runner = new ModelTestRunner({ model, challenges })
+    const pending = runner.run()
+    await vi.runAllTimersAsync()
+    const result = await pending
+    expect(aborted).toHaveLength(3)
+    expect(mocks.execute).toHaveBeenCalledTimes(5)
+    expect(result.outputs[0]).toMatchObject({
+      status: 'error',
+      attempts: 3,
+      failureCode: 'output-limit',
+      limit: { maximum: 606, actual: 607 }
+    })
+    expect(result.outputs[0].text).not.toContain('late')
+    expect(result.report?.used_outputs).toBe(2)
+    mocks.execute.mockImplementation(success)
+    expect((await runner.run({ retryFailedOnly: true })).report?.used_outputs).toBe(3)
+    expect(mocks.execute).toHaveBeenCalledTimes(6)
+  })
+
   it('accepts empty completed answers without retrying or producing a report', async () => {
     mocks.execute.mockImplementation(async (_prompt, _signal, onChunk) => emit(onChunk, ''))
     const pending = new ModelTestRunner({ model, challenges }).run()

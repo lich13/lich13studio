@@ -20,6 +20,7 @@ import {
 import { setDefaultModel, setQuickModel, setTranslateModel } from '@renderer/store/llm'
 import type { Assistant, AssistantSettings, Model, Topic } from '@renderer/types'
 import { uuid } from '@renderer/utils'
+import { assistantModelSelection, selectionModelReference } from '@shared/modelProviderSelection'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -71,10 +72,17 @@ export function useAssistant(id: string) {
   const assistant = useAppSelector((state) => state.assistants.assistants.find((a) => a.id === id) as Assistant)
   const dispatch = useAppDispatch()
   const { defaultModel } = useDefaultModel()
+  const llm = useAppSelector((state) => state.llm)
 
   const savedModel = assistant?.model ?? assistant?.defaultModel ?? defaultModel ?? EMPTY_MODEL
   const currentModel = useModel(savedModel.id, savedModel.provider)
-  const model = currentModel ?? savedModel
+  const model = useMemo(
+    () =>
+      assistant?.modelSelection
+        ? selectionModelReference(assistantModelSelection(assistant, llm), llm)
+        : (currentModel ?? savedModel),
+    [assistant, llm, currentModel, savedModel]
+  )
 
   const normalizedTopics = useMemo(
     () => (Array.isArray(assistant?.topics) ? assistant.topics : []),

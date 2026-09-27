@@ -4,6 +4,8 @@ import { getDefaultAssistant, getProviderByModel, requireCurrentModel } from '@r
 import type { Model } from '@renderer/types'
 import type { Chunk } from '@renderer/types/chunk'
 
+import { MODEL_TEST_MAX_OUTPUT_TOKENS } from './OutputGuard'
+
 /** Freeze routing, credentials and model settings once for the whole test session. */
 export async function prepareDirectModelTest(selectedModel: Model) {
   const model = structuredClone(requireCurrentModel(selectedModel))
@@ -44,6 +46,7 @@ export async function prepareDirectModelTest(selectedModel: Model) {
           prompt: undefined,
           messages: [{ role: 'user', content: prompt }],
           abortSignal: signal,
+          maxOutputTokens: MODEL_TEST_MAX_OUTPUT_TOKENS,
           maxRetries: 0
         },
         {

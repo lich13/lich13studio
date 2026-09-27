@@ -1,4 +1,5 @@
 import { platformRequestHeaders } from './cliIdentity'
+import { assistantModelSelection } from './modelProviderSelection'
 import { initialModelTestSelection } from './modelTestSelection'
 import {
   catalogModel,
@@ -14,6 +15,7 @@ export const PROVIDER_RESET_VERSION = 216
 export const PLATFORM_MIGRATION_VERSION = 217
 export const SEARCH_REMOVAL_VERSION = 218
 export const MODEL_TEST_SELECTION_VERSION = 219
+export const ASSISTANT_SELECTION_VERSION = 220
 
 type State = Record<string, any>
 
@@ -49,6 +51,7 @@ export function sanitizeState<T extends State>(state: T, resetProviders = false)
   const entries = [assistants?.defaultAssistant, ...(assistants?.assistants ?? []), ...(assistants?.presets ?? [])]
   for (const assistant of entries) {
     if (!assistant || typeof assistant !== 'object') continue
+    if (resetProviders) delete assistant.modelSelection
     delete assistant.enableWebSearch
     delete assistant.webSearchProviderId
     delete assistant.mcpMode
@@ -87,6 +90,7 @@ export function sanitizePersistedState(raw: string): string {
   sanitizeState(decoded, (decoded._persist?.version ?? -1) < PROVIDER_RESET_VERSION)
   migratePlatformState(decoded)
   migrateModelTestState(decoded)
+  migrateAssistantSelectionState(decoded)
   return JSON.stringify(Object.fromEntries(Object.entries(decoded).map(([key, value]) => [key, JSON.stringify(value)])))
 }
 
@@ -94,6 +98,21 @@ export function sanitizePersistedState(raw: string): string {
 export function migrateModelTestState<T extends State>(state: T): T {
   if (state.llm && state.llm.modelTestSelection === undefined) {
     state.llm.modelTestSelection = initialModelTestSelection(state.llm)
+  }
+  return state
+}
+
+/** Never rewrites chat messages or a user's explicitly saved invalid selection. */
+export function migrateAssistantSelectionState<T extends State>(state: T): T {
+  if (!state.llm) return state
+  const assistants = state.assistants
+  for (const assistant of [
+    assistants?.defaultAssistant,
+    ...(assistants?.assistants ?? []),
+    ...(assistants?.presets ?? [])
+  ]) {
+    if (assistant && assistant.modelSelection === undefined)
+      assistant.modelSelection = assistantModelSelection(assistant, state.llm)
   }
   return state
 }
