@@ -13,7 +13,7 @@ export interface ModelTestChallenge {
   prompt: string
 }
 
-export type ModelTestStatus = 'pending' | 'running' | 'retrying' | 'valid' | 'invalid' | 'error' | 'aborted'
+export type ModelTestStatus = 'pending' | 'running' | 'retrying' | 'completed' | 'error' | 'aborted'
 
 export interface ModelTestOutput {
   id: string
@@ -22,6 +22,8 @@ export interface ModelTestOutput {
   status?: ModelTestStatus
   attempts?: number
   parsedCount?: number
+  usableCount?: number
+  excludedCount?: number
   issue?: OutputIssue
   error?: string
 }
@@ -75,8 +77,8 @@ const RETRY_DELAYS = [1000, 3000]
 
 export const createModelTraceChallenges = (): ModelTestChallenge[] => generateChallenges(3) as ModelTestChallenge[]
 
-export const analyzeModelTraceOutputs = (outputs: ModelTestOutput[]): ModelTraceReport =>
-  analyzeGlobalOutputs(outputs, bank) as ModelTraceReport
+export const analyzeModelTraceOutputs = (outputs: ModelTestOutput[]): ModelTraceReport | undefined =>
+  analyzeGlobalOutputs(outputs, bank) as ModelTraceReport | undefined
 
 const errorMessage = (error: unknown): string =>
   error instanceof Error ? error.message : typeof error === 'string' ? error : '模型测试请求失败'
@@ -95,7 +97,7 @@ export function isRetryableModelTestError(error: unknown): boolean {
     if (status !== undefined) return status === 408 || status === 429 || status >= 500
     current = value.cause
   }
-  return /network|fetch failed|failed to fetch|load failed|connection|socket|ECONN|EPIPE|decoding response body|terminated|premature|incomplete stream/i.test(
+  return /network|fetch failed|failed to fetch|load failed|connection|socket|ECONN|EPIPE|decoding response body|terminated|premature|incomplete stream|without a provider terminal event|terminal event/i.test(
     messages.join(' ')
   )
 }
@@ -163,7 +165,7 @@ export class ModelTestRunner {
       this.target = { ...this.prepared.target }
       for (let index = 0; index < this.challenges.length; index += 1) {
         const challenge = this.challenges[index]
-        if (retryFailedOnly && this.outputs[index].status === 'valid') continue
+        if (retryFailedOnly && this.outputs[index].status === 'completed') continue
         for (let attempt = 1; attempt <= MODELTRACE_MAX_ATTEMPTS; attempt += 1) {
           signal.throwIfAborted()
           const collector = new AnswerCollector()
@@ -171,12 +173,13 @@ export class ModelTestRunner {
           const abortAttempt = () => attemptController.abort(signal.reason)
           signal.addEventListener('abort', abortAttempt, { once: true })
           let accepting = true
-          let overlong = false
           this.update(index, {
             text: '',
             status: 'running',
             attempts: attempt,
             parsedCount: 0,
+            usableCount: 0,
+            excludedCount: 0,
             issue: undefined,
             error: undefined
           })
@@ -185,52 +188,34 @@ export class ModelTestRunner {
             await this.prepared.execute(challenge.prompt, attemptController.signal, (chunk) => {
               if (!accepting || !current()) return
               collector.accept(chunk)
-              const liveValidation = validateModelTraceOutput(collector.rawText, challenge.expected_count)
+              const validation = validateModelTraceOutput(collector.rawText, challenge.expected_count)
               this.update(index, {
                 text: collector.preview,
-                parsedCount: liveValidation.parsedCount
+                parsedCount: validation.parsedCount,
+                usableCount: validation.usableCount,
+                excludedCount: validation.excludedCount
               })
-              if (liveValidation.parsedCount > challenge.expected_count && !collector.completed) {
-                overlong = true
-                attemptController.abort(new DOMException('Model test answer exceeded target count', 'AbortError'))
-              }
             })
             signal.throwIfAborted()
-            if (overlong) {
-              const validation = validateModelTraceOutput(collector.rawText, challenge.expected_count)
-              this.update(index, {
-                text: validation.text,
-                status: 'invalid',
-                parsedCount: validation.parsedCount,
-                issue: 'count'
-              })
-            } else {
-              if (collector.error) throw collector.error
-              const validation = validateModelTraceOutput(collector.rawText, challenge.expected_count)
-              const accepted = collector.completed && validation.accepted
-              this.update(index, {
-                text: validation.text,
-                status: accepted ? 'valid' : 'invalid',
-                parsedCount: validation.parsedCount,
-                issue: collector.completed ? validation.issue : 'incomplete'
-              })
-              if (accepted) break
-            }
+            if (collector.error) throw collector.error
+            if (!collector.completed)
+              throw new Error('Incomplete stream: response ended without a provider terminal event')
+            const validation = validateModelTraceOutput(collector.rawText, challenge.expected_count)
+            this.update(index, {
+              text: validation.text,
+              status: 'completed',
+              parsedCount: validation.parsedCount,
+              usableCount: validation.usableCount,
+              excludedCount: validation.excludedCount,
+              issue: validation.issue
+            })
+            break
           } catch (error) {
             if (!current()) throw signal.reason ?? error
-            if (overlong) {
-              const validation = validateModelTraceOutput(collector.rawText, challenge.expected_count)
-              this.update(index, {
-                text: validation.text,
-                status: 'invalid',
-                parsedCount: validation.parsedCount,
-                issue: 'count'
-              })
-            } else {
-              retryable = isRetryableModelTestError(error)
-              this.update(index, { status: 'error', error: errorMessage(error) })
-              if (!retryable) fatalError = errorMessage(error)
-            }
+            const failure = collector.error ?? error
+            retryable = isRetryableModelTestError(failure)
+            this.update(index, { status: 'error', error: errorMessage(failure) })
+            if (!retryable) fatalError = errorMessage(failure)
           } finally {
             accepting = false
             signal.removeEventListener('abort', abortAttempt)
@@ -248,7 +233,7 @@ export class ModelTestRunner {
         challenges: structuredClone(this.challenges),
         outputs,
         error: fatalError,
-        report: outputs.every((output) => output.status === 'valid') ? this.analyze(outputs) : undefined
+        report: this.analyze(outputs)
       }
     } finally {
       if (this.controller === controller) this.controller = undefined
@@ -265,7 +250,7 @@ export class ModelTestRunner {
     })
   }
 
-  analyze(outputs: ModelTestOutput[]): ModelTraceReport {
+  analyze(outputs: ModelTestOutput[]): ModelTraceReport | undefined {
     return analyzeModelTraceOutputs(outputs)
   }
 }

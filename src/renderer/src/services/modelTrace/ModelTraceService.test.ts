@@ -31,13 +31,13 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers())
 
 describe('bounded ModelTrace sessions', () => {
-  it('retries only the invalid challenge, with the exact same prompt and frozen model', async () => {
+  it('retries only a temporary failure, with the exact same prompt and frozen model', async () => {
     const selected = { ...model }
     const probes = challenges.map((challenge) => ({ ...challenge }))
     const runner = new ModelTestRunner({ model: selected, challenges: probes })
     selected.id = 'different-model'
     probes[0].prompt = 'changed'
-    mocks.execute.mockImplementationOnce(async (_prompt, _signal, onChunk) => emit(onChunk, 'Need 303 numbers. 1 2 3'))
+    mocks.execute.mockRejectedValueOnce(new TypeError('connection reset'))
     const pending = runner.run()
     await vi.runAllTimersAsync()
     const result = await pending
@@ -57,15 +57,15 @@ describe('bounded ModelTrace sessions', () => {
   it('caps each group at 3 requests, keeps successes and retries only failed groups', async () => {
     const runner = new ModelTestRunner({ model, challenges })
     mocks.execute.mockImplementation(async (prompt, signal, onChunk) => {
-      if (prompt === 'unchanged-0') emit(onChunk, '1 2 3')
+      if (prompt === 'unchanged-0') throw new TypeError('connection reset')
       else await success(prompt, signal, onChunk)
     })
     const pending = runner.run()
     await vi.runAllTimersAsync()
     const failed = await pending
     expect(mocks.execute).toHaveBeenCalledTimes(5)
-    expect(failed.outputs.map((output) => output.status)).toEqual(['invalid', 'valid', 'valid'])
-    expect(failed.report).toBeUndefined()
+    expect(failed.outputs.map((output) => output.status)).toEqual(['error', 'completed', 'completed'])
+    expect(failed.report?.used_outputs).toBe(2)
     mocks.execute.mockImplementation(success)
     const result = await runner.run({ retryFailedOnly: true })
     expect(mocks.execute).toHaveBeenCalledTimes(6)
@@ -73,39 +73,54 @@ describe('bounded ModelTrace sessions', () => {
     expect(result.report?.used_outputs).toBe(3)
   })
 
-  it('never exceeds nine requests or produces a report if every answer is invalid', async () => {
+  it('accepts empty completed answers without retrying or producing a report', async () => {
     mocks.execute.mockImplementation(async (_prompt, _signal, onChunk) => emit(onChunk, ''))
     const pending = new ModelTestRunner({ model, challenges }).run()
     await vi.runAllTimersAsync()
     const result = await pending
-    expect(mocks.execute).toHaveBeenCalledTimes(9)
+    expect(mocks.execute).toHaveBeenCalledTimes(3)
+    expect(result.outputs.every((output) => output.status === 'completed')).toBe(true)
     expect(result.report).toBeUndefined()
   })
 
-  it('aborts overlong output early without ending the run or accepting a truncated prefix', async () => {
-    const observedSignals: AbortSignal[] = []
+  it('never aborts or retries count/range differences and uses all eligible groups', async () => {
     mocks.execute.mockImplementation(async (prompt, signal, onChunk) => {
-      observedSignals.push(signal)
-      if (prompt === 'unchanged-0' && observedSignals.length === 1) {
-        onChunk({ type: ChunkType.TEXT_DELTA, text: textFor(0) + ' 8' })
-        expect(signal.aborted).toBe(true)
-        throw signal.reason
-      }
-      await success(prompt, signal, onChunk)
+      const index = Number(prompt.slice(-1))
+      const text = index === 0 ? textFor(0) + ' 8 -1 0 356' : index === 1 ? Array(80).fill('2').join(' ') : '1 2 3'
+      onChunk({ type: ChunkType.TEXT_DELTA, text })
+      expect(signal.aborted).toBe(false)
+      onChunk({ type: ChunkType.TEXT_COMPLETE, text })
+      onChunk({ type: ChunkType.LLM_RESPONSE_COMPLETE, response: { text }, finishReason: 'length' })
+    })
+    const runner = new ModelTestRunner({ model, challenges })
+    const result = await runner.run()
+    expect(mocks.execute).toHaveBeenCalledTimes(3)
+    expect(result.outputs.every((output) => output.status === 'completed')).toBe(true)
+    expect(result.outputs[0]).toMatchObject({ parsedCount: 307, usableCount: 304, excludedCount: 3, attempts: 1 })
+    expect(result.report?.used_outputs).toBe(2)
+    await runner.run({ retryFailedOnly: true })
+    expect(mocks.execute).toHaveBeenCalledTimes(3)
+  })
+
+  it('completes contaminated text once and analyzes the other groups', async () => {
+    mocks.execute.mockImplementationOnce(async (_prompt, _signal, onChunk) => emit(onChunk, 'Explanation 1 2 3'))
+    const result = await new ModelTestRunner({ model, challenges }).run()
+    expect(mocks.execute).toHaveBeenCalledTimes(3)
+    expect(result.outputs[0]).toMatchObject({ status: 'completed', issue: 'format', usableCount: 0 })
+    expect(result.report?.used_outputs).toBe(2)
+  })
+
+  it('caps missing-terminal failures at nine requests and never analyzes partial text', async () => {
+    mocks.execute.mockImplementation(async (_prompt, _signal, onChunk) => {
+      onChunk({ type: ChunkType.TEXT_DELTA, text: textFor(0) })
+      onChunk({ type: ChunkType.LLM_RESPONSE_COMPLETE, response: { text: textFor(0) }, finishReason: 'unknown' })
     })
     const pending = new ModelTestRunner({ model, challenges }).run()
     await vi.runAllTimersAsync()
     const result = await pending
-    expect(result.outputs.map((output) => output.status)).toEqual(['valid', 'valid', 'valid'])
-    expect(result.outputs[0].attempts).toBe(2)
-    expect(observedSignals[0].aborted).toBe(true)
-    expect(observedSignals[1].aborted).toBe(false)
-    expect(mocks.execute.mock.calls.map(([prompt]) => prompt)).toEqual([
-      'unchanged-0',
-      'unchanged-0',
-      'unchanged-1',
-      'unchanged-2'
-    ])
+    expect(mocks.execute).toHaveBeenCalledTimes(9)
+    expect(result.outputs.every((output) => output.status === 'error')).toBe(true)
+    expect(result.report).toBeUndefined()
   })
 
   it('stops immediately on authentication failure', async () => {
@@ -120,7 +135,7 @@ describe('bounded ModelTrace sessions', () => {
     let late: (chunk: Chunk) => void = () => {}
     mocks.execute.mockImplementation(async (_prompt, _signal, onChunk) => {
       late = onChunk
-      emit(onChunk, '1')
+      throw new TypeError('connection reset')
     })
     const runner = new ModelTestRunner({ model, challenges, onProgress: progress })
     const pending = runner.run().catch((error) => error)

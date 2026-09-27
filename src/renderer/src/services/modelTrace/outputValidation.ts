@@ -1,10 +1,13 @@
-export type OutputIssue = 'empty' | 'reasoning-tag' | 'format' | 'range' | 'count' | 'incomplete'
+export type OutputIssue = 'empty' | 'reasoning-tag' | 'format' | 'insufficient'
+export const MINIMUM_ANALYSIS_NUMBERS = 80
 
 export interface OutputValidation {
   accepted: boolean
   text: string
   numbers: number[]
   parsedCount: number
+  usableCount: number
+  excludedCount: number
   expectedCount: number
   issue?: OutputIssue
 }
@@ -38,42 +41,36 @@ export function isolateAnswer(text: string, complete = true): { text: string; ma
   return { text: answer.trim(), malformed }
 }
 
-/** Diagnostic count only: never use these tokens for attribution. */
-export function countVisibleNumericTokens(raw: string): number {
-  return isolateAnswer(raw, false).text.match(/\d+/g)?.length || 0
-}
-
+/** Content eligibility is independent of whether the provider request completed. */
 export function validateModelTraceOutput(raw: string, expectedCount: number): OutputValidation {
   const isolated = isolateAnswer(raw)
-  let text = isolated.text.replace(/^\uFEFF/, '').trim()
-  const result = (issue?: OutputIssue, numbers: number[] = []): OutputValidation => ({
-    accepted: issue === undefined,
-    text,
-    numbers,
-    parsedCount: numbers.length || (issue ? countVisibleNumericTokens(raw) : 0),
-    expectedCount,
-    issue
-  })
-  if (isolated.malformed) {
-    // Preserve invalid delimiters so revalidating the displayed result cannot
-    // turn an incomplete thought block into an apparently valid answer.
-    text = raw.trim()
-    return result('reasoning-tag')
+  // Preserve the answer exactly, including wrappers and excluded values. Only
+  // the separate scoring array is filtered; never repair the displayed output.
+  const text = (isolated.malformed ? raw : isolated.text).replace(/^\uFEFF/, '').trim()
+  let sequence = text
+  const result = (issue?: OutputIssue, parsed: number[] = []): OutputValidation => {
+    const numbers = parsed.filter((value) => Number.isSafeInteger(value) && value >= 1 && value <= 355)
+    return {
+      accepted: issue === undefined && numbers.length >= MINIMUM_ANALYSIS_NUMBERS,
+      text,
+      numbers,
+      parsedCount: parsed.length,
+      usableCount: numbers.length,
+      excludedCount: parsed.length - numbers.length,
+      expectedCount,
+      issue: issue ?? (numbers.length < MINIMUM_ANALYSIS_NUMBERS ? 'insufficient' : undefined)
+    }
   }
+  if (isolated.malformed) return result('reasoning-tag')
   if (!text) return result('empty')
-
-  if (text.startsWith('```')) {
-    const fence = /^```(?:text|txt|json|csv)?[ \t]*\r?\n([\s\S]*?)\r?\n?```$/i.exec(text)
+  if (sequence.startsWith('```')) {
+    const fence = /^```(?:text|txt|json|csv)?[ \t]*\r?\n([\s\S]*?)\r?\n?```$/i.exec(sequence)
     if (!fence) return result('format')
-    text = fence[1].trim()
+    sequence = fence[1].trim()
   }
-  if (text.startsWith('[') && text.endsWith(']')) text = text.slice(1, -1).trim()
-  // Full-string matching prevents prose, list numbering, decimals and signs from becoming numbers.
-  if (!/^\d+(?:[\s,，、;；]+\d+)*[\s,，、;；]*$/u.test(text)) return result('format')
-  const numbers = text.match(/\d+/g)!.map(Number)
-  if (numbers.some((number) => !Number.isSafeInteger(number) || number < 1 || number > 355))
-    return result('range', numbers)
-  if (!Number.isSafeInteger(expectedCount) || expectedCount < 1 || numbers.length !== expectedCount)
-    return result('count', numbers)
-  return result(undefined, numbers)
+  if (sequence.startsWith('[') && sequence.endsWith(']')) sequence = sequence.slice(1, -1).trim()
+  // Signs are parsed with the integer, so -1 is excluded rather than scored as 1.
+  // Full-string matching still excludes prose, numbering, decimals and exponents.
+  if (!/^[+-]?\d+(?:[\s,，、;；]+[+-]?\d+)*[\s,，、;；]*$/u.test(sequence)) return result('format')
+  return result(undefined, sequence.match(/[+-]?\d+/g)!.map(Number))
 }

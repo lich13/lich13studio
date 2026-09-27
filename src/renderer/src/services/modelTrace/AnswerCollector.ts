@@ -58,7 +58,9 @@ export class AnswerCollector {
       case ChunkType.LLM_RESPONSE_COMPLETE:
         // The global snapshot may include commentary that we deliberately excluded.
         this.finalText = this.excludedAnyBlock ? this.rawText : (chunk.response?.text ?? this.rawText)
-        this.normalCompletion = !chunk.finishReason || chunk.finishReason === 'stop'
+        // A provider-confirmed output limit or content filter is still a
+        // completed request. Synthetic EOF recovery is not a provider finish.
+        this.normalCompletion = !chunk.finishReason || ['stop', 'length', 'content-filter'].includes(chunk.finishReason)
         this.terminal = true
         break
       default:

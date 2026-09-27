@@ -21,8 +21,7 @@ const statusKeys = {
   pending: 'settings.modelTest.status.pending',
   running: 'settings.modelTest.status.running',
   retrying: 'settings.modelTest.status.retrying',
-  valid: 'settings.modelTest.status.valid',
-  invalid: 'settings.modelTest.status.invalid',
+  completed: 'settings.modelTest.status.completed',
   error: 'settings.modelTest.status.error',
   aborted: 'settings.modelTest.status.aborted'
 } as const
@@ -30,9 +29,7 @@ const issueKeys = {
   empty: 'settings.modelTest.issue.empty',
   'reasoning-tag': 'settings.modelTest.issue.reasoning-tag',
   format: 'settings.modelTest.issue.format',
-  range: 'settings.modelTest.issue.range',
-  count: 'settings.modelTest.issue.count',
-  incomplete: 'settings.modelTest.issue.incomplete'
+  insufficient: 'settings.modelTest.issue.insufficient'
 } as const
 
 const ModelTestPage = () => {
@@ -87,99 +84,133 @@ const ModelTestPage = () => {
       <Navbar>
         <NavbarCenter style={{ borderRight: 'none' }}>{t('settings.modelTest.title')}</NavbarCenter>
       </Navbar>
-      <SettingContainer theme={theme}>
-        <SettingGroup theme={theme}>
-          <SettingTitle>
-            <HStack alignItems="center" gap={10}>
-              <FlaskConical size={18} />
-              {t('settings.modelTest.title')}
-            </HStack>
-            <Button type="text" icon={<ArrowLeft size={16} />} onClick={() => navigate('/')}>
-              {t('settings.modelTest.backHome')}
-            </Button>
-          </SettingTitle>
-          <SettingDescription>{t('settings.modelTest.description')}</SettingDescription>
-          <Space direction="vertical" style={{ width: '100%', marginTop: 16 }} size="middle">
-            <Space wrap style={{ width: '100%' }}>
-              <div>
-                <Typography.Text>{t('settings.modelTest.modelLabel')}</Typography.Text>
-                <Select
-                  aria-label={t('settings.modelTest.modelLabel')}
-                  showSearch
-                  optionFilterProp="label"
-                  style={{ width: 300, display: 'block', marginTop: 6 }}
-                  value={
-                    selection.platform && selection.modelId
-                      ? JSON.stringify([selection.platform, selection.modelId])
-                      : undefined
-                  }
-                  options={modelOptions}
-                  placeholder={t('button.select_model')}
-                  onChange={(value: string) => {
-                    const [platform, modelId] = JSON.parse(value) as [ProviderPlatform, string]
-                    dispatch(setModelTestSelection({ platform, modelId }))
-                  }}
-                />
-              </div>
-              <div>
-                <Typography.Text>{t('settings.modelTest.providerLabel')}</Typography.Text>
-                <Select
-                  aria-label={t('settings.modelTest.providerLabel')}
-                  style={{ width: 260, display: 'block', marginTop: 6 }}
-                  value={selection.providerId}
-                  options={providerOptions}
-                  placeholder={t('settings.modelTest.providerPlaceholder')}
-                  onChange={(providerId: string) => dispatch(setModelTestSelection({ providerId }))}
-                />
-              </div>
-            </Space>
-            {resolved.issue && (
-              <Alert
-                type="warning"
-                showIcon
-                message={
-                  resolved.issue === 'modelUnavailable'
-                    ? t('settings.modelTest.modelUnavailable')
-                    : t('settings.modelTest.providerUnavailable')
-                }
-              />
-            )}
-            <Alert showIcon type="info" message={t('settings.modelTest.localNotice')} />
-            <Typography.Text type="secondary">{t('settings.modelTest.backgroundNotice')}</Typography.Text>
-            {running && <Typography.Text>{t('settings.modelTest.nextSelection')}</Typography.Text>}
-            {target && (
-              <Typography.Text strong>
-                {t('settings.modelTest.runTarget', { provider: target.providerName, model: target.modelId })}
-              </Typography.Text>
-            )}
-            {phase === 'completed' && (
-              <Typography.Text type="secondary">{t('settings.modelTest.completed')}</Typography.Text>
-            )}
-            <Space wrap>
-              {running ? (
-                <Button danger icon={<Square size={15} />} onClick={() => modelTestSession.stop()}>
-                  {t('settings.modelTest.stop')}
-                </Button>
-              ) : (
-                <Button
-                  type="primary"
-                  icon={<Play size={15} />}
-                  onClick={() => resolved.model && void modelTestSession.start(resolved.model)}
-                  disabled={!resolved.model}>
-                  {t('settings.modelTest.run')}
-                </Button>
-              )}
-              {canRetry && (
-                <Button onClick={() => void modelTestSession.retryFailed()}>
-                  {t('settings.modelTest.retryFailed')}
-                </Button>
-              )}
-              <Button onClick={() => modelTestSession.regenerate()} disabled={running}>
-                {t('settings.modelTest.regenerate')}
+      <TestContainer theme={theme}>
+        <TopRow>
+          <SettingGroup theme={theme}>
+            <SettingTitle>
+              <HStack alignItems="center" gap={10}>
+                <FlaskConical size={18} />
+                {t('settings.modelTest.title')}
+              </HStack>
+              <Button type="text" icon={<ArrowLeft size={16} />} onClick={() => navigate('/')}>
+                {t('settings.modelTest.backHome')}
               </Button>
+            </SettingTitle>
+            <SettingDescription>{t('settings.modelTest.description')}</SettingDescription>
+            <Space direction="vertical" style={{ width: '100%', marginTop: 16 }} size="middle">
+              <Space wrap style={{ width: '100%' }}>
+                <div>
+                  <Typography.Text>{t('settings.modelTest.modelLabel')}</Typography.Text>
+                  <Select
+                    aria-label={t('settings.modelTest.modelLabel')}
+                    showSearch
+                    optionFilterProp="label"
+                    style={{ width: 280, maxWidth: '100%', display: 'block', marginTop: 6 }}
+                    value={
+                      selection.platform && selection.modelId
+                        ? JSON.stringify([selection.platform, selection.modelId])
+                        : undefined
+                    }
+                    options={modelOptions}
+                    placeholder={t('button.select_model')}
+                    onChange={(value: string) => {
+                      const [platform, modelId] = JSON.parse(value) as [ProviderPlatform, string]
+                      dispatch(setModelTestSelection({ platform, modelId }))
+                    }}
+                  />
+                </div>
+                <div>
+                  <Typography.Text>{t('settings.modelTest.providerLabel')}</Typography.Text>
+                  <Select
+                    aria-label={t('settings.modelTest.providerLabel')}
+                    style={{ width: 240, maxWidth: '100%', display: 'block', marginTop: 6 }}
+                    value={selection.providerId}
+                    options={providerOptions}
+                    placeholder={t('settings.modelTest.providerPlaceholder')}
+                    onChange={(providerId: string) => dispatch(setModelTestSelection({ providerId }))}
+                  />
+                </div>
+              </Space>
+              {resolved.issue && (
+                <Alert
+                  type="warning"
+                  showIcon
+                  message={
+                    resolved.issue === 'modelUnavailable'
+                      ? t('settings.modelTest.modelUnavailable')
+                      : t('settings.modelTest.providerUnavailable')
+                  }
+                />
+              )}
+              {target && (
+                <Typography.Text strong>
+                  {t('settings.modelTest.runTarget', { provider: target.providerName, model: target.modelId })}
+                </Typography.Text>
+              )}
+              <Space wrap>
+                {running ? (
+                  <Button danger icon={<Square size={15} />} onClick={() => modelTestSession.stop()}>
+                    {t('settings.modelTest.stop')}
+                  </Button>
+                ) : (
+                  <Button
+                    type="primary"
+                    icon={<Play size={15} />}
+                    onClick={() => resolved.model && void modelTestSession.start(resolved.model)}
+                    disabled={!resolved.model}>
+                    {t('settings.modelTest.run')}
+                  </Button>
+                )}
+                {canRetry && (
+                  <Button onClick={() => void modelTestSession.retryFailed()}>
+                    {t('settings.modelTest.retryFailed')}
+                  </Button>
+                )}
+                <Button onClick={() => modelTestSession.regenerate()} disabled={running}>
+                  {t('settings.modelTest.regenerate')}
+                </Button>
+              </Space>
             </Space>
-          </Space>
-        </SettingGroup>
+          </SettingGroup>
+
+          <SettingGroup theme={theme} aria-label={t('settings.modelTest.result')}>
+            <SettingTitle>{t('settings.modelTest.result')}</SettingTitle>
+            {running && report && <Tag style={{ marginTop: 12 }}>{t('settings.modelTest.resultRunning')}</Tag>}
+            {report ? (
+              <Space direction="vertical" style={{ width: '100%', marginTop: 12 }}>
+                <Typography.Text strong>
+                  {report.prediction_name} · {(report.probability * 100).toFixed(1)}%
+                </Typography.Text>
+                <Typography.Text type="secondary">
+                  {t('settings.modelTest.familyResult', {
+                    family: report.family_prediction_name,
+                    probability: (report.family_probability * 100).toFixed(1)
+                  })}
+                </Typography.Text>
+                <Space wrap>
+                  {report.results.slice(0, 6).map((item) => (
+                    <Tag key={String(item.model)}>
+                      {String(item.display_name)} {(Number(item.probability) * 100).toFixed(1)}%
+                    </Tag>
+                  ))}
+                </Space>
+                <Typography.Text type="secondary">
+                  {t('settings.modelTest.usedOutputs', { count: report.used_outputs })}
+                </Typography.Text>
+              </Space>
+            ) : (
+              <ResultPlaceholder>
+                {running
+                  ? t('settings.modelTest.resultRunning')
+                  : phase === 'completed'
+                    ? t('settings.modelTest.noSamples')
+                    : phase === 'idle'
+                      ? t('settings.modelTest.resultPending')
+                      : t('settings.modelTest.noUsableSamples')}
+              </ResultPlaceholder>
+            )}
+          </SettingGroup>
+        </TopRow>
 
         {error && <Alert showIcon type="error" message={error} style={{ marginBottom: 16 }} />}
 
@@ -195,7 +226,7 @@ const ModelTestPage = () => {
                   {challenge.prompt}
                 </Typography.Paragraph>
                 <Space wrap style={{ marginBottom: 8 }}>
-                  <Tag color={outputs[index]?.status === 'valid' ? 'success' : undefined}>
+                  <Tag color={outputs[index]?.status === 'completed' ? 'success' : undefined}>
                     {t(statusKeys[outputs[index]?.status || 'pending'])}
                   </Tag>
                   <Typography.Text type="secondary">
@@ -207,13 +238,17 @@ const ModelTestPage = () => {
                     })}
                   </Typography.Text>
                 </Space>
-                {(outputs[index]?.issue || outputs[index]?.error) && (
-                  <Alert
-                    showIcon
-                    type="warning"
-                    style={{ marginBottom: 8 }}
-                    message={outputs[index]?.error || t(issueKeys[outputs[index]?.issue || 'incomplete'])}
-                  />
+                {outputs[index]?.status === 'completed' && (
+                  <Typography.Paragraph type="secondary" style={{ marginBottom: 8 }}>
+                    {t('settings.modelTest.samples', {
+                      usable: outputs[index]?.usableCount || 0,
+                      excluded: outputs[index]?.excludedCount || 0
+                    })}
+                    {outputs[index]?.issue && ` · ${t(issueKeys[outputs[index]!.issue!])}`}
+                  </Typography.Paragraph>
+                )}
+                {outputs[index]?.error && (
+                  <Alert showIcon type="warning" style={{ marginBottom: 8 }} message={outputs[index]?.error} />
                 )}
                 <TextArea
                   rows={5}
@@ -229,40 +264,38 @@ const ModelTestPage = () => {
             </Button>
           </Space>
         </SettingGroup>
-
-        {!running && outputs.length > 0 && !report && (
-          <Alert showIcon type="info" message={t('settings.modelTest.incomplete')} style={{ marginBottom: 16 }} />
-        )}
-        {report && (
-          <SettingGroup theme={theme}>
-            <SettingTitle>{t('settings.modelTest.result')}</SettingTitle>
-            <Space direction="vertical" style={{ width: '100%', marginTop: 12 }}>
-              <Typography.Text strong>
-                {report.prediction_name} · {(report.probability * 100).toFixed(1)}%
-              </Typography.Text>
-              <Typography.Text type="secondary">
-                {t('settings.modelTest.familyResult', {
-                  family: report.family_prediction_name,
-                  probability: (report.family_probability * 100).toFixed(1)
-                })}
-              </Typography.Text>
-              <Space wrap>
-                {report.results.slice(0, 6).map((item) => (
-                  <Tag key={String(item.model)}>
-                    {String(item.display_name)} {(Number(item.probability) * 100).toFixed(1)}%
-                  </Tag>
-                ))}
-              </Space>
-              <Typography.Text type="secondary">
-                {t('settings.modelTest.usedOutputs', { count: report.used_outputs })}
-              </Typography.Text>
-            </Space>
-          </SettingGroup>
-        )}
-      </SettingContainer>
+      </TestContainer>
     </Page>
   )
 }
+
+const TestContainer = styled(SettingContainer)`
+  container: model-test / inline-size;
+`
+
+const TopRow = styled.div`
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+  margin-bottom: 20px;
+
+  > div {
+    min-width: 0;
+    margin-bottom: 0;
+  }
+
+  @container model-test (min-width: 960px) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+`
+
+const ResultPlaceholder = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 140px;
+  color: var(--color-text-3);
+`
 
 const Page = styled.div`
   display: flex;

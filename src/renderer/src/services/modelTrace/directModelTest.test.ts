@@ -138,6 +138,36 @@ describe('ModelTrace actual SDK request pipeline', () => {
     expect(collector.completed).toBe(false)
   })
 
+  it.each(['empty', 'length'])('accepts a provider-confirmed %s response', async (mode) => {
+    fixture.provider = {
+      id: 'local',
+      name: 'Selected provider',
+      type: 'openai-response',
+      apiHost: 'http://127.0.0.1:18763/v1',
+      apiKey: 'dummy',
+      models: []
+    }
+    const events =
+      mode === 'empty'
+        ? [responseEvents.at(-1)]
+        : [
+            ...responseEvents.slice(0, -1),
+            {
+              type: 'response.incomplete',
+              response: {
+                incomplete_details: { reason: 'max_output_tokens' },
+                usage: { input_tokens: 10, output_tokens: 5 }
+              }
+            }
+          ]
+    vi.stubGlobal('fetch', async () => sse(events))
+    const session = await prepareDirectModelTest({ id: 'gpt-6-sol', name: 'Alias', provider: 'local', group: '' })
+    const collector = new AnswerCollector()
+    await session.execute('unchanged', new AbortController().signal, (chunk) => collector.accept(chunk))
+    expect(collector.completed).toBe(true)
+    expect(collector.rawText).toBe(mode === 'empty' ? '' : '247 18')
+  })
+
   it.each([
     ['openai-response', 'gpt-6-sol', 'responses'],
     ['openai-response', 'qwen3-test', 'responses'],

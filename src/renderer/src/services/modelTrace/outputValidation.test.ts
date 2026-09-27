@@ -1,61 +1,84 @@
 import { describe, expect, it } from 'vitest'
 
-import { countVisibleNumericTokens, isolateAnswer, validateModelTraceOutput } from './outputValidation'
+import { isolateAnswer, MINIMUM_ANALYSIS_NUMBERS, validateModelTraceOutput } from './outputValidation'
 
-describe('strict ModelTrace admission', () => {
-  it.each(['1 2 2 355', '1, 2; 2，355', '[1, 2, 2, 355]', '```text\n1 2 2 355\n```', '```json\n[1,2,2,355]\n```'])(
-    'accepts only complete numeric answers: %s',
+const sample = Array(80).fill('247').join(' ')
+
+describe('ModelTrace analysis eligibility', () => {
+  it.each([sample, `[${sample}]`, `\`\`\`text\n${sample}\n\`\`\``, `\`\`\`json\n[${sample}]\n\`\`\``])(
+    'accepts complete integer sequences without rewriting their text',
     (text) => {
-      expect(validateModelTraceOutput(text, 4)).toMatchObject({ accepted: true, numbers: [1, 2, 2, 355] })
+      expect(validateModelTraceOutput(text, 303)).toMatchObject({ accepted: true, text, usableCount: 80 })
     }
   )
-  it.each([
-    'Need 4 values. 1 2 2 355',
-    '1 2 2 355 done',
-    '1. 23\n2. 42',
-    '-1 2 3 4',
-    '1.2 2 3 4',
-    '1e2 2 3 4',
-    '[1 2 3',
-    '```text\n1 2 3',
-    '1 2 ... 4'
-  ])('rejects contaminated formats: %s', (text) => expect(validateModelTraceOutput(text, 4).accepted).toBe(false))
-  it.each(['0 1 2 3', '1 2 3 356', '999999999999999999999 2 3 4'])(
-    'does not silently discard out of range numbers: %s',
-    (text) => {
-      expect(validateModelTraceOutput(text, 4)).toMatchObject({ accepted: false, issue: 'range', parsedCount: 4 })
-    }
-  )
-  it('requires an exact count, preserving repeated values and their order', () => {
-    expect(validateModelTraceOutput('3 3 1', 4).issue).toBe('count')
-    expect(validateModelTraceOutput('3 3 1 2 2', 4).issue).toBe('count')
-    expect(validateModelTraceOutput('3 3 1 2', 4).numbers).toEqual([3, 3, 1, 2])
+  it.each([80, 299, 332, 500])('accepts %i integers regardless of the requested count', (count) => {
+    expect(validateModelTraceOutput(Array(count).fill('7').join(','), 303)).toMatchObject({
+      accepted: true,
+      parsedCount: count,
+      usableCount: count,
+      excludedCount: 0
+    })
   })
-  it('shows an honest diagnostic count for invalid prose while excluding tagged thought content', () => {
-    expect(validateModelTraceOutput('Need 4 values: 1 2 3 4', 4)).toMatchObject({
+  it('uses the minimum sample boundary, preserving duplicate values and order', () => {
+    expect(validateModelTraceOutput(Array(79).fill('3').join(' '), 79)).toMatchObject({
+      accepted: false,
+      issue: 'insufficient'
+    })
+    const numbers = [3, 3, 1, 355, ...Array(76).fill(2)]
+    expect(validateModelTraceOutput(numbers.join(' '), 999).numbers).toEqual(numbers)
+    expect(numbers).toHaveLength(MINIMUM_ANALYSIS_NUMBERS)
+  })
+  it('retains excluded values in the answer while filtering only the scoring array', () => {
+    const text = `0 -1 356 999999999999999999999 ${sample} +355`
+    expect(validateModelTraceOutput(text, 303)).toMatchObject({
+      accepted: true,
+      text,
+      numbers: [...Array(80).fill(247), 355],
+      parsedCount: 85,
+      usableCount: 81,
+      excludedCount: 4
+    })
+  })
+  it.each([
+    `Need 80 values. ${sample}`,
+    `${sample} done`,
+    `1. 23\n2. 42 ${sample}`,
+    `1.2 ${sample}`,
+    `1e2 ${sample}`,
+    `[${sample}`,
+    `\`\`\`text\n${sample}`,
+    `1 2 ... ${sample}`
+  ])('does not mine integers from unsupported content', (text) => {
+    expect(validateModelTraceOutput(text, 303)).toMatchObject({
       accepted: false,
       issue: 'format',
-      parsedCount: 5
+      numbers: [],
+      usableCount: 0
     })
-    expect(countVisibleNumericTokens('<think>999 888</think>1 2 3')).toBe(3)
-    expect(validateModelTraceOutput('<think>999 888</think>1 2 3', 4).parsedCount).toBe(3)
   })
-  it('rejects the cumulative-prefix corruption from v0.1.19', () => {
-    const numbers = Array.from({ length: 303 }, (_, i) => String((i % 355) + 1))
-    const corrupted = numbers.map((_, i) => numbers.slice(0, i + 1).join(', ')).join('')
-    expect(validateModelTraceOutput(corrupted, 303).accepted).toBe(false)
+  it('reports empty and entirely excluded samples without inventing numbers', () => {
+    expect(validateModelTraceOutput('', 303).issue).toBe('empty')
+    expect(validateModelTraceOutput('0 -1 356', 303)).toMatchObject({
+      accepted: false,
+      issue: 'insufficient',
+      usableCount: 0,
+      excludedCount: 3
+    })
   })
-  it('isolates only explicitly delimited reasoning, including nested and split tags', () => {
+  it('isolates thought content, including nested and split tags', () => {
     expect(isolateAnswer('<thi', false).text).toBe('')
     expect(isolateAnswer('<thinking>secret 303', false).text).toBe('')
-    expect(validateModelTraceOutput('<thinking>secret <analysis>123</analysis></thinking>1 2 3', 3)).toMatchObject({
+    expect(
+      validateModelTraceOutput(`<thinking>secret <analysis>123</analysis></thinking>${sample}`, 303)
+    ).toMatchObject({
       accepted: true,
-      numbers: [1, 2, 3]
+      parsedCount: 80,
+      numbers: Array(80).fill(247)
     })
-    expect(validateModelTraceOutput('<think>123', 3).issue).toBe('reasoning-tag')
-    expect(validateModelTraceOutput('<think>123</analysis>1 2 3', 3).issue).toBe('reasoning-tag')
-    expect(validateModelTraceOutput('1 2 3 <think>', 3).issue).toBe('reasoning-tag')
-    const incomplete = validateModelTraceOutput('1 2 3 <think>', 3)
-    expect(validateModelTraceOutput(incomplete.text, 3).accepted).toBe(false)
+    for (const raw of ['<think>123', `<think>123</analysis>${sample}`, `${sample} <think>`]) {
+      const result = validateModelTraceOutput(raw, 303)
+      expect(result).toMatchObject({ accepted: false, issue: 'reasoning-tag', usableCount: 0 })
+      expect(validateModelTraceOutput(result.text, 303).accepted).toBe(false)
+    }
   })
 })

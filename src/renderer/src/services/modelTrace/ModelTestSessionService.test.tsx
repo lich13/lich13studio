@@ -85,7 +85,8 @@ describe('route-independent model-test sessions', () => {
     let fail = true
     mocks.execute.mockImplementation(async (prompt, _signal, onChunk) => {
       const challenge = challenges.find((entry) => entry.prompt === prompt)!
-      emit(onChunk, fail && prompt === challenges[0].prompt ? 1 : challenge.expected_count)
+      if (fail && prompt === challenges[0].prompt) throw new TypeError('connection reset')
+      emit(onChunk, challenge.expected_count)
     })
     const selected = { ...model }
     const run = service.start(selected)
@@ -97,7 +98,7 @@ describe('route-independent model-test sessions', () => {
     expect(mocks.prepare).toHaveBeenCalledTimes(1)
     expect(mocks.prepare.mock.calls[0][0]).toEqual(model)
     expect(service.getSnapshot().canRetry).toBe(true)
-    expect(service.getSnapshot().outputs.map((output) => output.status)).toEqual(['invalid', 'valid', 'valid'])
+    expect(service.getSnapshot().outputs.map((output) => output.status)).toEqual(['error', 'completed', 'completed'])
     fail = false
     await service.retryFailed()
     expect(mocks.prepare).toHaveBeenCalledTimes(1)
@@ -131,7 +132,7 @@ describe('route-independent model-test sessions', () => {
   it('cancels queued retries and clears old reports when manual answers change', async () => {
     const service = new ModelTestSessionService()
     const challenges = service.getSnapshot().challenges
-    mocks.execute.mockImplementation(async (_prompt, _signal, onChunk) => emit(onChunk, 1))
+    mocks.execute.mockRejectedValue(new TypeError('connection reset'))
     const run = service.start(model)
     await vi.advanceTimersByTimeAsync(0)
     service.stop()
@@ -147,6 +148,57 @@ describe('route-independent model-test sessions', () => {
     expect(service.getSnapshot().report).toBeUndefined()
     expect(service.getSnapshot().canRetry).toBe(false)
     service.analyze()
-    expect(service.getSnapshot().outputs[0].status).toBe('invalid')
+    expect(service.getSnapshot().outputs[0]).toMatchObject({ status: 'completed', issue: 'format' })
+    expect(service.getSnapshot().report?.used_outputs).toBe(2)
+  })
+  it('publishes partial reports during the run and retains them through Stop and failed-group retries', async () => {
+    const service = new ModelTestSessionService()
+    const challenges = service.getSnapshot().challenges
+    let finishSecond!: () => void
+    mocks.execute.mockImplementation((prompt, signal, onChunk) => {
+      if (prompt === challenges[0].prompt) {
+        emit(onChunk, 80)
+        return Promise.resolve()
+      }
+      return new Promise<void>((resolve, reject) => {
+        signal.addEventListener('abort', () => reject(signal.reason), { once: true })
+        finishSecond = () => {
+          emit(onChunk, 1)
+          resolve()
+        }
+      })
+    })
+    const run = service.start(model)
+    await vi.advanceTimersByTimeAsync(0)
+    expect(service.getSnapshot()).toMatchObject({ phase: 'running', report: { used_outputs: 1 } })
+    finishSecond()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(service.getSnapshot().outputs[1]).toMatchObject({ status: 'completed', usableCount: 1 })
+    service.stop()
+    await run
+    expect(service.getSnapshot().report?.used_outputs).toBe(1)
+    mocks.execute.mockImplementation(async (_prompt, _signal, onChunk) => emit(onChunk, 80))
+    await service.retryFailed()
+    expect(mocks.execute.mock.calls.map(([prompt]) => prompt)).toEqual([
+      challenges[0].prompt,
+      challenges[1].prompt,
+      challenges[2].prompt,
+      challenges[2].prompt
+    ])
+    expect(service.getSnapshot()).toMatchObject({ phase: 'completed', canRetry: false, report: { used_outputs: 2 } })
+  })
+
+  it('uses the same eligibility for completed empty automatic and pasted answers', async () => {
+    const service = new ModelTestSessionService()
+    mocks.execute.mockImplementation(async (_prompt, _signal, onChunk) => emit(onChunk, 0))
+    await service.start(model)
+    const automatic = service
+      .getSnapshot()
+      .outputs.map(({ status, issue, usableCount }) => ({ status, issue, usableCount }))
+    expect(service.getSnapshot()).toMatchObject({ phase: 'completed', canRetry: false, report: undefined })
+    service.analyze()
+    expect(
+      service.getSnapshot().outputs.map(({ status, issue, usableCount }) => ({ status, issue, usableCount }))
+    ).toEqual(automatic)
   })
 })

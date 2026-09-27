@@ -16,9 +16,14 @@ describe('ModelTrace answer collector', () => {
     expect(collector.preview).toBe('1 2 3')
     expect(collector.completed).toBe(true)
   })
-  it('rejects truncated completions even if a valid-looking sequence was received', () => {
+  it.each(['stop', 'length', 'content-filter'] as const)('accepts provider-confirmed %s completion', (finishReason) => {
     const collector = new AnswerCollector()
-    collector.accept({ type: ChunkType.LLM_RESPONSE_COMPLETE, finishReason: 'length', response: { text: '1 2 3' } })
+    collector.accept({ type: ChunkType.LLM_RESPONSE_COMPLETE, finishReason, response: { text: '1 2 3' } })
+    expect(collector.completed).toBe(true)
+  })
+  it.each(['unknown', 'other', 'error'])('rejects ambiguous or failed %s completions', (finishReason) => {
+    const collector = new AnswerCollector()
+    collector.accept({ type: ChunkType.LLM_RESPONSE_COMPLETE, finishReason, response: { text: '1 2 3' } })
     expect(collector.completed).toBe(false)
   })
   it('uses deltas once and replaces complete snapshots across multiple blocks', () => {

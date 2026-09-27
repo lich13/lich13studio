@@ -56,11 +56,15 @@ export class ModelTestSessionService {
         if (this.runner !== runner) return
         const outputs = [...this.snapshot.outputs]
         outputs[index] = output
-        this.update({ outputs, target })
+        this.update({
+          outputs,
+          target,
+          ...(output.status === 'completed' ? { report: analyzeModelTraceOutputs(outputs) } : {})
+        })
       }
     })
     this.runner = runner
-    this.update({ outputs: [], target: undefined })
+    this.update({ outputs: [], target: undefined, report: undefined })
     return this.execute(false)
   }
 
@@ -73,14 +77,14 @@ export class ModelTestSessionService {
     const runner = this.runner
     if (!runner) return
     const generation = ++this.generation
-    this.update({ phase: 'running', error: undefined, report: undefined, canRetry: false })
+    this.update({ phase: 'running', error: undefined, canRetry: false })
     try {
       const result = await runner.run({ retryFailedOnly })
       if (generation !== this.generation || runner !== this.runner) return
       this.update({
         ...result,
-        phase: result.error ? 'error' : 'completed',
-        canRetry: result.outputs.some((output) => output.status !== 'valid')
+        phase: result.error || result.outputs.some((output) => output.status === 'error') ? 'error' : 'completed',
+        canRetry: result.outputs.some((output) => output.status !== 'completed')
       })
     } catch (error) {
       if (generation !== this.generation || runner !== this.runner) return
@@ -96,7 +100,7 @@ export class ModelTestSessionService {
     if (this.snapshot.phase !== 'running') return
     this.generation += 1
     this.runner?.cancel()
-    this.update({ phase: 'stopped', report: undefined, error: undefined, canRetry: true })
+    this.update({ phase: 'stopped', error: undefined, canRetry: true })
   }
 
   regenerate() {
@@ -131,8 +135,10 @@ export class ModelTestSessionService {
         id,
         expected_count,
         text: validation.text,
-        status: validation.accepted ? 'valid' : 'invalid',
+        status: 'completed',
         parsedCount: validation.parsedCount,
+        usableCount: validation.usableCount,
+        excludedCount: validation.excludedCount,
         issue: validation.issue
       }
     })
@@ -140,7 +146,8 @@ export class ModelTestSessionService {
       outputs,
       error: undefined,
       phase: 'completed',
-      report: outputs.every((output) => output.status === 'valid') ? analyzeModelTraceOutputs(outputs) : undefined
+      canRetry: false,
+      report: analyzeModelTraceOutputs(outputs)
     })
   }
 }
