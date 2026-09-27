@@ -7,6 +7,11 @@ import { prepareDirectModelTest } from './directModelTest'
 import { analyzeGlobalOutputs } from './fingerprintCore'
 import { type ModelTestLimit, ModelTestOutputGuard, ModelTestOutputLimitError } from './OutputGuard'
 import { type OutputIssue, validateModelTraceOutput } from './outputValidation'
+import {
+  classifyModelTestFailure,
+  type ModelTestFailureCategory,
+  type ModelTestRetryStopReason
+} from './requestFailure'
 
 export interface ModelTestChallenge {
   id: string
@@ -28,6 +33,10 @@ export interface ModelTestOutput {
   issue?: OutputIssue
   error?: string
   failureCode?: 'output-limit' | 'request-error'
+  failureCategory?: ModelTestFailureCategory
+  retryable?: boolean
+  retryDelayMs?: number
+  retryStopReason?: ModelTestRetryStopReason
   limit?: ModelTestLimit
 }
 
@@ -83,27 +92,9 @@ export const createModelTraceChallenges = (): ModelTestChallenge[] => generateCh
 export const analyzeModelTraceOutputs = (outputs: ModelTestOutput[]): ModelTraceReport | undefined =>
   analyzeGlobalOutputs(outputs, bank) as ModelTraceReport | undefined
 
-const errorMessage = (error: unknown): string =>
-  error instanceof Error ? error.message : typeof error === 'string' ? error : '模型测试请求失败'
-
-/** Recognize temporary failures without retrying auth, missing models or invalid parameters. */
+/** User cancellation is checked against the session signal by the runner. */
 export function isRetryableModelTestError(error: unknown): boolean {
-  if (error instanceof ModelTestOutputLimitError) return true
-  let current = error
-  const seen = new Set<unknown>()
-  const messages = [errorMessage(error)]
-  while (current && typeof current === 'object' && !seen.has(current)) {
-    seen.add(current)
-    messages.push(errorMessage(current))
-    const value = current as { name?: string; statusCode?: number; status?: number; cause?: unknown }
-    if (value.name === 'AbortError') return false
-    const status = value.statusCode ?? value.status
-    if (status !== undefined) return status === 408 || status === 429 || status >= 500
-    current = value.cause
-  }
-  return /network|fetch failed|failed to fetch|load failed|connection|socket|ECONN|EPIPE|decoding response body|terminated|premature|incomplete stream|without a provider terminal event|terminal event/i.test(
-    messages.join(' ')
-  )
+  return classifyModelTestFailure(error).retryable
 }
 
 const waitForRetry = (milliseconds: number, signal: AbortSignal) =>
@@ -188,6 +179,10 @@ export class ModelTestRunner {
             excludedCount: 0,
             issue: undefined,
             failureCode: undefined,
+            failureCategory: undefined,
+            retryable: undefined,
+            retryDelayMs: undefined,
+            retryStopReason: undefined,
             limit: undefined,
             error: undefined
           })
@@ -197,9 +192,9 @@ export class ModelTestRunner {
               if (!accepting || !current()) return
               collector.accept(chunk)
               limitError = guard.accept(chunk, collector.rawText)
-              if (limitError) {
+              if (limitError || collector.error !== undefined) {
                 accepting = false
-                attemptController.abort(limitError)
+                attemptController.abort(limitError ?? collector.error)
               }
               const validation = validateModelTraceOutput(collector.rawText, challenge.expected_count)
               this.update(index, {
@@ -227,20 +222,30 @@ export class ModelTestRunner {
           } catch (error) {
             if (!current()) throw signal.reason ?? error
             const failure = limitError ?? collector.error ?? error
-            retryable = isRetryableModelTestError(failure)
+            accepting = false
+            attemptController.abort(failure)
+            const classified = classifyModelTestFailure(failure)
+            retryable = classified.retryable
             this.update(index, {
               status: 'error',
-              error: errorMessage(failure),
+              error: classified.message,
               failureCode: limitError ? 'output-limit' : 'request-error',
+              failureCategory: classified.category,
+              retryable,
+              retryStopReason: retryable
+                ? attempt === MODELTRACE_MAX_ATTEMPTS
+                  ? 'exhausted'
+                  : undefined
+                : (classified.category as ModelTestRetryStopReason),
               limit: limitError?.limit
             })
-            if (!retryable) fatalError = errorMessage(failure)
+            if (!retryable) fatalError = classified.message
           } finally {
             accepting = false
             signal.removeEventListener('abort', abortAttempt)
           }
           if (!retryable || attempt === MODELTRACE_MAX_ATTEMPTS) break
-          this.update(index, { status: 'retrying' })
+          this.update(index, { status: 'retrying', retryDelayMs: RETRY_DELAYS[attempt - 1] })
           await waitForRetry(RETRY_DELAYS[attempt - 1], signal)
         }
         if (fatalError) break
@@ -265,7 +270,8 @@ export class ModelTestRunner {
     this.controller = undefined
     this.generation += 1
     this.outputs.forEach((output, index) => {
-      if (output.status === 'running' || output.status === 'retrying') this.update(index, { status: 'aborted' })
+      if (output.status === 'running' || output.status === 'retrying')
+        this.update(index, { status: 'aborted', retryDelayMs: undefined, retryStopReason: 'cancelled' })
     })
   }
 

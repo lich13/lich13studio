@@ -15,6 +15,8 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import styled from 'styled-components'
 
+import ModelTestViewBoundary from './ModelTestViewBoundary'
+
 const { TextArea } = Input
 
 const statusKeys = {
@@ -30,6 +32,14 @@ const issueKeys = {
   'reasoning-tag': 'settings.modelTest.issue.reasoning-tag',
   format: 'settings.modelTest.issue.format',
   insufficient: 'settings.modelTest.issue.insufficient'
+} as const
+const retryStopKeys = {
+  exhausted: 'settings.modelTest.retryStop.exhausted',
+  cancelled: 'settings.modelTest.retryStop.cancelled',
+  auth: 'settings.modelTest.retryStop.auth',
+  quota: 'settings.modelTest.retryStop.quota',
+  model: 'settings.modelTest.retryStop.model',
+  'invalid-request': 'settings.modelTest.retryStop.invalidRequest'
 } as const
 
 const ModelTestPage = () => {
@@ -163,6 +173,13 @@ const ModelTestPage = () => {
                     })}
                   </Typography.Text>
                 </Space>
+                {(outputs[index]?.retryDelayMs || outputs[index]?.retryStopReason) && (
+                  <Typography.Paragraph type="secondary" style={{ marginBottom: 8 }}>
+                    {outputs[index]?.status === 'retrying'
+                      ? t('settings.modelTest.retryWaiting', { seconds: outputs[index]!.retryDelayMs! / 1000 })
+                      : outputs[index]?.retryStopReason && t(retryStopKeys[outputs[index]!.retryStopReason!])}
+                  </Typography.Paragraph>
+                )}
                 {outputs[index]?.status === 'completed' && (
                   <Typography.Paragraph type="secondary" style={{ marginBottom: 8 }}>
                     {t('settings.modelTest.samples', {
@@ -248,4 +265,10 @@ const Page = styled.div`
   overflow: hidden;
 `
 
-export default ModelTestPage
+export default function ModelTestPageWithRecovery() {
+  return (
+    <ModelTestViewBoundary>
+      <ModelTestPage />
+    </ModelTestViewBoundary>
+  )
+}

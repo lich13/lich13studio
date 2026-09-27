@@ -1,6 +1,6 @@
 {
   "name": "lich13studio",
-  "version": "0.1.23",
+  "version": "0.1.24",
   "private": true,
   "description": "A focused desktop AI workspace for assistants, Responses and Anthropic.",
   "desktopName": "lich13studio.desktop",

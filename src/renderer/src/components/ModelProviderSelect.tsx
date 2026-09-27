@@ -4,7 +4,8 @@ import { useAppSelector } from '@renderer/store'
 import type { Model } from '@renderer/types'
 import { type ModelProviderSelection, resolveModelProviderSelection } from '@shared/modelProviderSelection'
 import { PLATFORM_NAMES, PROVIDER_PLATFORMS, type ProviderPlatform } from '@shared/platforms'
-import { Select, Typography } from 'antd'
+import { Select, Tooltip, Typography } from 'antd'
+import { CircleAlert } from 'lucide-react'
 import { useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
@@ -13,12 +14,14 @@ export default function ModelProviderSelect({
   selection,
   onChange,
   compact = false,
+  layout = 'responsive',
   filter,
   showEffort = false
 }: {
   selection: ModelProviderSelection
   onChange: (selection: ModelProviderSelection) => void
   compact?: boolean
+  layout?: 'inline' | 'responsive'
   showEffort?: boolean
   filter?: (model: Model) => boolean
 }) {
@@ -59,11 +62,21 @@ export default function ModelProviderSelect({
       label: `${llm.providers.find((provider) => provider.id === selection.providerId)?.name || selection.providerId} (${t('settings.modelTest.unavailable')})`,
       disabled: true
     })
+  const issueText = resolved.issue
+    ? t(
+        resolved.issue === 'modelUnavailable'
+          ? 'settings.modelTest.modelUnavailable'
+          : 'settings.modelTest.providerUnavailable'
+      )
+    : undefined
+  const effortText =
+    effort && t('chat.effectiveReasoning', { requested: effort.requested, effective: effort.effective })
   return (
-    <Controls className="nodrag" $compact={compact}>
-      <Fields>
+    <Controls className="nodrag" $compact={compact} $inline={layout === 'inline'}>
+      <Fields $inline={layout === 'inline'}>
         <Select
           aria-label={t('settings.modelTest.modelLabel')}
+          title={selection.modelId}
           showSearch
           optionFilterProp="label"
           size={compact ? 'small' : 'middle'}
@@ -77,6 +90,7 @@ export default function ModelProviderSelect({
         />
         <Select
           aria-label={t('settings.modelTest.providerLabel')}
+          title={providers.find((provider) => provider.value === selection.providerId)?.label}
           showSearch
           optionFilterProp="label"
           size={compact ? 'small' : 'middle'}
@@ -88,32 +102,47 @@ export default function ModelProviderSelect({
         />
       </Fields>
       {showEffort && effort && (
-        <Typography.Text type="secondary">
-          {t('chat.effectiveReasoning', { requested: effort.requested, effective: effort.effective })}
-        </Typography.Text>
+        <Tooltip title={effortText}>
+          <Typography.Text type="secondary" aria-label={effortText} className="selection-status">
+            {layout === 'inline' ? effort.effective : effortText}
+          </Typography.Text>
+        </Tooltip>
       )}
-      {resolved.issue && (
-        <Typography.Text type="warning" role="status">
-          {t(
-            resolved.issue === 'modelUnavailable'
-              ? 'settings.modelTest.modelUnavailable'
-              : 'settings.modelTest.providerUnavailable'
-          )}
-        </Typography.Text>
+      {issueText && (
+        <Tooltip title={issueText}>
+          <Typography.Text type="warning" role="status" aria-label={issueText} className="selection-status">
+            {layout === 'inline' ? <CircleAlert size={14} aria-hidden /> : issueText}
+          </Typography.Text>
+        </Tooltip>
       )}
     </Controls>
   )
 }
 
-const Controls = styled.div<{ $compact: boolean }>`
+const Controls = styled.div<{ $compact: boolean; $inline: boolean }>`
+  display: flex;
+  flex-direction: ${({ $inline }) => ($inline ? 'row' : 'column')};
+  align-items: ${({ $inline }) => ($inline ? 'center' : 'stretch')};
+  flex: ${({ $inline }) => ($inline ? '0 0 auto' : '0 1 auto')};
+  gap: 6px;
   min-width: 0;
-  width: ${({ $compact }) => ($compact ? 'min(380px, 100%)' : '100%')};
+  width: ${({ $compact, $inline }) => ($inline ? 'auto' : $compact ? 'min(380px, 100%)' : '100%')};
   -webkit-app-region: no-drag;
   .ant-typography { font-size: 12px; }
+  .selection-status { display: inline-flex; align-items: center; flex-shrink: 0; }
 `
-const Fields = styled.div`
+const Fields = styled.div<{ $inline: boolean }>`
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
+  flex-wrap: ${({ $inline }) => ($inline ? 'nowrap' : 'wrap')};
+  min-width: 0;
   gap: 6px;
-  .ant-select { flex: 1 1 140px; min-width: 0; }
+  .ant-select {
+    flex: ${({ $inline }) => ($inline ? '0 0 auto' : '1 1 140px')};
+    min-width: 0;
+    width: ${({ $inline }) => ($inline ? 'clamp(140px, 15vw, 220px)' : 'auto')};
+  }
+  .ant-select + .ant-select {
+    width: ${({ $inline }) => ($inline ? 'clamp(120px, 12vw, 170px)' : 'auto')};
+  }
 `

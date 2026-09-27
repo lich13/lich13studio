@@ -165,6 +165,64 @@ describe('bounded ModelTrace sessions', () => {
     const result = await new ModelTestRunner({ model, challenges }).run()
     expect(mocks.execute).toHaveBeenCalledTimes(1)
     expect(result.error).toBe('Unauthorized')
+    expect(result.outputs[0]).toMatchObject({ retryable: false, retryStopReason: 'auth', attempts: 1 })
+  })
+
+  it.each([
+    { error: { message: 'Unexpected upstream response' } },
+    new DOMException('Upstream cancelled', 'AbortError')
+  ])('retries unknown errors and upstream aborts while the user session is active', async (error) => {
+    mocks.execute.mockRejectedValueOnce(error)
+    const pending = new ModelTestRunner({ model, challenges }).run()
+    await vi.runAllTimersAsync()
+    const result = await pending
+    expect(result.outputs.map((output) => output.attempts)).toEqual([2, 1, 1])
+    expect(result.report?.used_outputs).toBe(3)
+    expect(mocks.execute.mock.calls[0][1].aborted).toBe(true)
+  })
+
+  it('closes an error-emitting stream before retrying, and preserves the original failure', async () => {
+    const progress = vi.fn()
+    let active = 0
+    let maximum = 0
+    mocks.execute.mockImplementationOnce(
+      (_prompt, signal, onChunk) =>
+        new Promise<void>((_resolve, reject) => {
+          active += 1
+          maximum = Math.max(maximum, active)
+          signal.addEventListener(
+            'abort',
+            () => {
+              active -= 1
+              reject(signal.reason)
+            },
+            { once: true }
+          )
+          onChunk({ type: ChunkType.ERROR, error: { message: 'Gateway hiccup' } as Error })
+          onChunk({ type: ChunkType.TEXT_DELTA, text: 'stale' })
+        })
+    )
+    const pending = new ModelTestRunner({ model, challenges, onProgress: progress }).run()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(progress.mock.calls.at(-1)?.[0].output).toMatchObject({
+      status: 'retrying',
+      retryDelayMs: 1000,
+      error: 'Gateway hiccup'
+    })
+    expect(active).toBe(0)
+    await vi.runAllTimersAsync()
+    expect((await pending).report?.used_outputs).toBe(3)
+    expect(maximum).toBe(1)
+  })
+
+  it('caps unknown errors at nine requests and records exhaustion', async () => {
+    mocks.execute.mockRejectedValue({ message: 'unexpected failure' })
+    const pending = new ModelTestRunner({ model, challenges }).run()
+    await vi.runAllTimersAsync()
+    const result = await pending
+    expect(mocks.execute).toHaveBeenCalledTimes(9)
+    expect(result.outputs.every((output) => output.retryStopReason === 'exhausted' && output.attempts === 3)).toBe(true)
+    expect(result.report).toBeUndefined()
   })
 
   it('cancels a pending retry and ignores late callbacks', async () => {
@@ -219,10 +277,10 @@ describe('retry classification', () => {
   it.each([400, 401, 403, 404, 422])('does not retry HTTP %i', (statusCode) => {
     expect(isRetryableModelTestError({ statusCode })).toBe(false)
   })
-  it('preserves wrapped errors and never retries cancellation', () => {
+  it('preserves wrapped errors and leaves user cancellation to the session signal', () => {
     expect(isRetryableModelTestError(new Error('upstream error', { cause: { statusCode: 503 } }))).toBe(true)
     expect(isRetryableModelTestError(new Error('upstream error', { cause: new Error('ECONNRESET') }))).toBe(true)
-    expect(isRetryableModelTestError(new DOMException('network aborted', 'AbortError'))).toBe(false)
+    expect(isRetryableModelTestError(new DOMException('network aborted', 'AbortError'))).toBe(true)
     expect(isRetryableModelTestError(new Error('invalid model'))).toBe(false)
   })
 })

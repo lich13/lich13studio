@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({ execute: vi.fn(), prepare: vi.fn() }))
 vi.mock('./directModelTest', () => ({ prepareDirectModelTest: mocks.prepare }))
+vi.mock('@logger', () => ({ loggerService: { withContext: () => ({ warn: vi.fn() }) } }))
 
 import { modelTestSession, ModelTestSessionService } from './ModelTestSessionService'
 
@@ -35,6 +36,91 @@ afterEach(() => {
 })
 
 describe('route-independent model-test sessions', () => {
+  it('coalesces preview notifications and immediately publishes terminal state', async () => {
+    const service = new ModelTestSessionService()
+    let send!: (chunk: Chunk) => void
+    let finish!: () => void
+    mocks.execute
+      .mockImplementationOnce(
+        (_prompt, _signal, onChunk) =>
+          new Promise<void>((resolve) => {
+            send = onChunk
+            finish = () => {
+              onChunk({ type: ChunkType.LLM_RESPONSE_COMPLETE, response: { text: '1 '.repeat(300) } })
+              resolve()
+            }
+          })
+      )
+      .mockImplementation(async (_prompt, _signal, onChunk) => emit(onChunk, 80))
+    const notified = vi.fn()
+    service.subscribe(notified)
+    const run = service.start(model)
+    await vi.advanceTimersByTimeAsync(0)
+    notified.mockClear()
+    for (let index = 0; index < 300; index++) send({ type: ChunkType.TEXT_DELTA, text: '1 ' })
+    expect(notified).not.toHaveBeenCalled()
+    expect(service.getSnapshot().outputs[0].parsedCount).toBe(300)
+    const snapshot = service.getSnapshot()
+    expect(service.getSnapshot()).toBe(snapshot)
+    await vi.advanceTimersByTimeAsync(50)
+    expect(notified).toHaveBeenCalledTimes(1)
+    finish()
+    await run
+    expect(service.getSnapshot().phase).toBe('completed')
+    const count = notified.mock.calls.length
+    await vi.runAllTimersAsync()
+    expect(notified).toHaveBeenCalledTimes(count)
+  })
+
+  it('isolates throwing and re-subscribing listeners from requests and other subscribers', async () => {
+    const service = new ModelTestSessionService()
+    mocks.execute.mockImplementation(async (_prompt, _signal, onChunk) => emit(onChunk, 80))
+    service.subscribe(() => {
+      throw new Error('Minified React error #185')
+    })
+    let unsubscribe = () => {}
+    const replacing = vi.fn(() => {
+      unsubscribe()
+      unsubscribe = service.subscribe(replacing)
+    })
+    unsubscribe = service.subscribe(replacing)
+    const observed = vi.fn()
+    service.subscribe(observed)
+    await service.start(model)
+    expect(mocks.execute).toHaveBeenCalledTimes(3)
+    expect(service.getSnapshot()).toMatchObject({ phase: 'completed', report: { used_outputs: 3 } })
+    expect(replacing.mock.calls.length).toBeLessThan(30)
+    expect(observed).toHaveBeenCalled()
+  })
+
+  it('discards scheduled previews and late callbacks after Stop and a new session', async () => {
+    const service = new ModelTestSessionService()
+    let oldChunk!: (chunk: Chunk) => void
+    mocks.execute
+      .mockImplementationOnce(
+        (_prompt, signal, onChunk) =>
+          new Promise((_resolve, reject) => {
+            oldChunk = onChunk
+            signal.addEventListener('abort', () => reject(signal.reason), { once: true })
+          })
+      )
+      .mockImplementation(async (_prompt, _signal, onChunk) => emit(onChunk, 80))
+    const run = service.start(model)
+    await vi.advanceTimersByTimeAsync(0)
+    oldChunk({ type: ChunkType.TEXT_DELTA, text: 'partial' })
+    service.stop()
+    await run
+    const stopped = service.getSnapshot()
+    await vi.advanceTimersByTimeAsync(100)
+    expect(service.getSnapshot()).toBe(stopped)
+    await service.start(model)
+    const complete = service.getSnapshot()
+    oldChunk({ type: ChunkType.TEXT_DELTA, text: 'late' })
+    await vi.runAllTimersAsync()
+    expect(service.getSnapshot()).toBe(complete)
+    expect(complete.phase).toBe('completed')
+  })
+
   it('keeps running across real hook unmount/remount and exposes the completed report without resending', async () => {
     const challenges = modelTestSession.getSnapshot().challenges
     let completeFirst!: () => void

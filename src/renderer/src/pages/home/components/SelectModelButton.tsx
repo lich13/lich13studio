@@ -12,6 +12,7 @@ export default function SelectModelButton({ assistant }: { assistant: Assistant 
   return (
     <ModelProviderSelect
       compact
+      layout="inline"
       showEffort
       selection={assistantModelSelection(assistant, llm)}
       onChange={(modelSelection) => {

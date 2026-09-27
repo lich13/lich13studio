@@ -22,6 +22,7 @@ vi.mock('@renderer/store', () => ({ useAppSelector: (fn: any) => fn({ llm: fixtu
 vi.mock('@renderer/config/models', () => ({ isEmbeddingModel: () => false, isRerankModel: () => false }))
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
 vi.mock('antd', () => ({
+  Tooltip: ({ children }: any) => children,
   Typography: { Text: ({ children, ...props }: any) => createElement('span', props, children) },
   Select: ({ options, value, onChange, disabled, 'aria-label': label }: any) =>
     createElement(

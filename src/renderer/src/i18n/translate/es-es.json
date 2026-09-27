@@ -4567,10 +4567,20 @@
       "providerPlaceholder": "Seleccionar proveedor",
       "providerUnavailable": "Selecciona un proveedor habilitado para esta plataforma. Tu selección no se sustituirá automáticamente.",
       "regenerate": "[to be translated]:New challenges",
+      "restoreView": "Restaurar vista de prueba",
       "result": "[to be translated]:Attribution result",
       "resultPending": "Esperando resultados",
       "resultRunning": "Prueba en curso",
       "retryFailed": "Retry failed challenges only",
+      "retryStop": {
+        "auth": "Error de autenticación. Revise sus credenciales antes de reintentar.",
+        "cancelled": "Detenido por usted. No habrá más reintentos automáticos.",
+        "exhausted": "Se agotaron los 3 intentos. Puede repetir solo los grupos fallidos.",
+        "invalidRequest": "Parámetros o dirección no válidos. Reintentos automáticos detenidos.",
+        "model": "Modelo no encontrado. Revise el ID del modelo.",
+        "quota": "Saldo o cuota insuficientes. Reintentos automáticos detenidos."
+      },
+      "retryWaiting": "Reintento automático en {{seconds}} segundos",
       "run": "Start three challenges",
       "runTarget": "Destino: {{provider}} · ID de modelo: {{model}}",
       "samples": "Utilizables: {{usable}} · Excluidos: {{excluded}}",
@@ -4586,7 +4596,8 @@
       "target": "Provider: {{provider}} · Model ID: {{model}}",
       "title": "[to be translated]:Model Test",
       "unavailable": "No disponible",
-      "usedOutputs": "Grupos analizados: {{count}}"
+      "usedOutputs": "Grupos analizados: {{count}}",
+      "viewError": "La vista de prueba tuvo un error. La sesión se conserva; restaure la vista para ver el progreso y los resultados."
     },
     "models": {
       "add": {

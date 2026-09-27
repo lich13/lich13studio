@@ -4567,10 +4567,20 @@
       "providerPlaceholder": "Выберите провайдера",
       "providerUnavailable": "Выберите включённого провайдера для этой платформы. Выбор не будет заменён автоматически.",
       "regenerate": "[to be translated]:New challenges",
+      "restoreView": "Восстановить экран теста",
       "result": "[to be translated]:Attribution result",
       "resultPending": "Ожидание результатов",
       "resultRunning": "Тест выполняется",
       "retryFailed": "Retry failed challenges only",
+      "retryStop": {
+        "auth": "Ошибка аутентификации. Проверьте учётные данные.",
+        "cancelled": "Остановлено вами. Автоматических повторов больше не будет.",
+        "exhausted": "Использованы все 3 попытки. Можно повторить только неудачные группы.",
+        "invalidRequest": "Неверные параметры или адрес запроса. Автоматические повторы остановлены.",
+        "model": "Модель не найдена. Проверьте ID модели.",
+        "quota": "Недостаточно средств или квоты. Автоматические повторы остановлены."
+      },
+      "retryWaiting": "Автоматический повтор через {{seconds}} сек.",
       "run": "Start three challenges",
       "runTarget": "Цель: {{provider}} · ID модели: {{model}}",
       "samples": "Пригодных: {{usable}} · Исключено: {{excluded}}",
@@ -4586,7 +4596,8 @@
       "target": "Provider: {{provider}} · Model ID: {{model}}",
       "title": "[to be translated]:Model Test",
       "unavailable": "Недоступно",
-      "usedOutputs": "Проанализировано групп: {{count}}"
+      "usedOutputs": "Проанализировано групп: {{count}}",
+      "viewError": "Произошла ошибка экрана теста. Сеанс сохранён; восстановите экран, чтобы увидеть ход выполнения и результаты."
     },
     "models": {
       "add": {

@@ -4567,10 +4567,20 @@
       "providerPlaceholder": "Anbieter auswählen",
       "providerUnavailable": "Wählen Sie einen aktiven Anbieter für diese Modellplattform. Ihre Auswahl wird nicht automatisch ersetzt.",
       "regenerate": "[to be translated]:New challenges",
+      "restoreView": "Testansicht wiederherstellen",
       "result": "[to be translated]:Attribution result",
       "resultPending": "Warten auf Testergebnisse",
       "resultRunning": "Test läuft",
       "retryFailed": "Retry failed challenges only",
+      "retryStop": {
+        "auth": "Authentifizierung fehlgeschlagen. Prüfen Sie Ihre Zugangsdaten.",
+        "cancelled": "Von Ihnen gestoppt. Keine weiteren automatischen Versuche.",
+        "exhausted": "Alle 3 Versuche verbraucht. Nur fehlgeschlagene Gruppen können erneut getestet werden.",
+        "invalidRequest": "Ungültige Anfrageparameter oder Adresse. Automatische Versuche gestoppt.",
+        "model": "Modell nicht gefunden. Prüfen Sie die Modell-ID.",
+        "quota": "Guthaben oder Kontingent unzureichend. Automatische Versuche gestoppt."
+      },
+      "retryWaiting": "Automatischer Neuversuch in {{seconds}} Sekunden",
       "run": "Start three challenges",
       "runTarget": "Testziel: {{provider}} · Modell-ID: {{model}}",
       "samples": "Verwendbar: {{usable}} · Ausgeschlossen: {{excluded}}",
@@ -4586,7 +4596,8 @@
       "target": "Provider: {{provider}} · Model ID: {{model}}",
       "title": "[to be translated]:Model Test",
       "unavailable": "Nicht verfügbar",
-      "usedOutputs": "Ausgewertete Gruppen: {{count}}"
+      "usedOutputs": "Ausgewertete Gruppen: {{count}}",
+      "viewError": "Die Testansicht hat einen Fehler. Die Sitzung bleibt erhalten; stellen Sie die Ansicht wieder her, um Fortschritt und Ergebnisse zu sehen."
     },
     "models": {
       "add": {

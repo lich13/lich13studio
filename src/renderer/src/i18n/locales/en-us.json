@@ -4571,10 +4571,20 @@
       "providerPlaceholder": "Select a provider",
       "providerUnavailable": "Select an enabled provider for this model platform. Your selection will not be replaced automatically.",
       "regenerate": "New challenges",
+      "restoreView": "Restore test view",
       "result": "Attribution result",
       "resultPending": "Waiting for test results",
       "resultRunning": "Test in progress",
       "retryFailed": "Retry failed challenges only",
+      "retryStop": {
+        "auth": "Authentication failed. Check your credentials before retrying.",
+        "cancelled": "Stopped by you. No further automatic retries.",
+        "exhausted": "All 3 attempts used. You can retry only the failed groups.",
+        "invalidRequest": "Invalid request parameters or address. Automatic retries stopped.",
+        "model": "Model not found. Check the model ID.",
+        "quota": "Insufficient balance or quota. Automatic retries stopped."
+      },
+      "retryWaiting": "Retrying automatically in {{seconds}} seconds",
       "run": "Start three challenges",
       "runTarget": "Run target: {{provider}} · Model ID: {{model}}",
       "samples": "Usable: {{usable}} · Excluded: {{excluded}}",
@@ -4590,7 +4600,8 @@
       "target": "Provider: {{provider}} · Model ID: {{model}}",
       "title": "Model Test",
       "unavailable": "Unavailable",
-      "usedOutputs": "Groups analyzed: {{count}}"
+      "usedOutputs": "Groups analyzed: {{count}}",
+      "viewError": "The test view encountered an error. Your session is retained; restore the view to see progress and results."
     },
     "models": {
       "add": {

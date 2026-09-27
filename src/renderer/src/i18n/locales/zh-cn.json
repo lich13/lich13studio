@@ -4571,10 +4571,20 @@
       "providerPlaceholder": "请选择提供商",
       "providerUnavailable": "请选择该模型平台下已启用的提供商。当前选择不会自动替换。",
       "regenerate": "换一组挑战",
+      "restoreView": "恢复测试界面",
       "result": "归因结果",
       "resultPending": "等待测试结果",
       "resultRunning": "测试进行中",
       "retryFailed": "仅重试失败组",
+      "retryStop": {
+        "auth": "鉴权失败，请检查凭据后重试。",
+        "cancelled": "已主动停止，不再自动重试。",
+        "exhausted": "已达 3 次尝试上限，可仅重试失败组。",
+        "invalidRequest": "请求参数或地址无效，已停止自动重试。",
+        "model": "模型不存在，请检查模型 ID。",
+        "quota": "余额或额度不足，已停止自动重试。"
+      },
+      "retryWaiting": "{{seconds}} 秒后自动重试",
       "run": "开始三组测试",
       "runTarget": "本轮目标：{{provider}} · 模型 ID：{{model}}",
       "samples": "可用 {{usable}} 个 · 排除 {{excluded}} 个",
@@ -4590,7 +4600,8 @@
       "target": "服务商：{{provider}} · 模型 ID：{{model}}",
       "title": "模型测试",
       "unavailable": "不可用",
-      "usedOutputs": "参与分析：{{count}} 组"
+      "usedOutputs": "参与分析：{{count}} 组",
+      "viewError": "测试界面显示异常，会话已保留。恢复界面即可查看进度和结果。"
     },
     "models": {
       "add": {

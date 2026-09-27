@@ -4567,10 +4567,20 @@
       "providerPlaceholder": "Selectează furnizorul",
       "providerUnavailable": "Selectează un furnizor activ pentru această platformă. Selecția nu va fi înlocuită automat.",
       "regenerate": "[to be translated]:New challenges",
+      "restoreView": "Restabilește vizualizarea testului",
       "result": "[to be translated]:Attribution result",
       "resultPending": "Se așteaptă rezultatele",
       "resultRunning": "Test în curs",
       "retryFailed": "Retry failed challenges only",
+      "retryStop": {
+        "auth": "Autentificarea a eșuat. Verifică datele de autentificare.",
+        "cancelled": "Oprit de tine. Nu vor mai exista reîncercări automate.",
+        "exhausted": "Toate cele 3 încercări au fost utilizate. Poți reîncerca doar grupurile eșuate.",
+        "invalidRequest": "Parametri sau adresă nevalidă. Reîncercările automate au fost oprite.",
+        "model": "Modelul nu a fost găsit. Verifică ID-ul modelului.",
+        "quota": "Sold sau cotă insuficientă. Reîncercările automate au fost oprite."
+      },
+      "retryWaiting": "Reîncercare automată în {{seconds}} secunde",
       "run": "Start three challenges",
       "runTarget": "Țintă: {{provider}} · ID model: {{model}}",
       "samples": "Utilizabile: {{usable}} · Excluse: {{excluded}}",
@@ -4586,7 +4596,8 @@
       "target": "Provider: {{provider}} · Model ID: {{model}}",
       "title": "[to be translated]:Model Test",
       "unavailable": "Indisponibil",
-      "usedOutputs": "Grupuri analizate: {{count}}"
+      "usedOutputs": "Grupuri analizate: {{count}}",
+      "viewError": "Vizualizarea testului a întâmpinat o eroare. Sesiunea este păstrată; restabilește vizualizarea pentru progres și rezultate."
     },
     "models": {
       "add": {

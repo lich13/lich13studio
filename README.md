@@ -29,7 +29,9 @@ Excluded:
 
 ## Current release
 
-Version 0.1.23 adds bounded ModelTrace generation: answers exceeding twice the requested integer count or 32 KiB are cancelled and retried, with at most three attempts per challenge. Tests request at most 4096 output tokens, keep running in the background, and send no reasoning parameters.
+Version 0.1.24 keeps the chat model and provider selectors on one horizontal row. ModelTrace coalesces preview updates, isolates view failures from requests, and restores a failed view without restarting its background session. Unknown request errors now receive bounded retries; authentication, exhausted quota, missing models and invalid requests stop with an explicit reason.
+
+ModelTrace answers exceeding twice the requested integer count or 32 KiB are cancelled and retried, with at most three attempts per challenge. Tests request at most 4096 output tokens, keep running in the background, and send no reasoning parameters.
 
 Main chat and the quick assistant select a catalog model first, then a compatible provider. Migration 220 preserves existing choices and chat history. Explicit unsupported reasoning-effort errors are negotiated on the same provider and model before any content is produced; the UI shows the effective effort. Successful capability discoveries are cached in memory for one hour.
 

@@ -25,14 +25,16 @@ const TopicContent = ({ assistant }: TopicContentProps) => {
         <div className="flex flex-nowrap items-center gap-2">
           {/* Assistant Label */}
           <div
-            className="flex h-full cursor-pointer items-center gap-1.5"
+            className="flex h-full shrink-0 cursor-pointer items-center gap-1.5"
             onClick={() => AssistantSettingsPopup.show({ assistant })}>
             <EmojiIcon emoji={assistant.emoji || getLeadingEmoji(assistantName)} size={24} />
-            <span className="max-w-40 truncate text-xs">{assistantName}</span>
+            <span className="max-w-24 truncate text-xs xl:max-w-40" title={assistantName}>
+              {assistantName}
+            </span>
           </div>
 
           {/* Separator */}
-          <ChevronRight className="h-4 w-4 text-gray-400" />
+          <ChevronRight className="h-4 w-4 shrink-0 text-gray-400" />
 
           {/* Model Button */}
           <SelectModelButton assistant={assistant} />

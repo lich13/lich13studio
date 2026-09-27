@@ -1,3 +1,6 @@
+import { createServer } from 'node:http'
+import type { AddressInfo } from 'node:net'
+
 import { extensionRegistry } from '@cherrystudio/ai-core/provider'
 import type { Assistant, Model, Provider } from '@renderer/types'
 import { ChunkType } from '@renderer/types/chunk'
@@ -60,6 +63,7 @@ import { clearReasoningCapabilityCache } from '@renderer/aiCore/utils/reasoningF
 
 import { AnswerCollector } from './AnswerCollector'
 import { prepareDirectModelTest } from './directModelTest'
+import { ModelTestRunner } from './ModelTraceService'
 
 beforeEach(() => {
   clearReasoningCapabilityCache()
@@ -103,6 +107,71 @@ const anthropicEvents = [
 ]
 
 describe('ModelTrace actual SDK request pipeline', () => {
+  it('retries a real disconnected HTTP stream once, with unchanged target and request safeguards', async () => {
+    const requests: Array<{ body: any; authorization?: string; url?: string }> = []
+    let firstClosed = false
+    let retriedAfterClose = false
+    const answer = Array(80).fill('247').join(' ')
+    const server = createServer((request, response) => {
+      let raw = ''
+      request.on('data', (data) => {
+        raw += data
+      })
+      request.on('end', () => {
+        requests.push({ body: JSON.parse(raw), authorization: request.headers.authorization, url: request.url })
+        response.writeHead(200, { 'content-type': 'text/event-stream' })
+        response.write(`data: ${JSON.stringify(responseEvents[0])}\n\n`)
+        response.write(`data: ${JSON.stringify({ ...responseEvents[1], delta: answer })}\n\n`)
+        if (requests.length === 1) {
+          response.on('close', () => {
+            firstClosed = true
+          })
+          setTimeout(() => response.destroy(), 20)
+          return
+        }
+        if (requests.length === 2) retriedAfterClose = firstClosed
+        for (const event of responseEvents.slice(3)) response.write(`data: ${JSON.stringify(event)}\n\n`)
+        response.end()
+      })
+    })
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
+    const port = (server.address() as AddressInfo).port
+    fixture.provider = {
+      id: 'local',
+      name: 'Isolated mock',
+      type: 'openai-response',
+      apiHost: `http://127.0.0.1:${port}/v1`,
+      apiKey: 'dummy-one,dummy-two',
+      models: []
+    }
+    try {
+      const challenges = [0, 1, 2].map((index) => ({
+        id: String(index),
+        expected_count: 303,
+        prompt: `probe-${index}`
+      }))
+      const result = await new ModelTestRunner({
+        model: { id: 'gpt-6-luna', name: '', provider: 'local', group: '' },
+        challenges
+      }).run()
+      expect(requests).toHaveLength(4)
+      expect(retriedAfterClose).toBe(true)
+      expect(result.outputs.map((output) => output.attempts)).toEqual([2, 1, 1])
+      expect(result.report?.used_outputs).toBe(3)
+      expect(requests[0]).toEqual(requests[1])
+      for (const request of requests) {
+        expect(request.url).toBe('/v1/responses')
+        expect(request.authorization).toBe('Bearer dummy-one')
+        expect(request.body).toMatchObject({ model: 'gpt-6-luna', max_output_tokens: 4096 })
+        for (const field of ['reasoning', 'thinking', 'tools', 'timeout'])
+          expect(request.body).not.toHaveProperty(field)
+      }
+    } finally {
+      server.closeAllConnections()
+      await new Promise<void>((resolve) => server.close(() => resolve()))
+    }
+  }, 10000)
+
   it('does not let SDK retries multiply a temporary provider failure', async () => {
     fixture.provider = {
       id: 'local',

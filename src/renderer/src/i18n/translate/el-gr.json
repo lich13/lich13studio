@@ -4567,10 +4567,20 @@
       "providerPlaceholder": "Επιλέξτε πάροχο",
       "providerUnavailable": "Επιλέξτε ενεργό πάροχο για αυτή την πλατφόρμα. Η επιλογή δεν αντικαθίσταται αυτόματα.",
       "regenerate": "[to be translated]:New challenges",
+      "restoreView": "Επαναφορά προβολής δοκιμής",
       "result": "[to be translated]:Attribution result",
       "resultPending": "Αναμονή αποτελεσμάτων",
       "resultRunning": "Η δοκιμή εκτελείται",
       "retryFailed": "Retry failed challenges only",
+      "retryStop": {
+        "auth": "Αποτυχία ταυτοποίησης. Ελέγξτε τα διαπιστευτήριά σας.",
+        "cancelled": "Διακοπή από εσάς. Δεν θα γίνουν άλλες αυτόματες προσπάθειες.",
+        "exhausted": "Εξαντλήθηκαν οι 3 προσπάθειες. Μπορείτε να επαναλάβετε μόνο τις αποτυχημένες ομάδες.",
+        "invalidRequest": "Μη έγκυρες παράμετροι ή διεύθυνση. Οι αυτόματες προσπάθειες σταμάτησαν.",
+        "model": "Το μοντέλο δεν βρέθηκε. Ελέγξτε το αναγνωριστικό μοντέλου.",
+        "quota": "Ανεπαρκές υπόλοιπο ή όριο. Οι αυτόματες προσπάθειες σταμάτησαν."
+      },
+      "retryWaiting": "Αυτόματη επανάληψη σε {{seconds}} δευτερόλεπτα",
       "run": "Start three challenges",
       "runTarget": "Στόχος: {{provider}} · ID μοντέλου: {{model}}",
       "samples": "Χρήσιμα: {{usable}} · Εξαιρέθηκαν: {{excluded}}",
@@ -4586,7 +4596,8 @@
       "target": "Provider: {{provider}} · Model ID: {{model}}",
       "title": "[to be translated]:Model Test",
       "unavailable": "Μη διαθέσιμο",
-      "usedOutputs": "Ομάδες που αναλύθηκαν: {{count}}"
+      "usedOutputs": "Ομάδες που αναλύθηκαν: {{count}}",
+      "viewError": "Η προβολή δοκιμής παρουσίασε σφάλμα. Η συνεδρία διατηρείται· επαναφέρετε την προβολή για την πρόοδο και τα αποτελέσματα."
     },
     "models": {
       "add": {

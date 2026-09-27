@@ -1,0 +1,184 @@
+// @vitest-environment jsdom
+import { act, createElement, StrictMode } from 'react'
+import { createRoot, type Root } from 'react-dom/client'
+import { MemoryRouter } from 'react-router-dom'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+const fixtures = vi.hoisted(() => ({
+  execute: vi.fn(),
+  prepare: vi.fn(),
+  llm: {
+    modelTestSelection: { platform: 'openai', modelId: 'gpt-6-luna', providerId: 'happy' },
+    platformModels: { openai: [{ id: 'gpt-6-luna', name: 'gpt-6-luna', group: '' }], grok: [], anthropic: [] },
+    providers: [{ id: 'happy', name: 'Happy Code', platform: 'openai', enabled: true }]
+  }
+}))
+vi.mock('./directModelTest', () => ({ prepareDirectModelTest: fixtures.prepare }))
+vi.mock('@logger', () => ({ loggerService: { withContext: () => ({ warn: vi.fn() }) } }))
+vi.mock('@renderer/store', () => ({
+  useAppSelector: (select: any) => select({ llm: fixtures.llm }),
+  useAppDispatch: () => vi.fn()
+}))
+vi.mock('@renderer/store/llm', () => ({ setModelTestSelection: vi.fn() }))
+vi.mock('@renderer/config/models', () => ({ isEmbeddingModel: () => false, isRerankModel: () => false }))
+vi.mock('@renderer/context/ThemeProvider', () => ({ useTheme: () => ({ theme: 'dark' }) }))
+vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
+vi.mock('@renderer/pages/settings', async () => {
+  const { default: styled } = await import('styled-components')
+  return {
+    SettingContainer: styled.div``,
+    SettingGroup: styled.div``,
+    SettingTitle: styled.div``,
+    SettingDescription: styled.div``
+  }
+})
+vi.mock('@renderer/components/app/Navbar', async () => {
+  const { default: styled } = await import('styled-components')
+  return { Navbar: styled.div``, NavbarCenter: styled.div`` }
+})
+
+import ModelTestPage from '@renderer/pages/model-test/ModelTestPage'
+import ModelTestViewBoundary from '@renderer/pages/model-test/ModelTestViewBoundary'
+import { type Chunk, ChunkType } from '@renderer/types/chunk'
+
+import { modelTestSession } from './ModelTestSessionService'
+
+let root: Root
+let container: HTMLDivElement
+beforeEach(() => {
+  vi.useFakeTimers()
+  vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+  )
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn(() => ({
+      matches: false,
+      addListener() {},
+      removeListener() {},
+      addEventListener() {},
+      removeEventListener() {}
+    }))
+  )
+  fixtures.execute.mockReset()
+  fixtures.prepare.mockReset().mockResolvedValue({
+    target: { providerId: 'happy', providerName: 'Happy Code', modelId: 'gpt-6-luna' },
+    execute: fixtures.execute
+  })
+  container = document.createElement('div')
+  document.body.appendChild(container)
+  root = createRoot(container)
+})
+afterEach(async () => {
+  await act(async () => {
+    root.unmount()
+    modelTestSession.stop()
+    modelTestSession.regenerate()
+  })
+  container.remove()
+  vi.useRealTimers()
+  vi.unstubAllGlobals()
+  vi.restoreAllMocks()
+})
+
+describe('real ModelTestPage rendering', () => {
+  it('renders high-frequency streamed chunks and all three results without nesting React updates', async () => {
+    const challenges = modelTestSession.getSnapshot().challenges
+    const pending: Array<{ onChunk: (chunk: Chunk) => void; resolve: () => void }> = []
+    fixtures.execute.mockImplementation(
+      (_prompt, _signal, onChunk) => new Promise<void>((resolve) => pending.push({ onChunk, resolve }))
+    )
+    await act(async () => {
+      root.render(createElement(MemoryRouter, null, createElement(ModelTestPage)))
+    })
+    let run!: Promise<void>
+    await act(async () => {
+      run = modelTestSession.start({ id: 'gpt-6-luna', name: 'gpt-6-luna', group: '', provider: 'happy' })
+    })
+    for (let group = 0; group < 3; group++) {
+      const text = Array(challenges[group].expected_count).fill('247').join(' ')
+      for (let offset = 0; offset < text.length; offset += 37) {
+        await act(async () => {
+          for (const character of text.slice(offset, offset + 37))
+            pending[group].onChunk({ type: ChunkType.TEXT_DELTA, text: character })
+          await vi.advanceTimersByTimeAsync(50)
+        })
+      }
+      await act(async () => {
+        pending[group].onChunk({ type: ChunkType.TEXT_COMPLETE, text })
+        pending[group].onChunk({ type: ChunkType.LLM_RESPONSE_COMPLETE, response: { text }, finishReason: 'stop' })
+        pending[group].resolve()
+      })
+    }
+    await act(async () => {
+      await run
+    })
+    expect(fixtures.execute).toHaveBeenCalledTimes(3)
+    expect(modelTestSession.getSnapshot()).toMatchObject({ phase: 'completed', report: { used_outputs: 3 } })
+    expect(container.querySelectorAll('textarea')).toHaveLength(3)
+    expect([...container.querySelectorAll('textarea')].map((input) => input.value)).toEqual(
+      challenges.map((challenge) => Array(challenge.expected_count).fill('247').join(' '))
+    )
+    expect(container.textContent).not.toContain('settings.modelTest.restoreView')
+  }, 20000)
+
+  it('recovers a failed view once without restarting the background runner, then permits manual recovery', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    let broken = true
+    const failingView = vi.fn(() => {
+      if (broken) throw new Error('test render failure')
+      return createElement(ModelTestPage)
+    })
+    let finish!: () => void
+    fixtures.execute.mockImplementation(
+      (_prompt, _signal, onChunk) =>
+        new Promise<void>((resolve) => {
+          finish = () => {
+            onChunk({ type: ChunkType.LLM_RESPONSE_COMPLETE, response: { text: '' } })
+            resolve()
+          }
+        })
+    )
+    const run = modelTestSession.start({ id: 'gpt-6-luna', name: '', group: '', provider: 'happy' })
+    await act(async () => {
+      root.render(
+        createElement(
+          StrictMode,
+          null,
+          createElement(MemoryRouter, null, createElement(ModelTestViewBoundary, null, createElement(failingView)))
+        )
+      )
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1)
+    })
+    const calls = failingView.mock.calls.length
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(500)
+    })
+    expect(failingView).toHaveBeenCalledTimes(calls)
+    expect(fixtures.execute).toHaveBeenCalledTimes(1)
+    expect(modelTestSession.getSnapshot().phase).toBe('running')
+    expect(container.textContent).toContain('settings.modelTest.restoreView')
+    broken = false
+    await act(async () => {
+      container.querySelector('button')!.click()
+    })
+    expect(container.textContent).not.toContain('settings.modelTest.restoreView')
+    for (let i = 0; i < 3; i++)
+      await act(async () => {
+        finish()
+      })
+    await act(async () => {
+      await run
+    })
+    expect(fixtures.execute).toHaveBeenCalledTimes(3)
+    expect(modelTestSession.getSnapshot().phase).toBe('completed')
+  })
+})

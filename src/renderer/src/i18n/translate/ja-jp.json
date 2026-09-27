@@ -4567,10 +4567,20 @@
       "providerPlaceholder": "プロバイダーを選択",
       "providerUnavailable": "このモデルのプラットフォームで有効なプロバイダーを選択してください。選択は自動変更されません。",
       "regenerate": "[to be translated]:New challenges",
+      "restoreView": "テスト画面を復元",
       "result": "[to be translated]:Attribution result",
       "resultPending": "テスト結果を待機中",
       "resultRunning": "テスト実行中",
       "retryFailed": "Retry failed challenges only",
+      "retryStop": {
+        "auth": "認証に失敗しました。認証情報を確認してください。",
+        "cancelled": "ユーザーにより停止されました。自動再試行は行いません。",
+        "exhausted": "3 回の試行を使い切りました。失敗したグループのみ再試行できます。",
+        "invalidRequest": "リクエストのパラメーターまたはアドレスが無効です。自動再試行を停止しました。",
+        "model": "モデルが見つかりません。モデル ID を確認してください。",
+        "quota": "残高またはクォータが不足しています。自動再試行を停止しました。"
+      },
+      "retryWaiting": "{{seconds}} 秒後に自動で再試行",
       "run": "Start three challenges",
       "runTarget": "今回の対象：{{provider}} · モデル ID：{{model}}",
       "samples": "使用可能：{{usable}} 個 · 除外：{{excluded}} 個",
@@ -4586,7 +4596,8 @@
       "target": "Provider: {{provider}} · Model ID: {{model}}",
       "title": "[to be translated]:Model Test",
       "unavailable": "利用不可",
-      "usedOutputs": "解析したグループ：{{count}}"
+      "usedOutputs": "解析したグループ：{{count}}",
+      "viewError": "テスト画面でエラーが発生しました。セッションは保持されています。画面を復元すると進捗と結果を確認できます。"
     },
     "models": {
       "add": {

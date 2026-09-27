@@ -1,3 +1,4 @@
+import { loggerService } from '@logger'
 import type { Model } from '@renderer/types'
 
 import {
@@ -10,6 +11,10 @@ import {
   type ModelTraceReport
 } from './ModelTraceService'
 import { validateModelTraceOutput } from './outputValidation'
+import { classifyModelTestFailure } from './requestFailure'
+
+const logger = loggerService.withContext('ModelTestSessionService')
+export const MODEL_TEST_PREVIEW_INTERVAL_MS = 50
 
 export interface ModelTestSessionSnapshot {
   phase: 'idle' | 'running' | 'completed' | 'stopped' | 'error'
@@ -26,6 +31,9 @@ export class ModelTestSessionService {
   private runner?: ModelTestRunner
   private generation = 0
   private listeners = new Set<() => void>()
+  private notificationTimer?: ReturnType<typeof setTimeout>
+  private notifying = false
+  private publishedSnapshot?: ModelTestSessionSnapshot
   private snapshot: ModelTestSessionSnapshot = {
     phase: 'idle',
     challenges: createModelTraceChallenges(),
@@ -41,9 +49,43 @@ export class ModelTestSessionService {
     }
   }
 
-  private update(changes: Partial<ModelTestSessionSnapshot>) {
+  private update(changes: Partial<ModelTestSessionSnapshot>, deferred = false) {
     this.snapshot = { ...this.snapshot, ...changes }
-    this.listeners.forEach((listener) => listener())
+    if (deferred || this.notifying) this.scheduleNotification()
+    else this.publish()
+  }
+
+  private scheduleNotification() {
+    if (this.notificationTimer !== undefined) return
+    const generation = this.generation
+    this.notificationTimer = setTimeout(() => {
+      this.notificationTimer = undefined
+      if (generation === this.generation) this.publish()
+    }, MODEL_TEST_PREVIEW_INTERVAL_MS)
+  }
+
+  private publish() {
+    if (this.notificationTimer !== undefined) clearTimeout(this.notificationTimer)
+    this.notificationTimer = undefined
+    if (this.publishedSnapshot === this.snapshot) return
+    this.publishedSnapshot = this.snapshot
+    this.notifying = true
+    try {
+      // React may unsubscribe/resubscribe while rendering. Iterate a fixed
+      // list so those changes cannot recursively extend this notification.
+      for (const listener of [...this.listeners]) {
+        if (!this.listeners.has(listener)) continue
+        try {
+          listener()
+        } catch {
+          // Presentation failures must never reject a provider request or
+          // expose a provider's credentials through error serialization.
+          logger.warn('Model test view subscriber failed; session retained')
+        }
+      }
+    } finally {
+      this.notifying = false
+    }
   }
 
   start(model: Model): Promise<void> {
@@ -55,12 +97,16 @@ export class ModelTestSessionService {
       onProgress: ({ index, output, target }) => {
         if (this.runner !== runner) return
         const outputs = [...this.snapshot.outputs]
+        const previous = outputs[index]
         outputs[index] = output
-        this.update({
-          outputs,
-          target,
-          ...(output.status === 'completed' ? { report: analyzeModelTraceOutputs(outputs) } : {})
-        })
+        this.update(
+          {
+            outputs,
+            target,
+            ...(output.status === 'completed' ? { report: analyzeModelTraceOutputs(outputs) } : {})
+          },
+          output.status === 'running' && previous?.status === 'running' && previous.attempts === output.attempts
+        )
       }
     })
     this.runner = runner
@@ -90,7 +136,7 @@ export class ModelTestSessionService {
       if (generation !== this.generation || runner !== this.runner) return
       this.update({
         phase: 'error',
-        error: error instanceof Error ? error.message : String(error),
+        error: classifyModelTestFailure(error).message,
         canRetry: true
       })
     }
@@ -136,6 +182,13 @@ export class ModelTestSessionService {
         expected_count,
         text: validation.text,
         status: 'completed',
+        error: undefined,
+        failureCode: undefined,
+        failureCategory: undefined,
+        limit: undefined,
+        retryable: undefined,
+        retryDelayMs: undefined,
+        retryStopReason: undefined,
         parsedCount: validation.parsedCount,
         usableCount: validation.usableCount,
         excludedCount: validation.excludedCount,

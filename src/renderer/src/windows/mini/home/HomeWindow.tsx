@@ -901,6 +901,7 @@ const Container = styled.div<{ $draggable: boolean }>`
 
 const MiniHeader = styled.header`
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
@@ -942,14 +943,15 @@ const BrandSubTitle = styled.div`
 
 const HeaderActions = styled.div`
   display: inline-flex;
-  flex-shrink: 0;
+  flex: 0 1 416px;
+  max-width: 100%;
   align-items: center;
   gap: 6px;
   min-width: 0;
   -webkit-app-region: none;
 
   .ant-select {
-    min-width: 132px;
+    min-width: min(132px, 100%);
     max-width: 180px;
   }
 `
