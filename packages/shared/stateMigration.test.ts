@@ -207,4 +207,15 @@ describe('220 assistant selections', () => {
     const old = decode(sanitizePersistedState(encode({ ...state, _persist: { version: 215 } })))
     expect(old.assistants.assistants[0].modelSelection).toEqual({})
   })
+  it('uses the saved default assistant entry before falling back to the global default model', () => {
+    const state: any = fixture(219)
+    state.llm.defaultModel = { id: 'global', provider: 'new' }
+    state.assistants.defaultAssistant = { id: 'a' }
+    migrateAssistantSelectionState(state)
+    expect(state.assistants.defaultAssistant.modelSelection).toEqual({
+      platform: 'openai',
+      modelId: 'gpt-test',
+      providerId: 'new'
+    })
+  })
 })

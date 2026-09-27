@@ -106,13 +106,16 @@ export function migrateModelTestState<T extends State>(state: T): T {
 export function migrateAssistantSelectionState<T extends State>(state: T): T {
   if (!state.llm) return state
   const assistants = state.assistants
-  for (const assistant of [
-    assistants?.defaultAssistant,
-    ...(assistants?.assistants ?? []),
-    ...(assistants?.presets ?? [])
-  ]) {
-    if (assistant && assistant.modelSelection === undefined)
-      assistant.modelSelection = assistantModelSelection(assistant, state.llm)
+  const savedAssistants = Array.isArray(assistants?.assistants) ? assistants.assistants : []
+  const savedById = new Map(savedAssistants.map((assistant: any) => [assistant?.id, assistant]))
+  for (const assistant of [assistants?.defaultAssistant, ...savedAssistants, ...(assistants?.presets ?? [])]) {
+    if (assistant && assistant.modelSelection === undefined) {
+      const source =
+        assistant === assistants.defaultAssistant && !assistant.model && !assistant.defaultModel
+          ? savedById.get(assistant.id) || assistant
+          : assistant
+      assistant.modelSelection = assistantModelSelection(source, state.llm)
+    }
   }
   return state
 }
