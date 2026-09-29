@@ -254,35 +254,38 @@ afterEach(() => {
 })
 
 describe('model capability request pipeline', () => {
-  it('serializes GPT-6 Luna images, honors a manual vision opt-out, and keeps raw model IDs', async () => {
-    const provider = makeProvider('openai-response')
-    fixture.provider = provider
-    const requests: any[] = []
-    vi.stubGlobal('fetch', async (_input: RequestInfo, init: RequestInit) => {
-      requests.push(JSON.parse(String(init.body)))
-      return sse(openAiEvents)
-    })
+  it.each(['gpt-6-luna', 'gpt-6.1-sol'])(
+    'serializes %s images and honors a manual vision opt-out without changing the ID',
+    async (id) => {
+      const provider = makeProvider('openai-response')
+      fixture.provider = provider
+      const requests: any[] = []
+      vi.stubGlobal('fetch', async (_input: RequestInfo, init: RequestInit) => {
+        requests.push(JSON.parse(String(init.body)))
+        return sse(openAiEvents)
+      })
 
-    const model = makeModel('gpt-6-luna')
-    const assistant = makeAssistant(model)
-    const prepared = await ConversationService.prepareMessagesForModel(imageConversation(), assistant)
-    expect(prepared.modelMessages).toHaveLength(1)
-    await runSdkRequest(model, provider, assistant, prepared.modelMessages)
+      const model = makeModel(id)
+      const assistant = makeAssistant(model)
+      const prepared = await ConversationService.prepareMessagesForModel(imageConversation(), assistant)
+      expect(prepared.modelMessages).toHaveLength(1)
+      await runSdkRequest(model, provider, assistant, prepared.modelMessages)
 
-    const optOutModel = makeModel('gpt-6-luna', 'local', {
-      capabilities: [{ type: 'vision', isUserSelected: false }]
-    })
-    const optOutAssistant = makeAssistant(optOutModel)
-    const optOut = await ConversationService.prepareMessagesForModel(imageConversation(), optOutAssistant)
-    await runSdkRequest(optOutModel, provider, optOutAssistant, optOut.modelMessages)
+      const optOutModel = makeModel(id, 'local', {
+        capabilities: [{ type: 'vision', isUserSelected: false }]
+      })
+      const optOutAssistant = makeAssistant(optOutModel)
+      const optOut = await ConversationService.prepareMessagesForModel(imageConversation(), optOutAssistant)
+      await runSdkRequest(optOutModel, provider, optOutAssistant, optOut.modelMessages)
 
-    expect(requests).toHaveLength(2)
-    expect(requests.map((request) => request.model)).toEqual(['gpt-6-luna', 'gpt-6-luna'])
-    expect(requests[0].input[0].content).toContainEqual({ type: 'input_image', image_url: imageData })
-    expect(requests[1].input[0].content.some((part: any) => part.type === 'input_image')).toBe(false)
-  })
+      expect(requests).toHaveLength(2)
+      expect(requests.map((request) => request.model)).toEqual([id, id])
+      expect(requests[0].input[0].content).toContainEqual({ type: 'input_image', image_url: imageData })
+      expect(requests[1].input[0].content.some((part: any) => part.type === 'input_image')).toBe(false)
+    }
+  )
 
-  it('serializes the same prepared image as an Anthropic base64 image block', async () => {
+  it.each(['claude-sonnet-4-5', 'claude-sonnet-5-5'])('serializes %s images as Anthropic base64 blocks', async (id) => {
     const provider = makeProvider('anthropic', 'claude-local')
     fixture.provider = provider
     const requests: any[] = []
@@ -291,13 +294,13 @@ describe('model capability request pipeline', () => {
       return sse(anthropicEvents)
     })
 
-    const model = makeModel('claude-sonnet-4-5', 'claude-local')
+    const model = makeModel(id, 'claude-local')
     const assistant = makeAssistant(model)
     const prepared = await ConversationService.prepareMessagesForModel(imageConversation(), assistant)
     await runSdkRequest(model, provider, assistant, prepared.modelMessages)
 
     expect(requests).toHaveLength(1)
-    expect(requests[0].model).toBe('claude-sonnet-4-5')
+    expect(requests[0].model).toBe(id)
     expect(requests[0].messages[0].content).toContainEqual({
       type: 'image',
       source: { type: 'base64', media_type: 'image/png', data: 'ZmFrZS1pbWFnZS1ieXRlcw==' }
@@ -305,7 +308,14 @@ describe('model capability request pipeline', () => {
   })
 
   it('uses the live catalog and capability filters for chat, mini, and model-test targets', async () => {
-    for (const id of ['gpt-6-sol', 'gpt-6-luna', 'gpt-6-astra', 'openai/gpt-6-luna'])
+    for (const id of [
+      'gpt-6-sol',
+      'gpt-6-luna',
+      'gpt-6-astra',
+      'gpt-6.1-sol',
+      'claude-sonnet-5-5',
+      'openai/gpt-6-luna'
+    ])
       expect(isVisionModel(makeModel(id))).toBe(true)
 
     const dottedCode = resolveModelCapabilities(makeModel('gpt-5.3-codex'))
@@ -376,6 +386,16 @@ describe('model capability request pipeline', () => {
     {
       label: 'unknown GPT without capability declarations',
       model: makeModel('gpt-6-custom-preview')
+    },
+    {
+      label: 'official Sol with reasoning manually disabled',
+      model: makeModel('gpt-6.1-sol', 'local', {
+        capabilities: [{ type: 'reasoning', isUserSelected: false }]
+      })
+    },
+    {
+      label: 'official Grok non-reasoning alias',
+      model: makeModel('grok-4.20-non-reasoning')
     }
   ])('omits reasoning from $label requests', async ({ model }) => {
     const provider = makeProvider('openai-response')

@@ -33,4 +33,4 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build renderer bundle
-        run: pnpm typecheck && pnpm test:upgrade && pnpm test:renderer && pnpm modeltrace:check && pnpm i18n:check && pnpm build:tauri:web
+        run: pnpm typecheck && pnpm test:upgrade && pnpm test:renderer && pnpm modeltrace:check && pnpm catalog:check && pnpm i18n:check && pnpm build:tauri:web

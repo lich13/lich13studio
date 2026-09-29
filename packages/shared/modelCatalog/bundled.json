@@ -1,0 +1,641 @@
+{
+  "openai": {
+    "parserVersion": 1,
+    "platform": "openai",
+    "revision": "8e68a98ef03cdde76d2e6800791ebdf1b3b95b24",
+    "release": "rust-v0.159.1",
+    "sha256": "b692a4ab468e7841b8bd28cae0085fc5f0b01e21062751597c20c454df3346fb",
+    "sources": [
+      {
+        "url": "https://api.github.com/repos/openai/codex/commits/rust-v0.159.1",
+        "sha256": "47727ca43e5cfac20eaffc915dfcf695308a837ee99bfab08c4fe977513ad373"
+      },
+      {
+        "url": "https://api.github.com/repos/openai/codex/releases/tags/rust-v0.159.1",
+        "sha256": "90dc05d2a422b6c6836de59dbf91e0a4a83fc69229eec38014a9cb9a7ca052fb"
+      },
+      {
+        "url": "https://raw.githubusercontent.com/openai/codex/8e68a98ef03cdde76d2e6800791ebdf1b3b95b24/codex-rs/models-manager/models.json",
+        "sha256": "fd219bd9f061278275f528939f82f54d2eb97df4b25c23b022adbe48813d920b"
+      }
+    ],
+    "models": [
+      {
+        "id": "gpt-5.5",
+        "name": "GPT-5.5",
+        "aliases": [],
+        "input": ["image", "text"],
+        "output": ["text"],
+        "capabilities": {
+          "embedding": false,
+          "function_calling": true,
+          "imageGeneration": false,
+          "reasoning": true,
+          "rerank": false,
+          "text": true,
+          "vision": true
+        },
+        "efforts": ["low", "medium", "high", "xhigh"]
+      },
+      {
+        "id": "gpt-5.6-luna",
+        "name": "GPT-5.6-Luna",
+        "aliases": [],
+        "input": ["image", "text"],
+        "output": ["text"],
+        "capabilities": {
+          "embedding": false,
+          "function_calling": true,
+          "imageGeneration": false,
+          "reasoning": true,
+          "rerank": false,
+          "text": true,
+          "vision": true
+        },
+        "efforts": ["low", "medium", "high", "xhigh", "max"]
+      },
+      {
+        "id": "gpt-5.6-sol",
+        "name": "GPT-5.6-Sol",
+        "aliases": [],
+        "input": ["image", "text"],
+        "output": ["text"],
+        "capabilities": {
+          "embedding": false,
+          "function_calling": true,
+          "imageGeneration": false,
+          "reasoning": true,
+          "rerank": false,
+          "text": true,
+          "vision": true
+        },
+        "efforts": ["low", "medium", "high", "xhigh", "max"]
+      },
+      {
+        "id": "gpt-5.6-terra",
+        "name": "GPT-5.6-Terra",
+        "aliases": [],
+        "input": ["image", "text"],
+        "output": ["text"],
+        "capabilities": {
+          "embedding": false,
+          "function_calling": true,
+          "imageGeneration": false,
+          "reasoning": true,
+          "rerank": false,
+          "text": true,
+          "vision": true
+        },
+        "efforts": ["low", "medium", "high", "xhigh", "max"]
+      },
+      {
+        "id": "gpt-6-astra",
+        "name": "GPT-6-Astra",
+        "aliases": [],
+        "input": ["image", "text"],
+        "output": ["text"],
+        "capabilities": {
+          "embedding": false,
+          "function_calling": true,
+          "imageGeneration": false,
+          "reasoning": true,
+          "rerank": false,
+          "text": true,
+          "vision": true
+        },
+        "efforts": ["low", "medium", "high", "xhigh", "max"]
+      },
+      {
+        "id": "gpt-6-luna",
+        "name": "GPT-6-Luna",
+        "aliases": [],
+        "input": ["image", "text"],
+        "output": ["text"],
+        "capabilities": {
+          "embedding": false,
+          "function_calling": true,
+          "imageGeneration": false,
+          "reasoning": true,
+          "rerank": false,
+          "text": true,
+          "vision": true
+        },
+        "efforts": ["low", "medium", "high", "xhigh", "max"]
+      },
+      {
+        "id": "gpt-6-sol",
+        "name": "GPT-6-Sol",
+        "aliases": [],
+        "input": ["image", "text"],
+        "output": ["text"],
+        "capabilities": {
+          "embedding": false,
+          "function_calling": true,
+          "imageGeneration": false,
+          "reasoning": true,
+          "rerank": false,
+          "text": true,
+          "vision": true
+        },
+        "efforts": ["low", "medium", "high", "xhigh", "max"]
+      },
+      {
+        "id": "gpt-6.1-sol",
+        "name": "GPT-6.1-Sol",
+        "aliases": [],
+        "input": ["image", "text"],
+        "output": ["text"],
+        "capabilities": {
+          "embedding": false,
+          "function_calling": true,
+          "imageGeneration": false,
+          "reasoning": true,
+          "rerank": false,
+          "text": true,
+          "vision": true
+        },
+        "efforts": ["low", "medium", "high", "xhigh", "max"]
+      }
+    ]
+  },
+  "grok": {
+    "parserVersion": 1,
+    "platform": "grok",
+    "revision": "9320828a1bcbc784304e54cc59561a32b92b6e8e8f9bda698be1b5295a5cc5cf",
+    "sha256": "9320828a1bcbc784304e54cc59561a32b92b6e8e8f9bda698be1b5295a5cc5cf",
+    "sources": [
+      {
+        "url": "https://docs.x.ai/developers/models",
+        "sha256": "600b1deb0a3b5be40d8d050209a4c49e277bd1a3a1a4a5ed614a2b3633852b14"
+      }
+    ],
+    "models": [
+      {
+        "id": "grok-4.20-0309-non-reasoning",
+        "name": "grok-4.20-0309-non-reasoning",
+        "aliases": [
+          "grok-4.20-beta-0309-non-reasoning",
+          "grok-4.20-beta-latest-non-reasoning",
+          "grok-4.20-beta-non-reasoning",
+          "grok-4.20-experimental-beta-0304-non-reasoning",
+          "grok-4.20-experimental-beta-non-reasoning-latest",
+          "grok-4.20-non-reasoning",
+          "grok-4.20-non-reasoning-gv2",
+          "grok-4.20-non-reasoning-latest"
+        ],
+        "input": ["image", "text"],
+        "output": ["text"],
+        "capabilities": {
+          "embedding": false,
+          "function_calling": true,
+          "imageGeneration": false,
+          "reasoning": false,
+          "rerank": false,
+          "text": true,
+          "vision": true
+        }
+      },
+      {
+        "id": "grok-4.20-0309-reasoning",
+        "name": "grok-4.20-0309-reasoning",
+        "aliases": [
+          "grok-4.20",
+          "grok-4.20-0309",
+          "grok-4.20-beta",
+          "grok-4.20-beta-0309",
+          "grok-4.20-beta-0309-reasoning",
+          "grok-4.20-beta-latest",
+          "grok-4.20-beta-latest-reasoning",
+          "grok-4.20-beta-reasoning",
+          "grok-4.20-experimental-beta-0304",
+          "grok-4.20-experimental-beta-0304-reasoning",
+          "grok-4.20-experimental-beta-latest",
+          "grok-4.20-experimental-beta-reasoning-latest",
+          "grok-4.20-reasoning",
+          "grok-4.20-reasoning-gv2",
+          "grok-4.20-reasoning-latest"
+        ],
+        "input": ["image", "text"],
+        "output": ["text"],
+        "capabilities": {
+          "embedding": false,
+          "function_calling": true,
+          "imageGeneration": false,
+          "reasoning": true,
+          "rerank": false,
+          "text": true,
+          "vision": true
+        }
+      },
+      {
+        "id": "grok-4.20-multi-agent-0309",
+        "name": "grok-4.20-multi-agent-0309",
+        "aliases": [
+          "grok-4.20-multi-agent",
+          "grok-4.20-multi-agent-beta-0309",
+          "grok-4.20-multi-agent-beta-latest",
+          "grok-4.20-multi-agent-experimental-beta-0304",
+          "grok-4.20-multi-agent-experimental-beta-latest",
+          "grok-4.20-multi-agent-latest"
+        ],
+        "input": ["image", "text"],
+        "output": ["text"],
+        "capabilities": {
+          "embedding": false,
+          "function_calling": true,
+          "imageGeneration": false,
+          "reasoning": true,
+          "rerank": false,
+          "text": true,
+          "vision": true
+        }
+      },
+      {
+        "id": "grok-4.3",
+        "name": "grok-4.3",
+        "aliases": ["grok-4.3-latest"],
+        "input": ["image", "text"],
+        "output": ["text"],
+        "capabilities": {
+          "embedding": false,
+          "function_calling": true,
+          "imageGeneration": false,
+          "reasoning": true,
+          "rerank": false,
+          "text": true,
+          "vision": true
+        },
+        "efforts": ["low", "medium", "high", "xhigh"]
+      },
+      {
+        "id": "grok-4.5",
+        "name": "grok-4.5",
+        "aliases": ["grok-4.5-latest", "grok-build-latest"],
+        "input": ["image", "text"],
+        "output": ["text"],
+        "capabilities": {
+          "embedding": false,
+          "function_calling": true,
+          "imageGeneration": false,
+          "reasoning": true,
+          "rerank": false,
+          "text": true,
+          "vision": true
+        },
+        "efforts": ["low", "medium", "high", "xhigh"]
+      },
+      {
+        "id": "grok-4.6",
+        "name": "grok-4.6",
+        "aliases": [],
+        "input": ["image", "text"],
+        "output": ["text"],
+        "capabilities": {
+          "embedding": false,
+          "function_calling": true,
+          "imageGeneration": false,
+          "reasoning": true,
+          "rerank": false,
+          "text": true,
+          "vision": true
+        },
+        "efforts": ["low", "medium", "high", "xhigh"]
+      },
+      {
+        "id": "grok-4.7",
+        "name": "grok-4.7",
+        "aliases": [],
+        "input": ["image", "text"],
+        "output": ["text"],
+        "capabilities": {
+          "embedding": false,
+          "function_calling": true,
+          "imageGeneration": false,
+          "reasoning": true,
+          "rerank": false,
+          "text": true,
+          "vision": true
+        },
+        "efforts": ["low", "medium", "high", "xhigh"]
+      },
+      {
+        "id": "grok-build-0.1",
+        "name": "grok-build-0.1",
+        "aliases": ["grok-code-fast", "grok-code-fast-1", "grok-code-fast-1-0825"],
+        "input": ["image", "text"],
+        "output": ["text"],
+        "capabilities": {
+          "embedding": false,
+          "function_calling": true,
+          "imageGeneration": false,
+          "reasoning": true,
+          "rerank": false,
+          "text": true,
+          "vision": true
+        }
+      }
+    ]
+  },
+  "anthropic": {
+    "parserVersion": 1,
+    "platform": "anthropic",
+    "revision": "f91943577efffab496f75c63be9822904ead76f19d48881a0db98cea91f80336",
+    "sha256": "f91943577efffab496f75c63be9822904ead76f19d48881a0db98cea91f80336",
+    "sources": [
+      {
+        "url": "https://platform.claude.com/docs/en/build-with-claude/effort.md",
+        "sha256": "073ce24b7a8922388477281126b05dca553ed3d95efa86e3256402b55044bd64"
+      },
+      {
+        "url": "https://platform.claude.com/docs/en/models/fable-5-1/overview.md",
+        "sha256": "f32fbe39812dd73d0bfc8e58de18da67a59571ac5abb43a4c0bc645d9c8a8904"
+      },
+      {
+        "url": "https://platform.claude.com/docs/en/models/fable-5/overview.md",
+        "sha256": "fb0b63b22cfc3b59726463680f8cc13527b5e5d22c3167d4094c5ec085478b49"
+      },
+      {
+        "url": "https://platform.claude.com/docs/en/models/haiku-4-5/overview.md",
+        "sha256": "be8631fdf43f4edd374e980f82d5578e9795a09637c9a0b70d353139a0fec173"
+      },
+      {
+        "url": "https://platform.claude.com/docs/en/models/opus-4-5/overview.md",
+        "sha256": "83863be09e6e27da97ccfdc6d0f9bb79eb8a7a8872e56e7a4e3a6517a646acb1"
+      },
+      {
+        "url": "https://platform.claude.com/docs/en/models/opus-4-6/overview.md",
+        "sha256": "d1b719f970429c793ffdca984a9d0abcdaaf78d9fe0945a599ff93679bcd6c6b"
+      },
+      {
+        "url": "https://platform.claude.com/docs/en/models/opus-4-7/overview.md",
+        "sha256": "6789c77b35e41794a6a276b1126199b98f7204efa9a446f5561fcd72bfa99655"
+      },
+      {
+        "url": "https://platform.claude.com/docs/en/models/opus-4-8/overview.md",
+        "sha256": "9cc2a897cb6bd283e4ef0730015d6aab15e28df7717fc63dec9ae493579f6507"
+      },
+      {
+        "url": "https://platform.claude.com/docs/en/models/opus-5-5/overview.md",
+        "sha256": "42d880d368fbe9784c80828b482dcfd5cdd96dcf79704e3da732b3eff198553d"
+      },
+      {
+        "url": "https://platform.claude.com/docs/en/models/opus-5/overview.md",
+        "sha256": "18a78d2967ab31b92fb5651ead59c539b45ece7c33b5e857a6f8f3e72c74272d"
+      },
+      {
+        "url": "https://platform.claude.com/docs/en/models/overview.md",
+        "sha256": "938b1c3789c869b6f62adf59f72e8296b51c69bfb0fc53f1e33d518153840281"
+      },
+      {
+        "url": "https://platform.claude.com/docs/en/models/sonnet-4-5/overview.md",
+        "sha256": "4c83bee387b9b5e604b7ac926753b515e6cd61675468018613ae9dfc8733dc8a"
+      },
+      {
+        "url": "https://platform.claude.com/docs/en/models/sonnet-4-6/overview.md",
+        "sha256": "96c938e14c1c642f1aab807e134a2e7ab26a1e9fbe94a75e4bdacd623dc8f384"
+      },
+      {
+        "url": "https://platform.claude.com/docs/en/models/sonnet-5-5/overview.md",
+        "sha256": "0d7f0d48ddb9a796caf739e677f5cf882089ffd70dcb3fdb400432af43b83120"
+      },
+      {
+        "url": "https://platform.claude.com/docs/en/models/sonnet-5/overview.md",
+        "sha256": "68f590298ac0f5e6271fd2d9707084e4f9d2e7e22358d4bfa8f5279cbd690708"
+      }
+    ],
+    "models": [
+      {
+        "id": "claude-fable-5",
+        "name": "claude-fable-5",
+        "aliases": [],
+        "input": ["image", "text"],
+        "output": ["text"],
+        "capabilities": {
+          "embedding": false,
+          "function_calling": true,
+          "imageGeneration": false,
+          "reasoning": true,
+          "rerank": false,
+          "text": true,
+          "vision": true
+        },
+        "efforts": ["low", "medium", "high", "xhigh", "max"],
+        "thinking": "adaptive"
+      },
+      {
+        "id": "claude-fable-5-1",
+        "name": "claude-fable-5-1",
+        "aliases": [],
+        "input": ["image", "text"],
+        "output": ["text"],
+        "capabilities": {
+          "embedding": false,
+          "function_calling": true,
+          "imageGeneration": false,
+          "reasoning": true,
+          "rerank": false,
+          "text": true,
+          "vision": true
+        },
+        "efforts": ["low", "medium", "high", "xhigh", "max"],
+        "thinking": "adaptive"
+      },
+      {
+        "id": "claude-haiku-4-5-20251001",
+        "name": "claude-haiku-4-5-20251001",
+        "aliases": ["claude-haiku-4-5"],
+        "input": ["image", "text"],
+        "output": ["text"],
+        "capabilities": {
+          "embedding": false,
+          "function_calling": true,
+          "imageGeneration": false,
+          "reasoning": true,
+          "rerank": false,
+          "text": true,
+          "vision": true
+        },
+        "thinking": "budget"
+      },
+      {
+        "id": "claude-opus-4-5-20251101",
+        "name": "claude-opus-4-5-20251101",
+        "aliases": ["claude-opus-4-5"],
+        "input": ["image", "text"],
+        "output": ["text"],
+        "capabilities": {
+          "embedding": false,
+          "function_calling": true,
+          "imageGeneration": false,
+          "reasoning": true,
+          "rerank": false,
+          "text": true,
+          "vision": true
+        },
+        "efforts": ["low", "medium", "high"],
+        "thinking": "budget"
+      },
+      {
+        "id": "claude-opus-4-6",
+        "name": "claude-opus-4-6",
+        "aliases": [],
+        "input": ["image", "text"],
+        "output": ["text"],
+        "capabilities": {
+          "embedding": false,
+          "function_calling": true,
+          "imageGeneration": false,
+          "reasoning": true,
+          "rerank": false,
+          "text": true,
+          "vision": true
+        },
+        "efforts": ["low", "medium", "high", "max"],
+        "thinking": "adaptive"
+      },
+      {
+        "id": "claude-opus-4-7",
+        "name": "claude-opus-4-7",
+        "aliases": [],
+        "input": ["image", "text"],
+        "output": ["text"],
+        "capabilities": {
+          "embedding": false,
+          "function_calling": true,
+          "imageGeneration": false,
+          "reasoning": true,
+          "rerank": false,
+          "text": true,
+          "vision": true
+        },
+        "efforts": ["low", "medium", "high", "xhigh", "max"],
+        "thinking": "adaptive"
+      },
+      {
+        "id": "claude-opus-4-8",
+        "name": "claude-opus-4-8",
+        "aliases": [],
+        "input": ["image", "text"],
+        "output": ["text"],
+        "capabilities": {
+          "embedding": false,
+          "function_calling": true,
+          "imageGeneration": false,
+          "reasoning": true,
+          "rerank": false,
+          "text": true,
+          "vision": true
+        },
+        "efforts": ["low", "medium", "high", "xhigh", "max"],
+        "thinking": "adaptive"
+      },
+      {
+        "id": "claude-opus-5",
+        "name": "claude-opus-5",
+        "aliases": [],
+        "input": ["image", "text"],
+        "output": ["text"],
+        "capabilities": {
+          "embedding": false,
+          "function_calling": true,
+          "imageGeneration": false,
+          "reasoning": true,
+          "rerank": false,
+          "text": true,
+          "vision": true
+        },
+        "efforts": ["low", "medium", "high", "xhigh", "max"],
+        "thinking": "adaptive"
+      },
+      {
+        "id": "claude-opus-5-5",
+        "name": "claude-opus-5-5",
+        "aliases": [],
+        "input": ["image", "text"],
+        "output": ["text"],
+        "capabilities": {
+          "embedding": false,
+          "function_calling": true,
+          "imageGeneration": false,
+          "reasoning": true,
+          "rerank": false,
+          "text": true,
+          "vision": true
+        },
+        "efforts": ["low", "medium", "high", "xhigh", "max"],
+        "thinking": "adaptive"
+      },
+      {
+        "id": "claude-sonnet-4-5-20250929",
+        "name": "claude-sonnet-4-5-20250929",
+        "aliases": ["claude-sonnet-4-5"],
+        "input": ["image", "text"],
+        "output": ["text"],
+        "capabilities": {
+          "embedding": false,
+          "function_calling": true,
+          "imageGeneration": false,
+          "reasoning": true,
+          "rerank": false,
+          "text": true,
+          "vision": true
+        },
+        "thinking": "budget"
+      },
+      {
+        "id": "claude-sonnet-4-6",
+        "name": "claude-sonnet-4-6",
+        "aliases": [],
+        "input": ["image", "text"],
+        "output": ["text"],
+        "capabilities": {
+          "embedding": false,
+          "function_calling": true,
+          "imageGeneration": false,
+          "reasoning": true,
+          "rerank": false,
+          "text": true,
+          "vision": true
+        },
+        "efforts": ["low", "medium", "high", "max"],
+        "thinking": "adaptive"
+      },
+      {
+        "id": "claude-sonnet-5",
+        "name": "claude-sonnet-5",
+        "aliases": [],
+        "input": ["image", "text"],
+        "output": ["text"],
+        "capabilities": {
+          "embedding": false,
+          "function_calling": true,
+          "imageGeneration": false,
+          "reasoning": true,
+          "rerank": false,
+          "text": true,
+          "vision": true
+        },
+        "efforts": ["low", "medium", "high", "xhigh", "max"],
+        "thinking": "adaptive"
+      },
+      {
+        "id": "claude-sonnet-5-5",
+        "name": "claude-sonnet-5-5",
+        "aliases": [],
+        "input": ["image", "text"],
+        "output": ["text"],
+        "capabilities": {
+          "embedding": false,
+          "function_calling": true,
+          "imageGeneration": false,
+          "reasoning": true,
+          "rerank": false,
+          "text": true,
+          "vision": true
+        },
+        "efforts": ["low", "medium", "high", "xhigh", "max"],
+        "thinking": "adaptive"
+      }
+    ]
+  }
+}

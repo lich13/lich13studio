@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { emptyCatalogExclusions } from './modelCatalog/merge'
 import { normalizeModelTestConcurrency } from './modelTestOptions'
 import { createPlatformModels } from './platforms'
 import {
@@ -127,7 +128,10 @@ describe('221 model-test concurrency migration', () => {
       const raw = encode(state)
       const restoredRaw = sanitizePersistedState(raw)
       const restored = decode(restoredRaw)
-      expect(restored).toEqual({ ...before, llm: { ...before.llm, modelTestConcurrency: 1 } })
+      expect(restored).toEqual({
+        ...before,
+        llm: { ...before.llm, modelTestConcurrency: 1, modelCatalogExclusions: emptyCatalogExclusions() }
+      })
       expect(restored._persist.version).toBe(version)
       expect(sanitizePersistedState(restoredRaw)).toBe(restoredRaw)
       expect(state).toEqual(before)
@@ -141,8 +145,9 @@ describe('221 model-test concurrency migration', () => {
       const state = fixture(concurrency, MODEL_TEST_CONCURRENCY_VERSION)
       const restoredRaw = sanitizePersistedState(encode(state))
       const restored = decode(restoredRaw)
-      expect(restored).toEqual(state)
-      expect(migrateModelTestConcurrencyState(restored)).toEqual(state)
+      const expected = { ...state, llm: { ...state.llm, modelCatalogExclusions: emptyCatalogExclusions() } }
+      expect(restored).toEqual(expected)
+      expect(migrateModelTestConcurrencyState(restored)).toEqual(expected)
       expect(sanitizePersistedState(restoredRaw)).toBe(restoredRaw)
     }
   )
@@ -152,7 +157,10 @@ describe('221 model-test concurrency migration', () => {
     (value) => {
       const state = fixture(value, MODEL_TEST_CONCURRENCY_VERSION)
       const restored = decode(sanitizePersistedState(encode(state)))
-      expect(restored).toEqual({ ...state, llm: { ...state.llm, modelTestConcurrency: 1 } })
+      expect(restored).toEqual({
+        ...state,
+        llm: { ...state.llm, modelTestConcurrency: 1, modelCatalogExclusions: emptyCatalogExclusions() }
+      })
     }
   )
 })

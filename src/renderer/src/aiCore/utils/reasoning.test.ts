@@ -117,21 +117,57 @@ describe('actual SDK HTTP reasoning payloads', () => {
     for (const effort of [undefined, 'none', 'minimal', 'default', 'auto'])
       expect((await capture('openai-response', 'custom-model', effort)).body.reasoning.effort).toBe('max')
   })
-  it('omits reasoning controls and timeout fields for disabled model tests', async () => {
-    const openai = await capture('openai-response', 'gpt-6-sol', 'max', 'disabled')
-    expect(openai.body.reasoning).toBeUndefined()
-    expect(openai.body.output_config).toBeUndefined()
-    expect(openai.body.timeout).toBeUndefined()
-
-    const anthropic = await capture('anthropic', 'claude-sonnet-4-5', 'max', 'disabled')
-    expect(anthropic.body.thinking).toBeUndefined()
-    expect(anthropic.body.output_config).toBeUndefined()
-    expect(anthropic.body.timeout).toBeUndefined()
+  it.each([
+    ['openai-response', 'gpt-6-sol'],
+    ['openai-response', 'gpt-6.1-sol'],
+    ['openai-response', 'grok-4.7'],
+    ['anthropic', 'claude-sonnet-4-5'],
+    ['anthropic', 'claude-sonnet-5-5']
+  ] as const)('omits thinking, tools and timeout fields for a disabled %s %s model test', async (type, id) => {
+    const { body } = await capture(type, id, 'max', 'disabled')
+    expect(body.model).toBe(id)
+    for (const field of [
+      'reasoning',
+      'reasoning_effort',
+      'thinking',
+      'output_config',
+      'tools',
+      'tool_choice',
+      'timeout',
+      'timeout_ms'
+    ]) {
+      expect(body).not.toHaveProperty(field)
+    }
   })
+
+  it('keeps the official GPT-6.1 Sol maximum effort and original request ID', async () => {
+    const { body } = await capture('openai-response', 'gpt-6.1-sol', 'max')
+    expect(body.model).toBe('gpt-6.1-sol')
+    expect(body.reasoning.effort).toBe('max')
+  })
+
+  it.each([
+    ['max', 'xhigh'],
+    ['xhigh', 'xhigh'],
+    ['low', 'low']
+  ])('maps Grok 4.7 %s to the officially supported %s effort', async (effort, expected) => {
+    const { body } = await capture('openai-response', 'grok-4.7', effort)
+    expect(body.model).toBe('grok-4.7')
+    expect(body.reasoning.effort).toBe(expected)
+  })
+
   it.each(REASONING_EFFORTS)('sends native Anthropic %s', async (effort) => {
     const { body } = await capture('anthropic', 'claude-opus-4-7', effort)
     expect(body.output_config.effort).toBe(effort)
     expect(body.thinking.type).toBe('adaptive')
+  })
+
+  it.each(REASONING_EFFORTS)('sends Claude Sonnet 5.5 adaptive thinking with native %s', async (effort) => {
+    const { body } = await capture('anthropic', 'claude-sonnet-5-5', effort)
+    expect(body.model).toBe('claude-sonnet-5-5')
+    expect(body.output_config.effort).toBe(effort)
+    expect(body.thinking).toEqual({ type: 'adaptive' })
+    expect(body.max_tokens).toBe(8192)
   })
   it.each([
     ['claude-opus-4-6', 'xhigh', 'high'],
@@ -141,11 +177,18 @@ describe('actual SDK HTTP reasoning payloads', () => {
   ])('maps %s %s to %s', async (id, effort, expected) => {
     const { body } = await capture('anthropic', id, effort)
     expect(body.output_config.effort).toBe(expected)
+    if (id === 'claude-opus-4-5') {
+      expect(body.thinking.type).toBe('enabled')
+      expect(body.thinking.budget_tokens).toBeGreaterThanOrEqual(1024)
+      expect(body.thinking.budget_tokens).toBeLessThan(body.max_tokens)
+    }
   })
   it.each(REASONING_EFFORTS)('keeps legacy %s budget below actual output ceiling', async (effort) => {
     const { body } = await capture('anthropic', 'claude-sonnet-4-5', effort)
     expect(body.max_tokens).toBe(8192)
+    expect(body.thinking.type).toBe('enabled')
     expect(body.thinking.budget_tokens).toBeGreaterThanOrEqual(1024)
     expect(body.thinking.budget_tokens).toBeLessThan(body.max_tokens)
+    expect(body.output_config).toBeUndefined()
   })
 })

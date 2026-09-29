@@ -19,6 +19,13 @@ import { createSlice } from '@reduxjs/toolkit'
 import { SYSTEM_PROVIDERS } from '@renderer/config/providers'
 import { type AwsBedrockAuthType, type Model, type Provider, ProviderTypeSchema } from '@renderer/types'
 import type { CliVersionCache, CliVersions } from '@shared/cliIdentity'
+import {
+  emptyCatalogExclusions,
+  mergeCatalogModels,
+  type ModelCatalogExclusions,
+  recordCatalogEdits
+} from '@shared/modelCatalog/merge'
+import type { PlatformModelCatalogSnapshot } from '@shared/modelCatalog/types'
 import { type ModelTestConcurrency, normalizeModelTestConcurrency } from '@shared/modelTestOptions'
 import type { ModelTestSelection } from '@shared/modelTestSelection'
 import {
@@ -66,6 +73,7 @@ type LlmSettings = {
 
 export interface LlmState {
   providers: StoredProvider[]
+  modelCatalogExclusions: ModelCatalogExclusions
   platformModels: PlatformModels
   cliVersions: CliVersions
   defaultModel?: Model
@@ -87,6 +95,7 @@ export const initialState: LlmState = {
   quickAssistantId: '',
   providers: SYSTEM_PROVIDERS,
   platformModels: createPlatformModels(),
+  modelCatalogExclusions: emptyCatalogExclusions(),
   cliVersions: {},
   modelTestConcurrency: 1,
   settings: {
@@ -161,7 +170,23 @@ const llmSlice = createSlice({
       }
     },
     setPlatformModels: (state, action: PayloadAction<{ platform: ProviderPlatform; models: PlatformModel[] }>) => {
-      state.platformModels[action.payload.platform] = action.payload.models.map(catalogModel)
+      const { platform, models } = action.payload
+      state.modelCatalogExclusions ??= emptyCatalogExclusions()
+      state.modelCatalogExclusions[platform] = recordCatalogEdits(
+        state.platformModels[platform],
+        models,
+        state.modelCatalogExclusions[platform] ?? []
+      )
+      state.platformModels[platform] = models.map(catalogModel)
+    },
+    applyPlatformCatalog: (state, action: PayloadAction<PlatformModelCatalogSnapshot>) => {
+      const { platform, models } = action.payload
+      state.platformModels[platform] = mergeCatalogModels(
+        state.platformModels[platform],
+        models,
+        state.modelCatalogExclusions?.[platform] ?? [],
+        platform
+      )
     },
     setCliVersion: (state, action: PayloadAction<{ platform: ProviderPlatform; cache: CliVersionCache }>) => {
       state.cliVersions[action.payload.platform] = action.payload.cache
@@ -173,6 +198,10 @@ const llmSlice = createSlice({
       const { provider, models, primaryModel } = action.payload
       const platform = inferProviderPlatform(provider)
       const catalog = state.platformModels[platform]
+      state.modelCatalogExclusions ??= emptyCatalogExclusions()
+      state.modelCatalogExclusions[platform] = state.modelCatalogExclusions[platform].filter(
+        (id) => !models.includes(id)
+      )
       for (const id of models)
         if (!catalog.some((model) => model.id === id)) catalog.push({ id, name: id, group: platform })
       if (!state.providers.some((existing) => existing.id === provider.id))
@@ -185,13 +214,22 @@ const llmSlice = createSlice({
     addModel: (state, action: PayloadAction<{ providerId: string; model: Model }>) => {
       const provider = state.providers.find((p) => p.id === action.payload.providerId)
       if (!provider) return
-      const models = state.platformModels[inferProviderPlatform(provider)]
+      const platform = inferProviderPlatform(provider)
+      const models = state.platformModels[platform]
+      state.modelCatalogExclusions ??= emptyCatalogExclusions()
+      state.modelCatalogExclusions[platform] = state.modelCatalogExclusions[platform].filter(
+        (id) => id !== action.payload.model.id
+      )
       if (!models.some((model) => model.id === action.payload.model.id)) models.push(catalogModel(action.payload.model))
     },
     removeModel: (state, action: PayloadAction<{ providerId: string; model: Model }>) => {
       const provider = state.providers.find((p) => p.id === action.payload.providerId)
       if (!provider) return
       const platform = inferProviderPlatform(provider)
+      state.modelCatalogExclusions ??= emptyCatalogExclusions()
+      state.modelCatalogExclusions[platform] = [
+        ...new Set([...state.modelCatalogExclusions[platform], action.payload.model.id])
+      ]
       state.platformModels[platform] = state.platformModels[platform].filter(
         (model) => model.id !== action.payload.model.id
       )
@@ -289,6 +327,7 @@ const llmSlice = createSlice({
 })
 
 export const {
+  applyPlatformCatalog,
   setModelTestConcurrency,
   setModelTestSelection,
   setPlatformModels,

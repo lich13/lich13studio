@@ -3237,6 +3237,9 @@
   "platform": {
     "api_options": "API 选项",
     "builtin_version": "内置版本 · 尚未同步",
+    "catalog_builtin": "内置目录 · {{count}} 个型号",
+    "catalog_error": "同步失败：{{error}}",
+    "catalog_synced": "{{time}} · {{count}} 个官方型号",
     "cli_identity": "官方 CLI 请求标识",
     "delete_model": "从此平台所有服务商中移除此型号？",
     "import_title": "导入 CCS 服务商",
@@ -3249,7 +3252,8 @@
     "provider_help": "使用 {{protocol}} 协议和 {{platform}} 平台共用模型目录。",
     "search_models": "搜索型号",
     "select_model": "请选择可用服务商及其平台目录中的模型。",
-    "sync_now": "立即同步",
+    "sync_cli": "同步 CLI",
+    "sync_models": "同步模型",
     "use_catalog": "使用平台模型目录"
   },
   "plugins": {

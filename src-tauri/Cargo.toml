@@ -1,6 +1,6 @@
 [package]
 name = "lich13studio"
-version = "0.1.26"
+version = "0.1.27"
 description = "lich13studio Tauri Lite runtime"
 authors = ["lich13studio"]
 edition = "2021"

@@ -1,4 +1,5 @@
 import type { Model, ModelCapability, ModelType } from '@renderer/types'
+import { findOfficialModel } from '@shared/modelCatalog/runtime'
 
 import { EMBEDDING_REGEX, RERANKING_REGEX } from './embedding'
 import { hasLegacyReasoningCapability } from './reasoning'
@@ -10,6 +11,7 @@ export type ResolvedModelCapabilities = Record<ModelType, boolean> & {
   imageGeneration: boolean
   fileInput: boolean
   registryId?: string
+  officialId?: string
 }
 
 /** Normalize lookup aliases only; request IDs must never use this value. */
@@ -48,6 +50,7 @@ export function resolveModelCapabilities(model?: Model | null): ResolvedModelCap
     fileInput: false
   }
   if (!model) return empty
+  const official = findOfficialModel(model.id)
   const entry = findRegistryModel(model.id)
   // A display label is never evidence of a model capability.
   const legacyModel = { ...model, name: model.id }
@@ -58,6 +61,7 @@ export function resolveModelCapabilities(model?: Model | null): ResolvedModelCap
       (capability) => capability.type === type && typeof capability.isUserSelected === 'boolean'
     )
     if (explicit) return explicit.isUserSelected!
+    if (typeof official?.capabilities[type] === 'boolean') return official.capabilities[type]!
     if (entry) return registered
     if (model.capabilities?.some((capability) => capability.type === type) || model.type?.includes(type)) return true
     return fallback()
@@ -66,7 +70,9 @@ export function resolveModelCapabilities(model?: Model | null): ResolvedModelCap
   const rerank = decide('rerank', has('rerank'), () => !unknownGPT && RERANKING_REGEX.test(id))
   const embedding = decide('embedding', has('embedding'), () => !unknownGPT && !rerank && EMBEDDING_REGEX.test(id))
   const nonChat = embedding || rerank
-  const imageGeneration = has('image-generation') || (!entry && isDedicatedImageModel(legacyModel))
+  const imageGeneration =
+    official?.capabilities.imageGeneration ??
+    (has('image-generation') || (!entry && isDedicatedImageModel(legacyModel)))
   const dedicatedImage = entry
     ? entry.output.length > 0 && !entry.output.includes('text')
     : isDedicatedImageModel(legacyModel)
@@ -96,7 +102,8 @@ export function resolveModelCapabilities(model?: Model | null): ResolvedModelCap
     embedding,
     rerank,
     imageGeneration,
-    fileInput: has('file-input'),
-    registryId: entry?.id
+    fileInput: official?.capabilities.fileInput ?? has('file-input'),
+    registryId: entry?.id,
+    officialId: official?.id
   }
 }

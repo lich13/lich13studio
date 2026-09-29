@@ -1,5 +1,6 @@
 import { useTheme } from '@renderer/context/ThemeProvider'
 import { getPlatformHeaders, syncCliVersion } from '@renderer/services/CliVersionService'
+import { platformModelCatalogService } from '@renderer/services/PlatformModelCatalogService'
 import { useAppDispatch, useAppSelector } from '@renderer/store'
 import { setPlatformModels } from '@renderer/store/llm'
 import type { Model, Provider } from '@renderer/types'
@@ -13,7 +14,7 @@ import {
 } from '@shared/platforms'
 import { Button, Empty, Flex, Input, List, Modal, Popconfirm, Space, Typography } from 'antd'
 import { ArrowDown, ArrowUp, Pencil, Plus, Trash2 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { SettingContainer, SettingHelpText, SettingSubtitle, SettingTitle } from '..'
@@ -25,6 +26,9 @@ export default function PlatformSettings({ platform }: { platform: ProviderPlatf
   const dispatch = useAppDispatch()
   const models = useAppSelector((state) => state.llm.platformModels[platform])
   const cache = useAppSelector((state) => state.llm.cliVersions[platform])
+  const catalog = useSyncExternalStore(platformModelCatalogService.subscribe, () =>
+    platformModelCatalogService.getSnapshot(platform)
+  )
   const [syncing, setSyncing] = useState(false)
   const [search, setSearch] = useState('')
   const [adding, setAdding] = useState(false)
@@ -71,7 +75,6 @@ export default function PlatformSettings({ platform }: { platform: ProviderPlatf
       <SettingTitle>
         {PLATFORM_NAMES[platform]} · {t('platform.models_title')}
       </SettingTitle>
-      <SettingHelpText>{t('platform.models_help')}</SettingHelpText>
       <SettingSubtitle>{t('platform.cli_identity')}</SettingSubtitle>
       <Typography.Text code style={{ overflowWrap: 'anywhere' }}>
         {getPlatformHeaders(platform, cache?.version)['User-Agent']}
@@ -91,7 +94,26 @@ export default function PlatformSettings({ platform }: { platform: ProviderPlatf
               setSyncing(false)
             }
           }}>
-          {t('platform.sync_now')}
+          {t('platform.sync_cli')}
+        </Button>
+      </Flex>
+      <Flex justify="space-between" align="center" gap={12} wrap style={{ marginBottom: 12 }}>
+        <Typography.Text
+          type={catalog.status === 'error' ? 'danger' : 'secondary'}
+          style={{ overflowWrap: 'anywhere' }}>
+          {catalog.status === 'error'
+            ? t('platform.catalog_error', { error: catalog.error })
+            : catalog.syncedAt
+              ? t('platform.catalog_synced', {
+                  time: new Date(catalog.syncedAt).toLocaleString(),
+                  count: catalog.snapshot.models.length
+                })
+              : t('platform.catalog_builtin', { count: catalog.snapshot.models.length })}
+        </Typography.Text>
+        <Button
+          loading={catalog.status === 'checking'}
+          onClick={() => void platformModelCatalogService.sync(platform, true)}>
+          {t('platform.sync_models')}
         </Button>
       </Flex>
       <Space.Compact style={{ width: '100%', marginBottom: 12 }}>

@@ -3236,6 +3236,9 @@
   "platform": {
     "api_options": "API options",
     "builtin_version": "Bundled version · not yet synced",
+    "catalog_builtin": "Integrierter Katalog · {{count}} Modelle",
+    "catalog_error": "Synchronisierung fehlgeschlagen: {{error}}",
+    "catalog_synced": "{{time}} · {{count}} offizielle Modelle",
     "cli_identity": "Official CLI identity",
     "delete_model": "Remove this model from all providers on this platform?",
     "import_title": "Import CCS provider",
@@ -3248,7 +3251,8 @@
     "provider_help": "Uses {{protocol}} and the shared {{platform}} model catalog.",
     "search_models": "Search models",
     "select_model": "Select an available provider and a model from its platform catalog.",
-    "sync_now": "Sync now",
+    "sync_cli": "CLI synchronisieren",
+    "sync_models": "Modelle synchronisieren",
     "use_catalog": "Use the platform model catalog"
   },
   "plugins": {

@@ -101,6 +101,12 @@ export async function withReasoningFallback<T>({
     effort = cached.effort
   else if (cached && (cached.expires <= Date.now() || cached.credential !== credential)) cache.delete(route)
   const tried = new Set<ReasoningEffort>()
+  const mappedEfforts = new Map(
+    REASONING_EFFORTS.map((candidate) => [
+      candidate,
+      namespace === 'anthropic' ? anthropicEffort(modelId, candidate) : candidate
+    ])
+  )
 
   while (!tried.has(effort)) {
     params.abortSignal?.throwIfAborted()
@@ -149,7 +155,7 @@ export async function withReasoningFallback<T>({
         rejection &&
         [...(rejection.supported ?? REASONING_EFFORTS)]
           .reverse()
-          .map((candidate) => (namespace === 'anthropic' ? anthropicEffort(modelId, candidate) : candidate))
+          .map((candidate) => mappedEfforts.get(candidate)!)
           .filter((candidate) => rank(candidate) <= rank(requested) && !tried.has(candidate))
           .sort((a, b) => rank(b) - rank(a))[0]
       if (!next) {

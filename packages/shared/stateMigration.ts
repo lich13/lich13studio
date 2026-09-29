@@ -1,4 +1,6 @@
 import { platformRequestHeaders } from './cliIdentity'
+import { emptyCatalogExclusions, mergeCatalogModels } from './modelCatalog/merge'
+import { bundledModelCatalogs } from './modelCatalog/runtime'
 import { assistantModelSelection } from './modelProviderSelection'
 import { normalizeModelTestConcurrency } from './modelTestOptions'
 import { initialModelTestSelection } from './modelTestSelection'
@@ -6,6 +8,7 @@ import {
   catalogModel,
   createPlatformModels,
   inferProviderPlatform,
+  LEGACY_SEED_IDS,
   PROVIDER_PLATFORMS,
   storedProvider
 } from './platforms'
@@ -18,6 +21,7 @@ export const SEARCH_REMOVAL_VERSION = 218
 export const MODEL_TEST_SELECTION_VERSION = 219
 export const ASSISTANT_SELECTION_VERSION = 220
 export const MODEL_TEST_CONCURRENCY_VERSION = 221
+export const MODEL_CATALOG_VERSION = 222
 
 type State = Record<string, any>
 
@@ -94,6 +98,7 @@ export function sanitizePersistedState(raw: string): string {
   migrateModelTestState(decoded)
   migrateAssistantSelectionState(decoded)
   migrateModelTestConcurrencyState(decoded)
+  migrateModelCatalogState(decoded)
   return JSON.stringify(Object.fromEntries(Object.entries(decoded).map(([key, value]) => [key, JSON.stringify(value)])))
 }
 
@@ -163,5 +168,29 @@ export function migratePlatformState<T extends State>(state: T): T {
       delete (result as any)[key]
     return result
   })
+  return state
+}
+
+/** Migration and restore share this marker; never infer deletion of newly shipped models. */
+export function migrateModelCatalogState<T extends State>(state: T): T {
+  const llm = state.llm
+  if (!llm) return state
+  const existing = llm.modelCatalogExclusions
+  llm.modelCatalogExclusions = emptyCatalogExclusions()
+  for (const platform of PROVIDER_PLATFORMS) {
+    const current = llm.platformModels?.[platform]
+    llm.modelCatalogExclusions[platform] = Array.isArray(existing?.[platform])
+      ? [...new Set(existing[platform].filter((id: unknown) => typeof id === 'string'))]
+      : Array.isArray(current)
+        ? LEGACY_SEED_IDS[platform].filter((id) => !current.some((model) => model.id === id))
+        : []
+    llm.platformModels ??= createPlatformModels()
+    llm.platformModels[platform] = mergeCatalogModels(
+      current ?? [],
+      bundledModelCatalogs[platform].models,
+      llm.modelCatalogExclusions[platform],
+      platform
+    )
+  }
   return state
 }

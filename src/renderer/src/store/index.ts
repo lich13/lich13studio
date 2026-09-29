@@ -30,6 +30,7 @@ import llm from './llm'
 import messageBlocksReducer from './messageBlock'
 import migrate from './migrate'
 import minapps from './minapps'
+import { modelCatalogMiddleware } from './modelCatalogMiddleware'
 import newMessagesReducer from './newMessage'
 import { setNotesPath } from './note'
 import note from './note'
@@ -73,7 +74,7 @@ const persistedReducer = persistReducer(
   {
     key: 'cherry-studio',
     storage,
-    version: 221,
+    version: 222,
     blacklist: ['runtime', 'messages', 'messageBlocks', 'tabs', 'toolPermissions'],
     migrate
   },
@@ -103,7 +104,7 @@ const store = configureStore({
       serializableCheck: {
         ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER]
       }
-    }).concat(storeSyncService.createMiddleware())
+    }).concat(modelCatalogMiddleware, storeSyncService.createMiddleware())
   },
   devTools: true
 })
@@ -112,6 +113,9 @@ export type RootState = ReturnType<typeof rootReducer>
 export type AppDispatch = typeof store.dispatch
 
 export const persistor = persistStore(store, undefined, () => {
+  void import('@renderer/services/PlatformModelCatalogService').then(({ platformModelCatalogService }) =>
+    platformModelCatalogService.initialize()
+  )
   // Initialize notes path after rehydration if empty
   const state = store.getState()
   if (!state.note.notesPath) {

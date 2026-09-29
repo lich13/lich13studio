@@ -1,12 +1,24 @@
 import { findTokenLimit } from '@renderer/config/models'
 import { getStoreSetting } from '@renderer/hooks/useSettings'
 import type { Assistant, Model } from '@renderer/types'
+import { findOfficialModel } from '@shared/modelCatalog/runtime'
 import { anthropicEffort, anthropicThinkingMode, normalizeReasoningEffort, thinkingBudget } from '@shared/reasoning'
 
 export function getOpenAIReasoningParams(assistant: Assistant, _model: Model) {
-  void _model
+  const levels = findOfficialModel(_model.id)?.efforts
+  const requested = normalizeReasoningEffort(assistant.settings?.reasoning_effort)
   return {
-    reasoningEffort: normalizeReasoningEffort(assistant.settings?.reasoning_effort),
+    reasoningEffort: levels?.length
+      ? levels.includes(requested)
+        ? requested
+        : ([...levels]
+            .reverse()
+            .find(
+              (level) =>
+                ['low', 'medium', 'high', 'xhigh', 'max'].indexOf(level) <=
+                ['low', 'medium', 'high', 'xhigh', 'max'].indexOf(requested)
+            ) ?? levels[0])
+      : requested,
     reasoningSummary: getStoreSetting('openAI')?.summaryText
   }
 }
@@ -18,13 +30,16 @@ export function getThinkingBudget(maxTokens: number | undefined, effort: string 
 
 export function getAnthropicReasoningParams(assistant: Assistant, model: Model) {
   const effort = normalizeReasoningEffort(assistant.settings?.reasoning_effort)
+  const official = findOfficialModel(model.id, 'anthropic')
   const mode = anthropicThinkingMode(model.id)
-  if (mode === 'five' || mode === 'four')
+  if (official?.thinking === 'adaptive' || (!official?.thinking && (mode === 'five' || mode === 'four')))
     return { thinking: { type: 'adaptive' as const }, effort: anthropicEffort(model.id, effort) }
   const maxTokens = assistant.settings?.enableMaxTokens ? assistant.settings.maxTokens : undefined
   return {
     thinking: { type: 'enabled' as const, budgetTokens: getThinkingBudget(maxTokens, effort, model.id) },
-    ...(mode === 'three' ? { effort: anthropicEffort(model.id, effort) } : {})
+    ...(official?.efforts?.length || (!official && mode === 'three')
+      ? { effort: anthropicEffort(model.id, effort) }
+      : {})
   }
 }
 

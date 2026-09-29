@@ -1,5 +1,6 @@
 import type { Model } from '@renderer/types'
-import { afterAll, describe, expect, it, vi } from 'vitest'
+import { bundledModelCatalogs, installModelCatalog } from '@shared/modelCatalog/runtime'
+import { afterAll, afterEach, describe, expect, it, vi } from 'vitest'
 
 const previousLocalStorage = vi.hoisted(() => {
   const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
@@ -17,6 +18,10 @@ vi.mock('@renderer/utils', () => ({
 }))
 
 import { normalizeModelCapabilityKey, resolveModelCapabilities, restoreAutomaticCapabilities } from './capabilities'
+
+afterEach(() => {
+  for (const snapshot of Object.values(bundledModelCatalogs)) installModelCatalog(snapshot)
+})
 
 afterAll(() => {
   if (previousLocalStorage) {
@@ -37,6 +42,128 @@ function model(id: string, overrides: Partial<Model> = {}): Model {
 }
 
 describe('model capability resolution', () => {
+  it.each(['gpt-6.1-sol', 'claude-sonnet-5-5'])(
+    'uses official text, vision, reasoning and tool capabilities for %s',
+    (id) => {
+      expect(resolveModelCapabilities(model(id))).toMatchObject({
+        officialId: id,
+        text: true,
+        vision: true,
+        reasoning: true,
+        function_calling: true,
+        embedding: false,
+        rerank: false,
+        imageGeneration: false
+      })
+    }
+  )
+
+  it('keeps the Cherry registry identity distinct from an official dated API identity', () => {
+    const request = Object.freeze(model('claude-opus-4-5'))
+
+    expect(resolveModelCapabilities(request)).toMatchObject({
+      registryId: 'claude-opus-4-5',
+      officialId: 'claude-opus-4-5-20251101'
+    })
+    expect(request.id).toBe('claude-opus-4-5')
+  })
+
+  it.each(['grok-4.20-0309-non-reasoning', 'XAI/GROK_4.20_NON_REASONING'])(
+    'keeps official reasoning false for the Grok non-reasoning model %s',
+    (id) => {
+      expect(resolveModelCapabilities(model(id))).toMatchObject({
+        officialId: 'grok-4.20-0309-non-reasoning',
+        text: true,
+        vision: true,
+        reasoning: false,
+        function_calling: true,
+        embedding: false,
+        rerank: false
+      })
+    }
+  )
+
+  it.each(['vision', 'reasoning', 'function_calling'] as const)(
+    'honors a manual %s opt-out before the official catalog',
+    (type) => {
+      expect(
+        resolveModelCapabilities(
+          model('gpt-6.1-sol', {
+            capabilities: [{ type, isUserSelected: false }]
+          })
+        )[type]
+      ).toBe(false)
+    }
+  )
+
+  it('honors a manual true override of an official false capability', () => {
+    expect(
+      resolveModelCapabilities(
+        model('grok-4.20-non-reasoning', {
+          capabilities: [{ type: 'reasoning', isUserSelected: true }]
+        })
+      ).reasoning
+    ).toBe(true)
+  })
+
+  it('uses explicit official values and falls back to Cherry for omitted fields', () => {
+    const snapshot = structuredClone(bundledModelCatalogs.anthropic)
+    const official = snapshot.models.find((entry) => entry.id === 'claude-opus-4-6')!
+    official.capabilities = { text: true, vision: false, reasoning: true }
+    installModelCatalog(snapshot)
+
+    expect(
+      resolveModelCapabilities(
+        model('claude-opus-4-6', {
+          capabilities: [{ type: 'vision' }, { type: 'embedding' }]
+        })
+      )
+    ).toMatchObject({
+      officialId: 'claude-opus-4-6',
+      registryId: 'claude-opus-4-6',
+      vision: false,
+      reasoning: true,
+      function_calling: true,
+      fileInput: true,
+      embedding: false
+    })
+  })
+
+  it('uses declarations and then legacy rules when both official and Cherry fields are absent', () => {
+    const snapshot = structuredClone(bundledModelCatalogs.grok)
+    snapshot.models = ['custom-official-chat', 'grok-4-reasoning-fixture'].map((id) => ({
+      id,
+      name: id,
+      aliases: [],
+      input: ['text'],
+      output: ['text'],
+      capabilities: { text: true }
+    }))
+    installModelCatalog(snapshot)
+
+    expect(
+      resolveModelCapabilities(
+        model('custom-official-chat', {
+          capabilities: [{ type: 'vision' }, { type: 'function_calling' }]
+        })
+      )
+    ).toMatchObject({
+      registryId: undefined,
+      officialId: 'custom-official-chat',
+      text: true,
+      vision: true,
+      function_calling: true,
+      reasoning: false
+    })
+    expect(resolveModelCapabilities(model('grok-4-reasoning-fixture'))).toMatchObject({
+      registryId: undefined,
+      officialId: 'grok-4-reasoning-fixture',
+      reasoning: true,
+      function_calling: true,
+      vision: true
+    })
+  })
+
   it.each(['gpt-6-sol', 'gpt-6-luna', 'gpt-6-astra', 'gpt-5-6-sol', 'gpt-5-6-luna', 'gpt-5-6-terra'])(
     'reads text and advanced capabilities for %s from the registry snapshot',
     (id) => {

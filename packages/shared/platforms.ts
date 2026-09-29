@@ -1,6 +1,7 @@
 import type { Model, Provider } from '@types'
 
 import { stripIdentityHeaders } from './cliIdentity'
+import { bundledModelCatalogs } from './modelCatalog/runtime'
 
 export const PROVIDER_PLATFORMS = ['openai', 'grok', 'anthropic'] as const
 export type ProviderPlatform = (typeof PROVIDER_PLATFORMS)[number]
@@ -36,7 +37,7 @@ export function inferProviderPlatform(provider: {
 
 // Snapshot: Codex rust-v0.156.1 models with visibility=list; Sub2API a3eb7ef3
 // Claude DefaultModels and Grok text models. Runtime updates never overwrite this catalog's user edits.
-const SEED_IDS: Record<ProviderPlatform, string[]> = {
+export const LEGACY_SEED_IDS: Record<ProviderPlatform, string[]> = {
   openai: ['gpt-6-astra', 'gpt-6-sol', 'gpt-6-luna', 'gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna', 'gpt-5.5'],
   grok: [
     'grok-4.7',
@@ -69,7 +70,9 @@ export function createPlatformModels(): PlatformModels {
   return Object.fromEntries(
     PROVIDER_PLATFORMS.map((platform) => [
       platform,
-      SEED_IDS[platform].map((id) => ({ id, name: id, group: PLATFORM_NAMES[platform] }))
+      [
+        ...new Set([...LEGACY_SEED_IDS[platform], ...bundledModelCatalogs[platform].models.map((model) => model.id)])
+      ].map((id) => ({ id, name: id, group: PLATFORM_NAMES[platform] }))
     ])
   ) as PlatformModels
 }

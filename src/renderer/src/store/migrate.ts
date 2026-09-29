@@ -52,6 +52,7 @@ import { API_SERVER_DEFAULTS } from '@shared/config/constant'
 import { defaultByPassRules, UpgradeChannel } from '@shared/config/constant'
 import {
   migrateAssistantSelectionState,
+  migrateModelCatalogState,
   migrateModelTestConcurrencyState,
   migrateModelTestState,
   migratePlatformState,
@@ -3362,7 +3363,8 @@ const migrateConfig = {
   '218': (state: RootState) => sanitizeState(state),
   '219': (state: RootState) => migrateModelTestState(state),
   '220': (state: RootState) => migrateAssistantSelectionState(state),
-  '221': (state: RootState) => migrateModelTestConcurrencyState(state)
+  '221': (state: RootState) => migrateModelTestConcurrencyState(state),
+  '222': (state: RootState) => migrateModelCatalogState(state)
 }
 
 // 注意：添加新迁移时，记得同时更新 persistReducer
@@ -3371,7 +3373,7 @@ const migrateConfig = {
 const versionedMigrate = createMigrate(migrateConfig as any)
 const migrate: typeof versionedMigrate = async (state, version) => {
   const migrated = await versionedMigrate(state, version)
-  return migrated ? migrateModelTestConcurrencyState(sanitizeState(migrated)) : migrated
+  return migrated ? migrateModelCatalogState(migrateModelTestConcurrencyState(sanitizeState(migrated))) : migrated
 }
 
 export default migrate

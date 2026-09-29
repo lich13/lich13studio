@@ -149,11 +149,14 @@ describe('217 shared catalog migration', () => {
     const snapshot = JSON.stringify(next)
     expect(JSON.stringify(migratePlatformState(next))).toBe(snapshot)
   })
-  it('preserves intentionally emptied catalogs and edits on 217 backup restore', () => {
+  it('preserves old seed deletions and edits while adding new releases on 217 backup restore', () => {
     const state: any = fixture(217)
     state.llm.platformModels = { openai: [], grok: [{ id: 'grok-edited', name: 'My name' }], anthropic: [] }
     const next = decode(sanitizePersistedState(encode(state)))
-    expect(next.llm.platformModels).toEqual(state.llm.platformModels)
+    expect(next.llm.platformModels.grok).toEqual(state.llm.platformModels.grok)
+    expect(next.llm.platformModels.openai.map((model) => model.id)).toEqual(['gpt-6.1-sol'])
+    expect(next.llm.platformModels.anthropic.map((model) => model.id)).toEqual(['claude-sonnet-5-5'])
+    expect(next.llm.modelCatalogExclusions.openai).toContain('gpt-6-sol')
     expect(next.llm.providers[0].apiKey).toBe('test-key')
   })
 })

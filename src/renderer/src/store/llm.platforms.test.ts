@@ -2,12 +2,15 @@ import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('@renderer/config/providers', () => ({ SYSTEM_PROVIDERS: [] }))
 import reducer, {
+  addModel,
   addProvider,
+  applyPlatformCatalog,
   importPlatformProvider,
   initialState,
   setModelTestSelection,
   setPlatformModels
 } from '@renderer/store/llm'
+import { bundledModelCatalogs } from '@shared/modelCatalog/runtime'
 import { inferProviderPlatform, resolveProviders } from '@shared/platforms'
 import { matchesProviderImport, parseProviderImport } from '@shared/providerImport'
 import type { Provider } from '@types'
@@ -23,6 +26,46 @@ const provider = (id: string): Provider => ({
   enabled: true
 })
 describe('shared platform catalogs', () => {
+  it('merges a pending update against latest edits without restoring deleted models or changing selections', () => {
+    let state = reducer(initialState, addProvider(provider('one')))
+    state = reducer(state, setModelTestSelection({ platform: 'openai', modelId: 'gpt-6-sol', providerId: 'one' }))
+    const selection = state.modelTestSelection
+    const edited = {
+      id: 'gpt-6-sol',
+      name: 'Keep this name',
+      group: 'Custom',
+      capabilities: [{ type: 'vision' as const, isUserSelected: false }]
+    }
+    state = reducer(state, setPlatformModels({ platform: 'openai', models: [edited] }))
+    const persisted = JSON.parse(JSON.stringify(state))
+    state = reducer(persisted, applyPlatformCatalog(bundledModelCatalogs.openai))
+    expect(state.platformModels.openai).toEqual([edited])
+    expect(state.modelTestSelection).toEqual(selection)
+    expect(state.providers).toEqual(persisted.providers)
+    expect(state).not.toHaveProperty('snapshot')
+    state = reducer(
+      state,
+      addModel({ providerId: 'one', model: { id: 'gpt-6.1-sol', name: 'Added again', group: '', provider: 'one' } })
+    )
+    expect(state.modelCatalogExclusions.openai).not.toContain('gpt-6.1-sol')
+    state = reducer(state, applyPlatformCatalog(bundledModelCatalogs.openai))
+    expect(state.platformModels.openai.map((model) => model.name)).toEqual(['Keep this name', 'Added again'])
+  })
+  it('explicit imports clear a deletion without replacing the current default', () => {
+    let state = reducer(
+      initialState,
+      importPlatformProvider({ provider: provider('one'), models: ['gpt-6-sol'], primaryModel: 'gpt-6-sol' })
+    )
+    const selected = state.defaultModel
+    state = reducer(state, setPlatformModels({ platform: 'openai', models: [] }))
+    state = reducer(
+      state,
+      importPlatformProvider({ provider: provider('one'), models: ['gpt-6.1-sol'], primaryModel: 'gpt-6.1-sol' })
+    )
+    expect(state.modelCatalogExclusions.openai).not.toContain('gpt-6.1-sol')
+    expect(state.defaultModel).toEqual(selected)
+    expect(state.platformModels.openai.map((model) => model.id)).toEqual(['gpt-6.1-sol'])
+  })
   it('remembers test model and provider independently without overwriting chat defaults', () => {
     let state = reducer(
       initialState,
