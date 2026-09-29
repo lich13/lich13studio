@@ -19,6 +19,7 @@
       "!**/package.json",
       "!coverage/**",
       "!config/app-upgrade-segments.json",
+      "!packages/shared/modelCatalog/bundled.json",
       "!src-tauri/gen/schemas/**",
       "!src-tauri/target/**"
     ]
