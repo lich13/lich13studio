@@ -1,9 +1,15 @@
 import type { Model } from '@renderer/types'
+import { type ModelTestConcurrency, normalizeModelTestConcurrency } from '@shared/modelTestOptions'
 
 import { AnswerCollector } from './AnswerCollector'
 import { generateChallenges } from './challenge'
-import bank from './data/unified_bank.json'
 import { prepareDirectModelTest } from './directModelTest'
+import {
+  bundledBankSnapshot,
+  type FingerprintBankSnapshot,
+  type FingerprintBankVersion,
+  freezeBankSnapshot
+} from './fingerprintBank'
 import { analyzeGlobalOutputs } from './fingerprintCore'
 import { type ModelTestLimit, ModelTestOutputGuard, ModelTestOutputLimitError } from './OutputGuard'
 import { type OutputIssue, validateModelTraceOutput } from './outputValidation'
@@ -12,6 +18,7 @@ import {
   type ModelTestFailureCategory,
   type ModelTestRetryStopReason
 } from './requestFailure'
+import { RequestSlots } from './RequestSlots'
 
 export interface ModelTestChallenge {
   id: string
@@ -55,6 +62,8 @@ export interface ModelTestProgress {
 }
 
 export interface ModelTraceReport {
+  concurrency?: ModelTestConcurrency
+  bankVersion: FingerprintBankVersion
   prediction: string
   prediction_name: string
   probability: number
@@ -70,6 +79,8 @@ export interface ModelTraceReport {
 }
 
 export interface ModelTestRunResult {
+  concurrency: ModelTestConcurrency
+  bankVersion: FingerprintBankVersion
   challenges: ModelTestChallenge[]
   outputs: ModelTestOutput[]
   target: ModelTestTarget
@@ -80,17 +91,24 @@ export interface ModelTestRunResult {
 export interface ModelTestRunnerConfig {
   model: Model
   challenges: ModelTestChallenge[]
+  concurrency?: ModelTestConcurrency
+  bankSnapshot?: FingerprintBankSnapshot
   onProgress?: (progress: ModelTestProgress) => void
 }
 
-export const MODELTRACE_BANK_VERSION = String((bank as { built_at?: string }).built_at || 'bundled')
+export const MODELTRACE_BANK_VERSION = bundledBankSnapshot.version.builtAt
 export const MODELTRACE_MAX_ATTEMPTS = 3
 const RETRY_DELAYS = [1000, 3000]
 
 export const createModelTraceChallenges = (): ModelTestChallenge[] => generateChallenges(3) as ModelTestChallenge[]
 
-export const analyzeModelTraceOutputs = (outputs: ModelTestOutput[]): ModelTraceReport | undefined =>
-  analyzeGlobalOutputs(outputs, bank) as ModelTraceReport | undefined
+export const analyzeModelTraceOutputs = (
+  outputs: ModelTestOutput[],
+  snapshot: FingerprintBankSnapshot = bundledBankSnapshot
+): ModelTraceReport | undefined => {
+  const report = analyzeGlobalOutputs(outputs, snapshot.bank)
+  return report ? ({ ...report, bankVersion: snapshot.version } as ModelTraceReport) : undefined
+}
 
 /** User cancellation is checked against the session signal by the runner. */
 export function isRetryableModelTestError(error: unknown): boolean {
@@ -120,10 +138,16 @@ export class ModelTestRunner {
   private outputs: ModelTestOutput[]
   private prepared?: Awaited<ReturnType<typeof prepareDirectModelTest>>
   private target: ModelTestTarget
+  readonly concurrency: ModelTestConcurrency
+  readonly bankSnapshot: FingerprintBankSnapshot
 
   constructor(private readonly config: ModelTestRunnerConfig) {
     if (config.challenges.length !== 3) throw new Error('模型测试需要三组挑战')
     this.model = structuredClone(config.model)
+    this.concurrency = normalizeModelTestConcurrency(config.concurrency)
+    this.bankSnapshot = config.bankSnapshot
+      ? freezeBankSnapshot(structuredClone(config.bankSnapshot))
+      : bundledBankSnapshot
     this.challenges = structuredClone(config.challenges)
     this.outputs = this.challenges.map(({ id, expected_count }) => ({
       id,
@@ -153,16 +177,41 @@ export class ModelTestRunner {
     this.controller = controller
     const { signal } = controller
     const current = () => generation === this.generation && !signal.aborted
+    const slots = new RequestSlots(this.concurrency)
     let fatalError: string | undefined
     try {
       this.prepared ??= await prepareDirectModelTest(this.model)
       signal.throwIfAborted()
       this.target = { ...this.prepared.target }
-      for (let index = 0; index < this.challenges.length; index += 1) {
+      const indices = this.challenges
+        .map((_, index) => index)
+        .filter((index) => !retryFailedOnly || this.outputs[index].status !== 'completed')
+      for (const index of indices) {
+        this.update(index, {
+          text: '',
+          status: 'pending',
+          attempts: 0,
+          error: undefined,
+          retryDelayMs: undefined,
+          retryStopReason: undefined,
+          failureCode: undefined,
+          failureCategory: undefined,
+          retryable: undefined,
+          limit: undefined,
+          parsedCount: 0,
+          usableCount: 0,
+          excludedCount: 0,
+          issue: undefined
+        })
+      }
+      const executeGroup = async (index: number) => {
         const challenge = this.challenges[index]
-        if (retryFailedOnly && this.outputs[index].status === 'completed') continue
         for (let attempt = 1; attempt <= MODELTRACE_MAX_ATTEMPTS; attempt += 1) {
-          signal.throwIfAborted()
+          const release = await slots.acquire(signal)
+          if (signal.aborted) {
+            release()
+            signal.throwIfAborted()
+          }
           const collector = new AnswerCollector()
           const guard = new ModelTestOutputGuard(challenge.expected_count)
           let limitError: ModelTestOutputLimitError | undefined
@@ -170,6 +219,7 @@ export class ModelTestRunner {
           const abortAttempt = () => attemptController.abort(signal.reason)
           signal.addEventListener('abort', abortAttempt, { once: true })
           let accepting = true
+          let retryable = true
           this.update(index, {
             text: '',
             status: 'running',
@@ -186,9 +236,8 @@ export class ModelTestRunner {
             limit: undefined,
             error: undefined
           })
-          let retryable = true
           try {
-            await this.prepared.execute(challenge.prompt, attemptController.signal, (chunk) => {
+            await this.prepared!.execute(challenge.prompt, attemptController.signal, (chunk) => {
               if (!accepting || !current()) return
               collector.accept(chunk)
               limitError = guard.accept(chunk, collector.rawText)
@@ -218,7 +267,7 @@ export class ModelTestRunner {
               excludedCount: validation.excludedCount,
               issue: validation.issue
             })
-            break
+            return
           } catch (error) {
             if (!current()) throw signal.reason ?? error
             const failure = limitError ?? collector.error ?? error
@@ -239,23 +288,43 @@ export class ModelTestRunner {
                 : (classified.category as ModelTestRetryStopReason),
               limit: limitError?.limit
             })
-            if (!retryable) fatalError = classified.message
+            if (!retryable) {
+              fatalError = classified.message
+              controller.abort(failure)
+              this.outputs.forEach((output, other) => {
+                if (['pending', 'running', 'retrying'].includes(output.status || 'pending')) {
+                  this.update(other, {
+                    status: 'aborted',
+                    retryDelayMs: undefined,
+                    retryStopReason: classified.category as ModelTestRetryStopReason
+                  })
+                }
+              })
+            }
           } finally {
             accepting = false
             signal.removeEventListener('abort', abortAttempt)
+            release()
           }
-          if (!retryable || attempt === MODELTRACE_MAX_ATTEMPTS) break
+          if (!retryable || attempt === MODELTRACE_MAX_ATTEMPTS) return
           this.update(index, { status: 'retrying', retryDelayMs: RETRY_DELAYS[attempt - 1] })
           await waitForRetry(RETRY_DELAYS[attempt - 1], signal)
         }
-        if (fatalError) break
       }
-      signal.throwIfAborted()
+      // Wait for cancelled peers to release their connections before resolving the run.
+      const settled = await Promise.allSettled(indices.map(executeGroup))
+      if (!fatalError) {
+        signal.throwIfAborted()
+        const rejected = settled.find((result) => result.status === 'rejected')
+        if (rejected?.status === 'rejected') throw rejected.reason
+      }
       const outputs = structuredClone(this.outputs)
       return {
         target: { ...this.target },
         challenges: structuredClone(this.challenges),
         outputs,
+        concurrency: this.concurrency,
+        bankVersion: this.bankSnapshot.version,
         error: fatalError,
         report: this.analyze(outputs)
       }
@@ -270,12 +339,13 @@ export class ModelTestRunner {
     this.controller = undefined
     this.generation += 1
     this.outputs.forEach((output, index) => {
-      if (output.status === 'running' || output.status === 'retrying')
+      if (output.status === 'running' || output.status === 'retrying' || output.status === 'pending')
         this.update(index, { status: 'aborted', retryDelayMs: undefined, retryStopReason: 'cancelled' })
     })
   }
 
   analyze(outputs: ModelTestOutput[]): ModelTraceReport | undefined {
-    return analyzeModelTraceOutputs(outputs)
+    const report = analyzeModelTraceOutputs(outputs, this.bankSnapshot)
+    return report ? { ...report, concurrency: this.concurrency } : undefined
   }
 }

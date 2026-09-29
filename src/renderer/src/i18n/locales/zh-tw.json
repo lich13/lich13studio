@@ -4549,11 +4549,20 @@
       "analyzeManual": "分析貼上結果",
       "attempts": "嘗試 {{count}} / {{max}}",
       "backHome": "返回首頁",
+      "bank": "指紋庫",
+      "bankError": {
+        "cache": "無法儲存更新，繼續使用目前指紋庫",
+        "incompatible": "上游演算法已變更，請升級應用程式",
+        "invalid-data": "更新資料驗證失敗，繼續使用目前指紋庫",
+        "network": "同步失敗，繼續使用目前指紋庫"
+      },
       "byteUnit": "位元組",
       "challenge": "挑戰 {{index}} · 目標 {{count}} 個數字",
       "challenges": "數字挑戰",
+      "checkBank": "檢查更新",
+      "checkedAt": "上次檢查：{{time}}",
+      "concurrency": "並行數",
       "count": "數字數量：{{actual}} / {{expected}}",
-      "description": "使用三組無語義數字挑戰估計模型指紋。結果僅供參考，不會寫入聊天記錄。",
       "familyResult": "模型家族：{{family}}（{{probability}}%）",
       "integerUnit": "個整數",
       "issue": {

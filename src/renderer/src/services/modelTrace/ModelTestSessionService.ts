@@ -1,6 +1,9 @@
 import { loggerService } from '@logger'
 import type { Model } from '@renderer/types'
+import { type ModelTestConcurrency, normalizeModelTestConcurrency } from '@shared/modelTestOptions'
 
+import type { FingerprintBankVersion } from './fingerprintBank'
+import { FingerprintBankService, fingerprintBankService } from './FingerprintBankService'
 import {
   analyzeModelTraceOutputs,
   createModelTraceChallenges,
@@ -24,10 +27,13 @@ export interface ModelTestSessionSnapshot {
   report?: ModelTraceReport
   error?: string
   canRetry: boolean
+  concurrency?: ModelTestConcurrency
+  bankVersion?: FingerprintBankVersion
 }
 
 /** Lives outside routes. Unsubscribing a view must never cancel its network request. */
 export class ModelTestSessionService {
+  constructor(private readonly banks: FingerprintBankService = fingerprintBankService) {}
   private runner?: ModelTestRunner
   private generation = 0
   private listeners = new Set<() => void>()
@@ -88,11 +94,13 @@ export class ModelTestSessionService {
     }
   }
 
-  start(model: Model): Promise<void> {
+  start(model: Model, concurrency: ModelTestConcurrency = 1): Promise<void> {
     if (this.snapshot.phase === 'running') return Promise.resolve()
     this.runner?.cancel()
     const runner = new ModelTestRunner({
       model,
+      concurrency: normalizeModelTestConcurrency(concurrency),
+      bankSnapshot: this.banks.capture(),
       challenges: this.snapshot.challenges,
       onProgress: ({ index, output, target }) => {
         if (this.runner !== runner) return
@@ -103,14 +111,20 @@ export class ModelTestSessionService {
           {
             outputs,
             target,
-            ...(output.status === 'completed' ? { report: analyzeModelTraceOutputs(outputs) } : {})
+            ...(output.status === 'completed' ? { report: runner.analyze(outputs) } : {})
           },
           output.status === 'running' && previous?.status === 'running' && previous.attempts === output.attempts
         )
       }
     })
     this.runner = runner
-    this.update({ outputs: [], target: undefined, report: undefined })
+    this.update({
+      outputs: [],
+      target: undefined,
+      report: undefined,
+      concurrency: runner.concurrency,
+      bankVersion: runner.bankSnapshot.version
+    })
     return this.execute(false)
   }
 
@@ -159,7 +173,9 @@ export class ModelTestSessionService {
       target: undefined,
       report: undefined,
       error: undefined,
-      canRetry: false
+      canRetry: false,
+      concurrency: undefined,
+      bankVersion: undefined
     })
   }
 
@@ -169,7 +185,16 @@ export class ModelTestSessionService {
     const outputs = [...this.snapshot.outputs]
     const { id, expected_count } = this.snapshot.challenges[index]
     outputs[index] = { id, expected_count, text }
-    this.update({ outputs, target: undefined, report: undefined, error: undefined, phase: 'idle', canRetry: false })
+    this.update({
+      outputs,
+      target: undefined,
+      report: undefined,
+      error: undefined,
+      phase: 'idle',
+      canRetry: false,
+      bankVersion: undefined,
+      concurrency: undefined
+    })
   }
 
   analyze() {
@@ -195,12 +220,15 @@ export class ModelTestSessionService {
         issue: validation.issue
       }
     })
+    const bankSnapshot = this.banks.capture()
     this.update({
       outputs,
       error: undefined,
       phase: 'completed',
       canRetry: false,
-      report: analyzeModelTraceOutputs(outputs)
+      bankVersion: bankSnapshot.version,
+      concurrency: undefined,
+      report: analyzeModelTraceOutputs(outputs, bankSnapshot)
     })
   }
 }

@@ -43,6 +43,7 @@ export async function prepareDirectModelTest(selectedModel: Model) {
         model.id,
         {
           ...params,
+          providerOptions: structuredClone(params.providerOptions),
           prompt: undefined,
           messages: [{ role: 'user', content: prompt }],
           abortSignal: signal,
@@ -50,7 +51,7 @@ export async function prepareDirectModelTest(selectedModel: Model) {
           maxRetries: 0
         },
         {
-          assistant,
+          assistant: structuredClone(assistant),
           streamOutput: true,
           reasoningMode: 'disabled',
           textDeltaMode: 'delta',

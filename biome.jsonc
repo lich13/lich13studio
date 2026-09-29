@@ -32,6 +32,7 @@
     "ignoreUnknown": false,
     "includes": [
       "**",
+      "!src/renderer/src/services/modelTrace/data/**",
       "!**/.claude/**",
       "!**/.vscode/**",
       "!**/.conductor/**",

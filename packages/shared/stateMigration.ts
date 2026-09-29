@@ -1,5 +1,6 @@
 import { platformRequestHeaders } from './cliIdentity'
 import { assistantModelSelection } from './modelProviderSelection'
+import { normalizeModelTestConcurrency } from './modelTestOptions'
 import { initialModelTestSelection } from './modelTestSelection'
 import {
   catalogModel,
@@ -16,6 +17,7 @@ export const PLATFORM_MIGRATION_VERSION = 217
 export const SEARCH_REMOVAL_VERSION = 218
 export const MODEL_TEST_SELECTION_VERSION = 219
 export const ASSISTANT_SELECTION_VERSION = 220
+export const MODEL_TEST_CONCURRENCY_VERSION = 221
 
 type State = Record<string, any>
 
@@ -91,7 +93,13 @@ export function sanitizePersistedState(raw: string): string {
   migratePlatformState(decoded)
   migrateModelTestState(decoded)
   migrateAssistantSelectionState(decoded)
+  migrateModelTestConcurrencyState(decoded)
   return JSON.stringify(Object.fromEntries(Object.entries(decoded).map(([key, value]) => [key, JSON.stringify(value)])))
+}
+
+export function migrateModelTestConcurrencyState<T extends State>(state: T): T {
+  if (state.llm) state.llm.modelTestConcurrency = normalizeModelTestConcurrency(state.llm.modelTestConcurrency)
+  return state
 }
 
 /** Add independent test preferences once; retain unavailable selections for explicit correction. */

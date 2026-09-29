@@ -4549,11 +4549,20 @@
       "analyzeManual": "分析粘贴结果",
       "attempts": "尝试 {{count}} / {{max}}",
       "backHome": "返回首页",
+      "bank": "指纹库",
+      "bankError": {
+        "cache": "无法保存更新，继续使用当前指纹库",
+        "incompatible": "上游算法已变化，请升级应用",
+        "invalid-data": "更新数据校验失败，继续使用当前指纹库",
+        "network": "同步失败，继续使用当前指纹库"
+      },
       "byteUnit": "字节",
       "challenge": "挑战 {{index}} · 目标 {{count}} 个数字",
       "challenges": "数字挑战",
+      "checkBank": "检查更新",
+      "checkedAt": "上次检查：{{time}}",
+      "concurrency": "并发",
       "count": "数字数量：{{actual}} / {{expected}}",
-      "description": "使用三组无语义数字挑战估计模型指纹。结果仅供参考，不会写入聊天记录。",
       "familyResult": "模型家族：{{family}}（{{probability}}%）",
       "integerUnit": "个整数",
       "issue": {

@@ -10,6 +10,8 @@ const mocks = vi.hoisted(() => ({ execute: vi.fn(), prepare: vi.fn() }))
 vi.mock('./directModelTest', () => ({ prepareDirectModelTest: mocks.prepare }))
 vi.mock('@logger', () => ({ loggerService: { withContext: () => ({ warn: vi.fn() }) } }))
 
+import { bundledBankSnapshot } from './fingerprintBank'
+import type { FingerprintBankService } from './FingerprintBankService'
 import { modelTestSession, ModelTestSessionService } from './ModelTestSessionService'
 
 const model: Model = { id: 'gpt-6-sol', provider: 'one', name: 'Sol', group: '' }
@@ -36,6 +38,39 @@ afterEach(() => {
 })
 
 describe('route-independent model-test sessions', () => {
+  it('freezes concurrency and bank through updates and failed-group retries, then uses the new bank for a new run', async () => {
+    let bank = structuredClone(bundledBankSnapshot)
+    const originalRevision = bank.version.revision
+    const banks = { capture: () => bank } as FingerprintBankService
+    const service = new ModelTestSessionService(banks)
+    const challenges = service.getSnapshot().challenges
+    let fail = true
+    mocks.execute.mockImplementation(async (prompt, _signal, onChunk) => {
+      if (fail && prompt === challenges[0].prompt) throw new TypeError('connection reset')
+      emit(onChunk, 80)
+    })
+    const run = service.start(model, 3)
+    bank = structuredClone(bundledBankSnapshot)
+    bank.version.revision = 'f'.repeat(40)
+    bank.bank.calibration['1'].beta = 3
+    await vi.runAllTimersAsync()
+    await run
+    expect(service.getSnapshot()).toMatchObject({ concurrency: 3, bankVersion: { revision: originalRevision } })
+    expect(service.getSnapshot().report?.bankVersion.revision).toBe(originalRevision)
+    expect(service.getSnapshot().outputs.filter((output) => output.status === 'completed')).toHaveLength(2)
+    fail = false
+    await service.retryFailed()
+    expect(service.getSnapshot().report?.bankVersion.revision).toBe(originalRevision)
+    expect(mocks.execute).toHaveBeenCalledTimes(6)
+    service.regenerate()
+    await service.start(model, 2)
+    expect(service.getSnapshot()).toMatchObject({ concurrency: 2, bankVersion: { revision: 'f'.repeat(40) } })
+    service.editOutput(0, '247 '.repeat(80))
+    bank.version.revision = 'e'.repeat(40)
+    service.analyze()
+    expect(service.getSnapshot().report?.bankVersion.revision).toBe('e'.repeat(40))
+  })
+
   it('coalesces preview notifications and immediately publishes terminal state', async () => {
     const service = new ModelTestSessionService()
     let send!: (chunk: Chunk) => void
@@ -224,7 +259,7 @@ describe('route-independent model-test sessions', () => {
     service.stop()
     await vi.runAllTimersAsync()
     await run
-    expect(mocks.execute).toHaveBeenCalledTimes(1)
+    expect(mocks.execute).toHaveBeenCalledTimes(3)
     challenges.forEach((challenge, index) =>
       service.editOutput(index, Array(challenge.expected_count).fill('247').join(' '))
     )

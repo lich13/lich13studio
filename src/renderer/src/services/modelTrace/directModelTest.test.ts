@@ -108,6 +108,75 @@ const anthropicEvents = [
 ]
 
 describe('ModelTrace actual SDK request pipeline', () => {
+  it('keeps three HTTP streams active and isolates interleaved answers with unchanged request safeguards', async () => {
+    const requests: Array<{ body: any; authorization?: string; url?: string }> = []
+    const streams: Array<import('node:http').ServerResponse> = []
+    let peak = 0
+    let active = 0
+    const server = createServer((request, response) => {
+      let raw = ''
+      request.on('data', (data) => {
+        raw += data
+      })
+      request.on('end', () => {
+        requests.push({ body: JSON.parse(raw), authorization: request.headers.authorization, url: request.url })
+        streams.push(response)
+        active += 1
+        peak = Math.max(peak, active)
+        response.on('close', () => {
+          active -= 1
+        })
+        response.writeHead(200, { 'content-type': 'text/event-stream' })
+        response.write(`data: ${JSON.stringify(responseEvents[0])}\n\n`)
+        if (streams.length !== 3) return
+        // All three connections must have opened before any can finish.
+        for (let part = 0; part < 80; part++) {
+          for (const index of [2, 0, 1]) {
+            streams[index].write(`data: ${JSON.stringify({ ...responseEvents[1], delta: `${index + 101} ` })}\n\n`)
+          }
+        }
+        for (const index of [1, 2, 0]) {
+          for (const event of responseEvents.slice(3)) streams[index].write(`data: ${JSON.stringify(event)}\n\n`)
+          streams[index].end()
+        }
+      })
+    })
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
+    fixture.provider = {
+      id: 'local',
+      name: 'Isolated mock',
+      type: 'openai-response',
+      apiHost: `http://127.0.0.1:${(server.address() as AddressInfo).port}/v1`,
+      apiKey: 'dummy-one,dummy-two',
+      models: []
+    }
+    const runner = new ModelTestRunner({
+      model: { id: 'gpt-6-luna', name: '', provider: 'local', group: '' },
+      challenges: [0, 1, 2].map((i) => ({ id: String(i), expected_count: 303, prompt: `probe-${i}` })),
+      concurrency: 3
+    })
+    try {
+      const result = await runner.run()
+      expect(peak).toBe(3)
+      expect(requests).toHaveLength(3)
+      expect(result.outputs.map((output) => output.text.trim())).toEqual(
+        [101, 102, 103].map((value) => Array(80).fill(String(value)).join(' '))
+      )
+      expect(result.report).toMatchObject({ used_outputs: 3, concurrency: 3 })
+      for (const request of requests) {
+        expect(request.url).toBe('/v1/responses')
+        expect(request.authorization).toBe('Bearer dummy-one')
+        expect(request.body).toMatchObject({ model: 'gpt-6-luna', max_output_tokens: 4096 })
+        for (const field of ['reasoning', 'thinking', 'tools', 'timeout'])
+          expect(request.body).not.toHaveProperty(field)
+      }
+    } finally {
+      runner.cancel()
+      server.closeAllConnections()
+      await new Promise<void>((resolve) => server.close(() => resolve()))
+    }
+  }, 10000)
+
   it('retries a real disconnected HTTP stream once, with unchanged target and request safeguards', async () => {
     const requests: Array<{ body: any; authorization?: string; url?: string }> = []
     let firstClosed = false
@@ -130,7 +199,7 @@ describe('ModelTrace actual SDK request pipeline', () => {
           setTimeout(() => response.destroy(), 20)
           return
         }
-        if (requests.length === 2) retriedAfterClose = firstClosed
+        if (requests.length === 4) retriedAfterClose = firstClosed
         for (const event of responseEvents.slice(3)) response.write(`data: ${JSON.stringify(event)}\n\n`)
         response.end()
       })
@@ -159,7 +228,7 @@ describe('ModelTrace actual SDK request pipeline', () => {
       expect(retriedAfterClose).toBe(true)
       expect(result.outputs.map((output) => output.attempts)).toEqual([2, 1, 1])
       expect(result.report?.used_outputs).toBe(3)
-      expect(requests[0]).toEqual(requests[1])
+      expect(requests[0]).toEqual(requests[3])
       for (const request of requests) {
         expect(request.url).toBe('/v1/responses')
         expect(request.authorization).toBe('Bearer dummy-one')

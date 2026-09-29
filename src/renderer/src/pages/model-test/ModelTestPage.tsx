@@ -4,14 +4,16 @@ import ModelProviderSelect from '@renderer/components/ModelProviderSelect'
 import { isEmbeddingModel, isRerankModel } from '@renderer/config/models'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import { useModelTestSession } from '@renderer/hooks/useModelTestSession'
-import { SettingContainer, SettingDescription, SettingGroup, SettingTitle } from '@renderer/pages/settings'
+import { SettingContainer, SettingGroup, SettingTitle } from '@renderer/pages/settings'
+import { fingerprintBankService } from '@renderer/services/modelTrace/FingerprintBankService'
 import { modelTestSession } from '@renderer/services/modelTrace/ModelTestSessionService'
 import { useAppDispatch, useAppSelector } from '@renderer/store'
-import { setModelTestSelection } from '@renderer/store/llm'
+import { setModelTestConcurrency, setModelTestSelection } from '@renderer/store/llm'
+import { normalizeModelTestConcurrency } from '@shared/modelTestOptions'
 import { initialModelTestSelection, resolveModelTestSelection } from '@shared/modelTestSelection'
-import { Alert, Button, Card, Input, Space, Tag, Typography } from 'antd'
+import { Alert, Button, Card, Input, Segmented, Space, Tag, Typography } from 'antd'
 import { ArrowLeft, FlaskConical, Play, Square } from 'lucide-react'
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import styled from 'styled-components'
@@ -42,6 +44,12 @@ const retryStopKeys = {
   model: 'settings.modelTest.retryStop.model',
   'invalid-request': 'settings.modelTest.retryStop.invalidRequest'
 } as const
+const bankErrorKeys = {
+  network: 'settings.modelTest.bankError.network',
+  cache: 'settings.modelTest.bankError.cache',
+  'invalid-data': 'settings.modelTest.bankError.invalid-data',
+  incompatible: 'settings.modelTest.bankError.incompatible'
+} as const
 
 const ModelTestPage = () => {
   const { t } = useTranslation()
@@ -52,7 +60,10 @@ const ModelTestPage = () => {
   const selection = useMemo(() => llm.modelTestSelection ?? initialModelTestSelection(llm), [llm])
   const resolved = resolveModelTestSelection(selection, llm)
   const canStart = resolved.model && !isEmbeddingModel(resolved.model) && !isRerankModel(resolved.model)
-  const { challenges, outputs, report, error, phase, target, canRetry } = useModelTestSession()
+  const { challenges, outputs, report, error, phase, target, canRetry, bankVersion } = useModelTestSession()
+  const bankState = useSyncExternalStore(fingerprintBankService.subscribe, fingerprintBankService.getSnapshot)
+  const shownBankVersion = bankVersion ?? bankState.active.version
+  const concurrency = normalizeModelTestConcurrency(llm.modelTestConcurrency)
   const running = phase === 'running'
 
   useEffect(() => {
@@ -76,9 +87,39 @@ const ModelTestPage = () => {
                 {t('settings.modelTest.backHome')}
               </Button>
             </SettingTitle>
-            <SettingDescription>{t('settings.modelTest.description')}</SettingDescription>
             <Space direction="vertical" style={{ width: '100%', marginTop: 16 }} size="middle">
               <ModelProviderSelect selection={selection} onChange={(next) => dispatch(setModelTestSelection(next))} />
+              <Space wrap>
+                <span id="model-test-concurrency">{t('settings.modelTest.concurrency')}</span>
+                <Segmented
+                  aria-labelledby="model-test-concurrency"
+                  options={[1, 2, 3]}
+                  value={concurrency}
+                  disabled={running}
+                  onChange={(value) => dispatch(setModelTestConcurrency(normalizeModelTestConcurrency(value)))}
+                />
+              </Space>
+              <Space wrap>
+                <Typography.Link
+                  href={`https://github.com/Hanmo123/ModelTrace/tree/${shownBankVersion.revision}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  title={shownBankVersion.sha256}>
+                  {t('settings.modelTest.bank')} {shownBankVersion.revision.slice(0, 8)}
+                </Typography.Link>
+                <Button
+                  size="small"
+                  loading={bankState.status === 'checking'}
+                  title={
+                    bankState.checkedAt
+                      ? t('settings.modelTest.checkedAt', { time: new Date(bankState.checkedAt).toLocaleString() })
+                      : undefined
+                  }
+                  onClick={() => void fingerprintBankService.sync(true)}>
+                  {t('settings.modelTest.checkBank')}
+                </Button>
+              </Space>
+              {bankState.error && <Alert showIcon type="warning" message={t(bankErrorKeys[bankState.error])} />}
               {target && (
                 <Typography.Text strong>
                   {t('settings.modelTest.runTarget', { provider: target.providerName, model: target.modelId })}
@@ -93,7 +134,9 @@ const ModelTestPage = () => {
                   <Button
                     type="primary"
                     icon={<Play size={15} />}
-                    onClick={() => canStart && resolved.model && void modelTestSession.start(resolved.model)}
+                    onClick={() =>
+                      canStart && resolved.model && void modelTestSession.start(resolved.model, concurrency)
+                    }
                     disabled={!canStart}>
                     {t('settings.modelTest.run')}
                   </Button>

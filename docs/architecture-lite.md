@@ -12,7 +12,7 @@ Reasoning levels are `low / medium / high / xhigh / max`, defaulting to `max`. R
 
 ## Model testing
 
-ModelTrace is available from the home chat toolbar at `/model-test`; the old settings path redirects there. Separate model and provider preferences are persisted globally without changing chat selections. A route-independent `ModelTestSessionService` owns one runner and retains its progress/results in memory. Leaving the page only unsubscribes the view; it does not abort requests or retries. Draft selection changes affect the next run. Only explicit Stop or application exit ends an active test.
+ModelTrace is available from the home chat toolbar at `/model-test`; the old settings path redirects there. Separate model and provider preferences are persisted globally without changing chat selections. A route-independent `ModelTestSessionService` owns one runner with 1–3 concurrent challenges and retains its progress/results in memory. Leaving the page only unsubscribes the view; it does not abort requests or retries. Draft selection changes affect the next run. Only explicit Stop or application exit ends an active test.
 
 ModelTrace runs directly against the selected provider; no third-party test relay exists. A session freezes the provider credentials, actual model ID and all three challenges. Its requests disable reasoning, tools and SDK retries, use incremental text events, and have no model-request timeout. Cancellation ends active requests and scheduled retries.
 
@@ -43,3 +43,7 @@ There are no MCP settings, server runtimes, OAuth flows, installers, Redux slice
 ## Validation
 
 `pnpm test:upgrade`, `pnpm test:renderer`, `pnpm typecheck`, `pnpm i18n:check`, `pnpm openapi:check`, `pnpm build:tauri:web`, and `cargo test --manifest-path src-tauri/Cargo.toml`. Automated transport tests use local mocks. The v0.1.20 installed-app acceptance additionally uses the explicitly authorized Happy Code provider and actual `gpt-6-sol` model ID; no other provider is called.
+
+ModelTrace fingerprint updates follow Hanmo123/ModelTrace `hanmo`: commit-pinned data downloads are checked against the supported scoring/challenge blobs and statistical schema before an atomic write to a separate disposable cache. Startup/hourly checks and manual refresh never send provider credentials. Every run and failed-group retry captures its bank revision, data digest and concurrency. Cache failures preserve the last valid bank; incompatible algorithms require an app update. The original upstream JSON remains unmodified; the local parser admission policy is separate.
+
+Migration 221 normalizes the remembered challenge concurrency to 1, 2 or 3 (default 1) on both startup and backup restore. Each request owns its collector, guard and controller; backoff releases its slot. Fatal request errors cancel all unfinished work; user Stop also clears queued attempts and retry timers.

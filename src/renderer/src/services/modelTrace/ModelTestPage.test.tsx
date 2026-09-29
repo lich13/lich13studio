@@ -7,7 +7,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 const fixtures = vi.hoisted(() => ({
   execute: vi.fn(),
   prepare: vi.fn(),
+  dispatch: vi.fn(),
   llm: {
+    modelTestConcurrency: 1,
     modelTestSelection: { platform: 'openai', modelId: 'gpt-6-luna', providerId: 'happy' },
     platformModels: { openai: [{ id: 'gpt-6-luna', name: 'gpt-6-luna', group: '' }], grok: [], anthropic: [] },
     providers: [{ id: 'happy', name: 'Happy Code', platform: 'openai', enabled: true }]
@@ -17,9 +19,12 @@ vi.mock('./directModelTest', () => ({ prepareDirectModelTest: fixtures.prepare }
 vi.mock('@logger', () => ({ loggerService: { withContext: () => ({ warn: vi.fn() }) } }))
 vi.mock('@renderer/store', () => ({
   useAppSelector: (select: any) => select({ llm: fixtures.llm }),
-  useAppDispatch: () => vi.fn()
+  useAppDispatch: () => fixtures.dispatch
 }))
-vi.mock('@renderer/store/llm', () => ({ setModelTestSelection: vi.fn() }))
+vi.mock('@renderer/store/llm', () => ({
+  setModelTestSelection: vi.fn(),
+  setModelTestConcurrency: (value: number) => ({ type: 'llm/setModelTestConcurrency', payload: value })
+}))
 vi.mock('@renderer/components/Avatar/ModelAvatar', () => ({ default: () => null }))
 vi.mock('@renderer/components/ModelTagsWithLabel', () => ({ default: () => null }))
 vi.mock('@renderer/config/models', () => ({ isEmbeddingModel: () => false, isRerankModel: () => false }))
@@ -69,6 +74,8 @@ beforeEach(() => {
     }))
   )
   fixtures.execute.mockReset()
+  fixtures.dispatch.mockReset()
+  fixtures.llm.modelTestConcurrency = 1
   fixtures.prepare.mockReset().mockResolvedValue({
     target: { providerId: 'happy', providerName: 'Happy Code', modelId: 'gpt-6-luna' },
     execute: fixtures.execute
@@ -90,6 +97,53 @@ afterEach(async () => {
 })
 
 describe('real ModelTestPage rendering', () => {
+  it('selects three concurrent requests, locks the control and restores the running view on return', async () => {
+    const pending: Array<{ onChunk: (chunk: Chunk) => void; resolve: () => void }> = []
+    fixtures.execute.mockImplementation(
+      (_prompt, _signal, onChunk) => new Promise<void>((resolve) => pending.push({ onChunk, resolve }))
+    )
+    const renderPage = () => root.render(createElement(MemoryRouter, null, createElement(ModelTestPage)))
+    await act(async () => renderPage())
+    await act(async () => {
+      container.querySelectorAll<HTMLInputElement>('input[type="radio"]')[2].click()
+    })
+    expect(fixtures.dispatch).toHaveBeenCalledWith({ type: 'llm/setModelTestConcurrency', payload: 3 })
+    fixtures.llm.modelTestConcurrency = 3
+    await act(async () => renderPage())
+    await act(async () => {
+      const run = [...container.querySelectorAll('button')].find(
+        (button) => button.textContent === 'settings.modelTest.run'
+      )!
+      run.click()
+    })
+    expect(pending).toHaveLength(3)
+    expect([...container.querySelectorAll<HTMLInputElement>('input[type="radio"]')].every((i) => i.disabled)).toBe(true)
+    await act(async () => root.render(createElement('div', null, 'home')))
+    expect(modelTestSession.getSnapshot().phase).toBe('running')
+    for (const index of [2, 0, 1]) {
+      await act(async () => {
+        const text = Array(80)
+          .fill(String(index + 101))
+          .join(' ')
+        pending[index].onChunk({ type: ChunkType.TEXT_DELTA, text })
+        pending[index].onChunk({ type: ChunkType.LLM_RESPONSE_COMPLETE, response: { text }, finishReason: 'stop' })
+        pending[index].resolve()
+      })
+    }
+    await act(async () => renderPage())
+    expect(modelTestSession.getSnapshot()).toMatchObject({
+      phase: 'completed',
+      concurrency: 3,
+      report: { used_outputs: 3, concurrency: 3 }
+    })
+    expect([...container.querySelectorAll('textarea')].map((input) => input.value)).toEqual(
+      [101, 102, 103].map((value) => Array(80).fill(String(value)).join(' '))
+    )
+    expect([...container.querySelectorAll<HTMLInputElement>('input[type="radio"]')].every((i) => !i.disabled)).toBe(
+      true
+    )
+  })
+
   it('renders high-frequency streamed chunks and all three results without nesting React updates', async () => {
     const challenges = modelTestSession.getSnapshot().challenges
     const pending: Array<{ onChunk: (chunk: Chunk) => void; resolve: () => void }> = []

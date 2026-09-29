@@ -44,14 +44,14 @@ describe('bounded ModelTrace sessions', () => {
     expect(mocks.prepare.mock.calls[0][0].id).toBe('gpt-6-sol')
     expect(mocks.execute.mock.calls.map(([prompt]) => prompt)).toEqual([
       'unchanged-0',
-      'unchanged-0',
       'unchanged-1',
-      'unchanged-2'
+      'unchanged-2',
+      'unchanged-0'
     ])
     expect(result.outputs.map((output) => output.attempts)).toEqual([2, 1, 1])
     expect(result.outputs[0].text).toBe(textFor(0))
     expect(result.report?.used_outputs).toBe(3)
-    expect(analyzeModelTraceOutputs(result.outputs)).toEqual(result.report)
+    expect({ ...analyzeModelTraceOutputs(result.outputs), concurrency: 1 }).toEqual(result.report)
   })
 
   it('caps each group at 3 requests, keeps successes and retries only failed groups', async () => {
@@ -204,7 +204,7 @@ describe('bounded ModelTrace sessions', () => {
     )
     const pending = new ModelTestRunner({ model, challenges, onProgress: progress }).run()
     await vi.advanceTimersByTimeAsync(0)
-    expect(progress.mock.calls.at(-1)?.[0].output).toMatchObject({
+    expect(progress.mock.calls.filter(([event]) => event.index === 0).at(-1)?.[0].output).toMatchObject({
       status: 'retrying',
       retryDelayMs: 1000,
       error: 'Gateway hiccup'
@@ -240,7 +240,7 @@ describe('bounded ModelTrace sessions', () => {
     late({ type: ChunkType.TEXT_DELTA, text: 'late data' })
     await vi.runAllTimersAsync()
     expect((await pending).name).toBe('AbortError')
-    expect(mocks.execute).toHaveBeenCalledTimes(1)
+    expect(mocks.execute).toHaveBeenCalledTimes(3)
     expect(progress).toHaveBeenCalledTimes(count)
   })
 

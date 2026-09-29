@@ -4549,11 +4549,20 @@
       "analyzeManual": "Analyze pasted output",
       "attempts": "Attempt {{count}} / {{max}}",
       "backHome": "Back to home",
+      "bank": "Fingerprint bank",
+      "bankError": {
+        "cache": "Unable to save the update. Using the current fingerprint bank.",
+        "incompatible": "The upstream algorithm changed. Update the app.",
+        "invalid-data": "Invalid update data. Using the current fingerprint bank.",
+        "network": "Sync failed. Using the current fingerprint bank."
+      },
       "byteUnit": "bytes",
       "challenge": "Challenge {{index}} · {{count}} numbers",
       "challenges": "Number challenges",
+      "checkBank": "Check for updates",
+      "checkedAt": "Last checked: {{time}}",
+      "concurrency": "Concurrency",
       "count": "Numbers: {{actual}} / {{expected}}",
-      "description": "Estimate model fingerprints with three non-semantic number challenges. Results are advisory and are not saved to chat history.",
       "familyResult": "Model family: {{family}} ({{probability}}%)",
       "integerUnit": "integers",
       "issue": {

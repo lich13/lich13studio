@@ -19,6 +19,7 @@ import { createSlice } from '@reduxjs/toolkit'
 import { SYSTEM_PROVIDERS } from '@renderer/config/providers'
 import { type AwsBedrockAuthType, type Model, type Provider, ProviderTypeSchema } from '@renderer/types'
 import type { CliVersionCache, CliVersions } from '@shared/cliIdentity'
+import { type ModelTestConcurrency, normalizeModelTestConcurrency } from '@shared/modelTestOptions'
 import type { ModelTestSelection } from '@shared/modelTestSelection'
 import {
   catalogModel,
@@ -69,6 +70,7 @@ export interface LlmState {
   cliVersions: CliVersions
   defaultModel?: Model
   modelTestSelection?: ModelTestSelection
+  modelTestConcurrency: ModelTestConcurrency
   /** @deprecated */
   topicNamingModel?: Model
   quickModel?: Model
@@ -86,6 +88,7 @@ export const initialState: LlmState = {
   providers: SYSTEM_PROVIDERS,
   platformModels: createPlatformModels(),
   cliVersions: {},
+  modelTestConcurrency: 1,
   settings: {
     ollama: {
       keepAliveTime: 0
@@ -199,6 +202,9 @@ const llmSlice = createSlice({
     setModelTestSelection: (state, action: PayloadAction<ModelTestSelection>) => {
       state.modelTestSelection = { ...state.modelTestSelection, ...action.payload }
     },
+    setModelTestConcurrency: (state, action: PayloadAction<ModelTestConcurrency>) => {
+      state.modelTestConcurrency = normalizeModelTestConcurrency(action.payload)
+    },
     setQuickModel: (state, action: PayloadAction<{ model: Model }>) => {
       state.quickModel = action.payload.model
     },
@@ -283,6 +289,7 @@ const llmSlice = createSlice({
 })
 
 export const {
+  setModelTestConcurrency,
   setModelTestSelection,
   setPlatformModels,
   setCliVersion,
