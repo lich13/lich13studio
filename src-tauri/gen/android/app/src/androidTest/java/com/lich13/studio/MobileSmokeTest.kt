@@ -76,6 +76,14 @@ class MobileSmokeTest {
         open(link.replace("app=codex", "app=gemini"))
         waitFor("invalid link rejected") { js("!!document.querySelector('.ant-message-error')") == true }
         assertEquals(false, js("!!document.querySelector('.ant-modal input')"))
+        // Fresh CI devices still show onboarding after a provider import.
+        // Complete its real Skip action before expecting Home after restart.
+        if (js("localStorage.getItem('onboarding-completed') === 'true'") != true) {
+            assertEquals(true, js("!!document.querySelector('button.ant-btn-text')"))
+            js("document.querySelector('button.ant-btn-text').click()")
+        }
+        waitFor("onboarding completed") { js("!!document.querySelector('#home-page')") == true }
+        assertEquals(true, js("localStorage.getItem('onboarding-completed') === 'true'"))
     }
 
     /** Run in a second instrumentation process after force-stopping the first. */
