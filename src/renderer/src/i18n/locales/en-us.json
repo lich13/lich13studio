@@ -2597,8 +2597,10 @@
     }
   },
   "mobile": {
+    "backgroundStopped": "The background service stopped. The task was not sent again.",
     "chat": "Chat",
     "navigation": "Navigation",
+    "systemBudget": "Android stopped this task after reaching its background time limit.",
     "test": "Test"
   },
   "models": {
@@ -4599,7 +4601,7 @@
       "retryFailed": "Retry failed challenges only",
       "retryStop": {
         "auth": "Authentication failed. Check your credentials before retrying.",
-        "cancelled": "Stopped by you. No further automatic retries.",
+        "cancelled": "Stopped. No further automatic retries.",
         "exhausted": "All 3 attempts used. You can retry only the failed groups.",
         "invalidRequest": "Invalid request parameters or address. Automatic retries stopped.",
         "model": "Model not found. Check the model ID.",

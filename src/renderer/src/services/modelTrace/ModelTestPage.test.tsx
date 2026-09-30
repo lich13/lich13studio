@@ -30,6 +30,7 @@ vi.mock('@renderer/components/ModelTagsWithLabel', () => ({ default: () => null 
 vi.mock('@renderer/config/models', () => ({ isEmbeddingModel: () => false, isRerankModel: () => false }))
 vi.mock('@renderer/context/ThemeProvider', () => ({ useTheme: () => ({ theme: 'dark' }) }))
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
+vi.mock('@renderer/i18n', () => ({ default: { t: (key: string) => key } }))
 vi.mock('@renderer/pages/settings', async () => {
   const { default: styled } = await import('styled-components')
   return {

@@ -2597,8 +2597,10 @@
     }
   },
   "mobile": {
+    "backgroundStopped": "后台服务已停止，任务未重新发送。",
     "chat": "聊天",
     "navigation": "导航",
+    "systemBudget": "已达到 Android 后台运行时限，任务已停止。",
     "test": "测试"
   },
   "models": {
@@ -4599,7 +4601,7 @@
       "retryFailed": "仅重试失败组",
       "retryStop": {
         "auth": "鉴权失败，请检查凭据后重试。",
-        "cancelled": "已主动停止，不再自动重试。",
+        "cancelled": "已停止，不再自动重试。",
         "exhausted": "已达 3 次尝试上限，可仅重试失败组。",
         "invalidRequest": "请求参数或地址无效，已停止自动重试。",
         "model": "模型不存在，请检查模型 ID。",

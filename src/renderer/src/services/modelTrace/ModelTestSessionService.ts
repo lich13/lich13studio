@@ -1,4 +1,5 @@
 import { loggerService } from '@logger'
+import i18n from '@renderer/i18n'
 import { backgroundTasks } from '@renderer/services/mobile/BackgroundTaskService'
 import type { Model } from '@renderer/types'
 import { type ModelTestConcurrency, normalizeModelTestConcurrency } from '@shared/modelTestOptions'
@@ -141,7 +142,7 @@ export class ModelTestSessionService {
     this.update({ phase: 'running', error: undefined, canRetry: false })
     let release: (() => void) | undefined
     try {
-      release = await backgroundTasks.acquire(() => this.stop())
+      release = await backgroundTasks.acquire((reason) => this.stop(reason))
       if (generation !== this.generation) return
       const result = await runner.run({ retryFailedOnly })
       if (generation !== this.generation || runner !== this.runner) return
@@ -162,11 +163,15 @@ export class ModelTestSessionService {
     }
   }
 
-  stop() {
+  stop(reason?: string) {
     if (this.snapshot.phase !== 'running') return
     this.generation += 1
     this.runner?.cancel()
-    this.update({ phase: 'stopped', error: undefined, canRetry: true })
+    const error =
+      reason && reason !== 'user-stop'
+        ? i18n.t(reason === 'system-budget' ? 'mobile.systemBudget' : 'mobile.backgroundStopped')
+        : undefined
+    this.update({ phase: 'stopped', error, canRetry: true })
   }
 
   regenerate() {

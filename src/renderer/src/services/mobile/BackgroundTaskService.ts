@@ -2,14 +2,14 @@ import { isPermissionGranted, requestPermission } from '@tauri-apps/plugin-notif
 
 import { mobileCommand, runtimeCapabilities } from './runtime'
 
-const tasks = new Map<string, () => void>()
+const tasks = new Map<string, (reason?: string) => void>()
 let epoch = 0
 let initialized = false
 let notificationPermission: Promise<void> | undefined
-function cancelAll() {
+function cancelAll(reason: string) {
   for (const stop of [...tasks.values()]) {
     try {
-      stop()
+      stop(reason)
     } catch {
       /* isolate callbacks */
     }
@@ -17,7 +17,7 @@ function cancelAll() {
 }
 export const backgroundTasks = {
   getEpoch: () => (runtimeCapabilities.android && tasks.size ? epoch : undefined),
-  async acquire(stop: () => void) {
+  async acquire(stop: (reason?: string) => void) {
     if (!runtimeCapabilities.android) return () => {}
     // Request only in response to the user's first task, before entering background.
     notificationPermission ??= isPermissionGranted()
@@ -28,14 +28,17 @@ export const backgroundTasks = {
     await notificationPermission
     if (!initialized) {
       initialized = true
-      window.addEventListener('mobile-tasks-stopped', cancelAll)
+      window.addEventListener('mobile-tasks-stopped', (event) => {
+        const reason = (event as CustomEvent<unknown>).detail
+        cancelAll(typeof reason === 'string' ? reason : 'service-stopped')
+      })
       document.addEventListener('visibilitychange', () => {
         if (!document.hidden && tasks.size)
           void mobileCommand<{ stoppedReason?: string }>('taskState')
             .then((state) => {
-              if (state.stoppedReason) cancelAll()
+              if (state.stoppedReason) cancelAll(state.stoppedReason)
             })
-            .catch(cancelAll)
+            .catch(() => cancelAll('service-stopped'))
       })
     }
     const id = crypto.randomUUID()

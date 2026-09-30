@@ -105,7 +105,7 @@ describe('backgroundTasks', () => {
     const stops = [vi.fn(), vi.fn()]
     const releases = await Promise.all(stops.map((stop) => backgroundTasks.acquire(stop)))
     native.command.mockImplementation(async (command) =>
-      command === 'taskState' ? { stoppedReason: 'notification' } : undefined
+      command === 'taskState' ? { stoppedReason: 'system-budget' } : undefined
     )
     fixtureDocument.hidden = true
     fixtureDocument.dispatchEvent(new Event('visibilitychange'))
@@ -114,8 +114,16 @@ describe('backgroundTasks', () => {
     fixtureDocument.dispatchEvent(new Event('visibilitychange'))
     await drainMicrotasks()
     expect(callsFor('taskState')).toHaveLength(1)
-    for (const stop of stops) expect(stop).toHaveBeenCalledTimes(1)
+    for (const stop of stops) expect(stop).toHaveBeenCalledExactlyOnceWith('system-budget')
     for (const release of releases) release()
+  })
+
+  it('preserves the native stop reason for each active task', async () => {
+    const stop = vi.fn()
+    const release = await backgroundTasks.acquire(stop)
+    fixtureWindow.dispatchEvent(Object.assign(new Event('mobile-tasks-stopped'), { detail: 'system-budget' }))
+    expect(stop).toHaveBeenCalledExactlyOnceWith('system-budget')
+    release()
   })
 
   it('keeps tasks active when native state confirms that they are still running', async () => {

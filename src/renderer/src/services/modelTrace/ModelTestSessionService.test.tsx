@@ -156,6 +156,25 @@ describe('route-independent model-test sessions', () => {
     expect(complete.phase).toBe('completed')
   })
 
+  it('retains a system stop reason without retrying or treating it as a user stop', async () => {
+    const service = new ModelTestSessionService()
+    mocks.execute.mockImplementation(
+      (_prompt, signal) =>
+        new Promise((_resolve, reject) => {
+          signal.addEventListener('abort', () => reject(signal.reason), { once: true })
+        })
+    )
+    const run = service.start(model, 3)
+    await vi.advanceTimersByTimeAsync(0)
+    expect(mocks.execute).toHaveBeenCalledTimes(3)
+    service.stop('system-budget')
+    await run
+    await vi.runAllTimersAsync()
+    expect(service.getSnapshot()).toMatchObject({ phase: 'stopped', canRetry: true })
+    expect(service.getSnapshot().error).toContain('background time limit')
+    expect(mocks.execute).toHaveBeenCalledTimes(3)
+  })
+
   it('keeps running across real hook unmount/remount and exposes the completed report without resending', async () => {
     const challenges = modelTestSession.getSnapshot().challenges
     let completeFirst!: () => void
