@@ -1,5 +1,6 @@
 import type { FetchFunction } from '@ai-sdk/provider-utils'
 import { loggerService } from '@logger'
+import { backgroundTasks } from '@renderer/services/mobile/BackgroundTaskService'
 
 const logger = loggerService.withContext('TauriNativeFetch')
 
@@ -18,6 +19,7 @@ type NativeHttpRequest = {
   method: string
   headers: NativeHttpHeader[]
   body?: number[]
+  taskEpoch?: number
 }
 
 type NativeHttpResponseStart = {
@@ -28,6 +30,7 @@ type NativeHttpResponseStart = {
 }
 
 type NativeHttpChunkEvent = {
+  sequence?: number
   requestId: string
   chunk: number[]
   done: boolean
@@ -81,6 +84,9 @@ async function tauriNativeFetch(input: RequestInfo | URL, init?: RequestInit): P
   let pendingDone = false
   let unlisten: (() => void) | null = null
   let aborting = false
+  let consumedSequence = 0
+  let replaying = false
+  const orderedChunks = new Map<number, NativeHttpChunkEvent>()
 
   const flushPending = () => {
     if (!controllerRef || streamClosed) {
@@ -108,6 +114,7 @@ async function tauriNativeFetch(input: RequestInfo | URL, init?: RequestInit): P
       unlisten = null
     }
     request.signal.removeEventListener('abort', onAbort)
+    document.removeEventListener('visibilitychange', resumeDelivery)
   }
 
   const onAbort = () => {
@@ -132,36 +139,74 @@ async function tauriNativeFetch(input: RequestInfo | URL, init?: RequestInit): P
 
   request.signal.addEventListener('abort', onAbort, { once: true })
 
-  unlisten = await apis.listen(NATIVE_HTTP_CHUNK_EVENT, (event) => {
-    const payload = event.payload
-    if (!payload || payload.requestId !== requestId) {
-      return
-    }
-
-    if (payload.chunk && payload.chunk.length > 0) {
-      pendingChunks.push(Uint8Array.from(payload.chunk))
-    }
-
-    if (payload.error) {
-      pendingError = new Error(payload.error)
-    }
-
+  const consume = (payload: NativeHttpChunkEvent) => {
+    if (streamClosed || aborting) return
+    if (payload.chunk?.length) pendingChunks.push(Uint8Array.from(payload.chunk))
+    if (payload.error) pendingError = new Error(payload.error)
     if (payload.done) {
       pendingDone = true
       cleanup()
     }
-
     flushPending()
-  })
+  }
+  const receive = (payload: NativeHttpChunkEvent) => {
+    if (payload.requestId !== requestId || aborting || streamClosed) return
+    if (!payload.sequence) {
+      consume(payload)
+      return
+    }
+    if (payload.sequence <= consumedSequence) return
+    orderedChunks.set(payload.sequence, payload)
+    while (orderedChunks.has(consumedSequence + 1)) {
+      const next = orderedChunks.get(++consumedSequence)!
+      orderedChunks.delete(consumedSequence)
+      consume(next)
+    }
+    void apis.invoke('acknowledge_http_chunks', { requestId, sequence: consumedSequence }).catch(() => {})
+    if (orderedChunks.size) void replay().catch(() => {})
+  }
+  const replay = async () => {
+    if (replaying || aborting || streamClosed) return
+    replaying = true
+    try {
+      for (const event of await apis.invoke('replay_http_chunks', { requestId })) receive(event)
+    } finally {
+      replaying = false
+    }
+  }
+  const resumeDelivery = () => {
+    if (!document.hidden) void replay().catch(() => {})
+  }
+  document.addEventListener('visibilitychange', resumeDelivery)
+  let bodyBuffer: Uint8Array | undefined
+  try {
+    unlisten = await apis.listen(NATIVE_HTTP_CHUNK_EVENT, (event) => receive(event.payload))
+    bodyBuffer =
+      request.method === 'GET' || request.method === 'HEAD' ? undefined : new Uint8Array(await request.arrayBuffer())
+  } catch (error) {
+    cleanup()
+    throw error
+  }
 
-  const bodyBuffer =
-    request.method === 'GET' || request.method === 'HEAD' ? undefined : new Uint8Array(await request.arrayBuffer())
+  if (request.signal.aborted) {
+    cleanup()
+    throw new DOMException('Request was aborted', 'AbortError')
+  }
 
   const nativeRequest: NativeHttpRequest = {
     requestId,
+    taskEpoch: backgroundTasks.getEpoch(),
     url,
     method: request.method,
-    headers: Array.from(request.headers.entries()).map(([name, value]) => ({ name, value })),
+    // Chromium's Request guard drops User-Agent (and some other headers).
+    // This request is sent by Rust, so preserve the caller's explicit headers.
+    headers: Array.from(
+      (() => {
+        const headers = new Headers(request.headers)
+        if (init?.headers) new Headers(init.headers).forEach((value, name) => headers.set(name, value))
+        return headers
+      })().entries()
+    ).map(([name, value]) => ({ name, value })),
     body: bodyBuffer && bodyBuffer.length > 0 ? Array.from(bodyBuffer) : undefined
   }
 

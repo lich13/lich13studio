@@ -4,6 +4,7 @@ import i18n from '@renderer/i18n'
 import store from '@renderer/store'
 import type { FileMetadata } from '@renderer/types'
 import { getFileDirectory } from '@renderer/utils'
+import { isTauri } from '@tauri-apps/api/core'
 import dayjs from 'dayjs'
 
 const logger = loggerService.withContext('FileManager')
@@ -148,7 +149,7 @@ class FileManager {
   }
 
   static async resolvePreviewUrl(file: FileMetadata): Promise<string> {
-    if (this.isMemoryFile(file)) {
+    if (isTauri() || this.isMemoryFile(file)) {
       const imageData = await window.api.file.base64Image(file.id + file.ext)
       return imageData.data
     }

@@ -4,6 +4,7 @@ import { platformModelCatalogService } from '@renderer/services/PlatformModelCat
 import { useAppDispatch, useAppSelector } from '@renderer/store'
 import { setPlatformModels } from '@renderer/store/llm'
 import type { Model, Provider } from '@renderer/types'
+import { getModelPresentation } from '@renderer/utils/modelPresentation'
 import { effectiveCliVersion } from '@shared/cliIdentity'
 import {
   catalogModel,
@@ -129,7 +130,9 @@ export default function PlatformSettings({ platform }: { platform: ProviderPlatf
       </Space.Compact>
       <List<PlatformModel>
         locale={{ emptyText: <Empty description={t('settings.models.empty')} /> }}
-        dataSource={models.filter((model) => `${model.id} ${model.name}`.toLowerCase().includes(search.toLowerCase()))}
+        dataSource={models.filter((model) =>
+          `${model.id} ${getModelPresentation(model).primary}`.toLowerCase().includes(search.toLowerCase())
+        )}
         renderItem={(model) => {
           const index = models.findIndex((entry) => entry.id === model.id)
           return (
@@ -169,7 +172,7 @@ export default function PlatformSettings({ platform }: { platform: ProviderPlatf
                 avatar={<ModelAvatar model={{ ...model, provider: editorProvider.id }} size={32} />}
                 title={
                   <Flex align="center" gap={8} wrap>
-                    <span>{model.name}</span>
+                    <span>{getModelPresentation(model).primary}</span>
                     <ModelTagsWithLabel
                       model={{ ...model, provider: editorProvider.id }}
                       showLabel={false}
@@ -177,7 +180,7 @@ export default function PlatformSettings({ platform }: { platform: ProviderPlatf
                     />
                   </Flex>
                 }
-                description={model.id}
+                description={getModelPresentation(model).secondary}
               />
             </List.Item>
           )

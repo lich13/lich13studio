@@ -1,0 +1,396 @@
+html {
+  --mobile-viewport-height: 100vh;
+}
+@supports (height: 100dvh) {
+  html {
+    --mobile-viewport-height: 100dvh;
+  }
+}
+html[data-runtime='android'] {
+  --sidebar-width: 0px;
+  --settings-width: 100%;
+  --assistants-width: min(360px, 100vw);
+  --app-viewport-height: calc(var(--mobile-viewport-height) - 64px) !important;
+  --app-viewport-width: 100vw !important;
+  --navbar-height: 0px;
+}
+html[data-runtime='android'] #root {
+  flex-direction: column;
+  height: var(--mobile-viewport-height);
+  min-width: 0;
+}
+html[data-runtime='android'] body {
+  min-height: 0;
+  font-size: 14px;
+  overflow: hidden;
+}
+html[data-runtime='android'] #root > :not(.mobile-navigation) {
+  min-width: 0;
+  min-height: 0;
+}
+.mobile-navigation {
+  display: flex;
+  flex: 0 0 64px;
+  z-index: 20;
+  background: var(--color-background);
+  border-top: 1px solid var(--color-border);
+}
+.mobile-navigation button {
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  background: none;
+  border: 0;
+  color: var(--color-text-2);
+  font: inherit;
+  font-size: 12px;
+}
+.mobile-navigation button[aria-current='page'] {
+  color: var(--color-primary);
+}
+html[data-runtime='android'] #home-page {
+  max-width: 100%;
+  height: var(--app-viewport-height);
+  min-height: 0;
+}
+html[data-runtime='android'] #chat,
+html[data-runtime='android'] #chat-main {
+  height: 100% !important;
+  min-height: 0;
+  border-radius: 0;
+}
+html[data-runtime='android'] #chat > div {
+  height: 100%;
+  min-height: 0;
+  align-items: stretch;
+}
+html[data-runtime='android'] #chat > div > div {
+  height: 100%;
+  min-height: 0;
+}
+html[data-runtime='android'] #chat-main {
+  overflow: hidden;
+  transform: none;
+}
+html[data-runtime='android'] #chat-main > .flex {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+html[data-runtime='android'] #chat-main > .flex > .narrow-mode {
+  flex-shrink: 0;
+}
+html[data-runtime='android'] .home-navbar {
+  height: auto !important;
+  min-height: 0;
+  max-height: none;
+  flex: 0 0 auto;
+  padding: 6px 8px;
+}
+html[data-runtime='android'] .home-navbar > div {
+  height: auto;
+  align-items: flex-start;
+  overflow: visible;
+}
+html[data-runtime='android'] .chat-target-controls {
+  flex: 1;
+  margin: 0;
+  overflow: visible;
+}
+html[data-runtime='android'] .chat-target-controls > div {
+  flex-wrap: wrap;
+  width: 100%;
+}
+html[data-runtime='android'] .chat-target-controls .lucide-chevron-right {
+  display: none;
+}
+html[data-runtime='android'] .assistant-settings-trigger {
+  min-height: 48px;
+}
+html[data-runtime='android'] .assistant-settings-trigger > span {
+  max-width: 100%;
+}
+html[data-runtime='android'] .model-provider-selection {
+  width: 100%;
+  flex: 1 1 100%;
+}
+html[data-runtime='android'] .model-provider-fields {
+  flex-direction: column;
+  align-items: stretch;
+}
+html[data-runtime='android'] .model-provider-fields .ant-select {
+  width: 100%;
+  flex: auto;
+}
+html[data-runtime='android'] .ant-select-single {
+  height: 48px;
+}
+html[data-runtime='android'] .ant-btn {
+  min-height: 48px;
+  min-width: 48px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  height: auto;
+}
+html[data-runtime='android'] input,
+html[data-runtime='android'] textarea {
+  font-size: 16px;
+}
+html[data-runtime='android'] .ant-select-dropdown {
+  max-width: calc(100vw - 16px) !important;
+}
+html[data-runtime='android'] .ant-select-item-option {
+  min-height: 48px;
+  align-items: center;
+}
+html[data-runtime='android'] .ant-modal {
+  top: 0;
+  width: 100vw !important;
+  max-width: 100vw;
+  margin: 0;
+  padding: 0;
+}
+html[data-runtime='android'] .ant-modal-centered::before {
+  display: none;
+}
+html[data-runtime='android'] .ant-modal-centered .ant-modal {
+  display: block;
+  vertical-align: top;
+}
+html[data-runtime='android'] .ant-modal-content {
+  max-height: var(--mobile-viewport-height);
+  overflow-y: auto;
+  border-radius: 0;
+  background: var(--color-background);
+  isolation: isolate;
+}
+html[data-runtime='android'] .ant-modal:not(.ant-modal-confirm) .ant-modal-content {
+  min-height: var(--mobile-viewport-height);
+  padding: 0 0 16px;
+}
+html[data-runtime='android'] .ant-modal:not(.ant-modal-confirm) .ant-modal-content .ant-modal-header {
+  min-height: 64px;
+  padding: 20px 64px 16px 16px;
+  background: var(--color-background);
+  border-radius: 0;
+}
+html[data-runtime='android'] .ant-modal:not(.ant-modal-confirm) .ant-modal-content .ant-modal-body {
+  max-height: none;
+  overflow: visible;
+}
+html[data-runtime='android'] .ant-modal-close,
+html[data-runtime='android'] .ant-drawer-close {
+  min-width: 48px;
+  min-height: 48px;
+}
+html[data-runtime='android'] .setting-container {
+  padding: 12px;
+  min-width: 0;
+}
+html[data-runtime='android'] .setting-group {
+  padding: 12px;
+  min-width: 0;
+}
+html[data-runtime='android'] .setting-row {
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+html[data-runtime='android'] .setting-row > :first-child {
+  flex-basis: 100%;
+}
+html[data-runtime='android'] .setting-row .ant-input,
+html[data-runtime='android'] .setting-row .ant-select {
+  width: 100% !important;
+}
+html[data-runtime='android'] .ant-space {
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+html[data-runtime='android'] .ant-form-item {
+  max-width: 100%;
+}
+html[data-runtime='android'] .ant-form-item .ant-form-item-row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+html[data-runtime='android'] .ant-form-item .ant-form-item-label {
+  flex: 0 0 auto !important;
+  text-align: start;
+  padding-bottom: 6px;
+}
+html[data-runtime='android'] .ant-form-item .ant-form-item-label > label {
+  min-height: 28px;
+  height: auto;
+}
+html[data-runtime='android'] .ant-form-item .ant-form-item-control {
+  width: 100%;
+  min-width: 0;
+}
+html[data-runtime='android'] .ant-input-number-group-wrapper {
+  max-width: 100%;
+}
+html[data-runtime='android'] .ant-list-item {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+html[data-runtime='android'] .ant-list-item-meta {
+  min-width: 0;
+}
+html[data-runtime='android'] .ant-list .ant-list-item .ant-list-item-meta {
+  flex: 1 0 100%;
+}
+html[data-runtime='android'] .ant-list .ant-list-item .ant-list-item-meta-content {
+  min-width: 0;
+  width: auto;
+  flex: 1 1 auto;
+}
+html[data-runtime='android'] .ant-list .ant-list-item .ant-list-item-action {
+  display: flex;
+  flex: 0 0 100%;
+  justify-content: flex-end;
+  margin: 0;
+}
+html[data-runtime='android'] .ant-list-item-action > li {
+  padding: 0;
+}
+html[data-runtime='android'] .ant-list-item-action-split {
+  display: none;
+}
+html[data-runtime='android'] .model-option {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  width: 100%;
+}
+html[data-runtime='android'] .model-option > :last-child:not(.model-name) {
+  grid-column: 2;
+  justify-self: start;
+}
+html[data-runtime='android'] .ant-list-item-meta-title,
+html[data-runtime='android'] .ant-list-item-meta-description {
+  overflow-wrap: anywhere;
+}
+html[data-runtime='android'] #messages {
+  min-width: 0;
+}
+html[data-runtime='android'] .markdown img {
+  max-width: 100%;
+}
+html[data-runtime='android'] .markdown pre,
+html[data-runtime='android'] .markdown table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+html[data-runtime='android'] .settings-page {
+  height: var(--app-viewport-height);
+  overflow: hidden;
+}
+html[data-runtime='android'] .settings-page > :first-child:not(#content-container) {
+  display: none;
+}
+html[data-runtime='android'] .settings-page #content-container {
+  height: 100%;
+  flex-direction: column;
+  min-height: 0;
+}
+html[data-runtime='android'] .mobile-settings-menu {
+  margin: 8px 12px;
+  flex: 0 0 48px;
+}
+html[data-runtime='android'] .settings-content {
+  min-height: 0;
+  overflow: hidden;
+}
+html[data-runtime='android'] .provider-page,
+html[data-runtime='android'] .data-settings-page {
+  flex-direction: column;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+}
+html[data-runtime='android'] .data-settings-page > .ant-select {
+  margin: 8px 12px;
+  flex: 0 0 48px;
+}
+html[data-runtime='android'] .inputbar-tools > div {
+  min-height: 48px;
+}
+html[data-runtime='android'] .inputbar-tools [data-key] {
+  width: 48px;
+  flex-shrink: 0;
+  margin-right: 2px;
+}
+html[data-runtime='android'] .inputbar-tools [data-key] > * {
+  min-width: 48px;
+  min-height: 48px;
+}
+html[data-runtime='android'] .inputbar textarea.ant-input {
+  max-height: 30vh !important;
+}
+html[data-runtime='android'] .icon-ic_send,
+html[data-runtime='android'] .mobile-drawer-toggle {
+  min-height: 48px;
+  min-width: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+html[data-runtime='android'][data-keyboard='open'] {
+  --app-viewport-height: var(--mobile-viewport-height) !important;
+}
+html[data-runtime='android'][data-keyboard='open'] .mobile-navigation,
+html[data-runtime='android'][data-keyboard='open'] .home-navbar {
+  display: none;
+}
+@media (orientation: landscape) and (max-height: 600px) {
+  html[data-runtime='android'] .provider-catalog-controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+  }
+  html[data-runtime='android'] .provider-catalog-controls .ant-btn {
+    margin-top: 0 !important;
+  }
+  html[data-runtime='android'] .home-navbar .chat-target-controls > div {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+  }
+  html[data-runtime='android'] .home-navbar .assistant-settings-trigger {
+    flex: 0 1 160px;
+    min-width: 0;
+  }
+  html[data-runtime='android'] .home-navbar .model-provider-selection {
+    flex: 1 1 0;
+    width: auto;
+  }
+  html[data-runtime='android'] .home-navbar .model-provider-fields {
+    flex-direction: row;
+    flex-wrap: nowrap;
+  }
+  html[data-runtime='android'] .home-navbar .model-provider-fields .ant-select {
+    flex: 1 1 0;
+    width: 0;
+  }
+  html[data-runtime='android'] .system-prompt {
+    margin: 4px 8px;
+    padding: 8px;
+    flex-shrink: 0;
+  }
+  html[data-runtime='android'] .system-prompt > div {
+    -webkit-line-clamp: 1;
+  }
+  html[data-runtime='android'] .inputbar {
+    padding: 0 8px 8px;
+  }
+  html[data-runtime='android'] .inputbar textarea.ant-input {
+    max-height: 48px !important;
+  }
+}

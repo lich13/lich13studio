@@ -1,3 +1,5 @@
+import './services/mobile/webviewCompatibility'
+
 import { loggerService } from '@logger'
 import { isMainProcessSettingKey } from '@renderer/hooks/settingsSync'
 import {
@@ -6,7 +8,10 @@ import {
   requestPermission as requestNotificationPermission
 } from '@tauri-apps/plugin-notification'
 
+import { hydrateCredentials, mobilePersistStorage, stripCredentials } from './services/mobile/credentials'
+import { runtimeCapabilities } from './services/mobile/runtime'
 import { startProviderImportListener } from './services/ProviderImportQueue'
+import { attachmentMime, managedAttachmentId } from './utils/attachmentMime'
 
 type AnyRecord = Record<string, any>
 const WORD_DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
@@ -52,7 +57,8 @@ const mockInvoke = async (command: string) => {
   return null
 }
 const invoke = tauri?.core?.invoke ?? (previewMode ? mockInvoke : undefined)
-const getCurrentWindow = tauri?.window?.getCurrentWindow ? () => tauri.window.getCurrentWindow() : null
+const getCurrentWindow =
+  !runtimeCapabilities.android && tauri?.window?.getCurrentWindow ? () => tauri.window.getCurrentWindow() : null
 
 const isTauriRuntime = typeof invoke === 'function'
 const isExternalUrl = (value: string) => /^(?:https?:|mailto:|tel:)/i.test(value.trim())
@@ -128,11 +134,13 @@ if (!globalWindow.modal) {
   }
 }
 
-const platform = navigator.userAgent.includes('Mac')
-  ? 'darwin'
-  : navigator.userAgent.includes('Windows')
-    ? 'win32'
-    : 'linux'
+const platform = runtimeCapabilities.android
+  ? 'android'
+  : navigator.userAgent.includes('Mac')
+    ? 'darwin'
+    : navigator.userAgent.includes('Windows')
+      ? 'win32'
+      : 'linux'
 
 const THEME_STORAGE_KEY = 'tauri:theme'
 const ZOOM_STORAGE_KEY = 'tauri:zoom-factor'
@@ -290,6 +298,7 @@ if (systemThemeMediaQuery) {
 
 const fileCache = new Map<string, { fileName: string; ext: string; blob: Blob; text?: string }>()
 const fileObjectMap = new WeakMap<File, string>()
+const pendingFileRegistrations = new Map<string, Promise<AnyRecord>>()
 let cachedAppInfo: AnyRecord | null = null
 type ProgressPayload = {
   stage: string
@@ -466,15 +475,19 @@ const serializeIndexedDb = async (onProgress?: (progress: number) => void) => {
     return snapshot
   } catch (error) {
     logger.warn('Failed to serialize IndexedDB backup snapshot', error as Error)
-    return {}
+    throw new Error('Could not read database for backup')
   }
 }
 
-const buildBackupSnapshot = async () => {
+export const buildBackupSnapshot = async (includeCredentials = false) => {
+  const { persistor } = await import('@renderer/store')
+  await persistor.flush()
   emitBackupProgress({ stage: 'preparing', progress: 5, total: 100 })
   await waitForNextFrame()
 
-  const localStorageSnapshot = serializeLocalStorage()
+  const localStorageSnapshot = includeCredentials
+    ? hydrateCredentials(serializeLocalStorage())
+    : stripCredentials(serializeLocalStorage())
   emitBackupProgress({ stage: 'writing_data', progress: 12, total: 100 })
   await waitForNextFrame()
 
@@ -499,8 +512,15 @@ const buildBackupSnapshot = async () => {
 
 const registerBlob = async (blob: Blob, fileName: string, explicitPath?: string) => {
   const ext = normalizeExt(fileName)
-  const id = createId('file')
-  const cacheKey = explicitPath || `memory://${id}/${fileName}`
+  const bytes = new Uint8Array(await blob.arrayBuffer())
+  const mime = attachmentMime(fileName, blob.type, bytes)
+  if (blob.type !== mime) blob = new Blob([bytes], { type: mime })
+  const id = (explicitPath && managedAttachmentId(explicitPath, ext)) || createId('file')
+  let cacheKey = explicitPath || `memory://${id}/${fileName}`
+  if (invoke && !explicitPath) {
+    const path = await invoke('persist_attachment', { name: `${id}${ext}`, bytes: Array.from(bytes) })
+    if (typeof path === 'string') cacheKey = path
+  }
   fileCache.set(cacheKey, { fileName, ext, blob })
   fileCache.set(`${id}${ext}`, { fileName, ext, blob })
 
@@ -543,6 +563,24 @@ const getCachedFile = async (fileIdOrPath: string) => {
   for (const [key, value] of fileCache.entries()) {
     if (key.endsWith(`/${fileIdOrPath}`)) {
       return value
+    }
+  }
+  if (invoke && fileIdOrPath && !/^(?:https?:|memory:)/i.test(fileIdOrPath)) {
+    try {
+      const bytes = await invoke('read_attachment', { name: fileIdOrPath })
+      const fileName = fileIdOrPath.replace(/\\/g, '/').split('/').pop() || fileIdOrPath
+      const ext = normalizeExt(fileName)
+      const mime = attachmentMime(fileName, '', new Uint8Array(bytes))
+      const cached = {
+        fileName,
+        ext,
+        blob: new Blob([new Uint8Array(bytes)], { type: mime }),
+        text: undefined as string | undefined
+      }
+      fileCache.set(fileIdOrPath, cached)
+      return cached
+    } catch {
+      return undefined
     }
   }
   return undefined
@@ -656,15 +694,16 @@ const saveBlob = async (fileName: string, blob: Blob) => {
   return true
 }
 
-const pickFiles = async (multiple = true, filters?: Array<{ name: string; extensions: string[] }>) =>
+const pickFiles = async (multiple = true, filters?: Array<{ name: string; extensions: string[] }>, persist = true) =>
   new Promise<any[] | null>((resolve) => {
     const input = document.createElement('input')
     input.type = 'file'
     input.multiple = multiple
     const accepted = filters?.flatMap((filter) => filter.extensions.map((extension) => `.${extension}`)).join(',')
-    if (accepted) {
-      input.accept = accepted
-    }
+    // Android SAF cannot map the custom encrypted-backup extension to a MIME type.
+    // Backup format/authentication is validated after selection.
+    if (accepted) input.accept = runtimeCapabilities.android && !persist ? '*/*' : accepted
+    input.addEventListener('cancel', () => resolve(null), { once: true })
     input.onchange = async () => {
       const files = Array.from(input.files || [])
       if (files.length === 0) {
@@ -673,12 +712,15 @@ const pickFiles = async (multiple = true, filters?: Array<{ name: string; extens
       }
       const metas = await Promise.all(
         files.map(async (file) => {
-          const path = await registerBrowserFile(file)
+          // A backup must never be copied into the attachments included in the next backup.
+          const path = persist
+            ? await registerBrowserFile(file)
+            : (await registerBlob(file, file.name, `memory://${createId('backup')}/${file.name}`)).path
           const meta = await getCachedFile(path)
           const ext = normalizeExt(file.name)
           const content = new Uint8Array(await file.arrayBuffer())
           return {
-            id: path.split('/')[2] || createId('file'),
+            id: managedAttachmentId(path, ext) || createId('file'),
             name: file.name.replace(ext, ''),
             origin_name: file.name,
             fileName: file.name,
@@ -844,6 +886,7 @@ const api = {
   isNotEmptyDir: async () => false,
   relaunchApp: async () => location.reload(),
   resetData: async () => {
+    if (runtimeCapabilities.android) await mobilePersistStorage.removeItem('persist:cherry-studio')
     localStorage.clear()
     location.reload()
   },
@@ -1109,7 +1152,7 @@ const api = {
     select: async (options?: AnyRecord) =>
       pickFiles(Boolean(options?.properties?.includes?.('multiSelections')), options?.filters),
     open: async (options?: AnyRecord) => {
-      const files = await pickFiles(false, options?.filters)
+      const files = await pickFiles(false, options?.filters, false)
       return files?.[0] || null
     },
     upload: async (file: AnyRecord) => file,
@@ -1143,6 +1186,8 @@ const api = {
       fileCache.clear()
     },
     get: async (filePath: string) => {
+      const pending = pendingFileRegistrations.get(filePath)
+      if (pending) return pending
       const cached = await getCachedFile(filePath)
       if (!cached) return null
       const meta = await registerBlob(cached.blob, cached.fileName, filePath)
@@ -1251,9 +1296,14 @@ const api = {
     getPathForFile: (file: File) => {
       const existing = fileObjectMap.get(file)
       if (existing) return existing
-      const pseudoPath = `memory://pending/${createId('file')}/${file.name}`
+      const pseudoPath = `memory://${createId('file')}/${file.name}`
       fileObjectMap.set(file, pseudoPath)
-      void registerBlob(file, file.name, pseudoPath)
+      const registration = registerBlob(file, file.name).then((meta) => {
+        fileObjectMap.set(file, meta.path)
+        return meta
+      })
+      pendingFileRegistrations.set(pseudoPath, registration)
+      void registration.catch(() => {}) // The awaiting file.get caller handles the error.
       return pseudoPath
     },
     openFileWithRelativePath: async (file: AnyRecord) => api.file.openPath(file?.path || file?.filePath || ''),
@@ -1289,9 +1339,15 @@ const api = {
       try {
         emitRestoreProgress({ stage: 'preparing', progress: 5, total: 100 })
         await waitForNextFrame()
-        if (invoke && cached.fileName.toLowerCase().endsWith('.zip')) {
+        if (invoke && /\.(zip|lich13backup)$/i.test(cached.fileName)) {
           emitRestoreProgress({ stage: 'extracting', progress: 35, total: 100 })
-          const bytes = Array.from(await readBlobAsUint8Array(cached.blob))
+          let bytes = Array.from(await readBlobAsUint8Array(cached.blob))
+          if (cached.fileName.toLowerCase().endsWith('.lich13backup')) {
+            const { decryptPortableBackup } = await import('./services/PortableBackupService')
+            const decrypted = await decryptPortableBackup(bytes)
+            if (!decrypted) throw new DOMException('Request was aborted', 'AbortError')
+            bytes = decrypted
+          }
           const result = await invoke('restore_backup_archive', { fileName: cached.fileName, bytes })
           emitRestoreProgress({ stage: 'completed', progress: 100, total: 100 })
           return result
@@ -1303,6 +1359,9 @@ const api = {
       } catch (error) {
         emitRestoreProgress({ stage: 'completed', progress: 100, total: 100 })
         throw error
+      } finally {
+        fileCache.delete(filePath)
+        fileCache.delete(`${managedAttachmentId(filePath, cached.ext)}${cached.ext}`)
       }
     },
     backup: async (fileName: string, destinationPath?: string, skipBackupFile: boolean = false) => {

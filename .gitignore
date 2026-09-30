@@ -81,3 +81,9 @@ YOUR_MEMORY_FILE_PATH
 
 .sessions/
 tmp
+
+# Android signing material is always kept outside the checkout
+*.jks
+*.keystore
+*.p12
+*signing.properties

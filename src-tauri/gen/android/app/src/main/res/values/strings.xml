@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">lich13studio</string>
+    <string name="main_activity_title">lich13studio</string>
+    <string name="model_tasks">Model tasks</string>
+    <string name="model_tasks_running">Model tasks running</string>
+    <string name="stop_all">Stop all</string>
+</resources>

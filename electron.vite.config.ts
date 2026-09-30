@@ -2,12 +2,14 @@ import react from '@vitejs/plugin-react-swc'
 import { CodeInspectorPlugin } from 'code-inspector-plugin'
 import { defineConfig } from 'electron-vite'
 import { resolve } from 'path'
+import postcssPresetEnv from 'postcss-preset-env'
 import { visualizer } from 'rollup-plugin-visualizer'
 
 // assert not supported by biome
 // import pkg from './package.json' assert { type: 'json' }
 import pkg from './package.json'
 import { buildProxyBootstrapPlugin } from './scripts/buildProxyBootstrapPlugin'
+import { legacyWebviewCss } from './scripts/legacyWebviewCss'
 
 const visualizerPlugin = (type: 'renderer' | 'main') => {
   return process.env[`VISUALIZER_${type.toUpperCase()}`] ? [visualizer({ open: true })] : []
@@ -72,6 +74,14 @@ export default defineConfig({
     }
   },
   renderer: {
+    css: {
+      postcss: {
+        plugins: [
+          postcssPresetEnv({ browsers: ['Chrome 91', 'Safari 15'], stage: 2, features: { 'cascade-layers': false } }),
+          legacyWebviewCss()
+        ]
+      }
+    },
     plugins: [
       (async () => (await import('@tailwindcss/vite')).default())(),
       react({
@@ -105,7 +115,7 @@ export default defineConfig({
       format: 'es'
     },
     build: {
-      target: 'esnext', // for build
+      target: 'chrome91',
       rollupOptions: {
         input: {
           index: resolve(__dirname, 'src/renderer/index.html'),

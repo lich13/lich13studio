@@ -5,7 +5,6 @@ import { endpointTypeOptions } from '@renderer/config/endpointTypes'
 import { resolveModelCapabilities, restoreAutomaticCapabilities } from '@renderer/config/models/capabilities'
 import { useDynamicLabelWidth } from '@renderer/hooks/useDynamicLabelWidth'
 import type { Model, ModelCapability, ModelType, Provider } from '@renderer/types'
-import { getDefaultGroupName } from '@renderer/utils'
 import { isNewApiProvider } from '@renderer/utils/provider'
 import type { ModalProps } from 'antd'
 import { Button, Divider, Flex, Form, Input, InputNumber, message, Modal, Select, Switch, Tooltip } from 'antd'
@@ -196,24 +195,21 @@ const ModelEditContent: FC<ModelEditContentProps & ModalProps> = ({ provider, mo
               placeholder={t('settings.models.add.model_id.placeholder')}
               spellCheck={false}
               maxLength={200}
-              disabled={true}
+              readOnly
               value={model.id}
-              onChange={(e) => {
-                const value = e.target.value
-                form.setFieldValue('name', value)
-                form.setFieldValue('group', getDefaultGroupName(value))
+            />
+            <Button
+              aria-label={t('common.copy')}
+              title={t('common.copy')}
+              icon={<CopyIcon size={16} />}
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(model.id)
+                  message.success(t('message.copied'))
+                } catch {
+                  message.error(t('message.copy_failed'))
+                }
               }}
-              suffix={
-                <CopyIcon
-                  size={14}
-                  style={{ cursor: 'pointer' }}
-                  onClick={() => {
-                    const val = form.getFieldValue('name')
-                    void navigator.clipboard.writeText((val.id || model.id) as string)
-                    message.success(t('message.copied'))
-                  }}
-                />
-              }
             />
           </Flex>
         </Form.Item>

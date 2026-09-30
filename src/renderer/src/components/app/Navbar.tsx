@@ -3,6 +3,7 @@ import { useFullscreen } from '@renderer/hooks/useFullscreen'
 import useNavBackgroundColor from '@renderer/hooks/useNavBackgroundColor'
 import { useRuntime } from '@renderer/hooks/useRuntime'
 import { useNavbarPosition } from '@renderer/hooks/useSettings'
+import { runtimeCapabilities } from '@renderer/services/mobile/runtime'
 import type { FC, PropsWithChildren } from 'react'
 import type { HTMLAttributes } from 'react'
 import styled from 'styled-components'
@@ -17,7 +18,7 @@ export const Navbar: FC<Props> = ({ children, ...props }) => {
   const { isTopNavbar } = useNavbarPosition()
   const { minappShow } = useRuntime()
 
-  if (isTopNavbar) {
+  if (isTopNavbar || runtimeCapabilities.android) {
     return null
   }
 

@@ -10,6 +10,8 @@ import { ProviderAvatar } from '@renderer/components/ProviderAvatar'
 import { useAllProviders, useProviders } from '@renderer/hooks/useProvider'
 import { useTimer } from '@renderer/hooks/useTimer'
 import ImageStorage from '@renderer/services/ImageStorage'
+import { useMobileBack } from '@renderer/services/mobile/back'
+import { runtimeCapabilities } from '@renderer/services/mobile/runtime'
 import type { Provider, ProviderType } from '@renderer/types'
 import { isSystemProvider } from '@renderer/types'
 import { getFancyProviderName, matchKeywordsInModel, matchKeywordsInProvider, uuid } from '@renderer/utils'
@@ -17,7 +19,7 @@ import { isAnthropicSupportedProvider } from '@renderer/utils/provider'
 import { inferProviderPlatform, PLATFORM_NAMES, PROVIDER_PLATFORMS, type ProviderPlatform } from '@shared/platforms'
 import type { MenuProps } from 'antd'
 import { Button, Dropdown, Empty, Input, Select, Tag } from 'antd'
-import { Check, Filter, GripVertical, PlusIcon, Search, UserPen } from 'lucide-react'
+import { Check, Filter, GripVertical, MoreHorizontal, PlusIcon, Search, UserPen } from 'lucide-react'
 import type { FC } from 'react'
 import { startTransition, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -61,6 +63,8 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
   const [platform, setPlatform] = useState<ProviderPlatform>(
     providers[0] ? inferProviderPlatform(providers[0]) : 'openai'
   )
+  const [mobileDetail, setMobileDetail] = useState(false)
+  useMobileBack(runtimeCapabilities.android && mobileDetail, () => setMobileDetail(false))
   const [catalogVisible, setCatalogVisible] = useState(false)
   const [dragging, setDragging] = useState(false)
   const [agentFilterEnabled, setAgentFilterEnabled] = useState(false)
@@ -71,6 +75,7 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
 
   const setSelectedProvider = useCallback((provider: Provider) => {
     startTransition(() => {
+      setMobileDetail(true)
       _setSelectedProvider(provider)
       if (provider) setPlatform(inferProviderPlatform(provider))
       setCatalogVisible(false)
@@ -368,9 +373,17 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
   )
 
   return (
-    <Container className="selectable">
-      <ProviderListContainer>
-        <div style={{ padding: 8 }}>
+    <Container className="provider-page selectable">
+      {runtimeCapabilities.android && mobileDetail && (
+        <Button onClick={() => setMobileDetail(false)}>{t('common.back')}</Button>
+      )}
+      <ProviderListContainer
+        style={
+          runtimeCapabilities.android
+            ? { display: mobileDetail ? 'none' : 'flex', width: '100%', minWidth: 0, minHeight: 0, flex: 1 }
+            : undefined
+        }>
+        <div className="provider-catalog-controls" style={{ padding: 8 }}>
           <Select
             aria-label={t('platform.label')}
             value={platform}
@@ -385,7 +398,10 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
             block
             style={{ marginTop: 8 }}
             type={catalogVisible ? 'primary' : 'default'}
-            onClick={() => setCatalogVisible(true)}>
+            onClick={() => {
+              setCatalogVisible(true)
+              setMobileDetail(true)
+            }}>
             {t('platform.models_title')}
           </Button>
         </div>
@@ -439,7 +455,7 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
           list={filteredProviders}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
-          estimateSize={useCallback(() => 40, [])}
+          estimateSize={useCallback(() => (runtimeCapabilities.android ? 56 : 40), [])}
           itemKey={itemKey}
           overscan={3}
           style={{
@@ -474,6 +490,16 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
                     ON
                   </Tag>
                 )}
+                {runtimeCapabilities.android && (
+                  <Dropdown menu={{ items: getDropdownMenus(provider) }} trigger={['click']}>
+                    <Button
+                      type="text"
+                      aria-label={t('common.more')}
+                      icon={<MoreHorizontal size={20} />}
+                      onClick={(event) => event.stopPropagation()}
+                    />
+                  </Dropdown>
+                )}
               </ProviderListItem>
             </Dropdown>
           )}
@@ -488,14 +514,15 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
           </Button>
         </AddButtonWrapper>
       </ProviderListContainer>
-      {catalogVisible ? (
-        <PlatformSettings platform={platform} key={platform} />
-      ) : selectedProvider &&
-        providers.some((p) => p.id === selectedProvider.id && inferProviderPlatform(p) === platform) ? (
-        <ProviderSetting providerId={selectedProvider.id} key={selectedProvider.id} isOnboarding={isOnboarding} />
-      ) : (
-        <Empty style={{ margin: 'auto' }} description={t('settings.provider.empty')} />
-      )}
+      {(!runtimeCapabilities.android || mobileDetail) &&
+        (catalogVisible ? (
+          <PlatformSettings platform={platform} key={platform} />
+        ) : selectedProvider &&
+          providers.some((p) => p.id === selectedProvider.id && inferProviderPlatform(p) === platform) ? (
+          <ProviderSetting providerId={selectedProvider.id} key={selectedProvider.id} isOnboarding={isOnboarding} />
+        ) : (
+          <Empty style={{ margin: 'auto' }} description={t('settings.provider.empty')} />
+        ))}
     </Container>
   )
 }
@@ -568,6 +595,12 @@ const AddButtonWrapper = styled.div`
   justify-content: center;
   align-items: center;
   padding: 10px 8px;
+  html[data-runtime='android'] & {
+    height: auto;
+    flex-shrink: 0;
+    padding: 4px 8px;
+    .ant-input-affix-wrapper { min-height: 48px; }
+  }
 `
 
 const FilterButton = styled.div`

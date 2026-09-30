@@ -1,9 +1,11 @@
 import '@renderer/databases'
 
+import { runtimeCapabilities } from '@renderer/services/mobile/runtime'
 import type { FC } from 'react'
 import { useMemo } from 'react'
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 
+import MobileNavigation from './components/app/MobileNavigation'
 import Sidebar from './components/app/Sidebar'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import ProviderImportHandler from './components/ProviderImportHandler'
@@ -43,8 +45,9 @@ const Router: FC = () => {
 
   return (
     <HashRouter>
-      <Sidebar />
+      {!runtimeCapabilities.android && <Sidebar />}
       {routes}
+      {runtimeCapabilities.android && <MobileNavigation />}
       <NavigationHandler />
       <ProviderImportHandler />
     </HashRouter>

@@ -1,6 +1,8 @@
 import { TopView } from '@renderer/components/TopView'
 import { isMac } from '@renderer/config/constant'
 import { useTimer } from '@renderer/hooks/useTimer'
+import { useMobileBack } from '@renderer/services/mobile/back'
+import { runtimeCapabilities } from '@renderer/services/mobile/runtime'
 import type { Assistant, Topic } from '@renderer/types'
 import { Drawer } from 'antd'
 import { useState } from 'react'
@@ -33,6 +35,7 @@ const PopupContainer: React.FC<Props> = ({
     setTimeoutTimer('onClose', resolve, 300)
   }
 
+  useMobileBack(runtimeCapabilities.android && open, onClose)
   AssistantsDrawer.hide = onClose
 
   return (

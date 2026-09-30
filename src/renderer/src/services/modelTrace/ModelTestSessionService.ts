@@ -1,4 +1,5 @@
 import { loggerService } from '@logger'
+import { backgroundTasks } from '@renderer/services/mobile/BackgroundTaskService'
 import type { Model } from '@renderer/types'
 import { type ModelTestConcurrency, normalizeModelTestConcurrency } from '@shared/modelTestOptions'
 
@@ -138,7 +139,10 @@ export class ModelTestSessionService {
     if (!runner) return
     const generation = ++this.generation
     this.update({ phase: 'running', error: undefined, canRetry: false })
+    let release: (() => void) | undefined
     try {
+      release = await backgroundTasks.acquire(() => this.stop())
+      if (generation !== this.generation) return
       const result = await runner.run({ retryFailedOnly })
       if (generation !== this.generation || runner !== this.runner) return
       this.update({
@@ -153,6 +157,8 @@ export class ModelTestSessionService {
         error: classifyModelTestFailure(error).message,
         canRetry: true
       })
+    } finally {
+      release?.()
     }
   }
 

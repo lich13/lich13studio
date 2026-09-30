@@ -1,4 +1,5 @@
 import { useSettings } from '@renderer/hooks/useSettings'
+import { runtimeCapabilities } from '@renderer/services/mobile/runtime'
 import type { LanguageVarious } from '@renderer/types'
 import { ConfigProvider, theme } from 'antd'
 import deDE from 'antd/locale/de_DE'
@@ -109,6 +110,7 @@ const AntdProvider: FC<PropsWithChildren> = ({ children }) => {
           }
         },
         token: {
+          motion: !runtimeCapabilities.android,
           colorPrimary: colorPrimary,
           fontFamily: 'var(--font-family)',
           colorBgMask: _theme === 'dark' ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.8)',

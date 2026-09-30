@@ -1,6 +1,7 @@
 import { ActionIconButton } from '@renderer/components/Buttons'
 import NarrowLayout from '@renderer/pages/home/Messages/NarrowLayout'
 import { scrollElementIntoView } from '@renderer/utils'
+import { clearSearchHighlights, setSearchHighlights } from '@renderer/utils/searchHighlights'
 import { Tooltip } from 'antd'
 import { debounce } from 'lodash'
 import { CaseSensitive, ChevronDown, ChevronUp, User, WholeWord, X } from 'lucide-react'
@@ -60,7 +61,7 @@ const findRangesInTarget = (
   isCaseSensitive: boolean,
   isWholeWord: boolean
 ): Range[] => {
-  CSS.highlights.clear()
+  clearSearchHighlights()
   const ranges: Range[] = []
 
   const escapedSearchText = escapeRegExp(searchText)
@@ -158,7 +159,7 @@ export const ContentSearch = React.forwardRef<ContentSearchRef, Props>(
     const { t } = useTranslation()
 
     const resetSearch = useCallback(() => {
-      CSS.highlights.clear()
+      clearSearchHighlights()
       setAllRanges([])
       setSearchCompleted(SearchCompletedState.NotSearched)
     }, [])
@@ -166,18 +167,15 @@ export const ContentSearch = React.forwardRef<ContentSearchRef, Props>(
     const locateByIndex = useCallback(
       (shouldScroll = true) => {
         // 清理旧的高亮
-        CSS.highlights.clear()
+        clearSearchHighlights()
 
         if (allRanges.length > 0) {
           // 1. 创建并注册所有匹配项的高亮
-          const allMatchesHighlight = new Highlight(...allRanges)
-          CSS.highlights.set('search-matches', allMatchesHighlight)
+          setSearchHighlights(allRanges, allRanges[currentIndex])
 
           // 2. 如果有当前项，为其创建并注册一个特殊的高亮
           if (currentIndex !== -1 && allRanges[currentIndex]) {
             const currentMatchRange = allRanges[currentIndex]
-            const currentMatchHighlight = new Highlight(currentMatchRange)
-            CSS.highlights.set('current-match', currentMatchHighlight)
 
             // 3. 将当前项滚动到视图中
             // 获取第一个文本节点的父元素来进行滚动
@@ -209,7 +207,7 @@ export const ContentSearch = React.forwardRef<ContentSearchRef, Props>(
       () => ({
         disable: () => {
           setEnableContentSearch(false)
-          CSS.highlights.clear()
+          clearSearchHighlights()
         },
         enable: (initialText?: string) => {
           setEnableContentSearch(true)

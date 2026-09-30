@@ -3,6 +3,8 @@ import type { generateImageResult } from '@cherrystudio/ai-core/core/runtime/typ
 import { loggerService } from '@logger'
 import { getEnableDeveloperMode } from '@renderer/hooks/useSettings'
 import { requireCurrentModel } from '@renderer/services/AssistantService'
+import { backgroundTasks } from '@renderer/services/mobile/BackgroundTaskService'
+import { runtimeCapabilities } from '@renderer/services/mobile/runtime'
 import { normalizeGatewayModels } from '@renderer/services/models/ModelAdapter'
 import { reasoningUsage } from '@renderer/services/ReasoningUsageService'
 import { addSpan, endSpan } from '@renderer/services/SpanManagerService'
@@ -108,6 +110,26 @@ export default class AiProvider {
   }
 
   public async completions(modelId: string, params: StreamTextParams, middlewareConfig: AiProviderConfig) {
+    if (!runtimeCapabilities.android) return this.completionsWithLease(modelId, params, middlewareConfig)
+    const controller = new AbortController()
+    const release = await backgroundTasks.acquire(() => controller.abort())
+    try {
+      params.abortSignal?.throwIfAborted()
+      controller.signal.throwIfAborted()
+      return await this.completionsWithLease(
+        modelId,
+        {
+          ...params,
+          abortSignal: params.abortSignal ? AbortSignal.any([params.abortSignal, controller.signal]) : controller.signal
+        },
+        middlewareConfig
+      )
+    } finally {
+      release()
+    }
+  }
+
+  private async completionsWithLease(modelId: string, params: StreamTextParams, middlewareConfig: AiProviderConfig) {
     // 检查model是否存在
     if (!this.model) {
       throw new Error('Model is required for completions. Please use constructor with model parameter.')

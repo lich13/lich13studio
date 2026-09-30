@@ -5,6 +5,7 @@ import RestorePopup from '@renderer/components/Popups/RestorePopup'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import { useTimer } from '@renderer/hooks/useTimer'
 import { reset } from '@renderer/services/BackupService'
+import { runtimeCapabilities } from '@renderer/services/mobile/runtime'
 import store, { useAppDispatch } from '@renderer/store'
 import { setSkipBackupFile as _setSkipBackupFile } from '@renderer/store/settings'
 import type { AppInfo } from '@renderer/types'
@@ -460,33 +461,41 @@ const BasicDataSettings: React.FC = () => {
       </SettingGroup>
       <SettingGroup theme={theme}>
         <SettingTitle>{t('settings.data.data.title')}</SettingTitle>
-        <SettingDivider />
-        <SettingRow>
-          <SettingRowTitle>{t('settings.data.app_data.label')}</SettingRowTitle>
-          <PathRow>
-            <PathText style={{ color: 'var(--color-text-3)' }} onClick={() => handleOpenPath(appInfo?.appDataPath)}>
-              {appInfo?.appDataPath}
-            </PathText>
-            <Tooltip title={t('settings.data.app_data.select')}>
-              <FolderOutput onClick={handleSelectAppDataPath} style={{ cursor: 'pointer' }} size={16} />
-            </Tooltip>
-            <HStack gap="5px" style={{ marginLeft: '8px' }}>
-              <Button onClick={() => handleOpenPath(appInfo?.appDataPath)}>{t('settings.data.app_data.open')}</Button>
-            </HStack>
-          </PathRow>
-        </SettingRow>
-        <SettingDivider />
-        <SettingRow>
-          <SettingRowTitle>{t('settings.data.app_logs.label')}</SettingRowTitle>
-          <PathRow>
-            <PathText style={{ color: 'var(--color-text-3)' }} onClick={() => handleOpenPath(appInfo?.logsPath)}>
-              {appInfo?.logsPath}
-            </PathText>
-            <HStack gap="5px" style={{ marginLeft: '8px' }}>
-              <Button onClick={() => handleOpenPath(appInfo?.logsPath)}>{t('settings.data.app_logs.button')}</Button>
-            </HStack>
-          </PathRow>
-        </SettingRow>
+        {!runtimeCapabilities.android && (
+          <>
+            <SettingDivider />
+            <SettingRow>
+              <SettingRowTitle>{t('settings.data.app_data.label')}</SettingRowTitle>
+              <PathRow>
+                <PathText style={{ color: 'var(--color-text-3)' }} onClick={() => handleOpenPath(appInfo?.appDataPath)}>
+                  {appInfo?.appDataPath}
+                </PathText>
+                <Tooltip title={t('settings.data.app_data.select')}>
+                  <FolderOutput onClick={handleSelectAppDataPath} style={{ cursor: 'pointer' }} size={16} />
+                </Tooltip>
+                <HStack gap="5px" style={{ marginLeft: '8px' }}>
+                  <Button onClick={() => handleOpenPath(appInfo?.appDataPath)}>
+                    {t('settings.data.app_data.open')}
+                  </Button>
+                </HStack>
+              </PathRow>
+            </SettingRow>
+            <SettingDivider />
+            <SettingRow>
+              <SettingRowTitle>{t('settings.data.app_logs.label')}</SettingRowTitle>
+              <PathRow>
+                <PathText style={{ color: 'var(--color-text-3)' }} onClick={() => handleOpenPath(appInfo?.logsPath)}>
+                  {appInfo?.logsPath}
+                </PathText>
+                <HStack gap="5px" style={{ marginLeft: '8px' }}>
+                  <Button onClick={() => handleOpenPath(appInfo?.logsPath)}>
+                    {t('settings.data.app_logs.button')}
+                  </Button>
+                </HStack>
+              </PathRow>
+            </SettingRow>
+          </>
+        )}
         <SettingDivider />
         <SettingRow>
           <SettingRowTitle>

@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">lich13studio</string>
+    <string name="main_activity_title">lich13studio</string>
+    <string name="model_tasks">模型任务</string>
+    <string name="model_tasks_running">模型任务运行中</string>
+    <string name="stop_all">停止全部</string>
+</resources>

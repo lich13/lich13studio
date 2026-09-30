@@ -2,7 +2,7 @@ import { loggerService } from '@logger'
 import { getBackupProgressLabel } from '@renderer/i18n/label'
 import { backup } from '@renderer/services/BackupService'
 import store from '@renderer/store'
-import { Modal, Progress } from 'antd'
+import { Alert, Checkbox, Input, Modal, Progress, Space } from 'antd'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -21,6 +21,10 @@ interface ProgressData {
 }
 
 const PopupContainer: React.FC<Props> = ({ resolve }) => {
+  const [includeCredentials, setIncludeCredentials] = useState(false)
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
   const [open, setOpen] = useState(true)
   const [progressData, setProgressData] = useState<ProgressData>()
   const { t } = useTranslation()
@@ -36,8 +40,18 @@ const PopupContainer: React.FC<Props> = ({ resolve }) => {
 
   const onOk = async () => {
     logger.debug(`skipBackupFile: ${skipBackupFile}`)
-    await backup(skipBackupFile)
-    setOpen(false)
+    setBusy(true)
+    setError('')
+    try {
+      await backup(skipBackupFile, { includeCredentials, password })
+      setPassword('')
+      setOpen(false)
+    } catch (error) {
+      setError(error instanceof Error ? error.message : String(error))
+      setProgressData(undefined)
+    } finally {
+      setBusy(false)
+    }
   }
 
   const onCancel = () => {
@@ -61,7 +75,7 @@ const PopupContainer: React.FC<Props> = ({ resolve }) => {
 
   BackupPopup.hide = onCancel
 
-  const isDisabled = progressData ? progressData.stage !== 'completed' : false
+  const isDisabled = busy || (includeCredentials && !password)
   return (
     <Modal
       title={t('backup.title')}
@@ -70,12 +84,28 @@ const PopupContainer: React.FC<Props> = ({ resolve }) => {
       onCancel={onCancel}
       afterClose={onClose}
       okButtonProps={{ disabled: isDisabled }}
-      cancelButtonProps={{ disabled: isDisabled }}
+      cancelButtonProps={{ disabled: busy }}
       okText={t('backup.confirm.button')}
       maskClosable={false}
       transitionName="animation-move-down"
       centered>
-      {!progressData && <div>{t('backup.content')}</div>}
+      {!progressData && (
+        <Space direction="vertical" style={{ width: '100%' }}>
+          <Checkbox checked={includeCredentials} onChange={(event) => setIncludeCredentials(event.target.checked)}>
+            {t('backup.includeCredentials')}
+          </Checkbox>
+          {includeCredentials && (
+            <Input.Password
+              autoComplete="new-password"
+              aria-label={t('backup.password')}
+              placeholder={t('backup.password')}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+          )}
+          {error && <Alert type="error" message={error} />}
+        </Space>
+      )}
       {progressData && (
         <div style={{ textAlign: 'center', padding: '20px 0' }}>
           <Progress percent={Math.floor(progressData.progress)} strokeColor="var(--color-primary)" />

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import {
   matchesProviderImport,
@@ -9,6 +9,36 @@ import {
 const link = (params: Record<string, string> = {}) =>
   `ccswitch://v1/import?${new URLSearchParams({ resource: 'provider', app: 'codex', name: 'Local test', endpoint: 'http://127.0.0.1:45678/subpath', apiKey: 'test-key', ...params })}`
 describe('Sub2API CCS imports', () => {
+  it('parses import authorities on WebViews that expose custom schemes as opaque paths', () => {
+    const NativeURL = URL
+    class LegacyURL extends NativeURL {
+      constructor(input: string | URL, base?: string | URL) {
+        super(input, base)
+        if (String(input).startsWith('ccswitch:')) {
+          Object.defineProperty(this, 'hostname', { value: '' })
+          Object.defineProperty(this, 'pathname', { value: '//v1/import' })
+        }
+      }
+    }
+    vi.stubGlobal('URL', LegacyURL)
+    try {
+      expect(parseProviderImport(link()).platform).toBe('openai')
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+  it.each([
+    'https://v1/import',
+    'cherrystudio://v1/import',
+    'ccswitch:/v1/import',
+    'ccswitch://other/import',
+    'ccswitch://user@v1/import',
+    'ccswitch://v1:123/import',
+    'ccswitch://v1/import/extra',
+    'ccswitch://v1/import#fragment'
+  ])('rejects a different scheme or authority: %s', (prefix) => {
+    expect(() => parseProviderImport(`${prefix}?${link().split('?')[1]}`)).toThrow()
+  })
   it.each([
     ['codex', 'openai-response', 'openai'],
     ['grokbuild', 'openai-response', 'grok'],

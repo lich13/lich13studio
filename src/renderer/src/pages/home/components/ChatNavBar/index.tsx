@@ -4,6 +4,7 @@ import { useAssistant } from '@renderer/hooks/useAssistant'
 import { useNavbarPosition } from '@renderer/hooks/useSettings'
 import { useShortcut } from '@renderer/hooks/useShortcuts'
 import { useShowAssistants } from '@renderer/hooks/useStore'
+import { runtimeCapabilities } from '@renderer/services/mobile/runtime'
 import type { Assistant, Topic } from '@renderer/types'
 import { Tooltip } from 'antd'
 import { t } from 'i18next'
@@ -44,14 +45,14 @@ const HeaderNavbar: FC<Props> = ({ activeAssistant, setActiveAssistant, activeTo
   return (
     <NavbarHeader className="home-navbar" style={{ height: 'var(--navbar-height)' }}>
       <div className="flex h-full min-w-0 flex-1 shrink items-center overflow-auto">
-        {isTopNavbar && showAssistants && (
+        {!runtimeCapabilities.android && isTopNavbar && showAssistants && (
           <Tooltip title={t('navbar.hide_sidebar')} mouseEnterDelay={0.8}>
             <NavbarIcon onClick={toggleShowAssistants}>
               <PanelLeftClose size={18} />
             </NavbarIcon>
           </Tooltip>
         )}
-        {isTopNavbar && !showAssistants && (
+        {!runtimeCapabilities.android && isTopNavbar && !showAssistants && (
           <Tooltip title={t('navbar.show_sidebar')} mouseEnterDelay={0.8} placement="right">
             <NavbarIcon onClick={() => toggleShowAssistants()} style={{ marginRight: 8 }}>
               <PanelRightClose size={18} />
@@ -59,13 +60,18 @@ const HeaderNavbar: FC<Props> = ({ activeAssistant, setActiveAssistant, activeTo
           </Tooltip>
         )}
         <AnimatePresence initial={false}>
-          {!showAssistants && isTopNavbar && (
+          {(runtimeCapabilities.android || (!showAssistants && isTopNavbar)) && (
             <motion.div
               initial={{ width: 0, opacity: 0 }}
               animate={{ width: 'auto', opacity: 1 }}
               exit={{ width: 0, opacity: 0 }}
               transition={{ duration: 0.3, ease: 'easeInOut' }}>
-              <NavbarIcon onClick={onShowAssistantsDrawer} style={{ marginRight: 5 }}>
+              <NavbarIcon
+                role="button"
+                aria-label={t('assistants.abbr')}
+                className="mobile-drawer-toggle"
+                onClick={onShowAssistantsDrawer}
+                style={{ marginRight: 5 }}>
                 <Menu size={18} />
               </NavbarIcon>
             </motion.div>

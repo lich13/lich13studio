@@ -1,9 +1,28 @@
 import { loggerService } from '@logger'
 import i18n from '@renderer/i18n'
+import { runtimeCapabilities } from '@renderer/services/mobile/runtime'
 
 const logger = loggerService.withContext('Utils:download')
 
 export const download = (url: string, filename?: string) => {
+  if (runtimeCapabilities.android) {
+    void (async () => {
+      let bytes: Uint8Array
+      let name = filename
+      if (url.startsWith('file://')) {
+        bytes = await window.api.fs.read(url)
+        name ||= decodeURIComponent(new URL(url).pathname.split('/').pop() || 'download')
+      } else {
+        const response = await fetch(url)
+        if (!response.ok) throw new Error('Download failed')
+        const blob = await response.blob()
+        bytes = new Uint8Array(await blob.arrayBuffer())
+        name ||= `${Date.now()}${getExtensionFromMimeType(blob.type)}`
+      }
+      await window.api.file.save(name || 'download', bytes)
+    })().catch(() => window.toast?.error(i18n.t('message.download.failed')))
+    return
+  }
   // 处理可直接通过 <a> 标签下载的 URL:
   // - 本地文件 ( file:// )
   // - 对象 URL ( blob: )

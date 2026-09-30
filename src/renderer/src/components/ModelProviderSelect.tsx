@@ -2,6 +2,7 @@ import { isEmbeddingModel, isRerankModel } from '@renderer/config/models'
 import { reasoningUsage } from '@renderer/services/ReasoningUsageService'
 import { useAppSelector } from '@renderer/store'
 import type { Model } from '@renderer/types'
+import { getModelPresentation } from '@renderer/utils/modelPresentation'
 import { type ModelProviderSelection, resolveModelProviderSelection } from '@shared/modelProviderSelection'
 import { PLATFORM_NAMES, PROVIDER_PLATFORMS, type ProviderPlatform } from '@shared/platforms'
 import { Select, Tooltip, Typography } from 'antd'
@@ -43,7 +44,8 @@ export default function ModelProviderSelect({
       })
       .map((model) => ({
         value: JSON.stringify([platform, model.id]),
-        label: model.id === model.name ? model.id : `${model.name} · ${model.id}`,
+        label: getModelPresentation(model).label,
+        searchText: getModelPresentation(model).searchText,
         model: { ...model, provider: '' } as Model | undefined,
         disabled: false
       }))
@@ -81,13 +83,17 @@ export default function ModelProviderSelect({
   const effortText =
     effort && t('chat.effectiveReasoning', { requested: effort.requested, effective: effort.effective })
   return (
-    <Controls className="nodrag" $compact={compact} $inline={layout === 'inline'}>
-      <Fields $inline={layout === 'inline'}>
+    <Controls className="model-provider-selection nodrag" $compact={compact} $inline={layout === 'inline'}>
+      <Fields className="model-provider-fields" $inline={layout === 'inline'}>
         <Select
           aria-label={t('settings.modelTest.modelLabel')}
           title={selection.modelId}
           showSearch
-          optionFilterProp="label"
+          filterOption={(input, option) =>
+            String((option as { searchText?: string })?.searchText || option?.label || '')
+              .toLowerCase()
+              .includes(input.toLowerCase())
+          }
           popupMatchSelectWidth={420}
           styles={{ popup: { root: { maxWidth: 'calc(100vw - 24px)' } } }}
           size={compact ? 'small' : 'middle'}
@@ -95,10 +101,19 @@ export default function ModelProviderSelect({
           optionRender={(option) => {
             const model = (option.data as { model?: Model }).model
             return (
-              <ModelOption>
+              <ModelOption className="model-option">
                 <ModelAvatar model={model} size={24} />
-                <span className="model-name" title={String(option.label)}>
-                  {option.label}
+                <span className="model-name" title={model?.id || String(option.label)}>
+                  {model ? (
+                    <>
+                      <span>{getModelPresentation(model).primary}</span>
+                      {getModelPresentation(model).secondary && (
+                        <small style={{ display: 'block', color: 'var(--color-text-3)' }}>{model.id}</small>
+                      )}
+                    </>
+                  ) : (
+                    option.label
+                  )}
                 </span>
                 {model && <ModelTagsWithLabel model={model} showLabel={false} showFree={false} />}
               </ModelOption>
@@ -148,6 +163,7 @@ const ModelOption = styled.div`
   gap: 8px;
   min-width: 0;
   .model-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  > :last-child { flex-shrink: 0; }
 `
 
 const Controls = styled.div<{ $compact: boolean; $inline: boolean }>`

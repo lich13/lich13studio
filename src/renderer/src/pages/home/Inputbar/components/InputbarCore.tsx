@@ -5,6 +5,7 @@ import { QuickPanelReservedSymbol, QuickPanelView, useQuickPanel } from '@render
 import { useRuntime } from '@renderer/hooks/useRuntime'
 import { useSettings } from '@renderer/hooks/useSettings'
 import { useTimer } from '@renderer/hooks/useTimer'
+import { runtimeCapabilities } from '@renderer/services/mobile/runtime'
 import PasteService from '@renderer/services/PasteService'
 import { useAppDispatch } from '@renderer/store'
 import { setSearching } from '@renderer/store/runtime'
@@ -571,7 +572,7 @@ export const InputbarCore: FC<InputbarCoreProps> = ({
             onFocus={handleFocus}
             onBlur={() => setInputFocus(false)}
             placeholder={placeholder}
-            autoFocus
+            autoFocus={!runtimeCapabilities.android}
             variant="borderless"
             spellCheck={enableSpellCheck}
             rows={2}

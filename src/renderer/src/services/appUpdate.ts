@@ -68,17 +68,20 @@ export const getPlatformAsset = (assets: GitHubReleaseAsset[] = [], platform = g
   const lowerName = (asset: GitHubReleaseAsset) => asset.name?.toLowerCase() || ''
 
   const preferred =
-    normalizedPlatform === 'darwin'
-      ? candidates.find((asset) => lowerName(asset).endsWith('.dmg'))
-      : normalizedPlatform === 'win32' || normalizedPlatform === 'windows'
-        ? candidates.find((asset) => lowerName(asset).endsWith('.exe') || lowerName(asset).includes('setup'))
-        : candidates.find((asset) => lowerName(asset).endsWith('.appimage') || lowerName(asset).endsWith('.deb'))
+    normalizedPlatform === 'android'
+      ? candidates.find((asset) => lowerName(asset).endsWith('_arm64-v8a.apk'))
+      : normalizedPlatform === 'darwin' || normalizedPlatform === 'macos'
+        ? candidates.find((asset) => lowerName(asset).endsWith('.dmg'))
+        : normalizedPlatform === 'win32' || normalizedPlatform === 'windows'
+          ? candidates.find((asset) => lowerName(asset).endsWith('.exe') || lowerName(asset).includes('setup'))
+          : candidates.find((asset) => lowerName(asset).endsWith('.appimage') || lowerName(asset).endsWith('.deb'))
 
   return toAsset(preferred || candidates[0])
 }
 
 export const getCurrentPlatform = () => {
   const userAgent = globalThis.navigator?.userAgent || ''
+  if (/android/i.test(userAgent)) return 'android'
   if (/mac/i.test(userAgent)) return 'darwin'
   if (/win/i.test(userAgent)) return 'win32'
   return 'linux'

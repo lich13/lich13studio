@@ -1,6 +1,7 @@
 import { loggerService } from '@logger'
 
 import { handleData } from './BackupService'
+import { runtimeCapabilities } from './mobile/runtime'
 
 const logger = loggerService.withContext('LegacyLocalMigration')
 
@@ -13,6 +14,7 @@ const isMissingMigrationFile = (error: unknown) => {
 }
 
 export async function runLegacyLocalMigrationIfNeeded() {
+  if (runtimeCapabilities.android) return false
   if (localStorage.getItem(MIGRATION_FLAG_KEY) === '1') {
     return false
   }

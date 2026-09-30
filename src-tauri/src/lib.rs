@@ -1,3 +1,9 @@
+mod mobile;
+mod http_delivery;
+mod backup_crypto;
+#[cfg(not(target_os = "android"))]
+use tauri::Monitor;
+#[cfg(not(target_os = "android"))]
 use auto_launch::{AutoLaunch, AutoLaunchBuilder};
 use base64::{engine::general_purpose, Engine as _};
 use futures_util::StreamExt;
@@ -19,11 +25,14 @@ use std::process::Command as StdCommand;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+#[cfg(not(target_os = "android"))]
 use tauri::image::Image;
+#[cfg(not(target_os = "android"))]
 use tauri::menu::{Menu, MenuItem};
+#[cfg(not(target_os = "android"))]
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{
-  AppHandle, Emitter, Manager, Monitor, PhysicalPosition, PhysicalSize, Position, RunEvent, Size, WebviewUrl,
+  AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, Position, RunEvent, Size, WebviewUrl,
   WebviewWindow, WebviewWindowBuilder, Window, WindowEvent,
 };
 use tauri_plugin_notification::NotificationExt;
@@ -31,6 +40,7 @@ use tokio::process::Command;
 use url::Url;
 use uuid::Uuid;
 use walkdir::WalkDir;
+#[cfg(not(target_os = "android"))]
 use xcap::Window as CaptureWindow;
 use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipArchive, ZipWriter};
@@ -44,6 +54,9 @@ unsafe extern "C" {
 
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
+
+#[cfg(target_os = "android")]
+use mobile::*;
 
 const APP_NAME: &str = "lich13studio";
 const BUNDLE_ID: &str = "com.lich13.studio";
@@ -162,6 +175,8 @@ struct NativeHttpRequest {
   method: String,
   headers: Vec<NativeHttpHeader>,
   body: Option<Vec<u8>>,
+  #[serde(default)]
+  task_epoch: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -175,7 +190,8 @@ struct NativeHttpResponseStart {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-struct NativeHttpChunkEvent {
+pub(crate) struct NativeHttpChunkEvent {
+  sequence: Option<u64>,
   request_id: String,
   chunk: Vec<u8>,
   done: bool,
@@ -531,6 +547,7 @@ fn macos_app_bundle_path(executable_path: &Path) -> Option<PathBuf> {
     .map(|index| PathBuf::from(&path[..index + ".app".len()]))
 }
 
+#[cfg(not(target_os = "android"))]
 fn current_auto_launch_path() -> Result<PathBuf, String> {
   let executable_path =
     std::env::current_exe().map_err(|error| format!("Unable to resolve current exe: {error}"))?;
@@ -546,6 +563,7 @@ fn current_auto_launch_path() -> Result<PathBuf, String> {
   }
 }
 
+#[cfg(not(target_os = "android"))]
 fn app_name_for_auto_launch(app_path: &Path) -> String {
   app_path
     .file_stem()
@@ -555,6 +573,7 @@ fn app_name_for_auto_launch(app_path: &Path) -> String {
     .to_string()
 }
 
+#[cfg(not(target_os = "android"))]
 fn with_auto_launch_lock<T>(operation: impl FnOnce() -> Result<T, String>) -> Result<T, String> {
   let _guard = AUTO_LAUNCH_LOCK
     .get_or_init(|| Mutex::new(()))
@@ -589,6 +608,7 @@ fn macos_login_item_config_for_path(app_path: &Path) -> MacOSLoginItemConfig {
 }
 
 #[cfg(not(target_os = "macos"))]
+#[cfg(not(target_os = "android"))]
 fn auto_launch_config_for_path(app_path: &Path) -> AutoLaunchConfig {
   AutoLaunchConfig {
     app_name: app_name_for_auto_launch(app_path),
@@ -608,6 +628,7 @@ fn remove_macos_legacy_launch_agent() -> Result<(), String> {
   }
 }
 
+#[cfg(not(target_os = "android"))]
 fn build_auto_launch(app_path: &Path) -> Result<AutoLaunch, String> {
   #[cfg(target_os = "macos")]
   let config = macos_login_item_config_for_path(app_path);
@@ -624,6 +645,7 @@ fn build_auto_launch(app_path: &Path) -> Result<AutoLaunch, String> {
     .map_err(|error| format!("Failed to create auto-launch config: {error}"))
 }
 
+#[cfg(not(target_os = "android"))]
 fn enable_auto_launch() -> Result<(), String> {
   with_auto_launch_lock(|| {
     let app_path = current_auto_launch_path()?;
@@ -647,6 +669,7 @@ fn enable_auto_launch() -> Result<(), String> {
   })
 }
 
+#[cfg(not(target_os = "android"))]
 fn disable_auto_launch() -> Result<(), String> {
   with_auto_launch_lock(|| {
     let app_path = current_auto_launch_path()?;
@@ -668,6 +691,7 @@ fn disable_auto_launch() -> Result<(), String> {
   })
 }
 
+#[cfg(not(target_os = "android"))]
 fn is_auto_launch_enabled() -> Result<bool, String> {
   with_auto_launch_lock(|| {
     let app_path = current_auto_launch_path()?;
@@ -688,6 +712,7 @@ fn is_auto_launch_enabled() -> Result<bool, String> {
   })
 }
 
+#[cfg(not(target_os = "android"))]
 fn mark_main_window_shown(window: &WebviewWindow) -> Result<(), String> {
   if !MAIN_WINDOW_SHOWN.swap(true, Ordering::SeqCst) {
     apply_dock_visibility(window.app_handle(), dock_visibility_for_main_window_show());
@@ -698,6 +723,7 @@ fn mark_main_window_shown(window: &WebviewWindow) -> Result<(), String> {
   Ok(())
 }
 
+#[cfg(not(target_os = "android"))]
 fn show_and_focus_main_window(app: &AppHandle) -> Result<(), String> {
   let main_window = app
     .get_webview_window("main")
@@ -719,6 +745,7 @@ fn clamp_i32(value: i32, min: i32, max: i32) -> i32 {
   value.max(min).min(max)
 }
 
+#[cfg(not(target_os = "android"))]
 fn monitor_contains_point(monitor: &Monitor, point: PhysicalPosition<f64>) -> bool {
   let work_area = monitor.work_area();
   let x = point.x.round() as i32;
@@ -729,6 +756,7 @@ fn monitor_contains_point(monitor: &Monitor, point: PhysicalPosition<f64>) -> bo
     && y <= work_area.position.y + work_area.size.height as i32
 }
 
+#[cfg(not(target_os = "android"))]
 fn position_mini_window(window: &WebviewWindow, anchor: Option<PhysicalPosition<f64>>) -> Result<(), String> {
   let size = window
     .inner_size()
@@ -772,6 +800,7 @@ fn position_mini_window(window: &WebviewWindow, anchor: Option<PhysicalPosition<
     .map_err(|error| error.to_string())
 }
 
+#[cfg(not(target_os = "android"))]
 fn get_or_create_mini_window(app: &AppHandle) -> Result<WebviewWindow, String> {
   if let Some(window) = app.get_webview_window(MINI_WINDOW_LABEL) {
     return Ok(window);
@@ -791,6 +820,7 @@ fn get_or_create_mini_window(app: &AppHandle) -> Result<WebviewWindow, String> {
     .map_err(|error| error.to_string())
 }
 
+#[cfg(not(target_os = "android"))]
 fn show_mini_window_at(app: &AppHandle, anchor: Option<PhysicalPosition<f64>>) -> Result<(), String> {
   let mini_window = get_or_create_mini_window(app)?;
   position_mini_window(&mini_window, anchor)?;
@@ -800,6 +830,7 @@ fn show_mini_window_at(app: &AppHandle, anchor: Option<PhysicalPosition<f64>>) -
   Ok(())
 }
 
+#[cfg(not(target_os = "android"))]
 fn hide_mini_window_for_app(app: &AppHandle) -> Result<(), String> {
   if let Some(mini_window) = app.get_webview_window(MINI_WINDOW_LABEL) {
     mini_window.hide().map_err(|error| error.to_string())?;
@@ -808,6 +839,7 @@ fn hide_mini_window_for_app(app: &AppHandle) -> Result<(), String> {
   Ok(())
 }
 
+#[cfg(not(target_os = "android"))]
 fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
   let [show_id, check_update_id, quit_id] = tray_menu_item_ids();
   let show_item = MenuItem::with_id(app, show_id, "打开主界面", true, None::<&str>)?;
@@ -891,15 +923,25 @@ fn remove_native_http_abort(request_id: &str) {
 
 async fn emit_native_http_chunk(window: &Window, request_id: &str, chunk: Vec<u8>, done: bool, error: Option<String>) {
   let payload = NativeHttpChunkEvent {
+    sequence: None,
     request_id: request_id.to_string(),
     chunk,
     done,
     error,
   };
+  #[cfg(target_os = "android")]
+  {
+    let flag = native_http_abort_registry().lock().unwrap().get(request_id).cloned();
+    if let Some(flag) = flag { http_delivery::emit(window, payload, &flag).await; }
+  }
+  #[cfg(not(target_os = "android"))]
   let _ = window.emit(NATIVE_HTTP_CHUNK_EVENT, payload);
 }
 
+static MOBILE_DATA_DIR: OnceLock<PathBuf> = OnceLock::new();
+
 fn app_data_dir() -> Result<PathBuf, String> {
+  if let Some(path) = MOBILE_DATA_DIR.get() { return Ok(path.clone()); }
   let path = dirs::data_dir()
     .ok_or_else(|| String::from("Unable to resolve data directory"))?
     .join(APP_NAME);
@@ -943,6 +985,7 @@ fn load_window_state(label: &str) -> Result<Option<PersistedWindowState>, String
     .map_err(|error| error.to_string())
 }
 
+#[cfg(not(target_os = "android"))]
 fn persist_window_state(window: &Window) -> Result<(), String> {
   let label = window.label().to_string();
   let mut state = load_state_file().unwrap_or_else(|_| json!({}));
@@ -1001,6 +1044,7 @@ fn should_persist_window_event(event: &WindowEvent) -> bool {
   )
 }
 
+#[cfg(not(target_os = "android"))]
 fn handle_main_window_close(_window: &Window, _event: &WindowEvent) {
   #[cfg(target_os = "macos")]
   if _window.label() == "main" {
@@ -1025,6 +1069,7 @@ fn handle_main_window_close(_window: &Window, _event: &WindowEvent) {
   }
 }
 
+#[cfg(not(target_os = "android"))]
 fn handle_mini_window_focus(window: &Window, event: &WindowEvent) {
   if window.label() != MINI_WINDOW_LABEL {
     return;
@@ -1036,6 +1081,7 @@ fn handle_mini_window_focus(window: &Window, event: &WindowEvent) {
   }
 }
 
+#[cfg(not(target_os = "android"))]
 fn handle_run_event(_app: &AppHandle, _event: &RunEvent) {
   #[cfg(target_os = "macos")]
   match _event {
@@ -1074,6 +1120,7 @@ fn timestamp_tag() -> String {
 }
 
 #[tauri::command]
+#[cfg(not(target_os = "android"))]
 async fn save_file(file_name: String, bytes: Vec<u8>) -> Result<String, String> {
   let handle = rfd::AsyncFileDialog::new()
     .set_file_name(file_name.as_str())
@@ -1294,7 +1341,15 @@ async fn start_http_request(window: Window, request: NativeHttpRequest) -> Resul
     request.request_id.clone()
   };
 
+  if request.task_epoch.is_some_and(|epoch| epoch != mobile::TASK_EPOCH.load(Ordering::SeqCst)) {
+    return Err("Background task was stopped".into());
+  }
+  struct StartGuard { id: String, armed: bool }
+  impl Drop for StartGuard { fn drop(&mut self) { if self.armed { remove_native_http_abort(&self.id); http_delivery::remove(&self.id); } } }
+  let mut start_guard = StartGuard { id: request_id.clone(), armed: true };
   let abort_flag = register_native_http_abort(&request_id);
+  #[cfg(target_os = "android")]
+  http_delivery::register(&request_id);
   let client = Client::builder()
     .build()
     .map_err(|error| error.to_string())?;
@@ -1363,7 +1418,10 @@ async fn start_http_request(window: Window, request: NativeHttpRequest) -> Resul
       let Some(chunk) = chunk else { break };
       match chunk {
         Ok(bytes) => {
-          emit_native_http_chunk(&task_window, &task_request_id, bytes.to_vec(), false, None).await;
+          for part in bytes.chunks(16 * 1024) {
+            if abort_flag.load(Ordering::Relaxed) { break; }
+            emit_native_http_chunk(&task_window, &task_request_id, part.to_vec(), false, None).await;
+          }
         }
         Err(error) => {
           let _ = emit_native_http_chunk(&task_window, &task_request_id, Vec::new(), true, Some(error.to_string())).await;
@@ -1373,15 +1431,17 @@ async fn start_http_request(window: Window, request: NativeHttpRequest) -> Resul
       }
     }
 
-    let _ = emit_native_http_chunk(&task_window, &task_request_id, Vec::new(), true, None).await;
+    let _ = emit_native_http_chunk(&task_window, &task_request_id, Vec::new(), true, abort_flag.load(Ordering::Relaxed).then(|| "Request was aborted".into())).await;
     remove_native_http_abort(&task_request_id);
   });
 
+  start_guard.armed = false;
   Ok(response_start)
 }
 
 #[tauri::command]
 async fn abort_http_request(request_id: String) -> Result<bool, String> {
+  http_delivery::remove(&request_id);
   if let Ok(registry) = native_http_abort_registry().lock() {
     if let Some(flag) = registry.get(&request_id) {
       flag.store(true, Ordering::Relaxed);
@@ -1717,7 +1777,9 @@ fn system_device_type() -> &'static str {
     "windows"
   }
 
-  #[cfg(all(not(target_os = "macos"), not(target_os = "windows")))]
+  #[cfg(target_os = "android")]
+  { "android" }
+  #[cfg(all(not(target_os = "macos"), not(target_os = "windows"), not(target_os = "android")))]
   {
     "linux"
   }
@@ -1819,7 +1881,12 @@ fn select_platform_update_asset(assets: &[GitHubReleaseAsset], platform: &str) -
     })
     .collect();
 
-  let preferred = if normalized_platform == "macos" || normalized_platform == "darwin" {
+  let preferred = if normalized_platform == "android" {
+    candidates.iter().copied().find(|asset| {
+      let name = asset.name.as_deref().unwrap_or_default().to_ascii_lowercase();
+      name.ends_with(".apk") && name.contains("arm64")
+    })
+  } else if normalized_platform == "macos" || normalized_platform == "darwin" {
     candidates.iter().copied().find(|asset| {
       asset
         .name
@@ -1894,6 +1961,7 @@ fn update_download_url(update_info: &AppUpdateInfo) -> String {
     .unwrap_or_else(|| update_info.release_url.clone())
 }
 
+#[cfg(not(target_os = "android"))]
 async fn open_update_url(update_info: &AppUpdateInfo) -> Result<bool, String> {
   open_external_url(update_download_url(update_info)).await
 }
@@ -1915,6 +1983,7 @@ fn data_dir() -> Result<PathBuf, String> {
 }
 
 fn install_dir() -> Result<PathBuf, String> {
+  if cfg!(target_os = "android") { return app_data_dir(); }
   let exe = std::env::current_exe().map_err(|error| error.to_string())?;
   Ok(
     exe.parent()
@@ -1993,53 +2062,107 @@ fn create_backup_archive_bytes(state: &Value, include_files: bool) -> Result<Vec
   Ok(cursor.into_inner())
 }
 
+fn validate_backup_payload(payload: &str) -> Result<(), String> {
+  let data: Value = serde_json::from_str(payload).map_err(|_| "Invalid backup JSON")?;
+  let version = data["version"].as_u64().ok_or("Missing backup version")?;
+  if !(1..=5).contains(&version) || !data["localStorage"].is_object()
+      || !(data["indexedDB"].is_object() || (version == 1 && data["indexedDB"].is_array())) {
+    return Err("Unsupported backup format".into());
+  }
+  let persisted = data["localStorage"]["persist:cherry-studio"].as_str().ok_or("Backup missing application state")?;
+  let state: Value = serde_json::from_str(persisted).map_err(|_| "Invalid application state")?;
+  if !state.is_object() { return Err("Invalid application state".into()); }
+  if let Some(tables) = data["indexedDB"].as_object() {
+    if tables.values().any(|table| !table.is_array()) { return Err("Invalid backup table".into()); }
+  }
+  Ok(())
+}
+
+static PENDING_BACKUP_RESTORE: OnceLock<Mutex<Option<(PathBuf, PathBuf, bool)>>> = OnceLock::new();
+
+#[tauri::command]
+fn finish_backup_restore(commit: bool) -> Result<(), String> {
+  let mut pending = PENDING_BACKUP_RESTORE.get_or_init(Default::default).lock().map_err(|_| "Restore lock unavailable")?;
+  let Some((current, previous, existed)) = pending.as_ref() else { return Ok(()) };
+  if commit {
+    if *existed && previous.exists() { fs::remove_dir_all(previous).map_err(|_| "Cannot remove restore staging")?; }
+  } else {
+    if current.exists() { fs::remove_dir_all(current).map_err(|_| "Cannot roll back restored files")?; }
+    if *existed { fs::rename(previous, current).map_err(|_| "Cannot restore previous files")?; }
+  }
+  *pending = None;
+  Ok(())
+}
+
 fn extract_backup_archive(bytes: &[u8]) -> Result<String, String> {
-  let reader = Cursor::new(bytes);
-  let mut archive = ZipArchive::new(reader).map_err(|error| error.to_string())?;
+  extract_backup_archive_to(bytes, &data_dir()?)
+}
+
+fn extract_backup_archive_to(bytes: &[u8], data_root: &Path) -> Result<String, String> {
+  let mut pending = PENDING_BACKUP_RESTORE.get_or_init(Default::default).lock().map_err(|_| "Restore lock unavailable")?;
+  if pending.is_some() { return Err("A backup restore is already active".into()); }
+  let mut archive = ZipArchive::new(Cursor::new(bytes)).map_err(|_| "Invalid backup archive")?;
   let mut payload = String::new();
-  let mut has_data = false;
-  let data_root = data_dir()?;
-
-  for index in 0..archive.len() {
-    let mut file = archive.by_index(index).map_err(|error| error.to_string())?;
-    let name = file.name().replace('\\', "/");
-
-    if name == "data.json" {
-      file.read_to_string(&mut payload).map_err(|error| error.to_string())?;
-      continue;
-    }
-
-    if !name.starts_with("Data/") {
-      continue;
-    }
-
-    if !has_data {
-      fs::remove_dir_all(&data_root).ok();
-      fs::create_dir_all(&data_root).map_err(|error| error.to_string())?;
+  archive.by_name("data.json").map_err(|_| "Backup archive missing data.json")?
+    .take(512 * 1024 * 1024).read_to_string(&mut payload).map_err(|_| "Invalid backup data")?;
+  validate_backup_payload(&payload)?;
+  let parent = data_root.parent().ok_or("Invalid data directory")?;
+  let staging = parent.join(format!("restore-staging-{}", Uuid::new_v4()));
+  let previous = parent.join(format!("restore-previous-{}", Uuid::new_v4()));
+  fs::create_dir_all(&staging).map_err(|_| "Cannot stage backup")?;
+  let result = (|| -> Result<bool, String> {
+    let mut has_data = false;
+    for index in 0..archive.len() {
+      let mut file = archive.by_index(index).map_err(|_| "Damaged backup entry")?;
+      let path = file.enclosed_name().ok_or("Unsafe backup path")?;
+      if file.unix_mode().is_some_and(|mode| mode & 0o170000 == 0o120000) { return Err("Backup symlinks are not supported".into()); }
+      let Ok(relative) = path.strip_prefix("Data") else { continue };
       has_data = true;
+      let output_path = staging.join(relative);
+      if file.is_dir() { fs::create_dir_all(&output_path).map_err(|_| "Cannot stage directory")?; continue }
+      if let Some(parent) = output_path.parent() { fs::create_dir_all(parent).map_err(|_| "Cannot stage directory")?; }
+      let mut output = File::create(&output_path).map_err(|_| "Cannot stage file")?;
+      std::io::copy(&mut file, &mut output).map_err(|_| "Damaged backup file")?;
+      output.sync_all().map_err(|_| "Cannot flush backup file")?;
     }
-
-    let relative = name.trim_start_matches("Data/");
-    let out_path = data_root.join(relative);
-
-    if file.is_dir() {
-      fs::create_dir_all(&out_path).map_err(|error| error.to_string())?;
-      continue;
+    Ok(has_data)
+  })();
+  let has_data = match result { Ok(value) => value, Err(error) => { let _ = fs::remove_dir_all(&staging); return Err(error) } };
+  if has_data {
+    let existed = data_root.exists();
+    if existed { fs::rename(data_root, &previous).map_err(|_| "Cannot prepare backup restore")?; }
+    if fs::rename(&staging, data_root).is_err() {
+      if existed { let _ = fs::rename(&previous, data_root); }
+      let _ = fs::remove_dir_all(&staging);
+      return Err("Cannot commit backup restore".into());
     }
-
-    if let Some(parent) = out_path.parent() {
-      fs::create_dir_all(parent).map_err(|error| error.to_string())?;
-    }
-
-    let mut output = File::create(&out_path).map_err(|error| error.to_string())?;
-    std::io::copy(&mut file, &mut output).map_err(|error| error.to_string())?;
-  }
-
-  if payload.is_empty() {
-    return Err(String::from("Backup archive missing data.json"));
-  }
-
+    *pending = Some((data_root.to_path_buf(), previous, existed));
+  } else { let _ = fs::remove_dir_all(staging); }
   Ok(payload)
+}
+
+#[tauri::command]
+fn create_portable_backup(state: Value, include_files: bool) -> Result<Vec<u8>, String> {
+  validate_backup_payload(&state.to_string())?;
+  create_backup_archive_bytes(&state, include_files)
+}
+
+#[tauri::command]
+fn persist_attachment(name: String, bytes: Vec<u8>) -> Result<String, String> {
+  if name.is_empty() || name.contains(['/', '\\']) || name == "." || name == ".." { return Err("Invalid attachment name".into()); }
+  let path = files_dir()?.join(name);
+  fs::write(&path, bytes).map_err(|_| "Could not save attachment")?;
+  Ok(path.display().to_string())
+}
+
+#[tauri::command]
+fn read_attachment(name: String) -> Result<Vec<u8>, String> {
+  let root = files_dir()?.canonicalize().map_err(|_| "Attachment directory unavailable")?;
+  let name = name.strip_prefix("file://").unwrap_or(&name);
+  let path = if Path::new(name).is_absolute() { PathBuf::from(name) } else { root.join(name) };
+  let path = path.canonicalize().map_err(|_| "Attachment not found")?;
+  if !path.starts_with(root) { return Err("Attachment is outside application storage".into()); }
+  fs::read(path).map_err(|_| "Could not read attachment".into())
 }
 
 fn encode_png(image: image::RgbaImage) -> Result<Vec<u8>, String> {
@@ -2055,6 +2178,7 @@ fn encode_png(image: image::RgbaImage) -> Result<Vec<u8>, String> {
   Ok(cursor.into_inner())
 }
 
+#[cfg(not(target_os = "android"))]
 fn capture_windows() -> Result<Vec<CaptureWindowInfo>, String> {
   let current_pid = std::process::id();
   let mut windows = Vec::new();
@@ -2191,6 +2315,7 @@ fn set_runtime_setting(key: String, value: bool) -> Result<RuntimeSettings, Stri
 }
 
 #[tauri::command]
+#[cfg(not(target_os = "android"))]
 fn set_launch_on_boot(enabled: bool) -> Result<bool, String> {
   if enabled {
     enable_auto_launch()?;
@@ -2202,6 +2327,7 @@ fn set_launch_on_boot(enabled: bool) -> Result<bool, String> {
 }
 
 #[tauri::command]
+#[cfg(not(target_os = "android"))]
 fn is_launch_on_boot_enabled() -> Result<bool, String> {
   is_auto_launch_enabled()
 }
@@ -2233,6 +2359,7 @@ async fn webdav_restore(config: BackupWebDavConfig) -> Result<Value, String> {
 }
 
 #[tauri::command]
+#[cfg(not(target_os = "android"))]
 async fn pick_folder() -> Result<Option<String>, String> {
   let handle = rfd::AsyncFileDialog::new().pick_folder().await;
   Ok(handle.map(|path| path.path().display().to_string()))
@@ -2249,6 +2376,7 @@ fn get_obsidian_files(vault_name: String) -> Result<Vec<ObsidianFileInfo>, Strin
 }
 
 #[tauri::command]
+#[cfg(not(target_os = "android"))]
 async fn open_path(path: String) -> Result<bool, String> {
   if path.trim().is_empty() {
     return Ok(false);
@@ -2273,6 +2401,7 @@ async fn open_path(path: String) -> Result<bool, String> {
 }
 
 #[tauri::command]
+#[cfg(not(target_os = "android"))]
 async fn open_external_url(url: String) -> Result<bool, String> {
   let normalized_url = normalize_external_url(&url)?;
 
@@ -2293,12 +2422,14 @@ async fn open_external_url(url: String) -> Result<bool, String> {
 }
 
 #[tauri::command]
+#[cfg(not(target_os = "android"))]
 fn list_capture_windows() -> Result<Vec<CaptureWindowInfo>, String> {
   ensure_screen_capture_access()?;
   capture_windows()
 }
 
 #[tauri::command]
+#[cfg(not(target_os = "android"))]
 fn capture_window(window_id: u32) -> Result<Vec<u8>, String> {
   ensure_screen_capture_access()?;
   let window = CaptureWindow::all()
@@ -2350,11 +2481,17 @@ async fn restore_from_local_backup(file_name: String, local_backup_dir: Option<S
 
 #[tauri::command]
 async fn restore_backup_archive(file_name: String, bytes: Vec<u8>) -> Result<String, String> {
-  if file_name.to_lowercase().ends_with(".zip") {
-    return extract_backup_archive(&bytes);
-  }
+  decode_portable_backup(&file_name, &bytes, &data_dir()?)
+}
 
-  String::from_utf8(bytes).map_err(|error| error.to_string())
+fn decode_portable_backup(file_name: &str, bytes: &[u8], data_root: &Path) -> Result<String, String> {
+  let name = file_name.to_lowercase();
+  // The renderer authenticates/decrypts the versioned container before this call.
+  // Its original filename still carries .lich13backup, but the payload is a ZIP.
+  if name.ends_with(".zip") || name.ends_with(".lich13backup") {
+    return extract_backup_archive_to(bytes, data_root);
+  }
+  String::from_utf8(bytes.to_vec()).map_err(|_| "Invalid backup data".into())
 }
 
 #[tauri::command]
@@ -2430,21 +2567,25 @@ async fn delete_webdav_file(file_name: String, config: BackupWebDavConfig) -> Re
 }
 
 #[tauri::command]
+#[cfg(not(target_os = "android"))]
 fn show_main_window(app: AppHandle) -> Result<(), String> {
   show_and_focus_main_window(&app)
 }
 
 #[tauri::command]
+#[cfg(not(target_os = "android"))]
 fn show_mini_window(app: AppHandle) -> Result<(), String> {
   show_mini_window_at(&app, None)
 }
 
 #[tauri::command]
+#[cfg(not(target_os = "android"))]
 fn hide_mini_window(app: AppHandle) -> Result<(), String> {
   hide_mini_window_for_app(&app)
 }
 
 #[tauri::command]
+#[cfg(not(target_os = "android"))]
 fn close_mini_window(app: AppHandle) -> Result<(), String> {
   if let Some(mini_window) = app.get_webview_window(MINI_WINDOW_LABEL) {
     mini_window.close().map_err(|error| error.to_string())?;
@@ -2453,6 +2594,7 @@ fn close_mini_window(app: AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
+#[cfg(not(target_os = "android"))]
 fn toggle_mini_window(app: AppHandle) -> Result<(), String> {
   if let Some(mini_window) = app.get_webview_window(MINI_WINDOW_LABEL) {
     if mini_window.is_visible().unwrap_or(false) {
@@ -2464,6 +2606,7 @@ fn toggle_mini_window(app: AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
+#[cfg(not(target_os = "android"))]
 fn set_mini_window_pin(is_pinned: bool) -> Result<(), String> {
   MINI_WINDOW_PINNED.store(is_pinned, Ordering::Relaxed);
   Ok(())
@@ -2493,20 +2636,34 @@ impl PendingProviderImports {
 }
 
 #[tauri::command]
-fn take_pending_provider_imports(window: Window, pending: tauri::State<PendingProviderImports>) -> Vec<String> {
+fn take_pending_provider_imports(app: AppHandle, window: Window, pending: tauri::State<PendingProviderImports>) -> Vec<String> {
+  #[cfg(target_os = "android")]
+  { let app = app.clone(); tauri::async_runtime::spawn(async move { let _ = mobile::mobile_command(app, "consumeImportIntent".into(), None).await; }); }
+  let _ = app;
   pending.take(window.label())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-  tauri::Builder::default()
-    .manage(PendingProviderImports::default())
-    .plugin(tauri_plugin_single_instance::init(|app, _, _| {
-      let _ = show_and_focus_main_window(app);
-    }))
+  let builder = tauri::Builder::default().manage(PendingProviderImports::default());
+  #[cfg(not(target_os = "android"))]
+  let builder = builder.plugin(tauri_plugin_single_instance::init(|app, _, _| { let _ = show_and_focus_main_window(app); }));
+  #[cfg(target_os = "android")]
+  let builder = builder.plugin(mobile::plugin());
+  builder
     .plugin(tauri_plugin_deep_link::init())
     .plugin(tauri_plugin_notification::init())
     .setup(|app| {
+      #[cfg(target_os = "android")]
+      { let path = app.path().app_data_dir()?; fs::create_dir_all(&path)?; let _ = MOBILE_DATA_DIR.set(path); }
+      // An isolated desktop debug bundle exercises cross-platform restore without
+      // touching the installed application's files. Compiled out of releases.
+      #[cfg(all(debug_assertions, not(target_os = "android")))]
+      if app.config().identifier.ends_with(".acceptance") {
+        let path = app.path().app_data_dir()?;
+        fs::create_dir_all(&path)?;
+        let _ = MOBILE_DATA_DIR.set(path);
+      }
       use tauri_plugin_deep_link::DeepLinkExt;
       let import_app = app.handle().clone();
       if let Ok(Some(urls)) = app.deep_link().get_current() {
@@ -2515,8 +2672,11 @@ pub fn run() {
       app.deep_link().on_open_url(move |event| {
         import_app.state::<PendingProviderImports>().enqueue(&event.urls());
         let _ = import_app.emit_to("main", "provider-import-pending", ());
+        #[cfg(not(target_os = "android"))]
         let _ = show_and_focus_main_window(&import_app);
       });
+      #[cfg(not(target_os = "android"))]
+      {
       let runtime_settings = load_runtime_settings_from_state().unwrap_or_default();
       replace_runtime_settings(runtime_settings);
       let launch_args = std::env::args().collect::<Vec<_>>();
@@ -2554,17 +2714,25 @@ pub fn run() {
       }
 
       setup_tray(app)?;
+      }
 
       Ok(())
     })
     .on_window_event(|window, event| {
+      #[cfg(not(target_os = "android"))]
+      {
       handle_main_window_close(window, event);
       handle_mini_window_focus(window, event);
       if should_persist_window_event(event) {
         let _ = persist_window_state(window);
       }
+      }
+      let _ = (window, event);
     })
     .invoke_handler(tauri::generate_handler![
+      mobile::mobile_command,
+      backup_crypto::encrypt_backup,
+      backup_crypto::decrypt_backup,
       app_info,
       take_pending_provider_imports,
       get_device_type,
@@ -2575,6 +2743,10 @@ pub fn run() {
       set_launch_on_boot,
       is_launch_on_boot_enabled,
       is_startup_silent,
+      create_portable_backup,
+      finish_backup_restore,
+      persist_attachment,
+      read_attachment,
       export_backup,
       save_file,
       save_base64_image,
@@ -2602,13 +2774,17 @@ pub fn run() {
       close_mini_window,
       toggle_mini_window,
       set_mini_window_pin,
+      http_delivery::acknowledge_http_chunks,
+      http_delivery::replay_http_chunks,
       start_http_request,
       abort_http_request
     ])
     .build(tauri::generate_context!())
     .expect("failed to build lich13studio tauri runtime")
     .run(|app, event| {
+      #[cfg(not(target_os = "android"))]
       handle_run_event(app, &event);
+      let _ = (app, event);
     });
 }
 
@@ -2631,6 +2807,40 @@ mod tests {
       }
     }).await;
     assert_eq!(result.unwrap(), true);
+  }
+
+  #[test]
+  fn backup_restore_validates_before_writing_and_can_roll_back_files() {
+    let root = std::env::temp_dir().join(format!("lich13-restore-test-{}", Uuid::new_v4()));
+    let data = root.join("Data");
+    fs::create_dir_all(&data).unwrap();
+    fs::write(data.join("original.txt"), b"preserved").unwrap();
+    let build = |payload: &[u8], name: &str| {
+      let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
+      zip.start_file("data.json", zip_file_options()).unwrap();
+      zip.write_all(payload).unwrap();
+      zip.start_file(name, zip_file_options()).unwrap();
+      zip.write_all(b"new file").unwrap();
+      zip.finish().unwrap().into_inner()
+    };
+    let state = br#"{"version":5,"localStorage":{"persist:cherry-studio":"{}"},"indexedDB":{"files":[]}}"#;
+    assert!(extract_backup_archive_to(&build(b"{}", "Data/new.txt"), &data).is_err());
+    assert_eq!(fs::read(data.join("original.txt")).unwrap(), b"preserved");
+    assert!(extract_backup_archive_to(&build(state, "../outside.txt"), &data).is_err());
+    assert!(!root.join("outside.txt").exists());
+    assert_eq!(fs::read(data.join("original.txt")).unwrap(), b"preserved");
+    let bytes = build(state, "Data/new.txt");
+    assert!(extract_backup_archive_to(&bytes[..bytes.len()/2], &data).is_err());
+    extract_backup_archive_to(&bytes, &data).unwrap();
+    assert_eq!(fs::read(data.join("new.txt")).unwrap(), b"new file");
+    finish_backup_restore(false).unwrap();
+    assert_eq!(fs::read(data.join("original.txt")).unwrap(), b"preserved");
+    assert!(!data.join("new.txt").exists());
+    extract_backup_archive_to(&bytes, &data).unwrap();
+    finish_backup_restore(true).unwrap();
+    assert!(!data.join("original.txt").exists());
+    assert_eq!(fs::read_dir(&root).unwrap().count(), 1);
+    fs::remove_dir_all(root).unwrap();
   }
 
   #[test]
@@ -2660,6 +2870,26 @@ mod tests {
     let error = decode_base64_image_payload("data:image/png,not-base64").unwrap_err();
 
     assert!(error.contains("base64"));
+  }
+
+  #[tokio::test]
+  async fn encrypted_mobile_backups_restore_with_their_original_extension() {
+    let directory = std::env::temp_dir().join(format!("lich13studio-encrypted-test-{}", Uuid::new_v4()));
+    fs::create_dir_all(&directory).unwrap();
+    let payload = serde_json::json!({
+      "version": 5,
+      "localStorage": {"persist:cherry-studio": "{}"},
+      "indexedDB": {"topics": []}
+    });
+    let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
+    zip.start_file("data.json", zip_file_options()).unwrap();
+    zip.write_all(payload.to_string().as_bytes()).unwrap();
+    let bytes = zip.finish().unwrap().into_inner();
+    let encrypted = backup_crypto::encrypt_backup(bytes, "fixture password".into()).await.unwrap();
+    let decrypted = backup_crypto::decrypt_backup(encrypted, "fixture password".into()).await.unwrap();
+    let restored = decode_portable_backup("android.lich13backup", &decrypted, &directory.join("Data")).unwrap();
+    assert_eq!(serde_json::from_str::<Value>(&restored).unwrap(), payload);
+    fs::remove_dir_all(directory).unwrap();
   }
 
   #[test]
@@ -2709,6 +2939,10 @@ mod tests {
           name: Some("lich13studio_0.1.12_aarch64.dmg".to_string()),
           browser_download_url: Some("https://example.com/app.dmg".to_string()),
         },
+        GitHubReleaseAsset {
+          name: Some("lich13studio_0.1.28_android_arm64-v8a.apk".to_string()),
+          browser_download_url: Some("https://example.com/app.apk".to_string()),
+        },
       ],
     };
 
@@ -2717,8 +2951,12 @@ mod tests {
       "https://example.com/app.dmg"
     );
     assert_eq!(
-      build_app_update_info("0.1.11", "windows", release).asset.unwrap().url,
+      build_app_update_info("0.1.11", "windows", release.clone()).asset.unwrap().url,
       "https://example.com/setup.exe"
+    );
+    assert_eq!(
+      build_app_update_info("0.1.11", "android", release).asset.unwrap().url,
+      "https://example.com/app.apk"
     );
   }
 

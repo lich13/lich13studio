@@ -1,11 +1,12 @@
 import { Navbar, NavbarCenter } from '@renderer/components/app/Navbar'
 import Scrollbar from '@renderer/components/Scrollbar'
 import ModelSettings from '@renderer/pages/settings/ModelSettings/ModelSettings'
-import { Divider as AntDivider } from 'antd'
+import { runtimeCapabilities } from '@renderer/services/mobile/runtime'
+import { Divider as AntDivider, Select } from 'antd'
 import { Cloud, HardDrive, MonitorCog, Package, Settings2, Zap } from 'lucide-react'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import styled from 'styled-components'
 
 import DataSettings from './DataSettings/DataSettings'
@@ -16,56 +17,75 @@ import QuickPhraseSettings from './QuickPhraseSettings'
 
 const SettingsPage: FC = () => {
   const { pathname } = useLocation()
+  const navigate = useNavigate()
   const { t } = useTranslation()
 
   const isRoute = (path: string): string => (pathname === path || pathname.startsWith(`${path}/`) ? 'active' : '')
 
   return (
-    <Container>
+    <Container className="settings-page">
       <Navbar>
         <NavbarCenter style={{ borderRight: 'none' }}>{t('settings.title')}</NavbarCenter>
       </Navbar>
       <ContentContainer id="content-container">
-        <SettingMenus>
-          <MenuItemLink to="/settings/provider">
-            <MenuItem className={isRoute('/settings/provider')}>
-              <Cloud size={18} />
-              {t('settings.provider.title')}
-            </MenuItem>
-          </MenuItemLink>
-          <MenuItemLink to="/settings/model">
-            <MenuItem className={isRoute('/settings/model')}>
-              <Package size={18} />
-              {t('settings.model')}
-            </MenuItem>
-          </MenuItemLink>
-          <Divider />
-          <MenuItemLink to="/settings/general">
-            <MenuItem className={isRoute('/settings/general')}>
-              <Settings2 size={18} />
-              {t('settings.general.label')}
-            </MenuItem>
-          </MenuItemLink>
-          <MenuItemLink to="/settings/display">
-            <MenuItem className={isRoute('/settings/display')}>
-              <MonitorCog size={18} />
-              {t('settings.display.title')}
-            </MenuItem>
-          </MenuItemLink>
-          <MenuItemLink to="/settings/data">
-            <MenuItem className={isRoute('/settings/data')}>
-              <HardDrive size={18} />
-              {t('settings.data.title')}
-            </MenuItem>
-          </MenuItemLink>
-          <MenuItemLink to="/settings/quickphrase">
-            <MenuItem className={isRoute('/settings/quickphrase')}>
-              <Zap size={18} />
-              {t('settings.quickPhrase.title')}
-            </MenuItem>
-          </MenuItemLink>
-        </SettingMenus>
-        <SettingContent>
+        {runtimeCapabilities.android && (
+          <Select
+            className="mobile-settings-menu"
+            aria-label={t('settings.title')}
+            value={pathname.split('/')[2] || 'provider'}
+            onChange={(page) => navigate(`/settings/${page}`)}
+            options={[
+              { value: 'provider', label: t('settings.provider.title') },
+              { value: 'model', label: t('settings.model') },
+              { value: 'general', label: t('settings.general.label') },
+              { value: 'display', label: t('settings.display.title') },
+              { value: 'data', label: t('settings.data.title') },
+              { value: 'quickphrase', label: t('settings.quickPhrase.title') }
+            ]}
+          />
+        )}
+        {!runtimeCapabilities.android && (
+          <SettingMenus>
+            <MenuItemLink to="/settings/provider">
+              <MenuItem className={isRoute('/settings/provider')}>
+                <Cloud size={18} />
+                {t('settings.provider.title')}
+              </MenuItem>
+            </MenuItemLink>
+            <MenuItemLink to="/settings/model">
+              <MenuItem className={isRoute('/settings/model')}>
+                <Package size={18} />
+                {t('settings.model')}
+              </MenuItem>
+            </MenuItemLink>
+            <Divider />
+            <MenuItemLink to="/settings/general">
+              <MenuItem className={isRoute('/settings/general')}>
+                <Settings2 size={18} />
+                {t('settings.general.label')}
+              </MenuItem>
+            </MenuItemLink>
+            <MenuItemLink to="/settings/display">
+              <MenuItem className={isRoute('/settings/display')}>
+                <MonitorCog size={18} />
+                {t('settings.display.title')}
+              </MenuItem>
+            </MenuItemLink>
+            <MenuItemLink to="/settings/data">
+              <MenuItem className={isRoute('/settings/data')}>
+                <HardDrive size={18} />
+                {t('settings.data.title')}
+              </MenuItem>
+            </MenuItemLink>
+            <MenuItemLink to="/settings/quickphrase">
+              <MenuItem className={isRoute('/settings/quickphrase')}>
+                <Zap size={18} />
+                {t('settings.quickPhrase.title')}
+              </MenuItem>
+            </MenuItemLink>
+          </SettingMenus>
+        )}
+        <SettingContent className="settings-content">
           <Routes>
             <Route path="provider" element={<ProviderList />} />
             <Route path="model" element={<ModelSettings />} />

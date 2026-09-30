@@ -11,6 +11,17 @@ describe('compareVersions', () => {
 })
 
 describe('getPlatformAsset', () => {
+  it('selects the Android ARM64 APK instead of desktop bundles', () => {
+    expect(
+      getPlatformAsset(
+        [
+          { name: 'lich13studio.dmg', browser_download_url: 'https://example.com/app.dmg' },
+          { name: 'lich13studio_0.1.28_android_arm64-v8a.apk', browser_download_url: 'https://example.com/app.apk' }
+        ],
+        'android'
+      )?.url
+    ).toBe('https://example.com/app.apk')
+  })
   it('prefers the macOS dmg on darwin', () => {
     expect(
       getPlatformAsset(

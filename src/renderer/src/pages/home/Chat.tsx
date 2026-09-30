@@ -14,6 +14,7 @@ import { useShortcut } from '@renderer/hooks/useShortcuts'
 import { useShowTopics } from '@renderer/hooks/useStore'
 import { useTimer } from '@renderer/hooks/useTimer'
 import { EVENT_NAMES, EventEmitter } from '@renderer/services/EventService'
+import { runtimeCapabilities } from '@renderer/services/mobile/runtime'
 import type { Assistant, Model, Topic } from '@renderer/types'
 import { classNames } from '@renderer/utils'
 import { Flex } from 'antd'
@@ -203,7 +204,7 @@ const Chat: FC<Props> = (props) => {
           </Main>
         </motion.div>
         <AnimatePresence initial={false}>
-          {topicPosition === 'right' && showTopics && (
+          {!runtimeCapabilities.android && topicPosition === 'right' && showTopics && (
             <motion.div
               key="right-tabs"
               initial={{ width: 0, opacity: 0 }}

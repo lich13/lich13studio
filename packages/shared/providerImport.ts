@@ -43,14 +43,20 @@ export function providerRequestBase(value: string): string {
 export function parseProviderImport(raw: string): ProviderImport {
   let url: URL
   try {
-    url = new URL(raw)
+    if (!/^ccswitch:\/\//i.test(raw)) throw new Error('Invalid scheme')
+    // Chromium 91 treats custom schemes as opaque paths. Parse the validated
+    // scheme with an HTTP authority so Android 12 and modern engines agree.
+    url = new URL(`https:${raw.slice(raw.indexOf(':') + 1)}`)
   } catch {
     throw new Error('无效的导入链接')
   }
   if (
-    url.protocol !== 'ccswitch:' ||
     url.hostname !== 'v1' ||
     url.pathname !== '/import' ||
+    url.username ||
+    url.password ||
+    url.port ||
+    url.hash ||
     url.searchParams.get('resource') !== 'provider'
   ) {
     throw new Error('仅支持 CCS v1 服务商导入链接')

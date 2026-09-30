@@ -3,6 +3,8 @@ import DividerWithText from '@renderer/components/DividerWithText'
 import { HStack } from '@renderer/components/Layout'
 import ListItem from '@renderer/components/ListItem'
 import { useTheme } from '@renderer/context/ThemeProvider'
+import { runtimeCapabilities } from '@renderer/services/mobile/runtime'
+import { Select } from 'antd'
 import { FileText, FolderCog, FolderInput } from 'lucide-react'
 import type { FC } from 'react'
 import { useState } from 'react'
@@ -49,23 +51,35 @@ const DataSettings: FC = () => {
   ]
 
   return (
-    <Container>
-      <MenuList>
-        {menuItems.map((item) =>
-          item.isDivider ? (
-            <DividerWithText key={item.key} text={item.text || ''} style={{ margin: '8px 0' }} /> // 动态传递分隔符文字
-          ) : (
-            <ListItem
-              key={item.key}
-              title={item.title}
-              active={menu === item.key}
-              onClick={() => setMenu(item.key)}
-              titleStyle={{ fontWeight: 500 }}
-              icon={item.icon}
-            />
-          )
-        )}
-      </MenuList>
+    <Container className="data-settings-page">
+      {runtimeCapabilities.android && (
+        <Select
+          value={menu}
+          aria-label={t('settings.data.title')}
+          onChange={setMenu}
+          options={menuItems
+            .filter((item) => !item.isDivider && !['obsidian', 'local_backup'].includes(item.key))
+            .map((item) => ({ value: item.key, label: item.title }))}
+        />
+      )}
+      {!runtimeCapabilities.android && (
+        <MenuList>
+          {menuItems.map((item) =>
+            item.isDivider ? (
+              <DividerWithText key={item.key} text={item.text || ''} style={{ margin: '8px 0' }} /> // 动态传递分隔符文字
+            ) : (
+              <ListItem
+                key={item.key}
+                title={item.title}
+                active={menu === item.key}
+                onClick={() => setMenu(item.key)}
+                titleStyle={{ fontWeight: 500 }}
+                icon={item.icon}
+              />
+            )
+          )}
+        </MenuList>
+      )}
       <SettingContainer theme={theme} style={{ display: 'flex', flex: 1, height: '100%' }}>
         {menu === 'data' && <BasicDataSettings />}
         {menu === 'webdav' && <WebDavSettings />}

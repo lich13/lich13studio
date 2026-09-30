@@ -4,7 +4,7 @@ import Link from 'antd/es/typography/Link'
 import type { CSSProp } from 'styled-components'
 import styled from 'styled-components'
 
-export const SettingContainer = styled.div<{ theme?: ThemeMode }>`
+export const SettingContainer = styled.div.attrs({ className: 'setting-container' })<{ theme?: ThemeMode }>`
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -46,7 +46,7 @@ export const SettingDivider = styled(Divider)`
   border-block-start: 0.5px solid var(--color-border);
 `
 
-export const SettingRow = styled.div`
+export const SettingRow = styled.div.attrs({ className: 'setting-row' })`
   display: flex;
   flex-direction: row;
   justify-content: space-between;
@@ -81,7 +81,7 @@ export const SettingHelpLink = styled(Link)`
   margin: 0 5px;
 `
 
-export const SettingGroup = styled.div<{ theme?: ThemeMode; css?: CSSProp }>`
+export const SettingGroup = styled.div.attrs({ className: 'setting-group' })<{ theme?: ThemeMode; css?: CSSProp }>`
   margin-bottom: 20px;
   border-radius: var(--list-item-border-radius);
   border: 0.5px solid var(--color-border);

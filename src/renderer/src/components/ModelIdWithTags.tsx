@@ -1,4 +1,5 @@
 import type { Model } from '@renderer/types'
+import { getModelPresentation } from '@renderer/utils/modelPresentation'
 import { memo } from 'react'
 
 import ModelTagsWithLabel from './ModelTagsWithLabel'
@@ -17,20 +18,21 @@ const ModelIdWithTags = ({
   showIdentifier = false,
   style
 }: ModelIdWithTagsProps & { ref?: React.RefObject<HTMLDivElement> | null }) => {
-  const shouldShowIdentifier = showIdentifier && model.id !== model.name
+  const presentation = getModelPresentation(model)
+  const shouldShowIdentifier = showIdentifier && presentation.secondary
 
   return (
     <div
       ref={ref}
       className="flex min-w-0 items-center gap-2.5 font-semibold text-(--color-text) leading-[1.2]"
       style={{ fontSize, ...style }}>
-      <div className="flex min-w-0 flex-1 items-center gap-2">
+      <div className="flex min-w-0 flex-1 flex-col items-start gap-1" title={model.id}>
         <span className="block min-w-0 shrink overflow-hidden text-ellipsis whitespace-nowrap leading-[1.3]">
-          {model.name}
+          {presentation.primary}
         </span>
         {shouldShowIdentifier && (
           <span
-            className="min-w-0 max-w-[50%] shrink truncate font-mono text-(--color-text-3) text-[12px]! leading-[1.2]"
+            className="min-w-0 max-w-full shrink truncate font-mono text-(--color-text-3) text-[12px]! leading-[1.2]"
             title={model.id}>
             {model.id}
           </span>

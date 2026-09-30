@@ -309,6 +309,7 @@ const InputbarTools = ({ scope, assistant, model, session }: InputbarToolsNewPro
     <>
       <Dropdown menu={{ items: getMenuItems }} trigger={['contextMenu']}>
         <ToolsContainer
+          className="inputbar-tools"
           onContextMenu={(e) => {
             const target = e.target as HTMLElement
             const isToolButton = target.closest('[data-key]')

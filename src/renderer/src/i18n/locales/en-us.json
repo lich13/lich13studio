@@ -957,6 +957,8 @@
       "label": "Are you sure you want to backup data?"
     },
     "content": "Backup all data, including chat history, settings, and knowledge base. Please note that the backup process may take some time, thank you for your patience.",
+    "includeCredentials": "Include credentials",
+    "password": "Backup password",
     "progress": {
       "completed": "Backup completed",
       "compressing": "Compressing files...",
@@ -2593,6 +2595,11 @@
     "tooltip": {
       "pin": "Keep Window on Top"
     }
+  },
+  "mobile": {
+    "chat": "Chat",
+    "navigation": "Navigation",
+    "test": "Test"
   },
   "models": {
     "add_parameter": "Add Parameter",

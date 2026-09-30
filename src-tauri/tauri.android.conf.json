@@ -1,0 +1,16 @@
+{
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "lich13studio",
+        "visible": true,
+        "fullscreen": false,
+        "minWidth": null,
+        "minHeight": null
+      }
+    ]
+  },
+  "bundle": { "targets": [], "android": { "minSdkVersion": 31 } },
+  "plugins": { "deep-link": { "mobile": [{ "scheme": ["ccswitch"], "appLink": false }] } }
+}

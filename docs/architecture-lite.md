@@ -1,6 +1,6 @@
 # lich13studio Lite architecture
 
-The desktop package uses Tauri for window, filesystem, backup, native HTTP and protocol handling. The React renderer owns assistants, topics, messages, quick phrases and provider settings. Shared OpenTelemetry helpers live in `packages/trace`.
+The desktop and Android packages use Tauri for window, filesystem, backup, native HTTP and protocol handling. The React renderer owns assistants, topics, messages, quick phrases and provider settings. Shared OpenTelemetry helpers live in `packages/trace`.
 
 ## Model requests
 
@@ -8,7 +8,7 @@ Providers are grouped by `ProviderPlatform = openai | grok | anthropic`. OpenAI 
 
 Provider types are `openai-response` (Responses) and `anthropic`. There are no built-in providers. The AI SDK constructs requests and the Tauri native HTTP transport streams them. The unused Rust Chat Completions/Gemini chat and health-check commands have been removed.
 
-Reasoning levels are `low / medium / high / xhigh / max`, defaulting to `max`. Responses forwards the value without fallback. Anthropic maps only where model capabilities require it; older thinking budgets stay below the total output limit. SDK request tests cover the actual serialized payloads.
+Reasoning levels are `low / medium / high / xhigh / max`, defaulting to `max`. Responses negotiates a lower level only after an explicit unsupported-effort error and before any generated content, keeping the same provider and model. Anthropic maps only where model capabilities require it; older thinking budgets stay below the total output limit. SDK request tests cover the actual serialized payloads.
 
 ## Model testing
 
@@ -20,7 +20,7 @@ Each attempt has its own answer collector. Complete text events replace snapshot
 
 Automatic and pasted outputs share one analysis parser. Complete integer sequences retain their original text, order and duplicates; only the scoring array excludes values outside 1–355. Prose, decimals, exponents and malformed thought tags are not mined for numbers. A group with at least 80 usable integers contributes to the unchanged bundled scoring algorithm, using the bank's calibration for one, two or three available groups. The report refreshes after each completed group; no usable samples produces an empty result, not a request failure.
 
-Temporary request failures get at most two extra attempts after 1 and 3 seconds. Authentication, missing-model and other permanent request errors stop immediately. Retrying failed groups skips every completed request, including completed answers that cannot be analyzed. Results are memory-only and never create chat records. Persistence remains version 219. The page places test controls and attribution side by side at a 960px content width, followed by the full-width challenges; narrower layouts stack all three areas.
+Temporary request failures get at most two extra attempts after 1 and 3 seconds. Authentication, missing-model and other permanent request errors stop immediately. Retrying failed groups skips every completed request, including completed answers that cannot be analyzed. Results are memory-only and never create chat records. Persistence remains version 222. The page places test controls and attribution side by side at a 960px content width, followed by the full-width challenges; narrower layouts stack all three areas.
 
 ## Imports and persistence
 
@@ -32,7 +32,7 @@ Redux persistence version 219 initializes independent model-test selection from 
 
 `packages/shared/cliIdentity.ts` filters stable official Codex/Claude GitHub releases and Grok's stable endpoint. Startup checks cached versions once they are at least an hour old, followed by an hourly timer. Queries time out after ten seconds, contain no provider credentials, and never downgrade a cached/bundled version. Platform identity headers are applied after SDK request construction, including retries. A trailing `#` routes directly to the explicit endpoint; ordinary addresses normalize to a base URL with one version suffix.
 
-The release catalog and initial CLI versions are pinned to Codex `rust-v0.156.1`, Claude Code `v2.1.281`, Grok `1.0.41`, and Sub2API `a3eb7ef302961cba716dc78b39b93b60c467db0e`. Catalogs update only through application migrations or user edits, not network synchronization.
+The release catalog and initial CLI versions are pinned to Codex `rust-v0.156.1`, Claude Code `v2.1.281`, Grok `1.0.41`, and Sub2API `a3eb7ef302961cba716dc78b39b93b60c467db0e`. PlatformModelCatalogService also checks official public model catalogs hourly and on demand, keeping a validated per-platform cache separate from backups. User edits and deletion exclusions survive synchronization.
 
 Model health probes and individual/batch API Key connection tests have no services, types or UI entries. Key management and ordinary request errors remain.
 
@@ -47,3 +47,15 @@ There are no MCP settings, server runtimes, OAuth flows, installers, Redux slice
 ModelTrace fingerprint updates follow Hanmo123/ModelTrace `hanmo`: commit-pinned data downloads are checked against the supported scoring/challenge blobs and statistical schema before an atomic write to a separate disposable cache. Startup/hourly checks and manual refresh never send provider credentials. Every run and failed-group retry captures its bank revision, data digest and concurrency. Cache failures preserve the last valid bank; incompatible algorithms require an app update. The original upstream JSON remains unmodified; the local parser admission policy is separate.
 
 Migration 221 normalizes the remembered challenge concurrency to 1, 2 or 3 (default 1) on both startup and backup restore. Each request owns its collector, guard and controller; backoff releases its slot. Fatal request errors cancel all unfinished work; user Stop also clears queued attempts and retry timers.
+
+## Android
+
+`RuntimeCapabilities` separates desktop windows, tray, screenshot and launch settings from Android. `MainActivity` applies system-bar/IME insets to the WebView container. The renderer uses a single-column layout, bottom navigation and native Back handling. System file pickers provide attachments, copied into the private managed files directory.
+
+`BackgroundTaskService` holds leases for chat requests and complete ModelTrace runs, including backoff. A native `dataSync` foreground service owns the notification and wake lock. Native cancellation advances an epoch and aborts active connections. Sequenced HTTP events have a 256 KiB / 128-event acknowledged queue; resuming the renderer replays unconsumed events without duplicating text. Process loss never retries old tasks automatically.
+
+Android Redux persistence uses credential references. The encrypted vault is atomically stored in `noBackupFilesDir` with a non-exportable Keystore AES key; OS backup is disabled. Migration writes the vault before redacting ordinary state. Failed writes leave the previous state recoverable.
+
+Portable backups omit credentials unless explicitly requested. Credential-bearing backups use the `LICH13BK` versioned container, Argon2id (64 MiB, 3 iterations, 1 lane) and AES-256-GCM with independent random salt/nonce. Authentication and schema validation precede restore. Attachments stage separately; failed restore rolls back state and files. Business migrations remain at 222.
+
+Android API 31/36 device smoke tests are compiled into a separate instrumentation APK; release artifacts have no test routes or debug WebView bridge. Release checks verify signing, ARM64-only libraries and 16 KiB ELF/APK alignment.

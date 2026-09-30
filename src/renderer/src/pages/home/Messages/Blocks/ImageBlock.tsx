@@ -11,25 +11,25 @@ interface Props {
 }
 
 const ImageBlock: React.FC<Props> = ({ block, isSingle = false }) => {
-  const [memoryImageSrc, setMemoryImageSrc] = useState<string>('')
+  const [previewSrc, setPreviewSrc] = useState<string>('')
 
   useEffect(() => {
     let cancelled = false
 
-    if (!block.file || !FileManager.isMemoryFile(block.file)) {
-      setMemoryImageSrc('')
+    if (!block.file) {
+      setPreviewSrc('')
       return
     }
 
     void FileManager.resolvePreviewUrl(block.file)
       .then((src) => {
         if (!cancelled) {
-          setMemoryImageSrc(src)
+          setPreviewSrc(src)
         }
       })
       .catch(() => {
         if (!cancelled) {
-          setMemoryImageSrc('')
+          setPreviewSrc('')
         }
       })
 
@@ -46,7 +46,7 @@ const ImageBlock: React.FC<Props> = ({ block, isSingle = false }) => {
     const images = block.metadata?.generateImageResponse?.images?.length
       ? block.metadata?.generateImageResponse?.images
       : block?.file
-        ? [FileManager.isMemoryFile(block.file) ? memoryImageSrc : `file://${FileManager.getFilePath(block.file)}`]
+        ? [previewSrc]
         : block?.url
           ? [block.url]
           : []

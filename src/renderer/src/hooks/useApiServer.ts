@@ -1,4 +1,5 @@
 import { loggerService } from '@logger'
+import { runtimeCapabilities } from '@renderer/services/mobile/runtime'
 import { useAppDispatch, useAppSelector } from '@renderer/store'
 import { setApiServerRunningAction } from '@renderer/store/runtime'
 import { setApiServerEnabled as setApiServerEnabledAction } from '@renderer/store/settings'
@@ -55,6 +56,11 @@ export const useApiServer = () => {
 
   // API Server functions
   const checkApiServerStatus = useCallback(async () => {
+    if (runtimeCapabilities.android) {
+      setApiServerRunning(false)
+      setApiServerLoading(false)
+      return
+    }
     setApiServerLoading(true)
     try {
       const status = await window.api.apiServer.getStatus()
@@ -144,6 +150,7 @@ export const useApiServer = () => {
 
   // Listen for API server ready event using single instance subscription
   useEffect(() => {
+    if (runtimeCapabilities.android) return
     ensureIpcSubscribed()
     onReadyCallbacks.add(handleReady)
 

@@ -1,6 +1,6 @@
 # lich13studio
 
-`lich13studio` is a simplified desktop AI workspace focused on the pieces that matter most:
+`lich13studio` is a AI workspace for macOS, Windows and Android focused on the pieces that matter most:
 
 - assistants and topics
 - provider and model management
@@ -29,17 +29,19 @@ Excluded:
 
 ## Current release
 
-Version 0.1.25 resolves model capabilities from a pinned, local Cherry Studio registry snapshot, with explicit user switches taking priority. GPT-6 and GPT-5.6 variants support image input, reasoning and tools; embedding and rerank models are excluded from chat and ModelTrace. Unknown IDs remain available for text chat without guessed advanced capabilities. Capability aliases never change the model ID sent to the provider.
+Version **0.1.28** adds Android 12+ ARM64 support and consistent model labels. Equivalent names and IDs appear once; custom names retain the original ID. Requests always use the selected original ID.
 
-GPT/Codex avatars use the local OpenAI brand SVG in both themes. Catalogs, selectors, attachment gates and request conversion share the same capability resolver. The model editor can restore automatic detection without writing inferred fields to user data. See the [snapshot source, license and update procedure](./src/renderer/src/config/models/registry/README.md). Persistence remains at version 220.
+Android includes chat, assistants, topics, images, quick phrases, platform catalogs, ModelTrace and backup/restore. Active chat and test requests continue in a foreground service with a Stop notification. Force-stop or process loss ends the task without resending it. Android's system foreground-service limits still apply.
 
-ModelTrace answers exceeding twice the requested integer count or 32 KiB are cancelled and retried, with at most three attempts per challenge. Tests request at most 4096 output tokens, keep running in the background, and send no reasoning parameters.
+Both desktop and Android handle `ccswitch://v1/import` from Sub2API and New API. Imports require confirmation, normalize endpoints and deduplicate providers. No other application protocol is registered.
 
-Main chat and the quick assistant select a catalog model first, then a compatible provider. Migration 220 preserves existing choices and chat history. Explicit unsupported reasoning-effort errors are negotiated on the same provider and model before any content is produced; the UI shows the effective effort. Successful capability discoveries are cached in memory for one hour.
+Android credentials are encrypted with Android Keystore; ordinary state stores references. Backups omit credentials by default. Including credentials requires a password and produces an Argon2id/AES-256-GCM encrypted backup that can be restored on either platform. Keep this password: it is not stored by the app.
 
-Provider catalogs, CCS imports and hourly CLI identity updates from 0.1.17 remain available. Model requests have no application timeout.
+OpenAI, grok and Anthropic model catalogs and CLI identities synchronize independently from official public sources. User edits, order, deletion choices and current selections are retained. The local capability registry and OpenAI brand icons work offline.
 
-MCP configuration and execution have been removed. Existing tool messages remain as read-only history.
+ModelTrace supports 1–3 concurrent challenges and compatible fingerprint updates from Hanmo123/ModelTrace. Tests stay local to the selected provider, send no reasoning parameters or tools, and never create chat history. Output guards and finite retries remain enabled; model requests have no application timeout. Persistence remains version **222**.
+
+MCP, web search, health probes and phone-export servers remain removed. Existing history is preserved.
 
 ## Docs
 
@@ -64,6 +66,7 @@ That upstream reference is kept only as source acknowledgement and migration con
 - Local Windows bundle:
   - `pnpm build:windows:x64`
   - `pnpm build:windows:arm64`
+- Android: see [Android build and storage](./docs/android.md)
 - GitHub release build: push a tag or run `.github/workflows/release-build.yml`
 
 The repository now uses a Tauri-first release flow. Legacy Electron Builder packaging files and workflows have been removed.

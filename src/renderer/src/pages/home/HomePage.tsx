@@ -5,6 +5,7 @@ import { useShortcut } from '@renderer/hooks/useShortcuts'
 import { useShowAssistants, useShowTopics } from '@renderer/hooks/useStore'
 import { useActiveTopic } from '@renderer/hooks/useTopic'
 import { EVENT_NAMES, EventEmitter } from '@renderer/services/EventService'
+import { runtimeCapabilities } from '@renderer/services/mobile/runtime'
 import NavigationService from '@renderer/services/NavigationService'
 import { newMessagesActions } from '@renderer/store/newMessage'
 import type { Assistant, Topic } from '@renderer/types'
@@ -99,6 +100,7 @@ const HomePage: FC = () => {
   }, [state])
 
   useEffect(() => {
+    if (runtimeCapabilities.android) return
     const canMinimize = topicPosition == 'left' ? !showAssistants : !showAssistants && !showTopics
     void window.api.window.setMinimumSize(canMinimize ? SECOND_MIN_WINDOW_WIDTH : MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT)
 
@@ -109,7 +111,7 @@ const HomePage: FC = () => {
 
   return (
     <Container id="home-page">
-      {isLeftNavbar && (
+      {!runtimeCapabilities.android && isLeftNavbar && (
         <Navbar
           activeAssistant={activeAssistant}
           activeTopic={activeTopic}
@@ -120,7 +122,7 @@ const HomePage: FC = () => {
       )}
       <ContentContainer id={isLeftNavbar ? 'content-container' : undefined}>
         <AnimatePresence initial={false}>
-          {showAssistants && (
+          {!runtimeCapabilities.android && showAssistants && (
             <ErrorBoundary>
               <motion.div
                 initial={{ width: 0, opacity: 0 }}

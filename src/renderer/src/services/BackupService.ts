@@ -2,15 +2,21 @@ import { loggerService } from '@logger'
 import db from '@renderer/databases'
 import { upgradeToV7, upgradeToV8 } from '@renderer/databases/upgrades'
 import i18n from '@renderer/i18n'
-import store from '@renderer/store'
+import store, { persistor } from '@renderer/store'
 import { setLocalBackupSyncState, setWebDAVSyncState } from '@renderer/store/backup'
 import type { WebDavConfig } from '@renderer/types'
 import { uuid } from '@renderer/utils'
 import { sanitizePersistedState } from '@shared/stateMigration'
+import { invoke } from '@tauri-apps/api/core'
 import dayjs from 'dayjs'
+import { Dexie } from 'dexie'
 
 import { buildDefaultBackupFileName, ensureBackupFileName, isBackupOwnedByDevice } from './BackupNaming'
+import { mobilePersistStorage } from './mobile/credentials'
+import { runtimeCapabilities } from './mobile/runtime'
 import { NotificationService } from './NotificationService'
+import { type BackupOptions, exportPortableBackup } from './PortableBackupService'
+import { validatePortableBackup } from './portableBackupValidation'
 
 const logger = loggerService.withContext('BackupService')
 const ZOTERO_8_USER_AGENT = 'Zotero/8.0'
@@ -148,8 +154,13 @@ const normalizeBackupDatabase = async (backup: Record<string, any>) => {
   return normalizedBackup
 }
 
-export async function backup(skipBackupFile: boolean) {
+export async function backup(skipBackupFile: boolean, options: BackupOptions = {}) {
   const filename = ensureBackupFileName(`lich13studio.${dayjs().format('YYYYMMDDHHmm')}`)
+  if ((window as any).__TAURI__) {
+    const saved = await exportPortableBackup(filename, skipBackupFile, options)
+    if (saved) window.toast.success(i18n.t('message.backup.success'))
+    return
+  }
   const selectFolder = await window.api.file.selectFolder()
   if (selectFolder) {
     // Use direct backup method - copy IndexedDB/LocalStorage directories directly
@@ -160,12 +171,14 @@ export async function backup(skipBackupFile: boolean) {
 
 export async function restore() {
   const notificationService = NotificationService.getInstance()
-  const file = await window.api.file.open({ filters: [{ name: '备份文件', extensions: ['bak', 'zip', 'json'] }] })
+  const file = await window.api.file.open({
+    filters: [{ name: '备份文件', extensions: ['bak', 'zip', 'json', 'lich13backup'] }]
+  })
 
   if (file) {
     try {
       // zip backup file
-      if (file?.fileName.endsWith('.zip')) {
+      if (/\.(zip|lich13backup)$/i.test(file.fileName)) {
         const restoreData = await window.api.backup.restore(file.filePath)
 
         // Direct backup format returns void (app needs to relaunch)
@@ -205,10 +218,11 @@ export async function restore() {
         channel: 'system'
       })
     } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') return
       logger.error('restore: Error restoring backup file:', error as Error)
       window.modal.error({
         title: i18n.t('error.backup.file_format'),
-        content: (error as Error).message,
+        content: error instanceof Error ? error.message : String(error),
         centered: true
       })
     }
@@ -229,6 +243,8 @@ export async function reset() {
         content: i18n.t('message.reset.double.confirm.content'),
         centered: true,
         onOk: async () => {
+          persistor.pause()
+          await persistor.flush()
           localStorage.clear()
           await clearDatabase()
           await window.api.resetData()
@@ -463,6 +479,7 @@ let isLocalAutoBackupRunning = false
 type BackupType = 'webdav' | 'local'
 
 export function startAutoSync(immediate = false, type?: BackupType) {
+  if (runtimeCapabilities.android && type === 'local') return
   // 如果没有指定类型，启动所有配置的自动同步
   if (!type) {
     const settings = store.getState().settings
@@ -737,64 +754,62 @@ export function stopAutoSync(type?: BackupType) {
 
 /************************************* Backup Utils ************************************** */
 export async function handleData(data: Record<string, any>) {
-  if (data.version === 1) {
-    await clearDatabase()
-
-    for (const { key, value } of data.indexedDB) {
-      if (key.startsWith('topic:')) {
-        await db.table('topics').add({ id: value.id, messages: value.messages })
-      }
-      if (key === 'image://avatar') {
-        await db.table('settings').add({ id: key, value })
-      }
-    }
-
-    localStorage.setItem(LEGACY_PERSIST_KEY, sanitizePersistedState(data.localStorage[LEGACY_PERSIST_KEY]))
-    window.toast.success(i18n.t('message.restore.success'))
-    setTimeout(() => window.api.relaunchApp(), 1000)
-    return
+  const native = Boolean((window as any).__TAURI__)
+  const finishFiles = async (commit: boolean) => {
+    if (native) await invoke('finish_backup_restore', { commit })
   }
-
-  if (data.version >= 2) {
-    localStorage.setItem(LEGACY_PERSIST_KEY, sanitizePersistedState(data.localStorage[LEGACY_PERSIST_KEY]))
-
-    // remove notes_tree from indexedDB
-    if (data.indexedDB['notes_tree']) {
-      delete data.indexedDB['notes_tree']
+  let previousState: string | null = null
+  let paused = false
+  let stateWritten = false
+  const writeState = async (value: string | null) => {
+    if (value === null) {
+      if (runtimeCapabilities.android) await mobilePersistStorage.removeItem(LEGACY_PERSIST_KEY)
+      else localStorage.removeItem(LEGACY_PERSIST_KEY)
+    } else if (runtimeCapabilities.android) await mobilePersistStorage.setItem(LEGACY_PERSIST_KEY, value)
+    else localStorage.setItem(LEGACY_PERSIST_KEY, value)
+  }
+  try {
+    validatePortableBackup(
+      data,
+      db.tables.map((table) => table.name)
+    )
+    const restoredState = sanitizePersistedState(data.localStorage[LEGACY_PERSIST_KEY])
+    const tables: Record<string, any[]> = data.version === 1 ? { topics: [], settings: [] } : { ...data.indexedDB }
+    if (data.version === 1) {
+      for (const { key, value } of data.indexedDB) {
+        if (key.startsWith('topic:')) tables.topics.push({ id: value.id, messages: value.messages })
+        if (key === 'image://avatar') tables.settings.push({ id: key, value })
+      }
     }
-
-    await restoreDatabase(data.indexedDB)
-
-    if (data.version === 3) {
-      await db.transaction('rw', db.tables, async (tx) => {
+    delete tables.notes_tree
+    const normalized = await normalizeBackupDatabase(tables)
+    persistor.pause()
+    paused = true
+    await persistor.flush()
+    previousState = runtimeCapabilities.android
+      ? await mobilePersistStorage.getItem(LEGACY_PERSIST_KEY)
+      : localStorage.getItem(LEGACY_PERSIST_KEY)
+    await db.transaction('rw', db.tables, async (tx) => {
+      for (const table of db.tables) await table.clear()
+      for (const [name, rows] of Object.entries(normalized)) await db.table(name).bulkAdd(rows)
+      if (data.version === 3) {
         await db.table('message_blocks').clear()
         await upgradeToV7(tx)
-      })
-    }
-
-    if (data.version === 4) {
-      await db.transaction('rw', db.tables, async (tx) => {
-        await upgradeToV8(tx)
-      })
-    }
-
+      }
+      if (data.version === 4) await upgradeToV8(tx)
+      // Keep the database transaction alive until Keystore/persistent state is committed.
+      await Dexie.waitFor(writeState(restoredState))
+      stateWritten = true
+    })
+    await finishFiles(true).catch(() => logger.warn('Restored data is committed; staging cleanup remains pending'))
     window.toast.success(i18n.t('message.restore.success'))
     setTimeout(() => window.api.relaunchApp(), 1000)
-    return
+  } catch (error) {
+    if (stateWritten) await writeState(previousState)
+    await finishFiles(false)
+    if (paused) persistor.persist()
+    throw error
   }
-
-  window.toast.error(i18n.t('error.backup.file_format'))
-}
-
-async function restoreDatabase(backup: Record<string, any>) {
-  const normalizedBackup = await normalizeBackupDatabase(backup)
-
-  await db.transaction('rw', db.tables, async () => {
-    for (const tableName in normalizedBackup) {
-      await db.table(tableName).clear()
-      await db.table(tableName).bulkAdd(normalizedBackup[tableName])
-    }
-  })
 }
 
 async function clearDatabase() {

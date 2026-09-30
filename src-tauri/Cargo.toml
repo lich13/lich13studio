@@ -1,6 +1,6 @@
 [package]
 name = "lich13studio"
-version = "0.1.27"
+version = "0.1.28"
 description = "lich13studio Tauri Lite runtime"
 authors = ["lich13studio"]
 edition = "2021"
@@ -15,26 +15,32 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 base64 = "0.22"
-auto-launch = "0.5"
+aes-gcm = "0.10"
+argon2 = "0.5"
+zeroize = "1"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 dirs = "6"
 futures-util = "0.3"
 image = { version = "0.25", default-features = false, features = ["png"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
-rfd = "0.15"
 roxmltree = "0.20"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-tauri = { version = "2", features = ["tray-icon"] }
+tauri = { version = "2", features = [] }
 tauri-plugin-deep-link = "2"
-tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
 tauri-plugin-notification = "2.3.3"
 tokio = { version = "1", features = ["process", "time", "macros"] }
 url = "2"
 uuid = { version = "1", features = ["v4"] }
 walkdir = "2"
-xcap = "0.7"
 zip = { version = "2.2.0", default-features = false, features = ["deflate"] }
+
+[target.'cfg(not(target_os = "android"))'.dependencies]
+auto-launch = "0.5"
+rfd = "0.15"
+xcap = "0.7"
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6"

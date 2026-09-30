@@ -8,6 +8,7 @@ import {
   GITHUB_RELEASES_URL,
   GITHUB_REPO_URL
 } from '@renderer/services/appUpdate'
+import { runtimeCapabilities } from '@renderer/services/mobile/runtime'
 import { useAppDispatch } from '@renderer/store'
 import {
   setNotificationSettings,
@@ -137,48 +138,50 @@ const GeneralSettings: FC = () => {
 
   return (
     <SettingContainer theme={theme}>
-      <SettingGroup theme={theme}>
-        <SettingTitle>{t('settings.general.title')}</SettingTitle>
-        <SettingDivider />
-        <SettingRow>
-          <SettingRowTitle>{t('settings.proxy.mode.title')}</SettingRowTitle>
-          <Selector value={storeProxyMode} onChange={onProxyModeChange} options={proxyModeOptions} />
-        </SettingRow>
-        {storeProxyMode === 'custom' && (
-          <>
-            <SettingDivider />
-            <SettingRow>
-              <SettingRowTitle>{t('settings.proxy.address')}</SettingRowTitle>
-              <Input
-                spellCheck={false}
-                placeholder="socks5://127.0.0.1:6153"
-                value={proxyUrl}
-                onChange={(e) => setProxyUrl(e.target.value)}
-                style={{ width: 180 }}
-                onBlur={onSetProxyUrl}
-                type="url"
-              />
-            </SettingRow>
-            <SettingDivider />
-            <SettingRow>
-              <SettingRowTitle style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span>{t('settings.proxy.bypass')}</span>
-                <Tooltip title={t('settings.proxy.tip')} placement="right">
-                  <InfoCircleOutlined style={{ cursor: 'pointer' }} />
-                </Tooltip>
-              </SettingRowTitle>
-              <Input
-                spellCheck={false}
-                placeholder={defaultByPassRules}
-                value={proxyBypassRules}
-                onChange={(e) => setProxyBypassRules(e.target.value)}
-                style={{ width: 180 }}
-                onBlur={onSetProxyBypassRules}
-              />
-            </SettingRow>
-          </>
-        )}
-      </SettingGroup>
+      {!runtimeCapabilities.android && (
+        <SettingGroup theme={theme}>
+          <SettingTitle>{t('settings.general.title')}</SettingTitle>
+          <SettingDivider />
+          <SettingRow>
+            <SettingRowTitle>{t('settings.proxy.mode.title')}</SettingRowTitle>
+            <Selector value={storeProxyMode} onChange={onProxyModeChange} options={proxyModeOptions} />
+          </SettingRow>
+          {storeProxyMode === 'custom' && (
+            <>
+              <SettingDivider />
+              <SettingRow>
+                <SettingRowTitle>{t('settings.proxy.address')}</SettingRowTitle>
+                <Input
+                  spellCheck={false}
+                  placeholder="socks5://127.0.0.1:6153"
+                  value={proxyUrl}
+                  onChange={(e) => setProxyUrl(e.target.value)}
+                  style={{ width: 180 }}
+                  onBlur={onSetProxyUrl}
+                  type="url"
+                />
+              </SettingRow>
+              <SettingDivider />
+              <SettingRow>
+                <SettingRowTitle style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span>{t('settings.proxy.bypass')}</span>
+                  <Tooltip title={t('settings.proxy.tip')} placement="right">
+                    <InfoCircleOutlined style={{ cursor: 'pointer' }} />
+                  </Tooltip>
+                </SettingRowTitle>
+                <Input
+                  spellCheck={false}
+                  placeholder={defaultByPassRules}
+                  value={proxyBypassRules}
+                  onChange={(e) => setProxyBypassRules(e.target.value)}
+                  style={{ width: 180 }}
+                  onBlur={onSetProxyBypassRules}
+                />
+              </SettingRow>
+            </>
+          )}
+        </SettingGroup>
+      )}
       <SettingGroup theme={theme}>
         <SettingTitle>{t('settings.notification.title')}</SettingTitle>
         <SettingDivider />
@@ -187,32 +190,36 @@ const GeneralSettings: FC = () => {
           <Switch checked={notification.assistant} onChange={handleNotificationChange} />
         </SettingRow>
       </SettingGroup>
-      <SettingGroup theme={theme}>
-        <SettingTitle>{t('settings.launch.title')}</SettingTitle>
-        <SettingDivider />
-        <SettingRow>
-          <SettingRowTitle>{t('settings.launch.onboot')}</SettingRowTitle>
-          <Switch checked={launchOnBoot} onChange={updateLaunchOnBoot} />
-        </SettingRow>
-        <SettingDivider />
-        <SettingRow>
-          <SettingRowTitle>{t('settings.launch.silent_onboot')}</SettingRowTitle>
-          <Switch checked={launchToTray} onChange={updateLaunchToTray} />
-        </SettingRow>
-        <SettingDivider />
-        <SettingRow>
-          <SettingRowTitle>{t('settings.general.auto_check_update.title')}</SettingRowTitle>
-          <Switch checked={autoCheckUpdate} onChange={updateAutoCheckUpdate} />
-        </SettingRow>
-      </SettingGroup>
-      <SettingGroup theme={theme}>
-        <SettingTitle>{t('settings.tray.title')}</SettingTitle>
-        <SettingDivider />
-        <SettingRow>
-          <SettingRowTitle>{t('settings.tray.keep_background_on_close')}</SettingRowTitle>
-          <Switch checked={trayOnClose} onChange={updateTrayOnClose} />
-        </SettingRow>
-      </SettingGroup>
+      {!runtimeCapabilities.android && (
+        <>
+          <SettingGroup theme={theme}>
+            <SettingTitle>{t('settings.launch.title')}</SettingTitle>
+            <SettingDivider />
+            <SettingRow>
+              <SettingRowTitle>{t('settings.launch.onboot')}</SettingRowTitle>
+              <Switch checked={launchOnBoot} onChange={updateLaunchOnBoot} />
+            </SettingRow>
+            <SettingDivider />
+            <SettingRow>
+              <SettingRowTitle>{t('settings.launch.silent_onboot')}</SettingRowTitle>
+              <Switch checked={launchToTray} onChange={updateLaunchToTray} />
+            </SettingRow>
+            <SettingDivider />
+            <SettingRow>
+              <SettingRowTitle>{t('settings.general.auto_check_update.title')}</SettingRowTitle>
+              <Switch checked={autoCheckUpdate} onChange={updateAutoCheckUpdate} />
+            </SettingRow>
+          </SettingGroup>
+          <SettingGroup theme={theme}>
+            <SettingTitle>{t('settings.tray.title')}</SettingTitle>
+            <SettingDivider />
+            <SettingRow>
+              <SettingRowTitle>{t('settings.tray.keep_background_on_close')}</SettingRowTitle>
+              <Switch checked={trayOnClose} onChange={updateTrayOnClose} />
+            </SettingRow>
+          </SettingGroup>
+        </>
+      )}
       <SettingGroup theme={theme}>
         <SettingTitle>{t('settings.about.title')}</SettingTitle>
         <SettingDivider />

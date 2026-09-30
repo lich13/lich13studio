@@ -1,4 +1,5 @@
 import WindowControls from '@renderer/components/WindowControls'
+import { runtimeCapabilities } from '@renderer/services/mobile/runtime'
 import type { FC } from 'react'
 import { useState } from 'react'
 
@@ -19,7 +20,7 @@ const OnboardingPage: FC<OnboardingPageProps> = ({ onComplete }) => {
   return (
     <div className="flex h-screen w-screen flex-col">
       <div className="drag flex w-full shrink-0 items-center justify-end" style={{ height: 'var(--navbar-height)' }}>
-        <WindowControls />
+        {!runtimeCapabilities.android && <WindowControls />}
       </div>
       <div className="flex flex-1 px-2 pb-2">
         <div className="relative flex flex-1 overflow-hidden rounded-xl bg-(--color-background)">

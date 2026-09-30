@@ -11,6 +11,7 @@ import type { Model, Provider } from '@renderer/types'
 import { objectEntries } from '@renderer/types'
 import { classNames, filterModelsByKeywords, getFancyProviderName } from '@renderer/utils'
 import { getDuplicateModelNames, getModelTags } from '@renderer/utils/model'
+import { getModelPresentation } from '@renderer/utils/modelPresentation'
 import { Divider, Empty, Modal, Tooltip } from 'antd'
 import { sortBy } from 'lodash'
 import { Settings2 } from 'lucide-react'
@@ -136,8 +137,8 @@ const SelectModelPopupView: React.FC<Props> = ({
         name: (
           <ModelName>
             <div className="flex min-w-0 flex-1 items-center gap-1.5">
-              <span className="min-w-0 truncate">{model.name}</span>
-              {showIdentifier && model.id !== model.name && (
+              <span className="min-w-0 truncate">{getModelPresentation(model).primary}</span>
+              {showIdentifier && Boolean(getModelPresentation(model).secondary) && (
                 <span
                   className="min-w-0 max-w-[45%] shrink truncate font-mono text-[12px] text-[var(--color-text-3)]"
                   title={model.id}>
