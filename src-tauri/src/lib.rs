@@ -2649,7 +2649,16 @@ pub fn run() {
   #[cfg(not(target_os = "android"))]
   let builder = builder.plugin(tauri_plugin_single_instance::init(|app, _, _| { let _ = show_and_focus_main_window(app); }));
   #[cfg(target_os = "android")]
-  let builder = builder.plugin(mobile::plugin());
+  let builder = builder.plugin(mobile::plugin()).on_page_load(|webview, payload| {
+    if payload.event() == tauri::webview::PageLoadEvent::Started {
+      let app = webview.app_handle().clone();
+      // A fresh renderer has no collectors for the previous page's streams.
+      // Route changes do not load a page and continue running in the background.
+      tauri::async_runtime::spawn(async move {
+        let _ = mobile::mobile_command(app, "stopTasks".into(), None).await;
+      });
+    }
+  });
   builder
     .plugin(tauri_plugin_deep_link::init())
     .plugin(tauri_plugin_notification::init())

@@ -47,7 +47,7 @@ class MobileSmokeTest {
         }
         return checkNotNull(current) { "No resumed main activity" }
     }
-    @Test fun importsUseConfirmationAndPrivateCredentialsAcrossActivityRestart() {
+    @Test fun importsUseConfirmationAndPrivateCredentials() {
         val link = Uri.Builder().scheme("ccswitch").authority("v1").appendPath("import")
             .appendQueryParameter("resource", "provider").appendQueryParameter("app", "codex")
             .appendQueryParameter("name", "Android CI provider").appendQueryParameter("endpoint", "http://127.0.0.1:18765//v1/v1")
@@ -73,16 +73,22 @@ class MobileSmokeTest {
         waitFor("duplicate confirmation closes") { js("!document.querySelector('.ant-modal input')") == true }
         val providers = "JSON.parse(JSON.parse(localStorage.getItem('persist:cherry-studio')).llm).providers"
         assertEquals(1, (js("$providers.filter(p=>p.name==='Android CI provider').length") as Number).toInt())
-        // Activity recreation exercises Keystore hydration without rewriting state from the test.
-        val before = MainActivity.web.get()
-        val current = activity()
-        instrumentation.runOnMainSync { current.recreate() }
-        waitFor("recreated WebView") { MainActivity.web.get() != null && MainActivity.web.get() !== before }
-        waitFor("recreated renderer") { js("!!document.querySelector('#root') && document.body.innerText.length > 10") == true }
-        assertEquals(false, js("JSON.stringify(localStorage).includes('ci-only-model-key')"))
-        assertEquals(1, (js("$providers.filter(p=>p.name==='Android CI provider').length") as Number).toInt())
         open(link.replace("app=codex", "app=gemini"))
         waitFor("invalid link rejected") { js("!!document.querySelector('.ant-message-error')") == true }
         assertEquals(false, js("!!document.querySelector('.ant-modal input')"))
+    }
+
+    /** Run in a second instrumentation process after force-stopping the first. */
+    @Test fun credentialsSurviveProcessRestart() {
+        context.startActivity(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        waitFor("cold restarted renderer") { js("!!document.querySelector('#home-page')") == true }
+        assertEquals(false, js("JSON.stringify(localStorage).includes('ci-only-model-key')"))
+        val providers = "JSON.parse(JSON.parse(localStorage.getItem('persist:cherry-studio')).llm).providers"
+        assertEquals(1, (js("$providers.filter(p=>p.name==='Android CI provider').length") as Number).toInt())
+        assertEquals(true, js("$providers.find(p=>p.name==='Android CI provider').apiKey.startsWith('lich13-secret:')"))
+        val vault = File(context.noBackupFilesDir, "credentials-v1.json")
+        assertTrue(vault.isFile)
+        assertFalse(vault.readText().contains("ci-only-model-key"))
+        assertNull(activity().intent.data)
     }
 }
