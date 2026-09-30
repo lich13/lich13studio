@@ -3,6 +3,11 @@ package com.lich13.studio
 import android.content.Intent
 import android.net.Uri
 import android.webkit.WebView
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import android.view.accessibility.AccessibilityNodeInfo
+import android.accessibilityservice.AccessibilityServiceInfo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
@@ -47,6 +52,27 @@ class MobileSmokeTest {
         }
         return checkNotNull(current) { "No resumed main activity" }
     }
+    private fun allowNotification(node: AccessibilityNodeInfo?): Boolean {
+        if (node == null) return false
+        if (node.viewIdResourceName?.endsWith(":id/permission_allow_button") == true) {
+            return node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+        }
+        for (index in 0 until node.childCount) if (allowNotification(node.getChild(index))) return true
+        return false
+    }
+    private fun verifyNotificationPermission() {
+        val automation = instrumentation.uiAutomation
+        automation.serviceInfo = automation.serviceInfo.apply { flags = flags or AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS }
+        val needsPrompt = Build.VERSION.SDK_INT >= 33 &&
+            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        val request = "window.__notificationOutcome='pending';void window.__TAURI_INTERNALS__.invoke('mobile_command',{command:'notificationPermission',args:{request:true}}).then(r=>window.__notificationOutcome=r.granted?'granted':'denied',()=>window.__notificationOutcome='error')"
+        js(request)
+        if (needsPrompt) waitFor("notification permission dialog") { allowNotification(automation.rootInActiveWindow) }
+        waitFor("notification permission callback") { js("window.__notificationOutcome") == "granted" }
+        // Repeating an already-granted request must also resolve.
+        js(request)
+        waitFor("already-granted notification callback") { js("window.__notificationOutcome") == "granted" }
+    }
     @Test fun importsUseConfirmationAndPrivateCredentials() {
         val link = Uri.Builder().scheme("ccswitch").authority("v1").appendPath("import")
             .appendQueryParameter("resource", "provider").appendQueryParameter("app", "codex")
@@ -83,6 +109,7 @@ class MobileSmokeTest {
             js("document.querySelector('button.ant-btn-text').click()")
         }
         waitFor("onboarding persisted") { js("localStorage.getItem('onboarding-completed') === 'true'") == true }
+        verifyNotificationPermission()
     }
 
     /** Run in a second instrumentation process after force-stopping the first. */

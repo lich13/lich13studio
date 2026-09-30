@@ -51,6 +51,7 @@ pub async fn mobile_command(
     "endTask",
     "stopTasks",
     "taskState",
+    "notificationPermission",
     "background",
     "saveFile",
     "openUrl",

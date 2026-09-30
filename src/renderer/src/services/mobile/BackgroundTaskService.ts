@@ -1,12 +1,10 @@
-import { isPermissionGranted, requestPermission } from '@tauri-apps/plugin-notification'
-
 import { mobileCommand, runtimeCapabilities } from './runtime'
 
 type Task = { stop: (reason?: string) => void; nativeStarted: boolean }
 const tasks = new Map<string, Task>()
 let epoch = 0
 let initialized = false
-let notificationPermission: Promise<void> | undefined
+let notificationRequested = false
 function cancelAll(reason: string) {
   for (const { stop } of [...tasks.values()]) {
     try {
@@ -20,13 +18,6 @@ export const backgroundTasks = {
   getEpoch: () => (runtimeCapabilities.android && tasks.size ? epoch : undefined),
   async acquire(stop: (reason?: string) => void) {
     if (!runtimeCapabilities.android) return () => {}
-    // Request only in response to the user's first task, before entering background.
-    notificationPermission ??= isPermissionGranted()
-      .then(async (granted) => {
-        if (!granted) await requestPermission()
-      })
-      .catch(() => {})
-    await notificationPermission
     if (!initialized) {
       initialized = true
       window.addEventListener('mobile-tasks-stopped', (event) => {
@@ -65,6 +56,12 @@ export const backgroundTasks = {
       const result = await mobileCommand<{ epoch: number }>('beginTask', { id })
       epoch = result.epoch
       task.nativeStarted = true
+      // POST_NOTIFICATIONS is not required to start an Android foreground service.
+      // Never gate a model request or its cancellation on the permission dialog.
+      if (!notificationRequested) {
+        notificationRequested = true
+        void mobileCommand('notificationPermission', { request: true }).catch(() => {})
+      }
     } catch (error) {
       tasks.delete(id)
       throw error

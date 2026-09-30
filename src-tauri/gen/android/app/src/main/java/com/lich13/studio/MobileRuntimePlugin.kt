@@ -1,8 +1,12 @@
 package com.lich13.studio
 
 import android.app.Activity
+import android.app.NotificationManager
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.AtomicFile
@@ -19,12 +23,36 @@ import javax.crypto.spec.GCMParameterSpec
 import org.json.JSONObject
 
 @InvokeArg
-class MobileArgs { var id: String = ""; var value: String = ""; var path: String = ""; var name: String = ""; var url: String = "" }
+class MobileArgs { var id: String = ""; var value: String = ""; var path: String = ""; var name: String = ""; var url: String = ""; var request: Boolean = false }
 
-@TauriPlugin
+@TauriPlugin(permissions = [Permission(strings = [Manifest.permission.POST_NOTIFICATIONS], alias = "taskNotifications")])
 class MobileRuntimePlugin(private val activity: Activity) : Plugin(activity) {
     private val alias = "lich13studio.credentials.v1"
     private val store = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+    private val notificationRequests = mutableListOf<Invoke>()
+    private fun notificationsGranted() = activity.getSystemService(NotificationManager::class.java).areNotificationsEnabled()
+    @Command fun notificationPermission(invoke: Invoke) {
+        val request = invoke.parseArgs(MobileArgs::class.java).request
+        activity.runOnUiThread {
+            // Always resolve already-granted requests, including concurrent callers.
+            if (!request || Build.VERSION.SDK_INT < 33 || activity.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+                invoke.resolve(JSObject().put("granted", notificationsGranted()))
+            } else {
+                notificationRequests.add(invoke)
+                if (notificationRequests.size == 1) {
+                    try { requestPermissionForAlias("taskNotifications", invoke, "notificationPermissionResult") }
+                    catch (_: Exception) { finishNotificationRequests() }
+                }
+            }
+        }
+    }
+    @PermissionCallback fun notificationPermissionResult(invoke: Invoke) { finishNotificationRequests() }
+    private fun finishNotificationRequests() {
+        val pending = notificationRequests.toList()
+        notificationRequests.clear()
+        val result = JSObject().put("granted", notificationsGranted())
+        pending.forEach { it.resolve(result) }
+    }
     private fun file() = AtomicFile(File(activity.noBackupFilesDir, "credentials-v1.json"))
     private fun secret(create: Boolean): SecretKey {
         (store.getKey(alias, null) as? SecretKey)?.let { return it }

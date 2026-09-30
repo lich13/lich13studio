@@ -2,9 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const native = vi.hoisted(() => ({
   android: true,
-  command: vi.fn<(command: string, args?: Record<string, unknown>) => Promise<unknown>>(),
-  isPermissionGranted: vi.fn<() => Promise<boolean>>(),
-  requestPermission: vi.fn<() => Promise<'granted' | 'denied' | 'default'>>()
+  command: vi.fn<(command: string, args?: Record<string, unknown>) => Promise<unknown>>()
 }))
 
 vi.mock('./runtime', () => ({
@@ -15,10 +13,6 @@ vi.mock('./runtime', () => ({
     }
   }
 }))
-vi.mock('@tauri-apps/plugin-notification', () => ({
-  isPermissionGranted: native.isPermissionGranted,
-  requestPermission: native.requestPermission
-}))
 
 let backgroundTasks: typeof import('./BackgroundTaskService')['backgroundTasks']
 let fixtureWindow: EventTarget
@@ -27,12 +21,11 @@ let fixtureDocument: EventTarget & { hidden: boolean }
 beforeEach(async () => {
   vi.resetModules()
   native.android = true
-  native.isPermissionGranted.mockReset().mockResolvedValue(true)
-  native.requestPermission.mockReset().mockResolvedValue('granted')
   native.command.mockReset().mockImplementation(async (command) => {
     if (command === 'beginTask') return { epoch: 17 }
     if (command === 'endTask') return undefined
     if (command === 'taskState') return {}
+    if (command === 'notificationPermission') return { granted: true }
     throw new Error(`Unexpected native command: ${command}`)
   })
   fixtureWindow = new EventTarget()
@@ -72,14 +65,12 @@ describe('backgroundTasks', () => {
     expect(callsFor('endTask').map(([, args]) => args?.id)).toEqual(beginIds)
     expect(firstStop).not.toHaveBeenCalled()
     expect(secondStop).not.toHaveBeenCalled()
-    expect(native.requestPermission).not.toHaveBeenCalled()
+    expect(callsFor('notificationPermission')).toHaveLength(1)
   })
 
   it('requests notification permission only once for concurrent tasks', async () => {
-    native.isPermissionGranted.mockResolvedValue(false)
     const releases = await Promise.all([backgroundTasks.acquire(vi.fn()), backgroundTasks.acquire(vi.fn())])
-    expect(native.isPermissionGranted).toHaveBeenCalledTimes(1)
-    expect(native.requestPermission).toHaveBeenCalledTimes(1)
+    expect(callsFor('notificationPermission')).toEqual([['notificationPermission', { request: true }]])
     expect(callsFor('beginTask')).toHaveLength(2)
     for (const release of releases) release()
     expect(backgroundTasks.getEpoch()).toBeUndefined()
@@ -186,20 +177,29 @@ describe('backgroundTasks', () => {
     for (const release of releases) release()
   })
 
-  it.each(['denied', 'query failed', 'request failed'])(
-    'does not strand the task when notification permission is %s',
-    async (failure) => {
-      native.isPermissionGranted.mockResolvedValue(false)
-      if (failure === 'denied') native.requestPermission.mockResolvedValue('denied')
-      if (failure === 'query failed')
-        native.isPermissionGranted.mockRejectedValue(new Error('Fixture permission query failed'))
-      if (failure === 'request failed')
-        native.requestPermission.mockRejectedValue(new Error('Fixture permission request failed'))
-      const release = await backgroundTasks.acquire(vi.fn())
+  it.each(['denied', 'failed', 'unanswered'])(
+    'starts and releases the task when notification permission is %s',
+    async (permission) => {
+      const handler = native.command.getMockImplementation()!
+      let answer!: (value: unknown) => void
+      native.command.mockImplementation(async (command, args) => {
+        if (command !== 'notificationPermission') return handler(command, args)
+        if (permission === 'failed') throw new Error('Permission callback unavailable')
+        if (permission === 'denied') return { granted: false }
+        return new Promise((resolve) => (answer = resolve))
+      })
+      const stop = vi.fn()
+      const release = await backgroundTasks.acquire(stop)
       expect(callsFor('beginTask')).toHaveLength(1)
       expect(backgroundTasks.getEpoch()).toBe(17)
+      fixtureWindow.dispatchEvent(new Event('mobile-tasks-stopped'))
+      expect(stop).toHaveBeenCalledTimes(1)
       release()
       expect(callsFor('endTask')).toHaveLength(1)
+      expect(backgroundTasks.getEpoch()).toBeUndefined()
+      answer?.({ granted: true })
+      await drainMicrotasks()
+      expect(callsFor('beginTask')).toHaveLength(1)
       expect(backgroundTasks.getEpoch()).toBeUndefined()
     }
   )
@@ -240,8 +240,7 @@ describe('backgroundTasks', () => {
     fixtureDocument.dispatchEvent(new Event('visibilitychange'))
     expect(backgroundTasks.getEpoch()).toBeUndefined()
     expect(native.command).not.toHaveBeenCalled()
-    expect(native.isPermissionGranted).not.toHaveBeenCalled()
-    expect(native.requestPermission).not.toHaveBeenCalled()
+    expect(callsFor('notificationPermission')).toHaveLength(0)
     expect(stop).not.toHaveBeenCalled()
   })
 })

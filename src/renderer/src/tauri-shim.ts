@@ -9,7 +9,7 @@ import {
 } from '@tauri-apps/plugin-notification'
 
 import { hydrateCredentials, mobilePersistStorage, stripCredentials } from './services/mobile/credentials'
-import { runtimeCapabilities } from './services/mobile/runtime'
+import { mobileCommand, runtimeCapabilities } from './services/mobile/runtime'
 import { startProviderImportListener } from './services/ProviderImportQueue'
 import { attachmentMime, managedAttachmentId } from './utils/attachmentMime'
 
@@ -943,12 +943,14 @@ const api = {
       let permissionGranted = false
 
       try {
-        permissionGranted = await isNotificationPermissionGranted()
+        permissionGranted = runtimeCapabilities.android
+          ? (await mobileCommand<{ granted: boolean }>('notificationPermission')).granted
+          : await isNotificationPermissionGranted()
       } catch {
         permissionGranted = window.Notification?.permission === 'granted'
       }
 
-      if (!permissionGranted) {
+      if (!permissionGranted && !runtimeCapabilities.android) {
         try {
           permissionGranted = (await requestNotificationPermission()) === 'granted'
         } catch {
@@ -1102,6 +1104,7 @@ const api = {
     }
   },
   trace: {
+    saveData: noOpAsync,
     saveEntity: noOpAsync,
     tokenUsage: noOpAsync,
     addStreamMessage: noOpAsync,
