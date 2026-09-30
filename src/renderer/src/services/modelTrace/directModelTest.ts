@@ -37,7 +37,12 @@ export async function prepareDirectModelTest(selectedModel: Model) {
   })
   return {
     target: { providerId: provider.id, providerName: provider.name, modelId: model.id },
-    async execute(prompt: string, signal: AbortSignal, onChunk: (chunk: Chunk) => void) {
+    async execute(
+      prompt: string,
+      signal: AbortSignal,
+      onChunk: (chunk: Chunk) => void,
+      options: { maxOutputTokens?: number } = {}
+    ) {
       signal.throwIfAborted()
       await ai.completions(
         model.id,
@@ -47,7 +52,7 @@ export async function prepareDirectModelTest(selectedModel: Model) {
           prompt: undefined,
           messages: [{ role: 'user', content: prompt }],
           abortSignal: signal,
-          maxOutputTokens: MODEL_TEST_MAX_OUTPUT_TOKENS,
+          maxOutputTokens: options.maxOutputTokens ?? MODEL_TEST_MAX_OUTPUT_TOKENS,
           maxRetries: 0
         },
         {

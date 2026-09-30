@@ -65,6 +65,7 @@ import { clearReasoningCapabilityCache } from '@renderer/aiCore/utils/reasoningF
 import { AnswerCollector } from './AnswerCollector'
 import { prepareDirectModelTest } from './directModelTest'
 import { ModelTestRunner } from './ModelTraceService'
+import { getModelTestMaxOutputTokens } from './OutputGuard'
 
 beforeEach(() => {
   clearReasoningCapabilityCache()
@@ -166,7 +167,7 @@ describe('ModelTrace actual SDK request pipeline', () => {
       for (const request of requests) {
         expect(request.url).toBe('/v1/responses')
         expect(request.authorization).toBe('Bearer dummy-one')
-        expect(request.body).toMatchObject({ model: 'gpt-6-luna', max_output_tokens: 4096 })
+        expect(request.body).toMatchObject({ model: 'gpt-6-luna', max_output_tokens: getModelTestMaxOutputTokens(303) })
         for (const field of ['reasoning', 'thinking', 'tools', 'timeout'])
           expect(request.body).not.toHaveProperty(field)
       }
@@ -232,7 +233,7 @@ describe('ModelTrace actual SDK request pipeline', () => {
       for (const request of requests) {
         expect(request.url).toBe('/v1/responses')
         expect(request.authorization).toBe('Bearer dummy-one')
-        expect(request.body).toMatchObject({ model: 'gpt-6-luna', max_output_tokens: 4096 })
+        expect(request.body).toMatchObject({ model: 'gpt-6-luna', max_output_tokens: getModelTestMaxOutputTokens(303) })
         for (const field of ['reasoning', 'thinking', 'tools', 'timeout'])
           expect(request.body).not.toHaveProperty(field)
       }

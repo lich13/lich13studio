@@ -4588,7 +4588,7 @@
       "modelUnavailable": "请选择平台目录中有效的模型。",
       "noSamples": "已完成，暂无可分析样本",
       "noUsableSamples": "暂无可分析样本",
-      "outputLimit": "输出超限：{{actual}} / {{maximum}} {{unit}}，本次尝试不参与分析。",
+      "outputLimit": "已达到保护上限：第 {{actual}} 个{{unit}}超过 {{maximum}}，正在重试。",
       "pastePlaceholder": "将模型完整回答粘贴到这里",
       "providerLabel": "提供商",
       "providerPlaceholder": "请选择提供商",

@@ -54,6 +54,16 @@ describe('bounded ModelTrace sessions', () => {
     expect({ ...analyzeModelTraceOutputs(result.outputs), concurrency: 1 }).toEqual(result.report)
   })
 
+  it('isolates progress subscriber errors from provider execution', async () => {
+    const subscriber = vi.fn(() => {
+      throw new Error('React update recursion')
+    })
+    const result = await new ModelTestRunner({ model, challenges, onProgress: subscriber }).run()
+    expect(subscriber).toHaveBeenCalled()
+    expect(result.outputs.every((output) => output.status === 'completed')).toBe(true)
+    expect(result.error).toBeUndefined()
+  })
+
   it('caps each group at 3 requests, keeps successes and retries only failed groups', async () => {
     const runner = new ModelTestRunner({ model, challenges })
     mocks.execute.mockImplementation(async (prompt, signal, onChunk) => {
@@ -87,7 +97,7 @@ describe('bounded ModelTrace sessions', () => {
           },
           { once: true }
         )
-        onChunk({ type: ChunkType.TEXT_DELTA, text: '1 '.repeat(607) })
+        onChunk({ type: ChunkType.TEXT_DELTA, text: '1 '.repeat(1706) })
         onChunk({ type: ChunkType.TEXT_DELTA, text: 'late output ignored' })
       })
     })
@@ -103,6 +113,7 @@ describe('bounded ModelTrace sessions', () => {
       failureCode: 'output-limit',
       limit: { maximum: 606, actual: 607 }
     })
+    expect(result.outputs[0].text.trim().split(/\s+/)).toHaveLength(607)
     expect(result.outputs[0].text).not.toContain('late')
     expect(result.report?.used_outputs).toBe(2)
     mocks.execute.mockImplementation(success)
@@ -137,6 +148,19 @@ describe('bounded ModelTrace sessions', () => {
     expect(result.report?.used_outputs).toBe(2)
     await runner.run({ retryFailedOnly: true })
     expect(mocks.execute).toHaveBeenCalledTimes(3)
+  })
+
+  it('accepts an oversized normal terminal snapshot without retrying the request', async () => {
+    mocks.execute.mockImplementation(async (prompt, signal, onChunk) => {
+      const text = Array(1706).fill('1').join(' ')
+      onChunk({ type: ChunkType.TEXT_COMPLETE, text })
+      expect(signal.aborted).toBe(false)
+      onChunk({ type: ChunkType.LLM_RESPONSE_COMPLETE, response: { text }, finishReason: 'length' })
+    })
+    const result = await new ModelTestRunner({ model, challenges }).run()
+    expect(mocks.execute).toHaveBeenCalledTimes(3)
+    expect(result.outputs.every((output) => output.status === 'completed')).toBe(true)
+    expect(result.outputs[0]).toMatchObject({ parsedCount: 1706, attempts: 1 })
   })
 
   it('completes contaminated text once and analyzes the other groups', async () => {

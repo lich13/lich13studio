@@ -4588,7 +4588,7 @@
       "modelUnavailable": "Select a valid model from the platform catalog.",
       "noSamples": "Completed; no samples available for analysis",
       "noUsableSamples": "No samples available for analysis",
-      "outputLimit": "Output limit reached: {{actual}} / {{maximum}} {{unit}}. This attempt is excluded from analysis.",
+      "outputLimit": "Output protection reached: item {{actual}} exceeds {{maximum}} {{unit}}. Retrying.",
       "pastePlaceholder": "Paste the complete model response here",
       "providerLabel": "Provider",
       "providerPlaceholder": "Select a provider",

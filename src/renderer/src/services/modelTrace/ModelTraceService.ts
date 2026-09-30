@@ -1,3 +1,4 @@
+import { loggerService } from '@logger'
 import type { Model } from '@renderer/types'
 import { type ModelTestConcurrency, normalizeModelTestConcurrency } from '@shared/modelTestOptions'
 
@@ -11,7 +12,13 @@ import {
   freezeBankSnapshot
 } from './fingerprintBank'
 import { analyzeGlobalOutputs } from './fingerprintCore'
-import { type ModelTestLimit, ModelTestOutputGuard, ModelTestOutputLimitError } from './OutputGuard'
+import {
+  getModelTestMaxOutputTokens,
+  type ModelTestLimit,
+  ModelTestOutputGuard,
+  ModelTestOutputLimitError,
+  truncateAtIntegerLimit
+} from './OutputGuard'
 import { type OutputIssue, validateModelTraceOutput } from './outputValidation'
 import {
   classifyModelTestFailure,
@@ -99,6 +106,14 @@ export interface ModelTestRunnerConfig {
 export const MODELTRACE_BANK_VERSION = bundledBankSnapshot.version.builtAt
 export const MODELTRACE_MAX_ATTEMPTS = 3
 const RETRY_DELAYS = [1000, 3000]
+const logger = loggerService.withContext('ModelTraceService')
+const safeWarn = (message: string) => {
+  try {
+    logger.warn(message)
+  } catch {
+    // Logging is optional during early startup and isolated unit tests.
+  }
+}
 
 export const createModelTraceChallenges = (): ModelTestChallenge[] => generateChallenges(3) as ModelTestChallenge[]
 
@@ -161,13 +176,19 @@ export class ModelTestRunner {
 
   private update(index: number, changes: Partial<ModelTestOutput>) {
     this.outputs[index] = { ...this.outputs[index], ...changes }
-    this.config.onProgress?.({
-      index,
-      total: this.challenges.length,
-      challenge: { ...this.challenges[index] },
-      output: { ...this.outputs[index] },
-      target: { ...this.target }
-    })
+    try {
+      this.config.onProgress?.({
+        index,
+        total: this.challenges.length,
+        challenge: { ...this.challenges[index] },
+        output: { ...this.outputs[index] },
+        target: { ...this.target }
+      })
+    } catch {
+      // A view subscriber must never turn a successful provider stream into a
+      // request failure. The session remains available for a later render.
+      safeWarn('Model test progress subscriber failed; request continues')
+    }
   }
 
   async run({ retryFailedOnly = false }: { retryFailedOnly?: boolean } = {}): Promise<ModelTestRunResult> {
@@ -237,22 +258,32 @@ export class ModelTestRunner {
             error: undefined
           })
           try {
-            await this.prepared!.execute(challenge.prompt, attemptController.signal, (chunk) => {
-              if (!accepting || !current()) return
-              collector.accept(chunk)
-              limitError = guard.accept(chunk, collector.rawText)
-              if (limitError || collector.error !== undefined) {
-                accepting = false
-                attemptController.abort(limitError ?? collector.error)
-              }
-              const validation = validateModelTraceOutput(collector.rawText, challenge.expected_count)
-              this.update(index, {
-                text: collector.preview,
-                parsedCount: validation.parsedCount,
-                usableCount: validation.usableCount,
-                excludedCount: validation.excludedCount
-              })
-            })
+            await this.prepared!.execute(
+              challenge.prompt,
+              attemptController.signal,
+              (chunk) => {
+                if (!accepting || !current()) return
+                collector.accept(chunk)
+                limitError = guard.accept(chunk, collector.rawText)
+                if (limitError || collector.error !== undefined) {
+                  accepting = false
+                  attemptController.abort(limitError ?? collector.error)
+                }
+                const validation = validateModelTraceOutput(collector.rawText, challenge.expected_count)
+                const preview = limitError
+                  ? limitError.limit.kind === 'integers'
+                    ? truncateAtIntegerLimit(collector.rawText, limitError.limit.maximum)
+                    : collector.previewUpTo(8192)
+                  : collector.preview
+                this.update(index, {
+                  text: preview,
+                  parsedCount: limitError?.limit.actual ?? validation.parsedCount,
+                  usableCount: limitError ? 0 : validation.usableCount,
+                  excludedCount: limitError ? 0 : validation.excludedCount
+                })
+              },
+              { maxOutputTokens: getModelTestMaxOutputTokens(challenge.expected_count) }
+            )
             signal.throwIfAborted()
             if (limitError) throw limitError
             if (collector.error) throw collector.error
@@ -286,7 +317,12 @@ export class ModelTestRunner {
                   ? 'exhausted'
                   : undefined
                 : (classified.category as ModelTestRetryStopReason),
-              limit: limitError?.limit
+              limit: limitError?.limit,
+              text: limitError
+                ? limitError.limit.kind === 'integers'
+                  ? truncateAtIntegerLimit(collector.rawText, limitError.limit.maximum)
+                  : collector.previewUpTo(8192)
+                : collector.preview
             })
             if (!retryable) {
               fatalError = classified.message
@@ -319,6 +355,14 @@ export class ModelTestRunner {
         if (rejected?.status === 'rejected') throw rejected.reason
       }
       const outputs = structuredClone(this.outputs)
+      let report: ModelTraceReport | undefined
+      try {
+        report = this.analyze(outputs)
+      } catch {
+        // Attribution is local presentation work and must not become a
+        // provider failure or trigger another network request.
+        safeWarn('Model test attribution failed; outputs retained')
+      }
       return {
         target: { ...this.target },
         challenges: structuredClone(this.challenges),
@@ -326,7 +370,7 @@ export class ModelTestRunner {
         concurrency: this.concurrency,
         bankVersion: this.bankSnapshot.version,
         error: fatalError,
-        report: this.analyze(outputs)
+        report
       }
     } finally {
       if (this.controller === controller) this.controller = undefined
@@ -345,7 +389,12 @@ export class ModelTestRunner {
   }
 
   analyze(outputs: ModelTestOutput[]): ModelTraceReport | undefined {
-    const report = analyzeModelTraceOutputs(outputs, this.bankSnapshot)
-    return report ? { ...report, concurrency: this.concurrency } : undefined
+    try {
+      const report = analyzeModelTraceOutputs(outputs, this.bankSnapshot)
+      return report ? { ...report, concurrency: this.concurrency } : undefined
+    } catch {
+      safeWarn('Model test attribution failed; outputs retained')
+      return undefined
+    }
   }
 }

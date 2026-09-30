@@ -2,7 +2,12 @@ import { ChunkType } from '@renderer/types/chunk'
 import { describe, expect, it } from 'vitest'
 
 import { AnswerCollector } from './AnswerCollector'
-import { countCompleteIntegers, MODEL_TEST_MAX_OUTPUT_BYTES, ModelTestOutputGuard } from './OutputGuard'
+import {
+  countCompleteIntegers,
+  getModelTestMaxOutputTokens,
+  MODEL_TEST_MAX_OUTPUT_BYTES,
+  ModelTestOutputGuard
+} from './OutputGuard'
 
 describe('ModelTrace generation limits', () => {
   it('counts complete integers only, preserving signs, range errors and repetitions', () => {
@@ -16,17 +21,26 @@ describe('ModelTrace generation limits', () => {
     const prefix = '1 '.repeat(634)
     expect(guard.accept({ type: ChunkType.TEXT_DELTA, text: prefix }, prefix)).toBeUndefined()
     expect(guard.accept({ type: ChunkType.TEXT_DELTA, text: '24' }, prefix + '24')).toBeUndefined()
-    expect(guard.accept({ type: ChunkType.TEXT_DELTA, text: '7 ' }, prefix + '247 ')?.limit).toEqual({
+    expect(guard.accept({ type: ChunkType.TEXT_DELTA, text: '7 ' }, prefix + '247 ')?.limit).toMatchObject({
       kind: 'integers',
       maximum: 634,
       actual: 635
     })
   })
-  it('checks a final unterminated integer and a single oversized snapshot', () => {
+  it('does not turn a normal terminal quantity mismatch into a transport failure', () => {
     const text = Array(635).fill('1').join(',')
-    expect(new ModelTestOutputGuard(317).accept({ type: ChunkType.TEXT_COMPLETE, text }, text)?.limit.kind).toBe(
-      'integers'
-    )
+    expect(new ModelTestOutputGuard(317).accept({ type: ChunkType.TEXT_COMPLETE, text }, text)).toBeUndefined()
+  })
+  it('records the first excess integer in one giant delta instead of the full chunk size', () => {
+    const text = Array(1706).fill('1').join(' ')
+    const limit = new ModelTestOutputGuard(317).accept({ type: ChunkType.TEXT_DELTA, text }, text)?.limit
+    expect(limit).toMatchObject({ kind: 'integers', maximum: 634, actual: 635 })
+    expect(limit?.position).toBeGreaterThan(0)
+  })
+  it('derives a bounded request budget from the challenge size', () => {
+    expect(getModelTestMaxOutputTokens(10)).toBe(1024)
+    expect(getModelTestMaxOutputTokens(303)).toBe(1212)
+    expect(getModelTestMaxOutputTokens(2000)).toBe(4096)
   })
   it('counts native thinking and excluded commentary towards UTF-8 bytes', () => {
     const guard = new ModelTestOutputGuard(317)

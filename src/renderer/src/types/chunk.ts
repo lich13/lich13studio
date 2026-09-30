@@ -103,6 +103,9 @@ export interface TextDeltaChunk {
    */
   type: ChunkType.TEXT_DELTA
 
+  /** Internal stream contract; never sent to a provider. */
+  textMode?: 'delta' | 'cumulative'
+
   /**
    * Provider metadata for passing provider-specific data (e.g., thoughtSignature for Gemini)
    */
@@ -124,6 +127,9 @@ export interface TextCompleteChunk {
    * The type of the chunk
    */
   type: ChunkType.TEXT_COMPLETE
+
+  /** Internal stream contract; complete chunks are snapshots. */
+  textMode?: 'snapshot'
 
   /**
    * Provider metadata for passing provider-specific data (e.g., thoughtSignature for Gemini)

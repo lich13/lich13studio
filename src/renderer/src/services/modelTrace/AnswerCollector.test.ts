@@ -40,6 +40,15 @@ describe('ModelTrace answer collector', () => {
     expect(collector.rawText).toBe('247 18 331')
     expect(collector.completed).toBe(true)
   })
+  it('replaces cumulative snapshots without repeating their prefix', () => {
+    const collector = new AnswerCollector()
+    collector.accept({ type: ChunkType.TEXT_DELTA, text: '24', textMode: 'cumulative' })
+    collector.accept({ type: ChunkType.TEXT_DELTA, text: '247 ', textMode: 'cumulative' })
+    collector.accept({ type: ChunkType.TEXT_DELTA, text: '247 18', textMode: 'cumulative' })
+    collector.accept({ type: ChunkType.LLM_RESPONSE_COMPLETE, response: { text: '247 18' } })
+    expect(collector.rawText).toBe('247 18')
+    expect(collector.preview).toBe('247 18')
+  })
   it('ignores native reasoning and withholds split inline thought tags', () => {
     const collector = new AnswerCollector()
     collector.accept({ type: ChunkType.THINKING_DELTA, text: 'secret 330' })

@@ -4,7 +4,16 @@ import { isolateAnswer } from './outputValidation'
 
 export const MODEL_TEST_MAX_OUTPUT_TOKENS = 4096
 export const MODEL_TEST_MAX_OUTPUT_BYTES = 32 * 1024
-export type ModelTestLimit = { kind: 'integers' | 'bytes'; maximum: number; actual: number }
+export type ModelTestLimit = {
+  kind: 'integers' | 'bytes'
+  maximum: number
+  actual: number
+  /** Offset in the isolated answer where the first excess integer ends. */
+  position?: number
+}
+
+export const getModelTestMaxOutputTokens = (expectedCount: number): number =>
+  Math.min(MODEL_TEST_MAX_OUTPUT_TOKENS, Math.max(1024, expectedCount * 4))
 
 export class ModelTestOutputLimitError extends Error {
   readonly code = 'output-limit'
@@ -22,6 +31,18 @@ export function countCompleteIntegers(raw: string, complete: boolean): number {
     if (complete || match.index! + match[0].length < answer.length) count += 1
   }
   return count
+}
+
+/** Keep the visible preview at the first protected integer, never at the full chunk size. */
+export function truncateAtIntegerLimit(raw: string, maximum: number): string {
+  const answer = isolateAnswer(raw, false, false).text
+  let count = 0
+  for (const match of answer.matchAll(/(?<![\p{L}\p{N}_.+\-])[+\-]?\d+(?![\p{L}\p{N}_.+\-])/gu)) {
+    if (match.index! + match[0].length >= answer.length) continue
+    count += 1
+    if (count > maximum) return answer.slice(0, match.index! + match[0].length)
+  }
+  return answer
 }
 
 class TextBytes {
@@ -70,7 +91,8 @@ export class ModelTestOutputGuard {
         this.text.start()
         break
       case ChunkType.TEXT_DELTA:
-        this.text.delta(chunk.text)
+        if (chunk.textMode === 'cumulative') this.text.snapshot(chunk.text)
+        else this.text.delta(chunk.text)
         break
       case ChunkType.TEXT_COMPLETE:
         this.text.end(chunk.text)
@@ -92,10 +114,26 @@ export class ModelTestOutputGuard {
       Math.max(this.thinking.bytes, this.encoder.encode(final?.reasoning_content || '').byteLength)
     if (bytes > MODEL_TEST_MAX_OUTPUT_BYTES)
       return new ModelTestOutputLimitError({ kind: 'bytes', maximum: MODEL_TEST_MAX_OUTPUT_BYTES, actual: bytes })
-    const complete = chunk.type === ChunkType.TEXT_COMPLETE || chunk.type === ChunkType.LLM_RESPONSE_COMPLETE
-    const count = countCompleteIntegers(answer, complete)
-    if (count > this.expected * 2)
-      return new ModelTestOutputLimitError({ kind: 'integers', maximum: this.expected * 2, actual: count })
+    // Count only stream increments. A normal provider terminal event may contain
+    // a quantity or range mismatch, which is an analysis issue rather than a
+    // transport failure and must not trigger a retry.
+    if (chunk.type === ChunkType.TEXT_DELTA) {
+      const maximum = this.expected * 2
+      const isolated = isolateAnswer(answer, false, false).text
+      let completeCount = 0
+      for (const match of isolated.matchAll(/(?<![\p{L}\p{N}_.+\-])[+\-]?\d+(?![\p{L}\p{N}_.+\-])/gu)) {
+        if (match.index! + match[0].length < isolated.length) {
+          completeCount += 1
+          if (completeCount > maximum)
+            return new ModelTestOutputLimitError({
+              kind: 'integers',
+              maximum,
+              actual: maximum + 1,
+              position: match.index! + match[0].length
+            })
+        }
+      }
+    }
     return undefined
   }
 }

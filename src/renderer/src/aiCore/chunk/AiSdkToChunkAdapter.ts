@@ -233,6 +233,7 @@ export class AiSdkToChunkAdapter {
           this.emitChunk({
             type: ChunkType.TEXT_DELTA,
             text: this.accumulate ? final.text : finalText,
+            textMode: this.accumulate ? 'cumulative' : 'delta',
             providerMetadata: final.providerMetadata
           })
         }
@@ -246,6 +247,7 @@ export class AiSdkToChunkAdapter {
         this.emitChunk({
           type: ChunkType.TEXT_COMPLETE,
           text: (chunk.providerMetadata?.text?.value as string) ?? final.text ?? '',
+          textMode: 'snapshot',
           providerMetadata: final.providerMetadata
         })
         final.text = ''
