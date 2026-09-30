@@ -139,6 +139,43 @@ describe('backgroundTasks', () => {
     expect(callsFor('taskState')).toHaveLength(1)
   })
 
+  it('ignores foreground reconciliation while a newly authorized task is still starting', async () => {
+    let begin!: (value: { epoch: number }) => void
+    native.command.mockImplementation(async (command) => {
+      if (command === 'beginTask') return new Promise((resolve) => (begin = resolve))
+      if (command === 'taskState') return { stoppedReason: 'user-stop' }
+    })
+    const stop = vi.fn()
+    const acquiring = backgroundTasks.acquire(stop)
+    await drainMicrotasks()
+    fixtureDocument.dispatchEvent(new Event('visibilitychange'))
+    await drainMicrotasks()
+    expect(callsFor('taskState')).toHaveLength(0)
+    expect(stop).not.toHaveBeenCalled()
+    begin({ epoch: 18 })
+    const release = await acquiring
+    expect(backgroundTasks.getEpoch()).toBe(18)
+    expect(stop).not.toHaveBeenCalled()
+    release()
+  })
+
+  it('does not let a stale foreground reply stop a replacement task', async () => {
+    let reconcile!: (value: { stoppedReason: string }) => void
+    const oldRelease = await backgroundTasks.acquire(vi.fn())
+    native.command.mockImplementation(async (command) => {
+      if (command === 'beginTask') return { epoch: 17 }
+      if (command === 'taskState') return new Promise((resolve) => (reconcile = resolve))
+    })
+    fixtureDocument.dispatchEvent(new Event('visibilitychange'))
+    oldRelease()
+    const newStop = vi.fn()
+    const newRelease = await backgroundTasks.acquire(newStop)
+    reconcile({ stoppedReason: 'user-stop' })
+    await drainMicrotasks()
+    expect(newStop).not.toHaveBeenCalled()
+    newRelease()
+  })
+
   it('cancels tasks when foreground reconciliation cannot read native state', async () => {
     const stops = [vi.fn(), vi.fn()]
     const releases = await Promise.all(stops.map((stop) => backgroundTasks.acquire(stop)))

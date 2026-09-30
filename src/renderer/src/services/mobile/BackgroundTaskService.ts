@@ -2,12 +2,13 @@ import { isPermissionGranted, requestPermission } from '@tauri-apps/plugin-notif
 
 import { mobileCommand, runtimeCapabilities } from './runtime'
 
-const tasks = new Map<string, (reason?: string) => void>()
+type Task = { stop: (reason?: string) => void; nativeStarted: boolean }
+const tasks = new Map<string, Task>()
 let epoch = 0
 let initialized = false
 let notificationPermission: Promise<void> | undefined
 function cancelAll(reason: string) {
-  for (const stop of [...tasks.values()]) {
+  for (const { stop } of [...tasks.values()]) {
     try {
       stop(reason)
     } catch {
@@ -33,19 +34,37 @@ export const backgroundTasks = {
         cancelAll(typeof reason === 'string' ? reason : 'service-stopped')
       })
       document.addEventListener('visibilitychange', () => {
-        if (!document.hidden && tasks.size)
-          void mobileCommand<{ stoppedReason?: string }>('taskState')
-            .then((state) => {
-              if (state.stoppedReason) cancelAll(state.stoppedReason)
-            })
-            .catch(() => cancelAll('service-stopped'))
+        if (document.hidden) return
+        // A permission dialog may return while beginTask is still queued.
+        // Its old stoppedReason must not cancel a task that has not started.
+        const active = [...tasks.entries()].filter(([, task]) => task.nativeStarted)
+        if (!active.length) return
+        const observedEpoch = epoch
+        const stopObserved = (reason: string) => {
+          if (epoch !== observedEpoch) return
+          for (const [id, task] of active) {
+            if (tasks.get(id) !== task) continue
+            try {
+              task.stop(reason)
+            } catch {
+              /* isolate callbacks */
+            }
+          }
+        }
+        void mobileCommand<{ stoppedReason?: string }>('taskState')
+          .then((state) => {
+            if (state.stoppedReason) stopObserved(state.stoppedReason)
+          })
+          .catch(() => stopObserved('service-stopped'))
       })
     }
     const id = crypto.randomUUID()
-    tasks.set(id, stop)
+    const task = { stop, nativeStarted: false }
+    tasks.set(id, task)
     try {
       const result = await mobileCommand<{ epoch: number }>('beginTask', { id })
       epoch = result.epoch
+      task.nativeStarted = true
     } catch (error) {
       tasks.delete(id)
       throw error

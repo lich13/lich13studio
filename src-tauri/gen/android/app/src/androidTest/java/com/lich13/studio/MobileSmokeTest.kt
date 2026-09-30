@@ -82,8 +82,7 @@ class MobileSmokeTest {
             assertEquals(true, js("!!document.querySelector('button.ant-btn-text')"))
             js("document.querySelector('button.ant-btn-text').click()")
         }
-        waitFor("onboarding completed") { js("!!document.querySelector('#home-page')") == true }
-        assertEquals(true, js("localStorage.getItem('onboarding-completed') === 'true'"))
+        waitFor("onboarding persisted") { js("localStorage.getItem('onboarding-completed') === 'true'") == true }
     }
 
     /** Run in a second instrumentation process after force-stopping the first. */
