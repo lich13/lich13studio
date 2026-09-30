@@ -141,6 +141,20 @@ html[data-runtime='android'] input,
 html[data-runtime='android'] textarea {
   font-size: 16px;
 }
+html[data-runtime='android'] .ant-input:not(textarea),
+html[data-runtime='android'] .ant-input-affix-wrapper,
+html[data-runtime='android'] .ant-input-number-input {
+  min-height: 48px;
+}
+html[data-runtime='android'] .ant-input-affix-wrapper > .ant-input:not(textarea) {
+  min-height: 0;
+}
+html[data-runtime='android'] .ant-dropdown-menu-item,
+html[data-runtime='android'] .ant-checkbox-wrapper,
+html[data-runtime='android'] .ant-radio-wrapper {
+  min-height: 48px;
+  align-items: center;
+}
 html[data-runtime='android'] .ant-select-dropdown {
   max-width: calc(100vw - 16px) !important;
 }
@@ -232,6 +246,7 @@ html[data-runtime='android'] .ant-form-item .ant-form-item-label > label {
 html[data-runtime='android'] .ant-form-item .ant-form-item-control {
   width: 100%;
   min-width: 0;
+  flex: 0 0 auto;
 }
 html[data-runtime='android'] .ant-input-number-group-wrapper {
   max-width: 100%;
