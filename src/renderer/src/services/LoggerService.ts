@@ -1,6 +1,7 @@
 /* eslint-disable no-restricted-syntax */
 import type { LogContextData, LogLevel, LogSourceWithContext } from '@shared/config/logger'
 import { LEVEL, LEVEL_MAP } from '@shared/config/logger'
+import { sanitizeLogText, sanitizeLogValue } from '@shared/logSanitizer'
 
 // check if the current process is a worker
 const IS_WORKER = typeof window === 'undefined'
@@ -90,6 +91,11 @@ class LoggerService {
    * @param data - Additional data to log
    */
   private processLog(level: LogLevel, message: string, data: any[]): void {
+    const safeMessage = sanitizeLogText(message)
+    const forceLogToMain = data.length > 0 && data[data.length - 1]?.logToMain === true
+    const dataForLog = forceLogToMain ? data.slice(0, -1) : data
+    const safeData = dataForLog.map((value) => sanitizeLogValue(value))
+
     let windowSource = this.window
     if (!this.window) {
       if ((window as any).__LICH13_TAURI_SHIM__) {
@@ -117,32 +123,30 @@ class LoggerService {
       return
     }
 
-    const logMessage = this.module ? `[${this.module}] ${message}` : message
+    const logMessage = this.module ? `[${this.module}] ${safeMessage}` : safeMessage
 
     switch (level) {
       case LEVEL.ERROR:
-        console.error('%c<error>', 'color: red; font-weight: bold', logMessage, ...data)
+        console.error('%c<error>', 'color: red; font-weight: bold', logMessage, ...safeData)
         break
       case LEVEL.WARN:
-        console.warn('%c<warn>', 'color: #FFA500; font-weight: bold', logMessage, ...data)
+        console.warn('%c<warn>', 'color: #FFA500; font-weight: bold', logMessage, ...safeData)
         break
       case LEVEL.INFO:
-        console.info('%c<info>', 'color: #32CD32; font-weight: bold', logMessage, ...data)
+        console.info('%c<info>', 'color: #32CD32; font-weight: bold', logMessage, ...safeData)
         break
       case LEVEL.VERBOSE:
-        console.debug('%c<verbose>', 'color: #808080', logMessage, ...data)
+        console.debug('%c<verbose>', 'color: #808080', logMessage, ...safeData)
         break
       case LEVEL.DEBUG:
-        console.debug('%c<debug>', 'color: #7B68EE', logMessage, ...data)
+        console.debug('%c<debug>', 'color: #7B68EE', logMessage, ...safeData)
         break
       case LEVEL.SILLY:
-        console.debug('%c<silly>', 'color: #808080', logMessage, ...data)
+        console.debug('%c<silly>', 'color: #808080', logMessage, ...safeData)
         break
     }
 
     // if the last data is an object with logToMain: true, force log to main
-    const forceLogToMain = data.length > 0 && data[data.length - 1]?.logToMain === true
-
     if (currentLevel >= LEVEL_MAP[this.logToMainLevel] || forceLogToMain) {
       const source: LogSourceWithContext = {
         process: 'renderer',
@@ -151,17 +155,12 @@ class LoggerService {
       }
 
       if (Object.keys(this.context).length > 0) {
-        source.context = this.context
-      }
-
-      // remove the last item if it is an object with logToMain: true
-      if (forceLogToMain) {
-        data = data.slice(0, -1)
+        source.context = sanitizeLogValue(this.context) as Record<string, unknown>
       }
 
       // In renderer process, use window.api.logToMain to send log to main process
       if (!IS_WORKER) {
-        void window.api.logToMain(source, level, message, data)
+        void window.api.logToMain(source, level, safeMessage, safeData)
       } else {
         //TODO support worker to send log to main process
       }

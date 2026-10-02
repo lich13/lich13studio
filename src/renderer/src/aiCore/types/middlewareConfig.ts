@@ -1,4 +1,4 @@
-import type { Assistant, Message } from '@renderer/types'
+import type { Assistant, ChatRequestMode, Message } from '@renderer/types'
 import type { Chunk } from '@renderer/types/chunk'
 import type { ReasoningMode } from '@shared/reasoning'
 
@@ -10,7 +10,9 @@ import type { ReasoningMode } from '@shared/reasoning'
  * 由 AiProvider 内部注入到 buildPlugins，避免调用方遗漏。
  */
 export interface AiSdkMiddlewareConfig {
-  streamOutput: boolean
+  /** Legacy plugin hint; ordinary chat uses chatRequestMode. */
+  streamOutput?: boolean
+  chatRequestMode?: ChatRequestMode
   onChunk?: (chunk: Chunk) => void
   assistant?: Assistant
   enableReasoning: boolean

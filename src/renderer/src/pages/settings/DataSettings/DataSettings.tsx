@@ -49,6 +49,7 @@ const DataSettings: FC = () => {
       icon: <i className="iconfont icon-obsidian" />
     }
   ]
+  const visibleMenuItems = menuItems.filter((item) => !runtimeCapabilities.android || item.key !== 'obsidian')
 
   return (
     <Container className="data-settings-page">
@@ -57,14 +58,14 @@ const DataSettings: FC = () => {
           value={menu}
           aria-label={t('settings.data.title')}
           onChange={setMenu}
-          options={menuItems
-            .filter((item) => !item.isDivider && !['obsidian', 'local_backup'].includes(item.key))
+          options={visibleMenuItems
+            .filter((item) => !item.isDivider)
             .map((item) => ({ value: item.key, label: item.title }))}
         />
       )}
       {!runtimeCapabilities.android && (
         <MenuList>
-          {menuItems.map((item) =>
+          {visibleMenuItems.map((item) =>
             item.isDivider ? (
               <DividerWithText key={item.key} text={item.text || ''} style={{ margin: '8px 0' }} /> // 动态传递分隔符文字
             ) : (

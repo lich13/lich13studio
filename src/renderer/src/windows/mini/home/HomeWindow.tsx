@@ -1,5 +1,6 @@
 import { loggerService } from '@logger'
 import ModelAvatar from '@renderer/components/Avatar/ModelAvatar'
+import ChatRequestModeToggle from '@renderer/components/ChatRequestModeToggle'
 import ModelProviderSelect from '@renderer/components/ModelProviderSelect'
 import { isMac } from '@renderer/config/constant'
 import { useTheme } from '@renderer/context/ThemeProvider'
@@ -500,10 +501,6 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
         setFiles([])
 
         const newAssistant = cloneDeep(currentAssistant)
-        if (!newAssistant.settings) {
-          newAssistant.settings = {}
-        }
-        newAssistant.settings.streamOutput = true
         // 显式关闭这些功能
         // replace prompt vars
         newAssistant.prompt = await replacePromptVariables(
@@ -808,7 +805,10 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
         </BrandText>
       </BrandArea>
       <HeaderActions className="nodrag">
-        <ModelProviderSelect compact showEffort selection={selection} onChange={handleModelChange} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+          <ModelProviderSelect compact showEffort selection={selection} onChange={handleModelChange} />
+          <ChatRequestModeToggle compact />
+        </div>
         <Tooltip placement="bottomRight" title={newTopicLabel} mouseLeaveDelay={0} arrow>
           <HeaderIconButton type="text" aria-label={newTopicLabel} onClick={() => void handleNewTopic()}>
             <MessageSquareDiff size={16} />

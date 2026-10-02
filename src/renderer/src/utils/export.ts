@@ -2,6 +2,7 @@ import { loggerService } from '@logger'
 import i18n from '@renderer/i18n'
 import { getProviderLabel } from '@renderer/i18n/label'
 import { getMessageTitle } from '@renderer/services/MessagesService'
+import { runtimeCapabilities } from '@renderer/services/mobile/runtime'
 import { addNote } from '@renderer/services/NotesService'
 import store from '@renderer/store'
 import { setExportState } from '@renderer/store/runtime'
@@ -403,7 +404,7 @@ export const exportTopicAsMarkdown = async (
 
   setExportingState(true)
 
-  const { markdownExportPath } = store.getState().settings
+  const markdownExportPath = runtimeCapabilities.android ? null : store.getState().settings.markdownExportPath
   if (!markdownExportPath) {
     try {
       const fileName = removeSpecialCharactersForFileName(topic.name) + '.md'
@@ -446,7 +447,7 @@ export const exportMessageAsMarkdown = async (
 
   setExportingState(true)
 
-  const { markdownExportPath } = store.getState().settings
+  const markdownExportPath = runtimeCapabilities.android ? null : store.getState().settings.markdownExportPath
   if (!markdownExportPath) {
     try {
       const title = await getMessageTitle(message)

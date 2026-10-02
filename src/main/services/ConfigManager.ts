@@ -34,7 +34,6 @@ export enum ConfigKeys {
   AutoUpdate = 'autoUpdate',
   TestPlan = 'testPlan',
   TestChannel = 'testChannel',
-  EnableDataCollection = 'enableDataCollection',
   SelectionAssistantEnabled = 'selectionAssistantEnabled',
   SelectionAssistantTriggerMode = 'selectionAssistantTriggerMode',
   SelectionAssistantFollowToolbar = 'selectionAssistantFollowToolbar',
@@ -170,15 +169,6 @@ export class ConfigManager {
 
   setTestChannel(value: UpgradeChannel) {
     this.set(ConfigKeys.TestChannel, value)
-  }
-
-  getEnableDataCollection(): boolean {
-    return false
-  }
-
-  setEnableDataCollection(value: boolean) {
-    void value
-    this.set(ConfigKeys.EnableDataCollection, false)
   }
 
   // Selection Assistant: is enabled the selection assistant

@@ -2544,7 +2544,7 @@ dependencies = [
 
 [[package]]
 name = "lich13studio"
-version = "0.1.29"
+version = "0.1.30"
 dependencies = [
  "aes-gcm",
  "argon2",
@@ -5372,6 +5372,7 @@ dependencies = [
  "toml_writer",
  "winnow 0.7.15",
 ]
+
 [[package]]
 name = "toml_datetime"
 version = "0.6.3"

@@ -76,7 +76,7 @@ const persistedReducer = persistReducer(
   {
     key: 'cherry-studio',
     storage: runtimeCapabilities.android ? mobilePersistStorage : storage,
-    version: 222,
+    version: 223,
     blacklist: ['runtime', 'messages', 'messageBlocks', 'tabs', 'toolPermissions'],
     migrate
   },

@@ -92,8 +92,7 @@ const assistantsSlice = createSlice({
                 temperature: DEFAULT_TEMPERATURE,
                 contextCount: DEFAULT_CONTEXTCOUNT,
                 enableMaxTokens: false,
-                maxTokens: 0,
-                streamOutput: true
+                maxTokens: 0
               }
             }
             assistant.settings[key] = settings[key]

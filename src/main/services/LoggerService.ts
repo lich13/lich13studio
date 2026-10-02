@@ -2,6 +2,7 @@
 import type { LogContextData, LogLevel, LogSourceWithContext } from '@shared/config/logger'
 import { LEVEL, LEVEL_MAP } from '@shared/config/logger'
 import { IpcChannel } from '@shared/IpcChannel'
+import { sanitizeLogText, sanitizeLogValue } from '@shared/logSanitizer'
 import { app, ipcMain } from 'electron'
 import os from 'os'
 import path from 'path'
@@ -187,6 +188,9 @@ class LoggerService {
    * @param meta - Additional metadata to log
    */
   private processLog(source: LogSourceWithContext, level: LogLevel, message: string, meta: any[]): void {
+    const safeMessage = sanitizeLogText(message)
+    const safeMeta = meta.map((value) => sanitizeLogValue(value))
+
     if (isDev) {
       // skip if env level is set and current level is less than env level
       if (this.envLevel !== LEVEL.NONE && LEVEL_MAP[level] < LEVEL_MAP[this.envLevel]) {
@@ -218,47 +222,47 @@ class LoggerService {
       switch (level) {
         case LEVEL.ERROR:
           console.error(
-            `${datetimeColored} ${colorText(colorText('<ERROR>', 'RED'), 'BOLD')}${moduleString}${message}`,
-            ...meta
+            `${datetimeColored} ${colorText(colorText('<ERROR>', 'RED'), 'BOLD')}${moduleString}${safeMessage}`,
+            ...safeMeta
           )
           break
         case LEVEL.WARN:
           console.warn(
-            `${datetimeColored} ${colorText(colorText('<WARN>', 'YELLOW'), 'BOLD')}${moduleString}${message}`,
-            ...meta
+            `${datetimeColored} ${colorText(colorText('<WARN>', 'YELLOW'), 'BOLD')}${moduleString}${safeMessage}`,
+            ...safeMeta
           )
           break
         case LEVEL.INFO:
           console.info(
-            `${datetimeColored} ${colorText(colorText('<INFO>', 'GREEN'), 'BOLD')}${moduleString}${message}`,
-            ...meta
+            `${datetimeColored} ${colorText(colorText('<INFO>', 'GREEN'), 'BOLD')}${moduleString}${safeMessage}`,
+            ...safeMeta
           )
           break
         case LEVEL.DEBUG:
           console.debug(
-            `${datetimeColored} ${colorText(colorText('<DEBUG>', 'BLUE'), 'BOLD')}${moduleString}${message}`,
-            ...meta
+            `${datetimeColored} ${colorText(colorText('<DEBUG>', 'BLUE'), 'BOLD')}${moduleString}${safeMessage}`,
+            ...safeMeta
           )
           break
         case LEVEL.VERBOSE:
-          console.log(`${datetimeColored} ${colorText('<VERBOSE>', 'BOLD')}${moduleString}${message}`, ...meta)
+          console.log(`${datetimeColored} ${colorText('<VERBOSE>', 'BOLD')}${moduleString}${safeMessage}`, ...safeMeta)
           break
         case LEVEL.SILLY:
-          console.log(`${datetimeColored} ${colorText('<SILLY>', 'BOLD')}${moduleString}${message}`, ...meta)
+          console.log(`${datetimeColored} ${colorText('<SILLY>', 'BOLD')}${moduleString}${safeMessage}`, ...safeMeta)
           break
       }
     }
 
     // add source information to meta
     // renderer process has its own module and context, do not use this.module and this.context
-    const sourceWithContext: LogSourceWithContext = source
+    const sourceWithContext: LogSourceWithContext = { ...source }
     if (source.process === 'main') {
       sourceWithContext.module = this.module
       if (Object.keys(this.context).length > 0) {
-        sourceWithContext.context = this.context
+        sourceWithContext.context = sanitizeLogValue(this.context) as Record<string, unknown>
       }
     }
-    meta.push(sourceWithContext)
+    safeMeta.push(sanitizeLogValue(sourceWithContext))
 
     // add extra system information for error and warn levels
     if (level === LEVEL.ERROR || level === LEVEL.WARN) {
@@ -267,10 +271,10 @@ class LoggerService {
         appver: APP_VERSION
       }
 
-      meta.push(extra)
+      safeMeta.push(sanitizeLogValue(extra))
     }
 
-    this.logger.log(level, message, ...meta)
+    this.logger.log(level, safeMessage, ...safeMeta)
   }
 
   /**

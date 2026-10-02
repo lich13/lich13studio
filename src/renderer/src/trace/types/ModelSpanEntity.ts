@@ -1,4 +1,5 @@
 import type { Span } from '@opentelemetry/api'
+import { sanitizeLogError } from '@shared/logSanitizer'
 
 export interface StartSpanParams {
   topicId: string
@@ -73,8 +74,9 @@ export class ModelSpanEntity {
   }
 
   addModelError(error: Error) {
+    const safeError = sanitizeLogError(error)
     this.spans.forEach((span) => {
-      span.recordException(error, Date.now())
+      span.recordException(safeError, Date.now())
     })
   }
 }

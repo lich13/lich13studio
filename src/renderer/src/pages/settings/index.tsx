@@ -51,7 +51,10 @@ export const SettingRow = styled.div.attrs({ className: 'setting-row' })`
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
   min-height: 24px;
+  min-width: 0;
+  flex-wrap: wrap;
 `
 
 export const SettingRowTitle = styled.div`
@@ -61,6 +64,18 @@ export const SettingRowTitle = styled.div`
   display: flex;
   flex-direction: row;
   align-items: center;
+  min-width: 0;
+  flex: 1 1 140px;
+`
+
+export const SettingRowValue = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+  flex: 1 1 180px;
+  flex-wrap: wrap;
 `
 
 export const SettingHelpTextRow = styled.div`

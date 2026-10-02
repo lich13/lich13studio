@@ -6,7 +6,8 @@ import { LocalBackupModal, useLocalBackupModal } from '@renderer/components/Loca
 import Selector from '@renderer/components/Selector'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import { useSettings } from '@renderer/hooks/useSettings'
-import { startAutoSync, stopAutoSync } from '@renderer/services/BackupService'
+import { backup as createPortableBackup, restore, startAutoSync, stopAutoSync } from '@renderer/services/BackupService'
+import { runtimeCapabilities } from '@renderer/services/mobile/runtime'
 import { useAppDispatch, useAppSelector } from '@renderer/store'
 import {
   setLocalBackupAutoSync,
@@ -197,6 +198,34 @@ const LocalBackupSettings: React.FC = () => {
 
   const closeBackupManager = () => {
     setBackupManagerVisible(false)
+  }
+
+  if (runtimeCapabilities.android) {
+    return (
+      <SettingGroup theme={theme}>
+        <SettingTitle>{t('settings.data.local.title')}</SettingTitle>
+        <SettingDivider />
+        <SettingRow>
+          <SettingRowTitle>{t('settings.general.backup.title')}</SettingRowTitle>
+          <HStack gap="5px">
+            <Button
+              onClick={() => void createPortableBackup(localBackupSkipBackupFile)}
+              icon={<SaveOutlined />}
+              loading={backuping}>
+              {t('settings.data.local.backup.button')}
+            </Button>
+            <Button onClick={() => void restore()} icon={<FolderOpenOutlined />}>
+              {t('settings.data.local.restore.button')}
+            </Button>
+          </HStack>
+        </SettingRow>
+        <SettingDivider />
+        <SettingRow>
+          <SettingRowTitle>{t('settings.data.backup.skip_file_data_title')}</SettingRowTitle>
+          <Switch checked={localBackupSkipBackupFile} onChange={onSkipBackupFilesChange} />
+        </SettingRow>
+      </SettingGroup>
+    )
   }
 
   return (

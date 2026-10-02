@@ -7,7 +7,7 @@ import { type ModelProviderSelection, resolveModelProviderSelection } from '@sha
 import { PLATFORM_NAMES, PROVIDER_PLATFORMS, type ProviderPlatform } from '@shared/platforms'
 import { Select, Tooltip, Typography } from 'antd'
 import { CircleAlert } from 'lucide-react'
-import { useSyncExternalStore } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
@@ -31,7 +31,13 @@ export default function ModelProviderSelect({
 }) {
   const { t } = useTranslation()
   const llm = useAppSelector((state) => state.llm)
-  const resolved = resolveModelProviderSelection(selection, llm)
+  const [draftSelection, setDraftSelection] = useState(selection)
+  const [openField, setOpenField] = useState<'model' | 'provider' | null>(null)
+  useEffect(() => {
+    if (!openField) setDraftSelection(selection)
+  }, [selection, openField])
+  const activeSelection = openField ? draftSelection : selection
+  const resolved = resolveModelProviderSelection(activeSelection, llm)
   const effort = useSyncExternalStore(reasoningUsage.subscribe, () =>
     reasoningUsage.get(selection.providerId || '', selection.modelId || '')
   )
@@ -50,7 +56,7 @@ export default function ModelProviderSelect({
         disabled: false
       }))
   }))
-  if (selection.modelId && !resolved.definition)
+  if (activeSelection.modelId && !resolved.definition)
     models.push({
       label: t('settings.modelTest.unavailable'),
       options: [
@@ -67,10 +73,10 @@ export default function ModelProviderSelect({
     label: provider.name,
     disabled: false
   }))
-  if (selection.providerId && !resolved.provider)
+  if (activeSelection.providerId && !resolved.provider)
     providers.push({
-      value: selection.providerId,
-      label: `${llm.providers.find((provider) => provider.id === selection.providerId)?.name || selection.providerId} (${t('settings.modelTest.unavailable')})`,
+      value: activeSelection.providerId,
+      label: `${llm.providers.find((provider) => provider.id === activeSelection.providerId)?.name || activeSelection.providerId} (${t('settings.modelTest.unavailable')})`,
       disabled: true
     })
   const issue =
@@ -95,6 +101,7 @@ export default function ModelProviderSelect({
               .includes(input.toLowerCase())
           }
           popupMatchSelectWidth={420}
+          getPopupContainer={(trigger) => trigger.parentElement || document.body}
           styles={{ popup: { root: { maxWidth: 'calc(100vw - 24px)' } } }}
           size={compact ? 'small' : 'middle'}
           options={models}
@@ -119,11 +126,17 @@ export default function ModelProviderSelect({
               </ModelOption>
             )
           }}
-          value={selection.modelId ? JSON.stringify([selection.platform, selection.modelId]) : undefined}
+          value={
+            activeSelection.modelId ? JSON.stringify([activeSelection.platform, activeSelection.modelId]) : undefined
+          }
           placeholder={t('button.select_model')}
+          open={openField === 'model' ? true : undefined}
+          onOpenChange={(open) => setOpenField(open ? 'model' : null)}
           onChange={(value: string) => {
             const [platform, modelId] = JSON.parse(value) as [ProviderPlatform, string]
-            onChange({ ...selection, platform, modelId })
+            const next = { ...activeSelection, platform, modelId }
+            setDraftSelection(next)
+            onChange(next)
           }}
         />
         <Select
@@ -133,10 +146,17 @@ export default function ModelProviderSelect({
           optionFilterProp="label"
           size={compact ? 'small' : 'middle'}
           options={providers}
-          value={selection.providerId}
+          value={activeSelection.providerId}
           placeholder={t('settings.modelTest.providerPlaceholder')}
-          disabled={!selection.modelId}
-          onChange={(providerId: string) => onChange({ ...selection, providerId })}
+          disabled={!activeSelection.modelId}
+          getPopupContainer={(trigger) => trigger.parentElement || document.body}
+          open={openField === 'provider' ? true : undefined}
+          onOpenChange={(open) => setOpenField(open ? 'provider' : null)}
+          onChange={(providerId: string) => {
+            const next = { ...activeSelection, providerId }
+            setDraftSelection(next)
+            onChange(next)
+          }}
         />
       </Fields>
       {showEffort && effort && (

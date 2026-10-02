@@ -22,6 +22,7 @@ export const MODEL_TEST_SELECTION_VERSION = 219
 export const ASSISTANT_SELECTION_VERSION = 220
 export const MODEL_TEST_CONCURRENCY_VERSION = 221
 export const MODEL_CATALOG_VERSION = 222
+export const CHAT_REQUEST_MODE_VERSION = 223
 
 type State = Record<string, any>
 
@@ -99,7 +100,28 @@ export function sanitizePersistedState(raw: string): string {
   migrateAssistantSelectionState(decoded)
   migrateModelTestConcurrencyState(decoded)
   migrateModelCatalogState(decoded)
+  migrateChatRequestModeState(decoded)
   return JSON.stringify(Object.fromEntries(Object.entries(decoded).map(([key, value]) => [key, JSON.stringify(value)])))
+}
+
+/** Move the former assistant-local streaming flag to one global request mode. */
+export function migrateChatRequestModeState<T extends State>(state: T): T {
+  const settings = state.settings
+  if (settings && settings.chatRequestMode !== 'stream' && settings.chatRequestMode !== 'non-stream') {
+    const candidates = [state.assistants?.defaultAssistant, ...(state.assistants?.assistants ?? [])]
+    const legacy = candidates.find((assistant: any) => typeof assistant?.settings?.streamOutput === 'boolean')
+    settings.chatRequestMode = legacy?.settings?.streamOutput === false ? 'non-stream' : 'stream'
+  }
+  if (settings) delete settings.enableDataCollection
+  const entries = [
+    state.assistants?.defaultAssistant,
+    ...(state.assistants?.assistants ?? []),
+    ...(state.assistants?.presets ?? [])
+  ]
+  for (const assistant of entries) {
+    if (assistant?.settings && typeof assistant.settings === 'object') delete assistant.settings.streamOutput
+  }
+  return state
 }
 
 export function migrateModelTestConcurrencyState<T extends State>(state: T): T {

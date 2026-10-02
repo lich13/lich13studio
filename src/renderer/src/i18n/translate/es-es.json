@@ -957,6 +957,8 @@
       "label": "¿Está seguro de que desea realizar una copia de seguridad de los datos?"
     },
     "content": "Realizar una copia de seguridad de todos los datos, incluyendo registros de chat, configuraciones, bases de conocimiento y todos los demás datos. Tenga en cuenta que el proceso de copia de seguridad puede llevar algún tiempo, gracias por su paciencia.",
+    "includeCredentials": "[to be translated]:Include credentials",
+    "password": "[to be translated]:Backup password",
     "progress": {
       "completed": "Copia de seguridad completada",
       "compressing": "Comprimiendo archivos...",
@@ -1029,6 +1031,7 @@
         "name": "Tema predeterminado"
       }
     },
+    "effectiveReasoning": "[to be translated]:Reasoning: {{requested}} → {{effective}}",
     "history": {
       "assistant_node": "Asistente",
       "click_to_navigate": "Haga clic para ir al mensaje correspondiente",
@@ -1174,6 +1177,11 @@
       "next": "Siguiente mensaje",
       "prev": "Mensaje anterior",
       "top": "Volver arriba"
+    },
+    "request_mode": {
+      "non_stream": "Sin streaming",
+      "stream": "En streaming",
+      "title": "Modo de respuesta"
     },
     "resend": "Reenviar",
     "save": {
@@ -2593,6 +2601,13 @@
       "pin": "Fijar en la parte superior"
     }
   },
+  "mobile": {
+    "backgroundStopped": "[to be translated]:The background service stopped. The task was not sent again.",
+    "chat": "[to be translated]:Chat",
+    "navigation": "[to be translated]:Navigation",
+    "systemBudget": "[to be translated]:Android stopped this task after reaching its background time limit.",
+    "test": "[to be translated]:Test"
+  },
   "models": {
     "add_parameter": "Agregar parámetro",
     "all": "Todo",
@@ -3862,7 +3877,6 @@
         "title": "Panel de depuración"
       },
       "description": "Una asistente de IA creada para los creadores",
-      "development": "[to be translated]:Development",
       "downloading": "Descargando actualización...",
       "enterprise": {
         "title": "Empresa"
@@ -3875,11 +3889,9 @@
         "button": "[to be translated]:GitHub",
         "title": "[to be translated]:Repository"
       },
-      "installType": "[to be translated]:Install Type",
       "label": "Acerca de nosotros",
       "latestVersion": "[to be translated]:Latest Version",
       "openExternalFailed": "[to be translated]:Failed to open external link",
-      "packaged": "[to be translated]:Packaged",
       "releases": {
         "button": "Ver",
         "title": "Registro de cambios"
@@ -4552,11 +4564,22 @@
       "analyzeManual": "[to be translated]:Analyze pasted output",
       "attempts": "Attempt {{count}} / {{max}}",
       "backHome": "Volver al inicio",
+      "bank": "[to be translated]:Fingerprint bank",
+      "bankError": {
+        "cache": "[to be translated]:Unable to save the update. Using the current fingerprint bank.",
+        "incompatible": "[to be translated]:The upstream algorithm changed. Update the app.",
+        "invalid-data": "[to be translated]:Invalid update data. Using the current fingerprint bank.",
+        "network": "[to be translated]:Sync failed. Using the current fingerprint bank."
+      },
+      "byteUnit": "[to be translated]:bytes",
       "challenge": "[to be translated]:Challenge {{index}} · {{count}} numbers",
       "challenges": "[to be translated]:Number challenges",
+      "checkBank": "[to be translated]:Check for updates",
+      "checkedAt": "[to be translated]:Last checked: {{time}}",
+      "concurrency": "[to be translated]:Concurrency",
       "count": "Numbers: {{actual}} / {{expected}}",
-      "description": "[to be translated]:Estimate model fingerprints with three non-semantic number challenges. Results are advisory and are not saved to chat history.",
       "familyResult": "[to be translated]:Model family: {{family}} ({{probability}}%)",
+      "integerUnit": "[to be translated]:integers",
       "issue": {
         "empty": "No answer text received.",
         "format": "Answer contains non-numeric text or unsupported formatting.",
@@ -4567,6 +4590,7 @@
       "modelUnavailable": "Selecciona un modelo válido del catálogo de la plataforma.",
       "noSamples": "Completado; sin muestras analizables",
       "noUsableSamples": "Sin muestras analizables",
+      "outputLimit": "[to be translated]:Output protection reached: item {{actual}} exceeds {{maximum}} {{unit}}. Retrying.",
       "pastePlaceholder": "[to be translated]:Paste the complete model response here",
       "providerLabel": "Proveedor",
       "providerPlaceholder": "Seleccionar proveedor",

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   migrateAssistantSelectionState,
+  migrateChatRequestModeState,
   migrateModelTestState,
   migratePlatformState,
   sanitizePersistedState,
@@ -220,5 +221,33 @@ describe('220 assistant selections', () => {
       modelId: 'gpt-test',
       providerId: 'new'
     })
+  })
+})
+
+describe('223 global chat request mode', () => {
+  it('derives the first global mode from the legacy assistant flag and removes assistant-only state', () => {
+    const state: any = fixture(222)
+    state.settings = { enableDataCollection: true }
+    state.assistants.assistants[0].settings.streamOutput = false
+    state.assistants.defaultAssistant = { settings: { streamOutput: false } }
+
+    migrateChatRequestModeState(state)
+
+    expect(state.settings.chatRequestMode).toBe('non-stream')
+    expect(state.settings.enableDataCollection).toBeUndefined()
+    expect(state.assistants.defaultAssistant.settings.streamOutput).toBeUndefined()
+    expect(state.assistants.assistants[0].settings.streamOutput).toBeUndefined()
+  })
+
+  it('keeps an explicit mode and is idempotent for backup restore', () => {
+    const state: any = fixture(223)
+    state.settings = { chatRequestMode: 'stream', enableDataCollection: false }
+    state.assistants.assistants[0].settings.streamOutput = false
+    const once = migrateChatRequestModeState(state)
+    const snapshot = structuredClone(once)
+
+    expect(migrateChatRequestModeState(once)).toEqual(snapshot)
+    expect(once.settings.chatRequestMode).toBe('stream')
+    expect(once.assistants.assistants[0].settings.streamOutput).toBeUndefined()
   })
 })

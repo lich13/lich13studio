@@ -69,10 +69,6 @@ export const processMessages = async (
     let finished = false
 
     const newAssistant = cloneDeep(assistant)
-    if (!newAssistant.settings) {
-      newAssistant.settings = {}
-    }
-    newAssistant.settings.streamOutput = true
     // 显式关闭这些功能
     const { modelMessages, uiMessages } = await ConversationService.prepareMessagesForModel([userMessage], newAssistant)
 

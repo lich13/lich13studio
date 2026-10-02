@@ -41,10 +41,6 @@ const AssistantModelSettings: FC<Props> = ({ assistant, updateAssistant, updateA
     [assistant?.settings?.enableMaxTokens]
   )
   const [maxTokens, setMaxTokens] = useState(assistant?.settings?.maxTokens ?? 0)
-  const streamOutput = useMemo(
-    () => assistant?.settings?.streamOutput ?? DEFAULT_ASSISTANT_SETTINGS.streamOutput,
-    [assistant?.settings?.streamOutput]
-  )
   const toolUseMode = useMemo(
     () => assistant?.settings?.toolUseMode ?? DEFAULT_ASSISTANT_SETTINGS.toolUseMode,
     [assistant?.settings?.toolUseMode]
@@ -467,16 +463,6 @@ const AssistantModelSettings: FC<Props> = ({ assistant, updateAssistant, updateA
           </Col>
         </Row>
       )}
-      <Divider style={{ margin: '10px 0' }} />
-      <SettingRow style={{ minHeight: 30 }}>
-        <Label>{t('models.stream_output')}</Label>
-        <Switch
-          checked={streamOutput}
-          onChange={(checked) => {
-            updateAssistantSettings({ streamOutput: checked })
-          }}
-        />
-      </SettingRow>
       <Divider style={{ margin: '10px 0' }} />
       <SettingRow style={{ minHeight: 30 }}>
         <Label>{t('assistants.settings.tool_use_mode.label')}</Label>

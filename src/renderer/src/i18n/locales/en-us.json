@@ -1178,6 +1178,11 @@
       "prev": "Previous Message",
       "top": "Back to top"
     },
+    "request_mode": {
+      "non_stream": "Non-streaming",
+      "stream": "Streaming",
+      "title": "Response mode"
+    },
     "resend": "Resend",
     "save": {
       "file": {
@@ -3872,7 +3877,6 @@
         "title": "Debug"
       },
       "description": "A powerful AI assistant for producer",
-      "development": "Development",
       "downloading": "Downloading...",
       "enterprise": {
         "title": "Enterprise"
@@ -3885,11 +3889,9 @@
         "button": "GitHub",
         "title": "Repository"
       },
-      "installType": "Install Type",
       "label": "About & Feedback",
       "latestVersion": "Latest Version",
       "openExternalFailed": "Failed to open external link",
-      "packaged": "Packaged",
       "releases": {
         "button": "Releases",
         "title": "Release Notes"

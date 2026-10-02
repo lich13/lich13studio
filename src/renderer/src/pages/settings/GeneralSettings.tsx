@@ -227,13 +227,6 @@ const GeneralSettings: FC = () => {
           <SettingRowTitle>{t('settings.about.appVersion')}</SettingRowTitle>
           <Typography.Text type="secondary">{appInfo?.version || '-'}</Typography.Text>
         </SettingRow>
-        <SettingDivider />
-        <SettingRow>
-          <SettingRowTitle>{t('settings.about.installType')}</SettingRowTitle>
-          <Typography.Text type="secondary">
-            {appInfo?.isPackaged ? t('settings.about.packaged') : t('settings.about.development')}
-          </Typography.Text>
-        </SettingRow>
         {releaseInfo?.hasUpdate && (
           <>
             <SettingDivider />

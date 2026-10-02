@@ -1,5 +1,7 @@
 use serde_json::Value;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::AtomicU64;
+#[cfg(target_os = "android")]
+use std::sync::atomic::Ordering;
 pub static TASK_EPOCH: AtomicU64 = AtomicU64::new(0);
 
 #[cfg(target_os = "android")]

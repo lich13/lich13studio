@@ -1,11 +1,11 @@
 {
   "name": "lich13studio",
-  "version": "0.1.29",
+  "version": "0.1.30",
   "private": true,
   "description": "AI workspace for assistants, Responses and Anthropic on desktop and Android.",
   "desktopName": "lich13studio.desktop",
   "main": "./out/main/index.js",
-  "author": "support@cherry-ai.com",
+  "author": "lich13studio",
   "homepage": "https://github.com/lich13/lich13studio",
   "engines": {
     "node": ">=24.11.1"
@@ -41,6 +41,7 @@
     "i18n:check": "dotenv -e .env -- tsx scripts/check-i18n.ts",
     "i18n:hardcoded": "tsx scripts/check-hardcoded-strings.ts",
     "i18n:hardcoded:strict": "I18N_STRICT=true tsx scripts/check-hardcoded-strings.ts",
+    "privacy:check": "node scripts/privacy-check.mjs",
     "i18n:sync": "dotenv -e .env -- tsx scripts/sync-i18n.ts",
     "i18n:translate": "dotenv -e .env -- tsx scripts/auto-translate-i18n.ts",
     "i18n:all": "pnpm i18n:sync && pnpm i18n:translate",
@@ -53,10 +54,10 @@
     "format:check": "biome format && biome lint",
     "prepare": "prek install",
     "claude": "dotenv -e .env -- claude",
-    "ci:basic-check": "pnpm test:lint && pnpm format:check && pnpm typecheck && pnpm i18n:check && pnpm i18n:hardcoded:strict && pnpm openapi:check && pnpm skills:check",
+    "ci:basic-check": "pnpm test:lint && pnpm format:check && pnpm typecheck && pnpm i18n:check && pnpm i18n:hardcoded:strict && pnpm privacy:check && pnpm openapi:check && pnpm skills:check",
     "ci": "pnpm ci:basic-check",
     "test:renderer": "vitest run --config vitest.renderer.config.ts src/renderer/src/services/PasteService.test.ts src/renderer/src/components/ModelProviderSelect.test.tsx src/renderer/src/services/StoreSyncService.test.ts src/renderer/src/utils/input.test.ts src/renderer/src/store/thunk/messageThunk.test.ts src/renderer/src/windows/mini/home/miniWindowHelpers.test.ts src/renderer/src/pages/home/Tabs/components/TopicManageMode.test.ts src/renderer/src/services/messageStreaming/callbacks/baseCallbacks.test.ts src/renderer/src/pages/home/Markdown/plugins/remarkCjkAutolinkLiteral.test.ts src/renderer/src/pages/home/Markdown/Link.test.ts src/renderer/src/hooks/useSettings.startup.test.ts src/renderer/src/services/appUpdate.test.ts src/renderer/src/services/appUpdateNotification.test.ts src/renderer/src/services/StreamRegistry.test.ts src/renderer/src/config/models/logo.test.ts src/renderer/src/config/models/capabilities.test.ts src/renderer/src/pages/settings/ProviderSettings/EditModelPopup/ModelEditContent.test.tsx src/renderer/src/aiCore/prepareParams/modelCapabilities.requests.test.ts src/renderer/src/services/modelTrace src/renderer/src/aiCore/utils/reasoningFallback.test.ts src/renderer/src/utils/sse.test.ts src/renderer/src/aiCore/chunk/AiSdkToChunkAdapter.test.ts src/renderer/src/utils/modelPresentation.test.ts src/renderer/src/services/mobile src/renderer/src/services/portableBackupValidation.test.ts src/renderer/src/utils/tauriNativeFetch.test.ts src/renderer/src/utils/attachmentMime.test.ts src/renderer/src/services/FileManager.preview.test.ts src/renderer/src/utils/searchHighlights.test.ts scripts/legacyWebviewCss.test.ts",
-    "test:upgrade": "vitest run --config vitest.renderer.config.ts packages/shared/providerImport.test.ts packages/shared/stateMigration.test.ts packages/shared/modelTestConcurrency.test.ts src/renderer/src/aiCore/utils/reasoning.test.ts src/renderer/src/services/ProviderImportQueue.test.ts packages/shared/removedMcp.test.ts src/renderer/src/store/llm.platforms.test.ts packages/shared/cliIdentity.test.ts packages/shared/removedHealth.test.ts src/renderer/src/services/CliVersionService.test.ts packages/shared/modelTestSelection.test.ts packages/shared/modelCatalog src/renderer/src/services/PlatformModelCatalogService.test.ts",
+    "test:upgrade": "vitest run --config vitest.renderer.config.ts packages/shared/providerImport.test.ts packages/shared/stateMigration.test.ts packages/shared/logSanitizer.test.ts packages/shared/modelTestConcurrency.test.ts src/renderer/src/aiCore/utils/reasoning.test.ts src/renderer/src/services/ProviderImportQueue.test.ts packages/shared/removedMcp.test.ts src/renderer/src/store/llm.platforms.test.ts packages/shared/cliIdentity.test.ts packages/shared/removedHealth.test.ts src/renderer/src/services/CliVersionService.test.ts packages/shared/modelTestSelection.test.ts packages/shared/modelCatalog src/renderer/src/services/PlatformModelCatalogService.test.ts",
     "catalog:check": "tsx scripts/update-platform-models.ts --check",
     "catalog:update": "tsx scripts/update-platform-models.ts",
     "tauri:build:android": "pnpm build:tauri:web && cargo tauri android build --target aarch64 --apk --ci"
@@ -118,7 +119,6 @@
     "@biomejs/biome": "2.2.4",
     "@biomejs/cli-darwin-arm64": "2.2.4",
     "@cherrystudio/ai-core": "workspace:*",
-    "@cherrystudio/analytics-client": "^1.3.0",
     "@cherrystudio/embedjs": "0.1.31",
     "@cherrystudio/embedjs-interfaces": "0.1.31",
     "@cherrystudio/embedjs-libsql": "0.1.31",

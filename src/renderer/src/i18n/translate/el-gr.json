@@ -957,6 +957,8 @@
       "label": "Είστε σίγουροι ότι θέλετε να αντιγράψετε τα δεδομένα;"
     },
     "content": "Αντιγράφετε όλα τα δεδομένα, συμπεριλαμβανομένων των εγγραφών συζήτησης, των ρυθμίσεων, της βάσης γνώσεων και όλων των δεδομένων. Παρακαλούμε σημειώστε ότι η διαδικασία αντιγράφου μπορεί να χρειαστεί λίγο χρόνο. Ευχαριστούμε για την υπομονή.",
+    "includeCredentials": "[to be translated]:Include credentials",
+    "password": "[to be translated]:Backup password",
     "progress": {
       "completed": "Η αντιγραφή ασφαλείας ολοκληρώθηκε",
       "compressing": "Συμπίεση αρχείων...",
@@ -1029,6 +1031,7 @@
         "name": "Προεπαγγελματικός θέμα"
       }
     },
+    "effectiveReasoning": "[to be translated]:Reasoning: {{requested}} → {{effective}}",
     "history": {
       "assistant_node": "Βοηθός",
       "click_to_navigate": "Κάντε κλικ για να μεταβείτε στο αντίστοιχο μήνυμα",
@@ -1174,6 +1177,11 @@
       "next": "Επόμενο μήνυμα",
       "prev": "Προηγούμενο μήνυμα",
       "top": "Επιστροφή στην κορυφή"
+    },
+    "request_mode": {
+      "non_stream": "Χωρίς ροή",
+      "stream": "Ροή",
+      "title": "Λειτουργία απόκρισης"
     },
     "resend": "Ξαναστείλε",
     "save": {
@@ -2593,6 +2601,13 @@
       "pin": "Καρφίτσωμα παραθύρου"
     }
   },
+  "mobile": {
+    "backgroundStopped": "[to be translated]:The background service stopped. The task was not sent again.",
+    "chat": "[to be translated]:Chat",
+    "navigation": "[to be translated]:Navigation",
+    "systemBudget": "[to be translated]:Android stopped this task after reaching its background time limit.",
+    "test": "[to be translated]:Test"
+  },
   "models": {
     "add_parameter": "Προσθήκη παραμέτρων",
     "all": "Όλα",
@@ -3862,7 +3877,6 @@
         "title": "Πίνακας Αποσφαλμάτωσης"
       },
       "description": "Ένα AI ασιστάντα που έχει σχεδιαστεί για δημιουργούς",
-      "development": "[to be translated]:Development",
       "downloading": "Λήψη ενημερώσεων...",
       "enterprise": {
         "title": "Επιχείρηση"
@@ -3875,11 +3889,9 @@
         "button": "[to be translated]:GitHub",
         "title": "[to be translated]:Repository"
       },
-      "installType": "[to be translated]:Install Type",
       "label": "Περί μας",
       "latestVersion": "[to be translated]:Latest Version",
       "openExternalFailed": "[to be translated]:Failed to open external link",
-      "packaged": "[to be translated]:Packaged",
       "releases": {
         "button": "Προβολή",
         "title": "Ημερολόγιο Ενημερώσεων"
@@ -4552,11 +4564,22 @@
       "analyzeManual": "[to be translated]:Analyze pasted output",
       "attempts": "Attempt {{count}} / {{max}}",
       "backHome": "Επιστροφή στην αρχική",
+      "bank": "[to be translated]:Fingerprint bank",
+      "bankError": {
+        "cache": "[to be translated]:Unable to save the update. Using the current fingerprint bank.",
+        "incompatible": "[to be translated]:The upstream algorithm changed. Update the app.",
+        "invalid-data": "[to be translated]:Invalid update data. Using the current fingerprint bank.",
+        "network": "[to be translated]:Sync failed. Using the current fingerprint bank."
+      },
+      "byteUnit": "[to be translated]:bytes",
       "challenge": "[to be translated]:Challenge {{index}} · {{count}} numbers",
       "challenges": "[to be translated]:Number challenges",
+      "checkBank": "[to be translated]:Check for updates",
+      "checkedAt": "[to be translated]:Last checked: {{time}}",
+      "concurrency": "[to be translated]:Concurrency",
       "count": "Numbers: {{actual}} / {{expected}}",
-      "description": "[to be translated]:Estimate model fingerprints with three non-semantic number challenges. Results are advisory and are not saved to chat history.",
       "familyResult": "[to be translated]:Model family: {{family}} ({{probability}}%)",
+      "integerUnit": "[to be translated]:integers",
       "issue": {
         "empty": "No answer text received.",
         "format": "Answer contains non-numeric text or unsupported formatting.",
@@ -4567,6 +4590,7 @@
       "modelUnavailable": "Επιλέξτε έγκυρο μοντέλο από τον κατάλογο της πλατφόρμας.",
       "noSamples": "Ολοκληρώθηκε· δεν υπάρχουν δείγματα για ανάλυση",
       "noUsableSamples": "Δεν υπάρχουν δείγματα για ανάλυση",
+      "outputLimit": "[to be translated]:Output protection reached: item {{actual}} exceeds {{maximum}} {{unit}}. Retrying.",
       "pastePlaceholder": "[to be translated]:Paste the complete model response here",
       "providerLabel": "Πάροχος",
       "providerPlaceholder": "Επιλέξτε πάροχο",

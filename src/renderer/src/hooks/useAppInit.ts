@@ -38,7 +38,6 @@ export function useAppInit() {
     windowStyle,
     autoCheckUpdate,
     proxyMode,
-    enableDataCollection,
     launchToTray,
     tray,
     trayOnClose
@@ -95,9 +94,7 @@ export function useAppInit() {
 
   useEffect(() => {
     const checkForUpdates = async () => {
-      const { isPackaged } = await window.api.getAppInfo()
-
-      if (!isPackaged || !autoCheckUpdate || window.__LICH13_TAURI_SHIM__) {
+      if (!autoCheckUpdate || window.__LICH13_TAURI_SHIM__) {
         return
       }
 
@@ -107,8 +104,7 @@ export function useAppInit() {
 
     // Initial check with delay
     void runAsyncFunction(async () => {
-      const { isPackaged } = await window.api.getAppInfo()
-      if (isPackaged && autoCheckUpdate) {
+      if (autoCheckUpdate) {
         await delay(2)
         await checkForUpdates()
       }
@@ -129,9 +125,6 @@ export function useAppInit() {
     const timer = window.setTimeout(() => {
       void runAsyncFunction(async () => {
         const appInfo = await window.api.getAppInfo()
-        if (!appInfo.isPackaged) {
-          return
-        }
         await notifyLatestReleaseIfAvailable(appInfo.version, appInfo.platform)
       })
     }, 2000)
@@ -273,10 +266,6 @@ export function useAppInit() {
 
     return () => removeListeners.forEach((removeListener) => removeListener())
   }, [dispatch, t])
-
-  useEffect(() => {
-    // TODO: init data collection
-  }, [enableDataCollection])
 
   useEffect(() => {
     void checkDataLimit()

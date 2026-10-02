@@ -49,7 +49,6 @@ const AssistantSettings: FC = () => {
         contextCount: settings.contextCount ?? contextCount,
         enableMaxTokens: settings.enableMaxTokens ?? enableMaxTokens,
         maxTokens: settings.maxTokens ?? maxTokens,
-        streamOutput: settings.streamOutput ?? true,
         topP: settings.topP ?? topP,
         enableTopP: settings.enableTopP ?? enableTopP,
         toolUseMode: settings.toolUseMode ?? toolUseMode

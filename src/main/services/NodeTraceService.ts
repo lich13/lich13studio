@@ -16,6 +16,9 @@ const logger = loggerService.withContext('NodeTraceService')
 
 export class NodeTraceService {
   init() {
+    // Local trace collection is opt-in for development diagnostics only.
+    if (process.env['LICH13_ENABLE_TRACE'] !== '1') return
+
     const exporter = new FunctionSpanExporter(async (spans) => {
       logger.info(`Spans length: ${spans.length}`)
     })

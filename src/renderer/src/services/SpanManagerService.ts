@@ -14,10 +14,31 @@ import { ModelSpanEntity } from '@renderer/trace/types/ModelSpanEntity'
 import type { Model, Topic } from '@renderer/types'
 import type { Message } from '@renderer/types/newMessage'
 import { MessageBlockType } from '@renderer/types/newMessage'
+import { sanitizeLogError, sanitizeLogText } from '@shared/logSanitizer'
 import type { SpanEntity, TokenUsage } from '@trace/trace-core'
 import { cleanContext, endContext, getContext, startContext } from '@trace/trace-web'
 
 const logger = loggerService.withContext('SpanManagerService')
+
+/**
+ * Trace data is developer-only diagnostics. Keep shape and sizes useful for debugging,
+ * while never persisting prompts, responses, headers, credentials, or tool arguments.
+ */
+export function summarizeTraceValue(value: unknown, depth = 0): unknown {
+  if (value === null || value === undefined || typeof value === 'number' || typeof value === 'boolean') {
+    return value
+  }
+  if (typeof value === 'string') return { type: 'text', length: value.length }
+  if (value instanceof Error) return { type: 'error', name: value.name }
+  if (depth > 1) return { type: Array.isArray(value) ? 'array' : 'object' }
+  if (Array.isArray(value)) return { type: 'array', length: value.length }
+  if (typeof value === 'object') {
+    return { type: 'object', fieldCount: Object.keys(value as Record<string, unknown>).length }
+  }
+  return { type: typeof value }
+}
+
+const summarizeTraceJson = (value: unknown) => JSON.stringify(summarizeTraceValue(value))
 
 class SpanManagerService {
   private spanMap: Map<string, ModelSpanEntity[]> = new Map()
@@ -45,8 +66,8 @@ class SpanManagerService {
     const span = webTracer.startSpan(params.name || 'root', {
       root: true,
       attributes: {
-        inputs: JSON.stringify(params.inputs || {}),
-        models: JSON.stringify(models || [])
+        inputs: summarizeTraceJson(params.inputs || {}),
+        models: summarizeTraceJson(models || [])
       }
     })
 
@@ -178,7 +199,7 @@ class SpanManagerService {
       `${params.name}`,
       {
         attributes: {
-          inputs: JSON.stringify(params.inputs || {}),
+          inputs: summarizeTraceJson(params.inputs || {}),
           modelName: params.modelName,
           tags: 'ModelHandle'
         }
@@ -194,13 +215,14 @@ class SpanManagerService {
     const entity = this.getModelSpanEntity(params.topicId)
     let span = entity.getCurrentSpan()
     const code = params.error ? SpanStatusCode.ERROR : SpanStatusCode.OK
-    const message = params.error ? params.error.message : ''
+    const safeError = params.error ? sanitizeLogError(params.error) : undefined
+    const message = safeError ? sanitizeLogText(safeError.message) : ''
     while (span) {
       if (params.outputs) {
-        span.setAttributes({ outputs: params.outputs })
+        span.setAttributes({ outputs: summarizeTraceJson(params.outputs) })
       }
-      if (params.error) {
-        span.recordException(params.error)
+      if (safeError) {
+        span.recordException(safeError)
       }
       span.setStatus({ code, message })
       span.end()
@@ -227,7 +249,7 @@ class SpanManagerService {
       params.name || 'root',
       {
         attributes: {
-          inputs: JSON.stringify(params.inputs || {}),
+          inputs: summarizeTraceJson(params.inputs || {}),
           tags: params.tag || '',
           modelName: params.modelName
         }
@@ -248,9 +270,10 @@ class SpanManagerService {
       const span = rootEntity?.getRootSpan()
       void window.api.trace.addEndMessage(span?.spanContext().spanId || '', params.modelName, params.outputs)
     }
-    if (params.modelEnded && params.error && params.modelName) {
+    const safeError = params.error ? sanitizeLogError(params.error) : undefined
+    if (params.modelEnded && safeError && params.modelName) {
       const rootEntity = this.getModelSpanEntity(params.topicId)
-      rootEntity.addModelError(params.error)
+      rootEntity.addModelError(safeError)
     }
     if (!span) {
       logger.info(`No active span found for topicId: ${params.topicId}-modelName: ${params.modelName}.`)
@@ -262,13 +285,13 @@ class SpanManagerService {
       this.getModelSpanEntity(params.topicId).removeSpan(span)
     }
 
-    const code = params.error ? SpanStatusCode.ERROR : SpanStatusCode.OK
-    const message = params.error ? params.error.message : 'success'
+    const code = safeError ? SpanStatusCode.ERROR : SpanStatusCode.OK
+    const message = safeError ? sanitizeLogText(safeError.message) : 'success'
     if (params.outputs) {
-      span.setAttributes({ outputs: JSON.stringify(params.outputs || {}) })
+      span.setAttributes({ outputs: summarizeTraceJson(params.outputs || {}) })
     }
-    if (params.error) {
-      span.recordException(params.error)
+    if (safeError) {
+      span.recordException(safeError)
     }
     span.setStatus({ code, message })
     span.end()

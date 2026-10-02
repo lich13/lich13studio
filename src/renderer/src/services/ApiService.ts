@@ -10,10 +10,9 @@ import { getStoreSetting } from '@renderer/hooks/useSettings'
 import i18n from '@renderer/i18n'
 import type { Assistant, Model, Provider } from '@renderer/types'
 import { type FetchChatCompletionParams, isSystemProvider } from '@renderer/types'
-import { type Chunk, ChunkType } from '@renderer/types/chunk'
+import { ChunkType } from '@renderer/types/chunk'
 import type { Message } from '@renderer/types/newMessage'
 import { removeSpecialCharactersForTopicName } from '@renderer/utils'
-import { trackTokenUsage } from '@renderer/utils/analytics'
 import { getErrorMessage } from '@renderer/utils/error'
 import { purifyMarkdownImages } from '@renderer/utils/markdown'
 import { findFileBlocks, findImageBlocks, getMainTextContent } from '@renderer/utils/messageUtils/find'
@@ -105,8 +104,8 @@ export async function transformMessagesAndFetch(
 }
 
 /**
- * Note: This path always uses AI SDK streaming under the hood via `streamText`.
- * There is no `generateText` (non-stream) branch inside this function.
+ * The request mode is frozen at the start of this call. ModelTrace has its own
+ * direct runner and does not pass through this setting.
  */
 export async function fetchChatCompletion({
   messages,
@@ -121,7 +120,7 @@ export async function fetchChatCompletion({
   assistant = { ...assistant, model: requireCurrentModel(assistant.model || getDefaultModel(), true) }
   logger.info('fetchChatCompletion called with detailed context', {
     messageCount: messages?.length || 0,
-    prompt: prompt,
+    hasPrompt: typeof prompt === 'string' && prompt.length > 0,
     assistantId: assistant.id,
     topicId,
     hasTopicId: !!topicId,
@@ -163,7 +162,8 @@ export async function fetchChatCompletion({
   })
 
   const middlewareConfig: AiSdkMiddlewareConfig = {
-    streamOutput: assistant.settings?.streamOutput ?? true,
+    streamOutput: (requestOptions?.chatRequestMode ?? getStoreSetting('chatRequestMode') ?? 'stream') === 'stream',
+    chatRequestMode: requestOptions?.chatRequestMode ?? getStoreSetting('chatRequestMode') ?? 'stream',
     onChunk: onChunkReceived,
     enableReasoning: capabilities.enableReasoning,
     reasoningMode: requestOptions?.reasoningMode,
@@ -173,15 +173,6 @@ export async function fetchChatCompletion({
     enableGenerateImage: capabilities.enableGenerateImage,
     enableUrlContext: capabilities.enableUrlContext,
     uiMessages
-  }
-
-  // Wrap onChunkReceived to automatically track token usage on completion
-  const originalOnChunk = middlewareConfig.onChunk
-  middlewareConfig.onChunk = (chunk: Chunk) => {
-    if (chunk.type === ChunkType.BLOCK_COMPLETE) {
-      trackTokenUsage({ usage: chunk.response?.usage, model: assistant?.model, source: 'chat' })
-    }
-    return originalOnChunk?.(chunk)
   }
 
   // --- Call AI Completions ---
@@ -396,6 +387,7 @@ export async function fetchMessagesSummary({
 
   const middlewareConfig: AiSdkMiddlewareConfig = {
     streamOutput: false,
+    chatRequestMode: 'non-stream',
     enableReasoning: false,
     isPromptToolUse: false,
     isSupportedToolUse: false,
@@ -412,14 +404,12 @@ export async function fetchMessagesSummary({
       await appendTrace({ topicId, traceId: messageWithTrace.traceId, model })
     }
 
-    const { getText, usage } = await AI.completions(model.id, llmMessages, {
+    const { getText } = await AI.completions(model.id, llmMessages, {
       ...middlewareConfig,
       assistant: summaryAssistant,
       topicId,
       callType: 'summary'
     })
-
-    trackTokenUsage({ usage, model })
 
     const text = getText()
     const result = removeSpecialCharactersForTopicName(text)
@@ -476,6 +466,7 @@ export async function fetchNoteSummary({ content, assistant }: { content: string
 
   const middlewareConfig: AiSdkMiddlewareConfig = {
     streamOutput: false,
+    chatRequestMode: 'non-stream',
     enableReasoning: false,
     isPromptToolUse: false,
     isSupportedToolUse: false,
@@ -484,13 +475,11 @@ export async function fetchNoteSummary({ content, assistant }: { content: string
   }
 
   try {
-    const { getText, usage } = await AI.completions(model.id, llmMessages, {
+    const { getText } = await AI.completions(model.id, llmMessages, {
       ...middlewareConfig,
       assistant: summaryAssistant,
       callType: 'summary'
     })
-
-    trackTokenUsage({ usage, model })
 
     const text = getText()
     return removeSpecialCharactersForTopicName(text) || null
@@ -565,7 +554,8 @@ export async function fetchGenerate({
   // }
 
   const middlewareConfig: AiSdkMiddlewareConfig = {
-    streamOutput: assistant.settings?.streamOutput ?? false,
+    streamOutput: false,
+    chatRequestMode: 'non-stream',
     enableReasoning: false,
     isPromptToolUse: false,
     isSupportedToolUse: false,
@@ -586,8 +576,6 @@ export async function fetchGenerate({
         callType: 'generate'
       }
     )
-
-    trackTokenUsage({ usage: result.usage, model })
 
     return result.getText() || ''
   } catch (error: any) {

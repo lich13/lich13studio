@@ -10,6 +10,9 @@ const TRACER_NAME = 'lich13studio'
 
 class WebTraceService {
   init() {
+    // Keep local trace collection opt-in; production builds do not collect spans.
+    if (import.meta.env.VITE_LICH13_ENABLE_TRACE !== '1') return
+
     const exporter = new FunctionSpanExporter((spans: ReadableSpan[]): Promise<void> => {
       // Implement your save logic here if needed
       // For now, just resolve immediately

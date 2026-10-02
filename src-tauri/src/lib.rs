@@ -2949,7 +2949,7 @@ mod tests {
           browser_download_url: Some("https://example.com/app.dmg".to_string()),
         },
         GitHubReleaseAsset {
-          name: Some("lich13studio_0.1.28_android_arm64-v8a.apk".to_string()),
+          name: Some("lich13studio_0.1.30_android_arm64-v8a.apk".to_string()),
           browser_download_url: Some("https://example.com/app.apk".to_string()),
         },
       ],

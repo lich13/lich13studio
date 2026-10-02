@@ -20,6 +20,7 @@ import type { AssistantIconType, SendMessageShortcut, SettingsState } from '@ren
 import {
   setAssistantIconType,
   setAutoCheckUpdate as _setAutoCheckUpdate,
+  setChatRequestMode as _setChatRequestMode,
   setLaunchOnBoot,
   setLaunchToTray,
   setNavbarPosition,
@@ -63,12 +64,14 @@ export function useSettings() {
     clickAssistantToShowTopic: true,
     showTopicTime: false,
     pinTopicsToTop: false,
-    enableDataCollection: false,
     enableSpellCheck: false,
     disableHardwareAcceleration: false,
     sidebarIcons,
     setSendMessageShortcut(shortcut: SendMessageShortcut) {
       dispatch(_setSendMessageShortcut(shortcut))
+    },
+    setChatRequestMode(mode: SettingsState['chatRequestMode']) {
+      dispatch(_setChatRequestMode(mode))
     },
 
     setLaunch(isLaunchOnBoot: boolean | undefined, isLaunchToTray: boolean | undefined = undefined) {

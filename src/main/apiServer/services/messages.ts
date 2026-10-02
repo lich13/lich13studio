@@ -208,7 +208,10 @@ export class MessagesService {
       }
     } catch (streamError: any) {
       logger.error('Stream error', {
-        error: streamError,
+        error: {
+          name: streamError instanceof Error ? streamError.name : 'UnknownError',
+          status: typeof streamError?.status === 'number' ? streamError.status : undefined
+        },
         provider: provider.id,
         model: request.model,
         apiHost: provider.apiHost,

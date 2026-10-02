@@ -18,6 +18,8 @@ import {
   SystemProviderIds
 } from '@renderer/types'
 import type { StreamTextParams } from '@renderer/types/aiCoreTypes'
+import type { Chunk } from '@renderer/types/chunk'
+import { ChunkType } from '@renderer/types/chunk'
 import { getLowerBaseModelName } from '@renderer/utils'
 import { buildClaudeCodeSystemModelMessage } from '@shared/anthropic'
 import { normalizeReasoningEffort } from '@shared/reasoning'
@@ -187,7 +189,13 @@ export default class AiProvider {
       tag: 'LLM',
       topicId: middlewareConfig.topicId,
       modelName: middlewareConfig.assistant.model?.name, // 使用modelId而不是provider名称
-      inputs: params
+      inputs: {
+        messageCount: Array.isArray(params.messages) ? params.messages.length : 0,
+        hasPrompt: typeof params.prompt === 'string',
+        hasTools: !!params.tools && Object.keys(params.tools).length > 0,
+        hasSystem: params.system !== undefined,
+        modelId
+      }
     }
 
     logger.info('Starting AI SDK trace span', {
@@ -258,10 +266,6 @@ export default class AiProvider {
   /**
    * 使用现代化AI SDK的completions实现
    */
-  /**
-   * Note: This implementation always uses `executor.streamText` and never
-   * calls `generateText`, even when `onChunk` is not provided.
-   */
   private async modernCompletions(
     modelId: string,
     params: StreamTextParams,
@@ -301,12 +305,53 @@ export default class AiProvider {
       plugins
     )
 
+    const nonStream = middlewareConfig.chatRequestMode === 'non-stream'
+    const hasTools = Boolean(params.tools && Object.keys(params.tools).length > 0)
+
+    // A non-stream request must not expose partial provider output to the UI.
+    // Use generateText for ordinary replies. Tool-capable requests still use
+    // the full stream internally so tool lifecycle events are preserved, but
+    // buffer every event and publish it only after the stream is complete.
+    if (nonStream && (!hasTools || !middlewareConfig.onChunk)) {
+      const { experimental_transform: _transform, ...generateParams } = params as any
+      const result = await executor.generateText({ ...generateParams, model: modelId } as any)
+      const finalText = result.text || ''
+      const usage = await result.usage
+
+      if (middlewareConfig.onChunk) {
+        const response = { text: finalText, usage } as any
+        await Promise.resolve(middlewareConfig.onChunk({ type: ChunkType.TEXT_START }))
+        if (finalText) {
+          await Promise.resolve(
+            middlewareConfig.onChunk({ type: ChunkType.TEXT_DELTA, text: finalText, textMode: 'delta' })
+          )
+        }
+        await Promise.resolve(middlewareConfig.onChunk({ type: ChunkType.TEXT_COMPLETE, text: finalText }))
+        await Promise.resolve(middlewareConfig.onChunk({ type: ChunkType.BLOCK_COMPLETE, response }))
+        await Promise.resolve(
+          middlewareConfig.onChunk({
+            type: ChunkType.LLM_RESPONSE_COMPLETE,
+            response,
+            finishReason: result.finishReason
+          })
+        )
+      }
+
+      return { getText: () => finalText, usage }
+    }
+
     // 创建带有中间件的执行器
     if (middlewareConfig.onChunk) {
+      const bufferedChunks: Chunk[] = []
       const accumulate = middlewareConfig.textDeltaMode
         ? middlewareConfig.textDeltaMode === 'cumulative'
         : this.model!.supported_text_delta !== false
-      const adapter = new AiSdkToChunkAdapter(middlewareConfig.onChunk, accumulate, undefined, undefined)
+      const adapter = new AiSdkToChunkAdapter(
+        nonStream ? (chunk) => bufferedChunks.push(chunk) : middlewareConfig.onChunk,
+        accumulate,
+        undefined,
+        undefined
+      )
 
       let streamError: unknown
       const streamResult = await executor.streamText({
@@ -327,6 +372,10 @@ export default class AiProvider {
 
       if (streamError) {
         throw streamError
+      }
+
+      if (nonStream) {
+        for (const chunk of bufferedChunks) await Promise.resolve(middlewareConfig.onChunk(chunk))
       }
 
       return {

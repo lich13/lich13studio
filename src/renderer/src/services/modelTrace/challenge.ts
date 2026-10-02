@@ -62,6 +62,8 @@ export function generateChallenges(count = 3) {
       choose(endings) +
       choose(separators) +
       '直接从第一个取值开始输出，不要在序列前重复数量、范围或任务说明。' +
-      `输出第 ${length} 个整数后立即停止，不要再输出任何数字或文字。`
+      '输出第 ' +
+      String(length) +
+      ' 个整数后立即停止，不要再输出任何数字或文字。'
   }))
 }

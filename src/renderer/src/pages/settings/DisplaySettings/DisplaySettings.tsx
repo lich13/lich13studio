@@ -17,7 +17,15 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
-import { SettingContainer, SettingDivider, SettingGroup, SettingRow, SettingRowTitle, SettingTitle } from '..'
+import {
+  SettingContainer,
+  SettingDivider,
+  SettingGroup,
+  SettingRow,
+  SettingRowTitle,
+  SettingRowValue,
+  SettingTitle
+} from '..'
 
 const ColorCircleWrapper = styled.div`
   width: 24px;
@@ -220,7 +228,7 @@ const DisplaySettings: FC = () => {
         <SettingDivider />
         <SettingRow>
           <SettingRowTitle>{t('settings.theme.color_primary')}</SettingRowTitle>
-          <HStack gap="12px" alignItems="center">
+          <SettingRowValue>
             <HStack gap="12px">
               {THEME_COLOR_PRESETS.map((color) => (
                 <ColorCircleWrapper key={color}>
@@ -246,7 +254,7 @@ const DisplaySettings: FC = () => {
                 }
               ]}
             />
-          </HStack>
+          </SettingRowValue>
         </SettingRow>
         {isMac && (
           <>

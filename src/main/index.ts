@@ -19,7 +19,6 @@ import { schedulerService } from './services/agents/services/SchedulerService'
 import { bootstrapBuiltinAgents } from './services/agents/services/builtin/BuiltinAgentBootstrap'
 import { channelManager } from './services/agents/services/channels'
 import { registerSessionStreamIpc } from './services/agents/services/channels/sessionStreamIpc'
-import { analyticsService } from './services/AnalyticsService'
 import { appMenuService } from './services/AppMenuService'
 import { configManager } from './services/ConfigManager'
 import { openClawService } from './services/OpenClawService'
@@ -161,7 +160,6 @@ if (!app.requestSingleInstanceLock()) {
 
     nodeTraceService.init()
     powerMonitorService.init()
-    analyticsService.init()
 
     // Extract bundled rtk binary to ~/.cherrystudio/bin/ on first run
     extractRtkBinaries().catch((error) => {
@@ -269,7 +267,6 @@ if (!app.requestSingleInstanceLock()) {
     try {
       schedulerService.stopAll()
       await channelManager.stop()
-      await analyticsService.destroy()
       await openClawService.stopGateway()
     } catch (error) {
       logger.warn('Error cleaning up services:', error as Error)

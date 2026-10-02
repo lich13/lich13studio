@@ -1,5 +1,4 @@
 import type { PermissionUpdate } from '@anthropic-ai/claude-agent-sdk'
-import type { TokenUsageData } from '@cherrystudio/analytics-client'
 import { electronAPI } from '@electron-toolkit/preload'
 import type { SpanContext } from '@opentelemetry/api'
 import type { GitBashPathInfo, TerminalConfig, UpgradeChannel } from '@shared/config/constant'
@@ -740,9 +739,6 @@ const api = {
     performUpdate: (): Promise<OperationResult> => ipcRenderer.invoke(IpcChannel.OpenClaw_PerformUpdate),
     onInstallProgress: (callback: (data: { message: string; type: 'info' | 'warn' | 'error' }) => void) =>
       addIpcListener(IpcChannel.OpenClaw_InstallProgress, callback)
-  },
-  analytics: {
-    trackTokenUsage: (data: TokenUsageData) => ipcRenderer.invoke(IpcChannel.Analytics_TrackTokenUsage, data)
   }
 }
 

@@ -29,7 +29,7 @@ Excluded:
 
 ## Current release
 
-Version **0.1.28** adds Android 12+ ARM64 support and consistent model labels. Equivalent names and IDs appear once; custom names retain the original ID. Requests always use the selected original ID.
+Version **0.1.30** adds a global stream/non-stream request switch (streaming by default), repairs Android selection and data workflows, and removes application-owned analytics. Equivalent model names and IDs appear once; custom names retain the original ID. Requests always use the selected original ID.
 
 Android includes chat, assistants, topics, images, quick phrases, platform catalogs, ModelTrace and backup/restore. Active chat and test requests continue in a foreground service with a Stop notification. Force-stop or process loss ends the task without resending it. Android's system foreground-service limits still apply.
 
@@ -39,7 +39,7 @@ Android credentials are encrypted with Android Keystore; ordinary state stores r
 
 OpenAI, grok and Anthropic model catalogs and CLI identities synchronize independently from official public sources. User edits, order, deletion choices and current selections are retained. The local capability registry and OpenAI brand icons work offline.
 
-ModelTrace supports 1–3 concurrent challenges and compatible fingerprint updates from Hanmo123/ModelTrace. Tests stay local to the selected provider, send no reasoning parameters or tools, and never create chat history. Output guards and finite retries remain enabled; model requests have no application timeout. Persistence remains version **222**.
+ModelTrace supports 1–3 concurrent challenges and compatible fingerprint updates from Hanmo123/ModelTrace. Tests stay local to the selected provider, send no reasoning parameters or tools, and never create chat history. Output guards and finite retries remain enabled; model requests have no application timeout. Persistence is version **223**; the global request mode is migrated from legacy assistant settings once.
 
 MCP, web search, health probes and phone-export servers remain removed. Existing history is preserved.
 
@@ -52,6 +52,7 @@ MCP, web search, health probes and phone-export servers remain removed. Existing
 - [Icon Concept](./docs/icon-concept.md)
 - [Architecture Lite](./docs/architecture-lite.md)
 - [Migration Notes](./docs/migration-notes.md)
+- [v0.1.30 中文发布说明](./docs/releases/v0.1.30.zh-CN.md)
 
 ## Upstream Source
 

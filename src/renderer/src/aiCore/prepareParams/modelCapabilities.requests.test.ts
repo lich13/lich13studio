@@ -67,7 +67,6 @@ vi.mock('@renderer/aiCore/plugins/pdfCompatibilityPlugin', () => ({
   createPdfCompatibilityPlugin: () => ({ name: 'noop' })
 }))
 vi.mock('@renderer/aiCore/plugins/anthropicCachePlugin', () => ({}))
-vi.mock('@renderer/aiCore/plugins/telemetryPlugin', () => ({}))
 vi.mock('@renderer/aiCore/prepareParams/fileProcessor', () => ({
   convertFileBlockToFilePart: async () => null,
   convertFileBlockToTextPart: async () => null

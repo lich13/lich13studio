@@ -22,6 +22,7 @@ import { DEFAULT_SIDEBAR_ICONS } from '@renderer/config/sidebar'
 import type {
   ApiServerConfig,
   AssistantsSortType,
+  ChatRequestMode,
   CodeStyleVarious,
   LanguageVarious,
   MathEngine,
@@ -58,6 +59,7 @@ export interface SettingsState {
   showTopics: boolean
   assistantsTabSortType: AssistantsSortType
   sendMessageShortcut: SendMessageShortcut
+  chatRequestMode: ChatRequestMode
   language: LanguageVarious
   targetLanguage: TranslateLanguageCode
   proxyMode: 'system' | 'custom' | 'none'
@@ -174,8 +176,6 @@ export interface SettingsState {
   minappsOpenLinkExternal: boolean
   /** Mini app region filter: 'auto' (detect from IP), 'CN', or 'Global' */
   minAppRegion: MinAppRegionFilter
-  // 隐私设置
-  enableDataCollection: boolean
   enableSpellCheck: boolean
   spellCheckLanguages: string[]
   enableQuickPanelTriggers: boolean
@@ -230,6 +230,7 @@ export const initialState: SettingsState = {
   showTopics: true,
   assistantsTabSortType: 'list',
   sendMessageShortcut: 'Enter',
+  chatRequestMode: 'stream',
   language: 'zh-CN',
   targetLanguage: 'en-us',
   proxyMode: 'system',
@@ -339,7 +340,6 @@ export const initialState: SettingsState = {
   showOpenedMinappsInSidebar: true,
   minappsOpenLinkExternal: false,
   minAppRegion: 'auto',
-  enableDataCollection: false,
   enableSpellCheck: false,
   spellCheckLanguages: [],
   enableQuickPanelTriggers: false,
@@ -413,6 +413,9 @@ const settingsSlice = createSlice({
     },
     setSendMessageShortcut: (state, action: PayloadAction<SendMessageShortcut>) => {
       state.sendMessageShortcut = action.payload
+    },
+    setChatRequestMode: (state, action: PayloadAction<ChatRequestMode>) => {
+      state.chatRequestMode = action.payload
     },
     setLanguage: (state, action: PayloadAction<LanguageVarious>) => {
       state.language = action.payload
@@ -686,9 +689,6 @@ const settingsSlice = createSlice({
     setMinAppRegion: (state, action: PayloadAction<MinAppRegionFilter>) => {
       state.minAppRegion = action.payload
     },
-    setEnableDataCollection: (state, action: PayloadAction<boolean>) => {
-      state.enableDataCollection = action.payload
-    },
     setEnableSpellCheck: (state, action: PayloadAction<boolean>) => {
       state.enableSpellCheck = action.payload
     },
@@ -787,6 +787,7 @@ export const {
   toggleShowTopics,
   setAssistantsTabSortType,
   setSendMessageShortcut,
+  setChatRequestMode,
   setLanguage,
   setTargetLanguage,
   setProxyMode,
@@ -862,7 +863,6 @@ export const {
   setShowOpenedMinappsInSidebar,
   setMinappsOpenLinkExternal,
   setMinAppRegion,
-  setEnableDataCollection,
   setEnableSpellCheck,
   setSpellCheckLanguages,
   setExportMenuOptions,

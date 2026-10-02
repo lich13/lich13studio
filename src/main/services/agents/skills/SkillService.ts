@@ -24,9 +24,6 @@ import { SkillRepository } from './SkillRepository'
 
 const logger = loggerService.withContext('SkillService')
 
-// API base URLs for the 3 search sources
-const CLAUDE_PLUGINS_API = 'https://api.claude-plugins.dev'
-
 // ZIP extraction limits
 const MAX_EXTRACTED_SIZE = 100 * 1024 * 1024 // 100MB
 const MAX_FILES_COUNT = 1000
@@ -286,11 +283,6 @@ export class SkillService {
       const skillName = parts[parts.length - 1]
       const skillDir = await this.resolveSkillDirectory(tempDir, skillName, directoryPath)
       const installed = await this.installSkillDir(skillDir, 'marketplace', sourceUrl)
-
-      // Fire-and-forget install telemetry
-      this.reportInstall(owner, repo, skillName).catch((err) => {
-        logger.warn('Failed to report install', { error: err instanceof Error ? err.message : String(err) })
-      })
 
       return installed
     } finally {
@@ -617,11 +609,6 @@ export class SkillService {
     }
 
     return nodes
-  }
-
-  private async reportInstall(owner: string, repo: string, skillName: string): Promise<void> {
-    const url = `${CLAUDE_PLUGINS_API}/api/skills/${owner}/${repo}/${skillName}/install`
-    await net.fetch(url, { method: 'POST' })
   }
 }
 

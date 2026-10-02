@@ -9,7 +9,7 @@ interface Props {
 
 const ChatNavbarContent: FC<Props> = ({ assistant }) => {
   return (
-    <div className="flex min-w-0 flex-1 items-center justify-between">
+    <div className="flex min-w-0 flex-1 items-center">
       <TopicContent assistant={assistant} />
     </div>
   )

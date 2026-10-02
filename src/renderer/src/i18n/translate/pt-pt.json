@@ -957,6 +957,8 @@
       "label": "Tem certeza de que deseja fazer backup dos dados?"
     },
     "content": "Fazer backup de todos os dados, incluindo registros de chat, configurações, base de conhecimento e todos os outros dados. Por favor, note que o processo de backup pode levar algum tempo. Agradecemos sua paciência.",
+    "includeCredentials": "[to be translated]:Include credentials",
+    "password": "[to be translated]:Backup password",
     "progress": {
       "completed": "Backup concluído",
       "compressing": "Comprimindo arquivo...",
@@ -1029,6 +1031,7 @@
         "name": "Tópico Padrão"
       }
     },
+    "effectiveReasoning": "[to be translated]:Reasoning: {{requested}} → {{effective}}",
     "history": {
       "assistant_node": "Assistente",
       "click_to_navigate": "Clique para pular para a mensagem correspondente",
@@ -1174,6 +1177,11 @@
       "next": "Próxima mensagem",
       "prev": "Mensagem anterior",
       "top": "Voltar ao topo"
+    },
+    "request_mode": {
+      "non_stream": "Sem streaming",
+      "stream": "Streaming",
+      "title": "Modo de resposta"
     },
     "resend": "Reenviar",
     "save": {
@@ -2593,6 +2601,13 @@
       "pin": "Fixar na frente"
     }
   },
+  "mobile": {
+    "backgroundStopped": "[to be translated]:The background service stopped. The task was not sent again.",
+    "chat": "[to be translated]:Chat",
+    "navigation": "[to be translated]:Navigation",
+    "systemBudget": "[to be translated]:Android stopped this task after reaching its background time limit.",
+    "test": "[to be translated]:Test"
+  },
   "models": {
     "add_parameter": "Adicionar parâmetro",
     "all": "Todos",
@@ -3862,7 +3877,6 @@
         "title": "Painel de Depuração"
       },
       "description": "Um assistente de IA criado para criadores",
-      "development": "[to be translated]:Development",
       "downloading": "Baixando atualizações...",
       "enterprise": {
         "title": "Empresa"
@@ -3875,11 +3889,9 @@
         "button": "[to be translated]:GitHub",
         "title": "[to be translated]:Repository"
       },
-      "installType": "[to be translated]:Install Type",
       "label": "Sobre Nós",
       "latestVersion": "[to be translated]:Latest Version",
       "openExternalFailed": "[to be translated]:Failed to open external link",
-      "packaged": "[to be translated]:Packaged",
       "releases": {
         "button": "Ver",
         "title": "Registro de alterações"
@@ -4552,11 +4564,22 @@
       "analyzeManual": "[to be translated]:Analyze pasted output",
       "attempts": "Attempt {{count}} / {{max}}",
       "backHome": "Voltar ao início",
+      "bank": "[to be translated]:Fingerprint bank",
+      "bankError": {
+        "cache": "[to be translated]:Unable to save the update. Using the current fingerprint bank.",
+        "incompatible": "[to be translated]:The upstream algorithm changed. Update the app.",
+        "invalid-data": "[to be translated]:Invalid update data. Using the current fingerprint bank.",
+        "network": "[to be translated]:Sync failed. Using the current fingerprint bank."
+      },
+      "byteUnit": "[to be translated]:bytes",
       "challenge": "[to be translated]:Challenge {{index}} · {{count}} numbers",
       "challenges": "[to be translated]:Number challenges",
+      "checkBank": "[to be translated]:Check for updates",
+      "checkedAt": "[to be translated]:Last checked: {{time}}",
+      "concurrency": "[to be translated]:Concurrency",
       "count": "Numbers: {{actual}} / {{expected}}",
-      "description": "[to be translated]:Estimate model fingerprints with three non-semantic number challenges. Results are advisory and are not saved to chat history.",
       "familyResult": "[to be translated]:Model family: {{family}} ({{probability}}%)",
+      "integerUnit": "[to be translated]:integers",
       "issue": {
         "empty": "No answer text received.",
         "format": "Answer contains non-numeric text or unsupported formatting.",
@@ -4567,6 +4590,7 @@
       "modelUnavailable": "Selecione um modelo válido do catálogo da plataforma.",
       "noSamples": "Concluído; sem amostras analisáveis",
       "noUsableSamples": "Sem amostras analisáveis",
+      "outputLimit": "[to be translated]:Output protection reached: item {{actual}} exceeds {{maximum}} {{unit}}. Retrying.",
       "pastePlaceholder": "[to be translated]:Paste the complete model response here",
       "providerLabel": "Fornecedor",
       "providerPlaceholder": "Selecionar fornecedor",

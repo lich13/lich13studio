@@ -2,7 +2,6 @@ import type { AiPlugin } from '@cherrystudio/ai-core'
 import { providerToolPlugin } from '@cherrystudio/ai-core/built-in/plugins'
 import { loggerService } from '@logger'
 import { isGemini3Model, isQwen35to39Model, isSupportedThinkingTokenQwenModel } from '@renderer/config/models'
-import { getEnableDeveloperMode } from '@renderer/hooks/useSettings'
 import type { Assistant, Model, Provider } from '@renderer/types'
 import { SystemProviderIds } from '@renderer/types'
 import { isOllamaProvider, isSupportEnableThinkingProvider } from '@renderer/utils/provider'
@@ -14,9 +13,7 @@ import { createOpenrouterReasoningPlugin } from './openrouterReasoningPlugin'
 import { createPdfCompatibilityPlugin } from './pdfCompatibilityPlugin'
 import { createQwenThinkingPlugin } from './qwenThinkingPlugin'
 import { createReasoningExtractionPlugin } from './reasoningExtractionPlugin'
-import { createSimulateStreamingPlugin } from './simulateStreamingPlugin'
 import { createSkipGeminiThoughtSignaturePlugin } from './skipGeminiThoughtSignaturePlugin'
-import { createTelemetryPlugin } from './telemetryPlugin'
 
 const logger = loggerService.withContext('PluginBuilder')
 
@@ -38,17 +35,6 @@ export interface BuildPluginsContext {
 export function buildPlugins({ provider, model, config }: BuildPluginsContext): AiPlugin[] {
   const plugins: AiPlugin<any, any>[] = []
 
-  if (config.topicId && getEnableDeveloperMode()) {
-    // 0. 添加 telemetry 插件
-    plugins.push(
-      createTelemetryPlugin({
-        enabled: true,
-        topicId: config.topicId,
-        assistant: config.assistant
-      })
-    )
-  }
-
   // === PDF Compatibility ===
   // Must run before other plugins (e.g., Anthropic cache token estimation)
   // so that PDF FileParts are converted to TextParts for unsupported providers.
@@ -57,20 +43,13 @@ export function buildPlugins({ provider, model, config }: BuildPluginsContext): 
   // === AI SDK Middleware Plugins ===
   // 注意：wrapLanguageModel 会 .reverse() middleware 数组，
   // 数组中靠前的 middleware 反转后变成最外层包装。
-  // extractReasoning 必须在 simulateStreaming 之前推入，
-  // 这样反转后 extractReasoning 在外层，其 wrapStream（状态机）
-  // 能处理 simulateStreaming 生成的模拟流中的未闭合 <think> 标签。
+  // extractReasoning 在流式路径中负责隔离 provider 返回的思考标签。
 
   // 0.1 Reasoning extraction for OpenAI/Azure providers
   const providerType = provider.type
   if (providerType === 'openai-response' && config.reasoningMode !== 'disabled') {
     const tagName = getReasoningTagName(model.id.toLowerCase())
     plugins.push(createReasoningExtractionPlugin({ tagName }))
-  }
-
-  // 0.2 Simulate streaming for non-streaming requests (must be AFTER reasoning extraction in array)
-  if (!config.streamOutput) {
-    plugins.push(createSimulateStreamingPlugin())
   }
 
   if (provider.anthropicCacheControl?.tokenThreshold) {

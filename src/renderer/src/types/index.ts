@@ -156,7 +156,8 @@ export type AssistantSettings = {
   topP: number
   enableTopP?: boolean
   contextCount: number
-  streamOutput: boolean
+  /** @deprecated Since v0.1.30 use the global settings.chatRequestMode. */
+  streamOutput?: boolean
   defaultModel?: Model
   customParameters?: AssistantSettingCustomParameters[]
   reasoning_effort: ReasoningEffortOption
@@ -514,6 +515,9 @@ export enum ThemeMode {
   system = 'system'
 }
 
+/** 普通聊天请求的传输模式。模型测试使用独立的执行器，不读取此设置。 */
+export type ChatRequestMode = 'stream' | 'non-stream'
+
 /** 有限的UI语言 */
 export type LanguageVarious =
   | 'zh-CN'
@@ -543,7 +547,6 @@ export type WebDavConfig = {
 
 export type AppInfo = {
   version: string
-  isPackaged: boolean
   appPath: string
   configPath: string
   appDataPath: string
@@ -1010,6 +1013,8 @@ export type FetchChatCompletionRequestOptions = {
   headers?: Record<string, string>
   reasoningMode?: ReasoningMode
   textDeltaMode?: 'delta' | 'cumulative'
+  /** 发送时冻结的全局聊天传输模式。 */
+  chatRequestMode?: ChatRequestMode
 }
 
 type BaseParams = {

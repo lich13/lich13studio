@@ -1,6 +1,7 @@
 import { DeleteOutlined, FolderOpenOutlined } from '@ant-design/icons'
 import { HStack } from '@renderer/components/Layout'
 import { useTheme } from '@renderer/context/ThemeProvider'
+import { runtimeCapabilities } from '@renderer/services/mobile/runtime'
 import type { RootState } from '@renderer/store'
 import { useAppDispatch } from '@renderer/store'
 import {
@@ -72,29 +73,36 @@ const MarkdownExportSettings: FC = () => {
     <SettingGroup theme={theme}>
       <SettingTitle>{t('settings.data.markdown_export.title')}</SettingTitle>
       <SettingDivider />
-      <SettingRow>
-        <SettingRowTitle>{t('settings.data.markdown_export.path')}</SettingRowTitle>
-        <HStack alignItems="center" gap="5px" style={{ width: 315 }}>
-          <Input
-            type="text"
-            value={markdownExportPath || ''}
-            readOnly
-            style={{ width: 250 }}
-            placeholder={t('settings.data.markdown_export.path_placeholder')}
-            suffix={
-              markdownExportPath ? (
-                <DeleteOutlined onClick={handleClearPath} style={{ color: 'var(--color-error)', cursor: 'pointer' }} />
-              ) : null
-            }
-          />
-          <Button onClick={handleSelectFolder} icon={<FolderOpenOutlined />}>
-            {t('settings.data.markdown_export.select')}
-          </Button>
-        </HStack>
-      </SettingRow>
-      <SettingRow>
-        <SettingHelpText>{t('settings.data.markdown_export.help')}</SettingHelpText>
-      </SettingRow>
+      {!runtimeCapabilities.android && (
+        <>
+          <SettingRow>
+            <SettingRowTitle>{t('settings.data.markdown_export.path')}</SettingRowTitle>
+            <HStack alignItems="center" gap="5px" style={{ width: 315 }}>
+              <Input
+                type="text"
+                value={markdownExportPath || ''}
+                readOnly
+                style={{ width: 250 }}
+                placeholder={t('settings.data.markdown_export.path_placeholder')}
+                suffix={
+                  markdownExportPath ? (
+                    <DeleteOutlined
+                      onClick={handleClearPath}
+                      style={{ color: 'var(--color-error)', cursor: 'pointer' }}
+                    />
+                  ) : null
+                }
+              />
+              <Button onClick={handleSelectFolder} icon={<FolderOpenOutlined />}>
+                {t('settings.data.markdown_export.select')}
+              </Button>
+            </HStack>
+          </SettingRow>
+          <SettingRow>
+            <SettingHelpText>{t('settings.data.markdown_export.help')}</SettingHelpText>
+          </SettingRow>
+        </>
+      )}
       <SettingDivider />
       <SettingRow>
         <SettingRowTitle>{t('settings.data.markdown_export.force_dollar_math.title')}</SettingRowTitle>

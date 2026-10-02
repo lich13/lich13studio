@@ -52,6 +52,7 @@ import { API_SERVER_DEFAULTS } from '@shared/config/constant'
 import { defaultByPassRules, UpgradeChannel } from '@shared/config/constant'
 import {
   migrateAssistantSelectionState,
+  migrateChatRequestModeState,
   migrateModelCatalogState,
   migrateModelTestConcurrencyState,
   migrateModelTestState,
@@ -1267,7 +1268,6 @@ const migrateConfig = {
   },
   '90': (state: RootState) => {
     try {
-      state.settings.enableDataCollection = true
       return state
     } catch (error) {
       return state
@@ -3343,7 +3343,6 @@ const migrateConfig = {
         state.settings.launchToTray = false
         state.settings.tray = false
         state.settings.trayOnClose = false
-        state.settings.enableDataCollection = false
         state.settings.enableSpellCheck = false
         state.settings.spellCheckLanguages = []
         state.settings.disableHardwareAcceleration = false
@@ -3364,7 +3363,8 @@ const migrateConfig = {
   '219': (state: RootState) => migrateModelTestState(state),
   '220': (state: RootState) => migrateAssistantSelectionState(state),
   '221': (state: RootState) => migrateModelTestConcurrencyState(state),
-  '222': (state: RootState) => migrateModelCatalogState(state)
+  '222': (state: RootState) => migrateModelCatalogState(state),
+  '223': (state: RootState) => migrateChatRequestModeState(state)
 }
 
 // 注意：添加新迁移时，记得同时更新 persistReducer
@@ -3373,7 +3373,9 @@ const migrateConfig = {
 const versionedMigrate = createMigrate(migrateConfig as any)
 const migrate: typeof versionedMigrate = async (state, version) => {
   const migrated = await versionedMigrate(state, version)
-  return migrated ? migrateModelCatalogState(migrateModelTestConcurrencyState(sanitizeState(migrated))) : migrated
+  return migrated
+    ? migrateChatRequestModeState(migrateModelCatalogState(migrateModelTestConcurrencyState(sanitizeState(migrated))))
+    : migrated
 }
 
 export default migrate

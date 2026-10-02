@@ -1,3 +1,4 @@
+import ChatRequestModeToggle from '@renderer/components/ChatRequestModeToggle'
 import EmojiIcon from '@renderer/components/EmojiIcon'
 import HorizontalScrollContainer from '@renderer/components/HorizontalScrollContainer'
 import AssistantSettingsPopup from '@renderer/pages/settings/AssistantSettings'
@@ -26,7 +27,9 @@ const TopicContent = ({ assistant }: TopicContentProps) => {
       <ControlsContainer className="chat-target-controls ml-2 flex-initial">
         <div
           className={
-            runtimeCapabilities.android ? 'flex flex-col items-stretch gap-2' : 'flex flex-nowrap items-center gap-2'
+            runtimeCapabilities.android
+              ? 'flex w-full min-w-0 flex-col items-stretch gap-2'
+              : 'flex flex-nowrap items-center gap-2'
           }>
           {/* Assistant Label */}
           <div
@@ -44,6 +47,7 @@ const TopicContent = ({ assistant }: TopicContentProps) => {
           {/* Model Button */}
           <SelectModelButton assistant={assistant} />
           {!runtimeCapabilities.android && <ModelTestButton />}
+          <ChatRequestModeToggle compact />
         </div>
       </ControlsContainer>
       {!runtimeCapabilities.android && <Tools assistant={assistant} />}

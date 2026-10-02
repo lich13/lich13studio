@@ -51,7 +51,6 @@ vi.mock('@renderer/aiCore/plugins/pdfCompatibilityPlugin', () => ({
   createPdfCompatibilityPlugin: () => ({ name: 'noop' })
 }))
 vi.mock('@renderer/aiCore/plugins/anthropicCachePlugin', () => ({}))
-vi.mock('@renderer/aiCore/plugins/telemetryPlugin', () => ({}))
 vi.mock('@logger', () => ({
   loggerService: {
     withContext: () => ({ info: vi.fn(), debug: vi.fn(), silly: vi.fn(), error: vi.fn(), warn: vi.fn() })

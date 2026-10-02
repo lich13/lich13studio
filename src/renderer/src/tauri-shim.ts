@@ -28,7 +28,6 @@ const mockInvoke = async (command: string) => {
   if (command === 'app_info') {
     return {
       version: '0.1.0-preview',
-      isPackaged: false,
       appPath: '/preview/resources',
       configPath: '/preview/config',
       appDataPath: '/preview/data',

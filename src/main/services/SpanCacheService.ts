@@ -168,10 +168,21 @@ class SpanCacheService implements TraceCache {
     let msgArray: any[] = []
     if (attributes && attributes['outputs'] && Array.isArray(attributes['outputs'])) {
       msgArray = attributes['outputs'] || []
-      msgArray.push(message)
+      msgArray.push({
+        type: 'stream-event',
+        eventType: message && typeof message === 'object' ? message.type || message.object || 'object' : typeof message,
+        textLength: typeof context === 'string' ? context.length : 0
+      })
       attributes['outputs'] = msgArray
     } else {
-      msgArray = [message]
+      msgArray = [
+        {
+          type: 'stream-event',
+          eventType:
+            message && typeof message === 'object' ? message.type || message.object || 'object' : typeof message,
+          textLength: typeof context === 'string' ? context.length : 0
+        }
+      ]
       span.attributes = { ...attributes, outputs: msgArray } as Attributes
     }
     this._updateParentOutputs(span.parentId, modelName, context)
@@ -185,7 +196,10 @@ class SpanCacheService implements TraceCache {
         outputs = {}
       }
       if (!(`${modelName}` in outputs) || !outputs[`${modelName}`]) {
-        outputs[`${modelName}`] = message
+        outputs[`${modelName}`] = {
+          type: 'result',
+          textLength: typeof message === 'string' ? message.length : 0
+        }
         span.attributes[`outputs`] = outputs
         this.cache.set(spanId, span)
       }
@@ -281,19 +295,20 @@ class SpanCacheService implements TraceCache {
     if (!span || !context) {
       return
     }
+    const textLength = typeof context === 'string' ? context.length : 0
     const attributes = span.attributes
     // 如果含有modelName属性，是具体的某个modalName输出，拼接到streamText下面
     if (attributes && span.modelName) {
       const currentValue = attributes['outputs']
       if (currentValue && typeof currentValue === 'object') {
-        const allContext = (currentValue['streamText'] || '') + context
-        attributes['outputs'] = { ...currentValue, streamText: allContext }
+        const currentLength = Number(currentValue['streamTextLength'] || 0)
+        attributes['outputs'] = { ...currentValue, streamTextLength: currentLength + textLength }
       } else {
-        attributes['outputs'] = { streamText: context }
+        attributes['outputs'] = { streamTextLength: textLength }
       }
       span.attributes = attributes
     } else if (span.modelName) {
-      span.attributes = { outputs: { [`${modelName}`]: context } } as Attributes
+      span.attributes = { outputs: { [`${modelName}`]: { type: 'text', length: textLength } } } as unknown as Attributes
     } else {
       return
     }

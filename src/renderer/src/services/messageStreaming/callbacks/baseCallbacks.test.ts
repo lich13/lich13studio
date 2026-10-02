@@ -70,10 +70,6 @@ vi.mock('@renderer/utils/window', () => ({
   isFocused: () => true
 }))
 
-vi.mock('@renderer/utils/analytics', () => ({
-  trackTokenUsage: vi.fn()
-}))
-
 vi.mock('@renderer/utils', () => ({
   uuid: () => 'notification-id'
 }))
