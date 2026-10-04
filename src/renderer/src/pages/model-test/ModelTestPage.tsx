@@ -48,7 +48,9 @@ const bankErrorKeys = {
   network: 'settings.modelTest.bankError.network',
   cache: 'settings.modelTest.bankError.cache',
   'invalid-data': 'settings.modelTest.bankError.invalid-data',
-  incompatible: 'settings.modelTest.bankError.incompatible'
+  incompatible: 'settings.modelTest.bankError.incompatible',
+  'rate-limit': 'settings.modelTest.bankError.rate-limit',
+  timeout: 'settings.modelTest.bankError.timeout'
 } as const
 
 const ModelTestPage = () => {
@@ -120,6 +122,12 @@ const ModelTestPage = () => {
                 </Button>
               </Space>
               {bankState.error && <Alert showIcon type="warning" message={t(bankErrorKeys[bankState.error])} />}
+              {bankState.result === 'up-to-date' && (
+                <Typography.Text type="secondary">{t('settings.modelTest.bankStatus.up-to-date')}</Typography.Text>
+              )}
+              {bankState.result === 'updated' && (
+                <Typography.Text type="secondary">{t('settings.modelTest.bankStatus.updated')}</Typography.Text>
+              )}
               {target && (
                 <Typography.Text strong>
                   {t('settings.modelTest.runTarget', { provider: target.providerName, model: target.modelId })}
@@ -221,8 +229,8 @@ const ModelTestPage = () => {
                 {(outputs[index]?.retryDelayMs || outputs[index]?.retryStopReason) && (
                   <Typography.Paragraph type="secondary" style={{ marginBottom: 8 }}>
                     {outputs[index]?.status === 'retrying'
-                      ? t('settings.modelTest.retryWaiting', { seconds: outputs[index]!.retryDelayMs! / 1000 })
-                      : outputs[index]?.retryStopReason && t(retryStopKeys[outputs[index]!.retryStopReason!])}
+                      ? t('settings.modelTest.retryWaiting', { seconds: outputs[index]?.retryDelayMs / 1000 })
+                      : outputs[index]?.retryStopReason && t(retryStopKeys[outputs[index]?.retryStopReason])}
                   </Typography.Paragraph>
                 )}
                 {outputs[index]?.status === 'completed' && (
@@ -231,7 +239,7 @@ const ModelTestPage = () => {
                       usable: outputs[index]?.usableCount || 0,
                       excluded: outputs[index]?.excludedCount || 0
                     })}
-                    {outputs[index]?.issue && ` · ${t(issueKeys[outputs[index]!.issue!])}`}
+                    {outputs[index]?.issue && ` · ${t(issueKeys[outputs[index]?.issue])}`}
                   </Typography.Paragraph>
                 )}
                 {outputs[index]?.error && (

@@ -4569,7 +4569,13 @@
         "cache": "[to be translated]:Unable to save the update. Using the current fingerprint bank.",
         "incompatible": "[to be translated]:The upstream algorithm changed. Update the app.",
         "invalid-data": "[to be translated]:Invalid update data. Using the current fingerprint bank.",
-        "network": "[to be translated]:Sync failed. Using the current fingerprint bank."
+        "network": "[to be translated]:Sync failed. Using the current fingerprint bank.",
+        "rate-limit": "[to be translated]:GitHub rate limit reached. Try again later.",
+        "timeout": "[to be translated]:The update request timed out. Using the current fingerprint bank."
+      },
+      "bankStatus": {
+        "up-to-date": "[to be translated]:Fingerprint bank is up to date.",
+        "updated": "[to be translated]:Fingerprint bank updated."
       },
       "byteUnit": "[to be translated]:bytes",
       "challenge": "[to be translated]:Challenge {{index}} · {{count}} numbers",

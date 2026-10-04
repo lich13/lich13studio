@@ -1,6 +1,5 @@
 import { loggerService } from '@logger'
 import ModelAvatar from '@renderer/components/Avatar/ModelAvatar'
-import ChatRequestModeToggle from '@renderer/components/ChatRequestModeToggle'
 import ModelProviderSelect from '@renderer/components/ModelProviderSelect'
 import { isMac } from '@renderer/config/constant'
 import { useTheme } from '@renderer/context/ThemeProvider'
@@ -807,7 +806,6 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
       <HeaderActions className="nodrag">
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
           <ModelProviderSelect compact showEffort selection={selection} onChange={handleModelChange} />
-          <ChatRequestModeToggle compact />
         </div>
         <Tooltip placement="bottomRight" title={newTopicLabel} mouseLeaveDelay={0} arrow>
           <HeaderIconButton type="text" aria-label={newTopicLabel} onClick={() => void handleNewTopic()}>

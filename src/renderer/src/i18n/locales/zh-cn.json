@@ -4569,7 +4569,13 @@
         "cache": "无法保存更新，继续使用当前指纹库",
         "incompatible": "上游算法已变化，请升级应用",
         "invalid-data": "更新数据校验失败，继续使用当前指纹库",
-        "network": "同步失败，继续使用当前指纹库"
+        "network": "网络连接失败，继续使用当前指纹库",
+        "rate-limit": "GitHub 请求达到限流，请稍后重试",
+        "timeout": "更新请求超时，继续使用当前指纹库"
+      },
+      "bankStatus": {
+        "up-to-date": "指纹库已是最新",
+        "updated": "指纹库已更新"
       },
       "byteUnit": "字节",
       "challenge": "挑战 {{index}} · 目标 {{count}} 个数字",

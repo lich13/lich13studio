@@ -4569,7 +4569,13 @@
         "cache": "Unable to save the update. Using the current fingerprint bank.",
         "incompatible": "The upstream algorithm changed. Update the app.",
         "invalid-data": "Invalid update data. Using the current fingerprint bank.",
-        "network": "Sync failed. Using the current fingerprint bank."
+        "network": "Network connection failed. Using the current fingerprint bank.",
+        "rate-limit": "GitHub rate limit reached. Try again later.",
+        "timeout": "The update request timed out. Using the current fingerprint bank."
+      },
+      "bankStatus": {
+        "up-to-date": "Fingerprint bank is up to date.",
+        "updated": "Fingerprint bank updated."
       },
       "byteUnit": "bytes",
       "challenge": "Challenge {{index}} · {{count}} numbers",

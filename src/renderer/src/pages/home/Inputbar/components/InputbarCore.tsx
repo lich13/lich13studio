@@ -1,6 +1,5 @@
 import { HolderOutlined } from '@ant-design/icons'
 import { loggerService } from '@logger'
-import ChatRequestModeToggle from '@renderer/components/ChatRequestModeToggle'
 import type { QuickPanelTriggerInfo } from '@renderer/components/QuickPanel'
 import { QuickPanelReservedSymbol, QuickPanelView, useQuickPanel } from '@renderer/components/QuickPanel'
 import { useRuntime } from '@renderer/hooks/useRuntime'
@@ -594,7 +593,6 @@ export const InputbarCore: FC<InputbarCoreProps> = ({
           <BottomBar>
             <LeftSection>{leftToolbar}</LeftSection>
             <RightSection>
-              <ChatRequestModeToggle compact />
               {rightToolbar}
               {rightSectionExtras}
             </RightSection>

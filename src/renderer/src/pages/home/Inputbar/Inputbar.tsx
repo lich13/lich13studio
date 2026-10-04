@@ -1,4 +1,5 @@
 import { loggerService } from '@logger'
+import ChatRequestModeToggle from '@renderer/components/ChatRequestModeToggle'
 import {
   isAutoEnableImageGenerationModel,
   isEmbeddingModel,
@@ -460,7 +461,12 @@ const InputbarInner: FC<InputbarInnerProps> = ({ assistant: initialAssistant, se
   )
 
   // leftToolbar: 左侧工具栏
-  const leftToolbar = config.showTools ? <InputbarTools scope={scope} assistant={assistant} model={model} /> : null
+  const leftToolbar = config.showTools ? (
+    <>
+      <InputbarTools scope={scope} assistant={assistant} model={model} />
+      {String(scope) !== 'mini-window' && <ChatRequestModeToggle />}
+    </>
+  ) : null
 
   // rightToolbar: 右侧工具栏
   const rightToolbar = (

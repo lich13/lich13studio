@@ -1,4 +1,3 @@
-import ChatRequestModeToggle from '@renderer/components/ChatRequestModeToggle'
 import EmojiIcon from '@renderer/components/EmojiIcon'
 import HorizontalScrollContainer from '@renderer/components/HorizontalScrollContainer'
 import AssistantSettingsPopup from '@renderer/pages/settings/AssistantSettings'
@@ -47,7 +46,6 @@ const TopicContent = ({ assistant }: TopicContentProps) => {
           {/* Model Button */}
           <SelectModelButton assistant={assistant} />
           {!runtimeCapabilities.android && <ModelTestButton />}
-          <ChatRequestModeToggle compact />
         </div>
       </ControlsContainer>
       {!runtimeCapabilities.android && <Tools assistant={assistant} />}

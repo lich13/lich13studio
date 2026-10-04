@@ -4569,7 +4569,13 @@
         "cache": "無法儲存更新，繼續使用目前指紋庫",
         "incompatible": "上游演算法已變更，請升級應用程式",
         "invalid-data": "更新資料驗證失敗，繼續使用目前指紋庫",
-        "network": "同步失敗，繼續使用目前指紋庫"
+        "network": "同步失敗，繼續使用目前指紋庫",
+        "rate-limit": "[to be translated]:GitHub rate limit reached. Try again later.",
+        "timeout": "[to be translated]:The update request timed out. Using the current fingerprint bank."
+      },
+      "bankStatus": {
+        "up-to-date": "[to be translated]:Fingerprint bank is up to date.",
+        "updated": "[to be translated]:Fingerprint bank updated."
       },
       "byteUnit": "位元組",
       "challenge": "挑戰 {{index}} · 目標 {{count}} 個數字",

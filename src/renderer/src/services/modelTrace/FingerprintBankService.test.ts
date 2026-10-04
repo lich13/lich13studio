@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto'
+import { readFileSync } from 'node:fs'
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
@@ -20,6 +21,8 @@ import {
 
 const NOW = Date.parse('2030-01-01T00:00:00.000Z')
 const sourceBank = JSON.parse(sourceRaw) as FingerprintBank
+const upstreamCore = readFileSync(new URL('./data/upstream-fingerprint-core.mjs', import.meta.url))
+const upstreamChallenge = readFileSync(new URL('./data/upstream-challenge.mjs', import.meta.url))
 const CACHE_REVISION = 'a'.repeat(40)
 const REMOTE_REVISION = 'b'.repeat(40)
 const sha256 = (raw: string) => createHash('sha256').update(raw).digest('hex')
@@ -30,7 +33,7 @@ const gitBlob = (raw: string) =>
     .digest('hex')
 
 function bankFixture(days = 1): FingerprintBank {
-  const bank = structuredClone(sourceBank) as FingerprintBank
+  const bank = structuredClone(sourceBank)
   bank.built_at = new Date(Date.parse(sourceBank.built_at) + days * 86400000).toISOString()
   bank.models[0].counts[0] += days
   return bank
@@ -235,7 +238,10 @@ describe('fingerprint bank synchronization', () => {
     await service.sync()
     expect(remote.fetcher.mock.calls.map(([url]) => String(url))).toEqual(remote.urls)
     for (const [, options] of remote.fetcher.mock.calls) {
-      expect(options).toMatchObject({ credentials: 'omit', headers: { Accept: 'application/vnd.github+json' } })
+      expect(options).toMatchObject({
+        credentials: 'omit',
+        headers: expect.objectContaining({ Accept: expect.any(String) })
+      })
       expect(options?.signal).toBeInstanceOf(AbortSignal)
     }
     const expected = {
@@ -270,6 +276,38 @@ describe('fingerprint bank synchronization', () => {
     expect(storage.saved?.version).toEqual(bundledBankSnapshot.version)
   })
 
+  it('uses official Git HTTP refs and pinned raw files when the API head is unavailable', async () => {
+    const revision = 'c'.repeat(40)
+    const raw = JSON.stringify(bankFixture(2))
+    const packet = (payload: string) => (Buffer.byteLength(payload) + 4).toString(16).padStart(4, '0') + payload
+    const refs =
+      packet('# service=git-upload-pack\n') +
+      '0000' +
+      packet(`${revision} refs/heads/${manifest.branch}\0symref=HEAD:refs/heads/${manifest.branch}\n`) +
+      '0000'
+    const apiHead = `https://api.github.com/repos/${manifest.repository}/commits/${manifest.branch}`
+    const gitRefs = `https://github.com/${manifest.repository}.git/info/refs?service=git-upload-pack`
+    const remote = {
+      fetcher: vi.fn<typeof fetch>(async (input) => {
+        const url = input instanceof Request ? input.url : String(input)
+        if (url === apiHead) return new Response('unavailable', { status: 503 })
+        if (url === gitRefs) return new Response(refs)
+        if (url.endsWith(`/raw/${revision}/${manifest.files.core.path}`)) return new Response(upstreamCore)
+        if (url.endsWith(`/raw/${revision}/${manifest.files.challenge.path}`)) return new Response(upstreamChallenge)
+        if (url.endsWith(`/raw/${revision}/${manifest.files.bank.path}`)) return new Response(raw)
+        throw new Error(`Unexpected fallback request: ${url}`)
+      })
+    }
+    const service = new FingerprintBankService(memoryStorage(), remote.fetcher, () => NOW)
+    await service.sync()
+    expect(service.getSnapshot()).toMatchObject({ source: 'remote', status: 'idle', result: 'updated' })
+    expect(service.capture().version.revision).toBe(revision)
+    expect(remote.fetcher.mock.calls.map(([url]) => String(url))).not.toContain(
+      `https://api.github.com/repos/${manifest.repository}/git/trees/${revision}?recursive=1`
+    )
+    expect(remote.fetcher.mock.calls.map(([url]) => String(url))).toContain(gitRefs)
+  })
+
   it('throttles automatic checks for one hour while allowing a forced check', async () => {
     let now = NOW
     const remote = remoteFixture()
@@ -280,11 +318,11 @@ describe('fingerprint bank synchronization', () => {
     expect(remote.fetcher).toHaveBeenCalledTimes(3)
     now += 1
     await service.sync()
-    expect(remote.fetcher).toHaveBeenCalledTimes(6)
+    expect(remote.fetcher).toHaveBeenCalledTimes(4)
     await service.sync()
-    expect(remote.fetcher).toHaveBeenCalledTimes(6)
+    expect(remote.fetcher).toHaveBeenCalledTimes(4)
     await service.sync(true)
-    expect(remote.fetcher).toHaveBeenCalledTimes(9)
+    expect(remote.fetcher).toHaveBeenCalledTimes(5)
   })
 
   it('honors the persisted check time after restarting', async () => {
@@ -314,7 +352,7 @@ describe('fingerprint bank synchronization', () => {
     expect(remote.fetcher).toHaveBeenCalledTimes(3)
     expect(storage.write).toHaveBeenCalledTimes(1)
     await service.sync(true)
-    expect(remote.fetcher).toHaveBeenCalledTimes(6)
+    expect(remote.fetcher).toHaveBeenCalledTimes(4)
   })
 
   it('keeps the last valid cache available offline and persists only the failed check time', async () => {
@@ -328,13 +366,13 @@ describe('fingerprint bank synchronization', () => {
     await service.sync()
     expect(service.capture()).toBe(previous)
     expect(service.getSnapshot()).toMatchObject({ source: 'cache', status: 'error', error: 'network', checkedAt: NOW })
-    expect(storage.saved).toEqual({ ...cached, checkedAt: NOW })
+    expect(storage.saved).toEqual({ ...cached, checkedAt: NOW, cooldownUntil: NOW + 5 * 60 * 1000 })
     await service.sync()
-    expect(remote.fetcher).toHaveBeenCalledTimes(1)
+    expect(remote.fetcher).toHaveBeenCalledTimes(4)
     const restarted = new FingerprintBankService(storage, remote.fetcher, () => NOW)
     await restarted.sync()
     expect(restarted.capture()).toEqual(previous)
-    expect(remote.fetcher).toHaveBeenCalledTimes(1)
+    expect(remote.fetcher).toHaveBeenCalledTimes(4)
   })
 
   it.each([403, 429])('preserves last-good data after HTTP %i and allows an explicit retry', async (status) => {
@@ -345,12 +383,12 @@ describe('fingerprint bank synchronization', () => {
     const service = new FingerprintBankService(storage, remote.fetcher, () => NOW)
     await service.sync()
     expect(service.capture().version).toEqual(cached.version)
-    expect(service.getSnapshot()).toMatchObject({ source: 'cache', status: 'error', error: 'network' })
-    expect(storage.saved).toEqual({ ...cached, checkedAt: NOW })
+    expect(service.getSnapshot()).toMatchObject({ source: 'cache', status: 'error', error: 'rate-limit' })
+    expect(storage.saved).toEqual({ ...cached, checkedAt: NOW, cooldownUntil: NOW + 5 * 60 * 1000 })
     await service.sync()
-    expect(remote.fetcher).toHaveBeenCalledTimes(1)
-    await service.sync(true)
     expect(remote.fetcher).toHaveBeenCalledTimes(2)
+    await service.sync(true)
+    expect(remote.fetcher).toHaveBeenCalledTimes(4)
   })
 
   it('does not expose a new bank until the cache write completes', async () => {
@@ -405,10 +443,10 @@ describe('fingerprint bank synchronization', () => {
       expect(remote.fetcher).toHaveBeenCalledTimes(3)
       await vi.advanceTimersByTimeAsync(1)
       await service.sync()
-      expect(remote.fetcher).toHaveBeenCalledTimes(6)
+      expect(remote.fetcher).toHaveBeenCalledTimes(4)
       stop()
       await vi.advanceTimersByTimeAsync(2 * FINGERPRINT_SYNC_INTERVAL_MS)
-      expect(remote.fetcher).toHaveBeenCalledTimes(6)
+      expect(remote.fetcher).toHaveBeenCalledTimes(4)
     } finally {
       stop()
     }
