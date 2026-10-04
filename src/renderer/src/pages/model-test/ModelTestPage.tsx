@@ -229,7 +229,7 @@ const ModelTestPage = () => {
                 {(outputs[index]?.retryDelayMs || outputs[index]?.retryStopReason) && (
                   <Typography.Paragraph type="secondary" style={{ marginBottom: 8 }}>
                     {outputs[index]?.status === 'retrying'
-                      ? t('settings.modelTest.retryWaiting', { seconds: outputs[index]?.retryDelayMs / 1000 })
+                      ? t('settings.modelTest.retryWaiting', { seconds: (outputs[index]?.retryDelayMs ?? 0) / 1000 })
                       : outputs[index]?.retryStopReason && t(retryStopKeys[outputs[index]?.retryStopReason])}
                   </Typography.Paragraph>
                 )}
