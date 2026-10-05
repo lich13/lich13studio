@@ -112,6 +112,49 @@ class MobileSmokeTest {
         verifyNotificationPermission()
     }
 
+    @Test fun nativeModelAndProviderSelectorsRemainStable() {
+        context.startActivity(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        waitFor("home after selector test start") { js("!!document.querySelector('#home-page')") == true }
+        waitFor("native model and provider selectors") {
+            js("document.querySelectorAll('.model-provider-fields select').length") == 2
+        }
+
+        val modelSelector = "document.querySelectorAll('.model-provider-fields select')[0]"
+        val providerSelector = "document.querySelectorAll('.model-provider-fields select')[1]"
+        assertEquals("select", js("$modelSelector.tagName").toString().lowercase())
+        assertEquals("select", js("$providerSelector.tagName").toString().lowercase())
+        assertEquals(true, js("$modelSelector.options.length > 1"))
+        assertEquals(true, js("$providerSelector.options.length > 1"))
+        assertEquals(true, js("$modelSelector.closest('.model-provider-fields').getBoundingClientRect().width > 0"))
+
+        // Keep a node reference while React commits the controlled selection. The native
+        // control must survive the redraw instead of closing an Android system picker.
+        js("window.__nativeModelSelector=$modelSelector; window.__nativeProviderSelector=$providerSelector")
+        val modelChanged = js("""
+            (() => {
+              const select=$modelSelector;
+              const next=Array.from(select.options).find(option => !option.disabled && option.value && option.value !== select.value);
+              if (next) { select.value=next.value; select.dispatchEvent(new Event('change', {bubbles:true})); return true; }
+              return false;
+            })()
+        """.trimIndent())
+        if (modelChanged == true) {
+            waitFor("model selection commit") { js("$modelSelector.value === window.__nativeModelSelector.value") == true }
+        }
+        js("""
+            (() => {
+              const select=$providerSelector;
+              const next=Array.from(select.options).find(option => !option.disabled && option.value);
+              if (next) { select.value=next.value; select.dispatchEvent(new Event('change', {bubbles:true})); }
+            })()
+        """.trimIndent())
+        waitFor("provider selection commit") { js("$providerSelector.value === window.__nativeProviderSelector.value") == true }
+        assertEquals(true, js("window.__nativeModelSelector === $modelSelector"))
+        assertEquals(true, js("window.__nativeProviderSelector === $providerSelector"))
+        assertEquals(true, js("document.documentElement.scrollWidth <= innerWidth + 1"))
+        js("delete window.__nativeModelSelector; delete window.__nativeProviderSelector")
+    }
+
     /** Run in a second instrumentation process after force-stopping the first. */
     @Test fun credentialsSurviveProcessRestart() {
         context.startActivity(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))

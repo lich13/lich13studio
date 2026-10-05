@@ -57,7 +57,7 @@ describe('notifyLatestReleaseIfAvailable', () => {
       timestamp: 1780647000000,
       source: 'update',
       extra: {
-        url: 'https://github.com/lich13/lich13studio/releases/download/v0.1.12/lich13studio_0.1.12_aarch64.dmg'
+        url: 'https://github.com/lich13/lich13studio/releases/tag/v0.1.12'
       }
     })
   })

@@ -882,7 +882,7 @@ fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
               let _ = notify_update_result(
                 &app_handle,
                 "发现新版本",
-                &format!("lich13studio {version} 已发布，正在打开下载页面。"),
+                &format!("lich13studio {version} 已发布，正在打开发布页面。"),
               );
               let _ = open_update_url(&update_info).await;
             }
@@ -1910,22 +1910,51 @@ fn select_platform_update_asset(assets: &[GitHubReleaseAsset], platform: &str) -
   release_asset_to_app_asset(preferred.or_else(|| candidates.first().copied()))
 }
 
+fn release_page_url(tag_name: Option<&str>, html_url: Option<&str>) -> String {
+  let tag = tag_name.unwrap_or_default().trim();
+  let version = tag.strip_prefix('v').or_else(|| tag.strip_prefix('V')).unwrap_or(tag);
+  let valid_suffix = |value: &str| {
+    !value.is_empty() && value.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-'))
+  };
+  let (without_build, build) = version.split_once('+').map_or((version, None), |(a, b)| (a, Some(b)));
+  let (core, prerelease) = without_build.split_once('-').map_or((without_build, None), |(a, b)| (a, Some(b)));
+  let parts: Vec<&str> = core.split('.').collect();
+  let valid_tag = parts.len() == 3
+    && parts.iter().all(|part| !part.is_empty() && part.chars().all(|c| c.is_ascii_digit()))
+    && build.map_or(true, valid_suffix)
+    && prerelease.map_or(true, valid_suffix);
+  if !valid_tag {
+    return GITHUB_RELEASES_URL.to_string();
+  }
+
+  let mut expected = Url::parse(GITHUB_RELEASES_URL).expect("Static release URL");
+  expected.path_segments_mut().expect("Static release path").push("tag").push(tag);
+  if let Ok(url) = Url::parse(html_url.unwrap_or_default().trim()) {
+    if url.scheme() == "https"
+      && url.host_str() == Some("github.com")
+      && url.port().is_none()
+      && url.username().is_empty()
+      && url.password().is_none()
+      && url.path() == expected.path()
+      && url.query().is_none()
+      && url.fragment().is_none()
+    {
+      return url.to_string();
+    }
+  }
+  expected.to_string()
+}
+
 fn build_app_update_info(current_version: &str, platform: &str, release: GitHubLatestRelease) -> AppUpdateInfo {
   let latest_version = release
     .tag_name
     .as_deref()
     .map(normalize_update_version)
     .filter(|version| !version.is_empty());
-  let release_url = release
-    .html_url
-    .as_deref()
-    .map(str::trim)
-    .filter(|url| !url.is_empty())
-    .unwrap_or(GITHUB_RELEASES_URL)
-    .to_string();
+  let release_url = release_page_url(release.tag_name.as_deref(), release.html_url.as_deref());
   let has_update = latest_version
     .as_deref()
-    .is_some_and(|version| compare_update_versions(version, current_version) == CmpOrdering::Greater);
+    .is_some_and(|version| release_url != GITHUB_RELEASES_URL && compare_update_versions(version, current_version) == CmpOrdering::Greater);
 
   AppUpdateInfo {
     has_update,
@@ -1953,17 +1982,9 @@ async fn fetch_latest_update_info(current_version: &str, platform: &str) -> Resu
   Ok(build_app_update_info(current_version, platform, release))
 }
 
-fn update_download_url(update_info: &AppUpdateInfo) -> String {
-  update_info
-    .asset
-    .as_ref()
-    .map(|asset| asset.url.clone())
-    .unwrap_or_else(|| update_info.release_url.clone())
-}
-
 #[cfg(not(target_os = "android"))]
 async fn open_update_url(update_info: &AppUpdateInfo) -> Result<bool, String> {
-  open_external_url(update_download_url(update_info)).await
+  open_external_url(update_info.release_url.clone()).await
 }
 
 fn notify_update_result(app: &AppHandle, title: &str, body: &str) -> Result<(), String> {
@@ -2931,6 +2952,36 @@ mod tests {
     assert_eq!(compare_update_versions("v0.1.12", "0.1.11"), CmpOrdering::Greater);
     assert_eq!(compare_update_versions("0.1.12", "v0.1.12"), CmpOrdering::Equal);
     assert_eq!(compare_update_versions("0.1.9", "0.1.10"), CmpOrdering::Less);
+  }
+
+  #[test]
+  fn release_page_url_accepts_only_the_repository_release_path() {
+    assert_eq!(
+      release_page_url(
+        Some("v0.1.32"),
+        Some("https://github.com/lich13/lich13studio/releases/tag/v0.1.32")
+      ),
+      "https://github.com/lich13/lich13studio/releases/tag/v0.1.32"
+    );
+    assert_eq!(
+      release_page_url(Some("0.1.32"), Some("https://example.com/releases/tag/0.1.32")),
+      "https://github.com/lich13/lich13studio/releases/tag/0.1.32"
+    );
+    for tag in [None, Some(""), Some("vv0.1.32"), Some("v0.1"), Some("v0.1.32-"), Some("v0.1.32+"), Some("../v0.1.32")] {
+      assert_eq!(release_page_url(tag, None), GITHUB_RELEASES_URL);
+    }
+    for address in [
+      None,
+      Some("https://example.invalid/releases/tag/v0.1.32"),
+      Some("javascript:alert(1)"),
+      Some("https://github.com/lich13/lich13studio/releases/download/v0.1.32/app.dmg"),
+      Some("https://github.com/lich13/lich13studio/releases/tag/v0.1.31"),
+      Some("https://github.com/lich13/lich13studio/releases/tag/v0.1.32?redirect=example.invalid"),
+      Some("https://github.com/lich13/lich13studio/releases/tag/v0.1.32#fragment"),
+      Some("https://user@github.com/lich13/lich13studio/releases/tag/v0.1.32"),
+    ] {
+      assert_eq!(release_page_url(Some("v0.1.32"), address), "https://github.com/lich13/lich13studio/releases/tag/v0.1.32");
+    }
   }
 
   #[test]

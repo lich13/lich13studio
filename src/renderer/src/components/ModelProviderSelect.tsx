@@ -1,4 +1,5 @@
 import { isEmbeddingModel, isRerankModel } from '@renderer/config/models'
+import { runtimeCapabilities } from '@renderer/services/mobile/runtime'
 import { reasoningUsage } from '@renderer/services/ReasoningUsageService'
 import { useAppSelector } from '@renderer/store'
 import type { Model } from '@renderer/types'
@@ -13,6 +14,25 @@ import styled from 'styled-components'
 
 import ModelAvatar from './Avatar/ModelAvatar'
 import ModelTagsWithLabel from './ModelTagsWithLabel'
+
+export function parseModelProviderSelectionValue(value: unknown): [ProviderPlatform, string] | null {
+  if (typeof value !== 'string' || !value.trim()) return null
+  try {
+    const parsed: unknown = JSON.parse(value)
+    if (!Array.isArray(parsed) || parsed.length !== 2) return null
+    const [platform, modelId] = parsed
+    if (
+      typeof platform !== 'string' ||
+      !(PROVIDER_PLATFORMS as readonly string[]).includes(platform) ||
+      typeof modelId !== 'string' ||
+      !modelId.trim()
+    )
+      return null
+    return [platform as ProviderPlatform, modelId]
+  } catch {
+    return null
+  }
+}
 
 export default function ModelProviderSelect({
   selection,
@@ -61,8 +81,8 @@ export default function ModelProviderSelect({
       label: t('settings.modelTest.unavailable'),
       options: [
         {
-          value: JSON.stringify([selection.platform, selection.modelId]),
-          label: selection.modelId,
+          value: JSON.stringify([activeSelection.platform, activeSelection.modelId]),
+          label: activeSelection.modelId,
           model: undefined,
           disabled: true
         }
@@ -88,77 +108,125 @@ export default function ModelProviderSelect({
     : undefined
   const effortText =
     effort && t('chat.effectiveReasoning', { requested: effort.requested, effective: effort.effective })
+  const handleModelChange = (value: unknown) => {
+    const parsed = parseModelProviderSelectionValue(value)
+    if (!parsed || !models.some((group) => group.options.some((option) => option.value === value && !option.disabled)))
+      return
+    const [platform, modelId] = parsed
+    const next = { ...activeSelection, platform, modelId }
+    setDraftSelection(next)
+    onChange(next)
+  }
+  const handleProviderChange = (providerId: unknown) => {
+    if (
+      typeof providerId !== 'string' ||
+      !providers.some((provider) => provider.value === providerId && !provider.disabled)
+    )
+      return
+    const next = { ...activeSelection, providerId }
+    setDraftSelection(next)
+    onChange(next)
+  }
   return (
     <Controls className="model-provider-selection nodrag" $compact={compact} $inline={layout === 'inline'}>
-      <Fields className="model-provider-fields" $inline={layout === 'inline'}>
-        <Select
-          aria-label={t('settings.modelTest.modelLabel')}
-          title={selection.modelId}
-          showSearch
-          filterOption={(input, option) =>
-            String((option as { searchText?: string })?.searchText || option?.label || '')
-              .toLowerCase()
-              .includes(input.toLowerCase())
-          }
-          popupMatchSelectWidth={420}
-          getPopupContainer={(trigger) => trigger.parentElement || document.body}
-          styles={{ popup: { root: { maxWidth: 'calc(100vw - 24px)' } } }}
-          size={compact ? 'small' : 'middle'}
-          options={models}
-          optionRender={(option) => {
-            const model = (option.data as { model?: Model }).model
-            return (
-              <ModelOption className="model-option">
-                <ModelAvatar model={model} size={24} />
-                <span className="model-name" title={model?.id || String(option.label)}>
-                  {model ? (
-                    <>
-                      <span>{getModelPresentation(model).primary}</span>
-                      {getModelPresentation(model).secondary && (
-                        <small style={{ display: 'block', color: 'var(--color-text-3)' }}>{model.id}</small>
-                      )}
-                    </>
-                  ) : (
-                    option.label
-                  )}
-                </span>
-                {model && <ModelTagsWithLabel model={model} showLabel={false} showFree={false} />}
-              </ModelOption>
-            )
-          }}
-          value={
-            activeSelection.modelId ? JSON.stringify([activeSelection.platform, activeSelection.modelId]) : undefined
-          }
-          placeholder={t('button.select_model')}
-          open={openField === 'model' ? true : undefined}
-          onOpenChange={(open) => setOpenField(open ? 'model' : null)}
-          onChange={(value: string) => {
-            const [platform, modelId] = JSON.parse(value) as [ProviderPlatform, string]
-            const next = { ...activeSelection, platform, modelId }
-            setDraftSelection(next)
-            onChange(next)
-          }}
-        />
-        <Select
-          aria-label={t('settings.modelTest.providerLabel')}
-          title={providers.find((provider) => provider.value === selection.providerId)?.label}
-          showSearch
-          optionFilterProp="label"
-          size={compact ? 'small' : 'middle'}
-          options={providers}
-          value={activeSelection.providerId}
-          placeholder={t('settings.modelTest.providerPlaceholder')}
-          disabled={!activeSelection.modelId}
-          getPopupContainer={(trigger) => trigger.parentElement || document.body}
-          open={openField === 'provider' ? true : undefined}
-          onOpenChange={(open) => setOpenField(open ? 'provider' : null)}
-          onChange={(providerId: string) => {
-            const next = { ...activeSelection, providerId }
-            setDraftSelection(next)
-            onChange(next)
-          }}
-        />
-      </Fields>
+      {runtimeCapabilities.android ? (
+        <NativeFields className="model-provider-fields">
+          <NativeSelect
+            aria-label={t('settings.modelTest.modelLabel')}
+            title={activeSelection.modelId}
+            value={activeSelection.modelId ? JSON.stringify([activeSelection.platform, activeSelection.modelId]) : ''}
+            onChange={(event) => handleModelChange(event.currentTarget.value)}>
+            <option value="" disabled>
+              {t('button.select_model')}
+            </option>
+            {models.map((group) => (
+              <optgroup key={group.label} label={group.label}>
+                {group.options.map((option) => (
+                  <option key={option.value} value={option.value} disabled={option.disabled}>
+                    {option.label}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </NativeSelect>
+          <NativeSelect
+            aria-label={t('settings.modelTest.providerLabel')}
+            title={providers.find((provider) => provider.value === activeSelection.providerId)?.label}
+            value={activeSelection.providerId || ''}
+            disabled={!activeSelection.modelId}
+            onChange={(event) => handleProviderChange(event.currentTarget.value)}>
+            <option value="" disabled>
+              {t('settings.modelTest.providerPlaceholder')}
+            </option>
+            {providers.map((provider) => (
+              <option key={provider.value} value={provider.value} disabled={provider.disabled}>
+                {provider.label}
+              </option>
+            ))}
+          </NativeSelect>
+        </NativeFields>
+      ) : (
+        <Fields className="model-provider-fields" $inline={layout === 'inline'}>
+          <Select
+            aria-label={t('settings.modelTest.modelLabel')}
+            title={selection.modelId}
+            showSearch
+            filterOption={(input, option) =>
+              String((option as { searchText?: string })?.searchText || option?.label || '')
+                .toLowerCase()
+                .includes(input.toLowerCase())
+            }
+            popupMatchSelectWidth={420}
+            getPopupContainer={() => document.body}
+            styles={{ popup: { root: { maxWidth: 'calc(100vw - 24px)' } } }}
+            size={compact ? 'small' : 'middle'}
+            options={models}
+            optionRender={(option) => {
+              const model = (option.data as { model?: Model }).model
+              return (
+                <ModelOption className="model-option">
+                  <ModelAvatar model={model} size={24} />
+                  <span className="model-name" title={model?.id || String(option.label)}>
+                    {model ? (
+                      <>
+                        <span>{getModelPresentation(model).primary}</span>
+                        {getModelPresentation(model).secondary && (
+                          <small style={{ display: 'block', color: 'var(--color-text-3)' }}>{model.id}</small>
+                        )}
+                      </>
+                    ) : (
+                      option.label
+                    )}
+                  </span>
+                  {model && <ModelTagsWithLabel model={model} showLabel={false} showFree={false} />}
+                </ModelOption>
+              )
+            }}
+            value={
+              activeSelection.modelId ? JSON.stringify([activeSelection.platform, activeSelection.modelId]) : undefined
+            }
+            placeholder={t('button.select_model')}
+            open={openField === 'model'}
+            onOpenChange={(open) => setOpenField((field) => (open ? 'model' : field === 'model' ? null : field))}
+            onChange={handleModelChange}
+          />
+          <Select
+            aria-label={t('settings.modelTest.providerLabel')}
+            title={providers.find((provider) => provider.value === selection.providerId)?.label}
+            showSearch
+            optionFilterProp="label"
+            size={compact ? 'small' : 'middle'}
+            options={providers}
+            value={activeSelection.providerId}
+            placeholder={t('settings.modelTest.providerPlaceholder')}
+            disabled={!activeSelection.modelId}
+            getPopupContainer={() => document.body}
+            open={openField === 'provider'}
+            onOpenChange={(open) => setOpenField((field) => (open ? 'provider' : field === 'provider' ? null : field))}
+            onChange={handleProviderChange}
+          />
+        </Fields>
+      )}
       {showEffort && effort && (
         <Tooltip title={effortText}>
           <Typography.Text type="secondary" aria-label={effortText} className="selection-status">
@@ -212,4 +280,26 @@ const Fields = styled.div<{ $inline: boolean }>`
   .ant-select + .ant-select {
     width: ${({ $inline }) => ($inline ? 'clamp(120px, 12vw, 170px)' : 'auto')};
   }
+`
+
+const NativeFields = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  min-width: 0;
+  width: 100%;
+`
+const NativeSelect = styled.select`
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text);
+  background: var(--color-background);
+  font: inherit;
+  font-size: 16px;
 `

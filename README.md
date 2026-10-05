@@ -29,7 +29,7 @@ Excluded:
 
 ## Current release
 
-Version **0.1.31** replaces the global request-mode control with one Waves button in the main input toolbar and removes duplicate assistant-window entries. It also repairs fingerprint-bank synchronization with same-commit checks and an official Git HTTP fallback. Equivalent model names and IDs appear once; custom names retain the original ID. Requests always use the selected original ID.
+**0.1.32** 修复快捷助手布局，模型和提供商保持横向排列；发现新版本后直接打开对应 GitHub Release 页面。Android 使用系统列表选择模型和提供商，避免下拉层瞬间关闭。主聊天工具栏中的 Waves 按钮继续控制全局流式模式，快捷助手自动跟随。
 
 Android includes chat, assistants, topics, images, quick phrases, platform catalogs, ModelTrace and backup/restore. Active chat and test requests continue in a foreground service with a Stop notification. Force-stop or process loss ends the task without resending it. Android's system foreground-service limits still apply.
 
@@ -54,6 +54,7 @@ MCP, web search, health probes and phone-export servers remain removed. Existing
 - [Migration Notes](./docs/migration-notes.md)
 - [v0.1.30 中文发布说明](./docs/releases/v0.1.30.zh-CN.md)
 - [v0.1.31 中文发布说明](./docs/releases/v0.1.31.zh-CN.md)
+- [v0.1.32 中文发布说明](./docs/releases/v0.1.32.zh-CN.md)
 
 ## Upstream Source
 

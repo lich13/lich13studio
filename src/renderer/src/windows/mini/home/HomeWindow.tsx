@@ -804,9 +804,7 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
         </BrandText>
       </BrandArea>
       <HeaderActions className="nodrag">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-          <ModelProviderSelect compact showEffort selection={selection} onChange={handleModelChange} />
-        </div>
+        <ModelProviderSelect compact layout="inline" showEffort selection={selection} onChange={handleModelChange} />
         <Tooltip placement="bottomRight" title={newTopicLabel} mouseLeaveDelay={0} arrow>
           <HeaderIconButton type="text" aria-label={newTopicLabel} onClick={() => void handleNewTopic()}>
             <MessageSquareDiff size={16} />
@@ -902,7 +900,10 @@ const Container = styled.div<{ $draggable: boolean }>`
 
 const MiniHeader = styled.header`
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
@@ -915,7 +916,8 @@ const BrandArea = styled.div`
   align-items: center;
   gap: 8px;
   min-width: 0;
-  flex: 1;
+  flex: 0 0 auto;
+  max-width: 160px;
 `
 
 const BrandText = styled.div`
@@ -944,8 +946,7 @@ const BrandSubTitle = styled.div`
 
 const HeaderActions = styled.div`
   display: inline-flex;
-  flex: 0 1 416px;
-  max-width: 100%;
+  flex: 0 0 auto;
   align-items: center;
   gap: 6px;
   min-width: 0;

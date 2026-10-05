@@ -21,7 +21,7 @@ import { isValidProxyUrl } from '@renderer/utils'
 import { defaultByPassRules } from '@shared/config/constant'
 import { Button, Input, Space, Switch, Tooltip, Typography } from 'antd'
 import type { FC } from 'react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { SettingContainer, SettingDivider, SettingGroup, SettingRow, SettingRowTitle, SettingTitle } from '.'
@@ -44,6 +44,7 @@ const GeneralSettings: FC = () => {
   const [proxyBypassRules, setProxyBypassRules] = useState<string | undefined>(storeProxyBypassRules)
   const [appInfo, setAppInfo] = useState<AppInfo>()
   const [checkingUpdate, setCheckingUpdate] = useState(false)
+  const updateInFlight = useRef(false)
   const [releaseInfo, setReleaseInfo] = useState<AppReleaseInfo | null>(null)
   const { theme } = useTheme()
   const dispatch = useAppDispatch()
@@ -108,28 +109,28 @@ const GeneralSettings: FC = () => {
   }
 
   const handleCheckUpdate = async () => {
-    if (releaseInfo?.hasUpdate) {
-      await openExternal(releaseInfo.asset?.url || releaseInfo.releaseUrl)
-      return
-    }
-
-    const currentVersion = appInfo?.version || '0.0.0'
+    if (updateInFlight.current) return
+    updateInFlight.current = true
     setCheckingUpdate(true)
-    const nextReleaseInfo = await checkLatestRelease(currentVersion, appInfo?.platform)
-    setReleaseInfo(nextReleaseInfo)
-    setCheckingUpdate(false)
-
-    if (nextReleaseInfo.error) {
-      window.toast.error(t('settings.about.updateError'))
-      return
+    try {
+      if (releaseInfo?.hasUpdate) {
+        await openExternal(releaseInfo.releaseUrl)
+        return
+      }
+      const currentVersion = appInfo?.version || '0.0.0'
+      const nextReleaseInfo = await checkLatestRelease(currentVersion, appInfo?.platform)
+      setReleaseInfo(nextReleaseInfo)
+      if (nextReleaseInfo.error) {
+        window.toast.error(t('settings.about.updateError'))
+      } else if (nextReleaseInfo.hasUpdate) {
+        await openExternal(nextReleaseInfo.releaseUrl)
+      } else {
+        window.toast.success(t('settings.about.updateNotAvailable'))
+      }
+    } finally {
+      updateInFlight.current = false
+      setCheckingUpdate(false)
     }
-
-    if (nextReleaseInfo.hasUpdate) {
-      window.toast.success(t('settings.about.updateAvailable', { version: nextReleaseInfo.latestVersion }))
-      return
-    }
-
-    window.toast.success(t('settings.about.updateNotAvailable'))
   }
 
   const checkUpdateLabel = releaseInfo?.hasUpdate

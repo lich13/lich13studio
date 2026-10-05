@@ -9,7 +9,7 @@ export const notifyLatestReleaseIfAvailable = async (currentVersion: string, pla
     return releaseInfo
   }
 
-  const url = releaseInfo.asset?.url || releaseInfo.releaseUrl
+  const url = releaseInfo.releaseUrl
 
   await window.api.notification.send({
     id: `app-update-${releaseInfo.latestVersion || 'latest'}`,

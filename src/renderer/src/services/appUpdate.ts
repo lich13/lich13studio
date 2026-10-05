@@ -29,6 +29,27 @@ export type AppReleaseInfo = {
   error?: string
 }
 
+export const getReleasePageUrl = (tagName?: string | null, htmlUrl?: string | null): string => {
+  const tag = typeof tagName === 'string' ? tagName.trim() : ''
+  if (!/^v?\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/i.test(tag)) return GITHUB_RELEASES_URL
+  const expected = `${GITHUB_RELEASES_URL}/tag/${encodeURIComponent(tag)}`
+  try {
+    const url = new URL(typeof htmlUrl === 'string' ? htmlUrl.trim() : '')
+    if (
+      url.origin === 'https://github.com' &&
+      !url.username &&
+      !url.password &&
+      url.pathname === new URL(expected).pathname &&
+      !url.search &&
+      !url.hash
+    )
+      return url.href
+  } catch {
+    /* Fall back to the known repository and validated tag. */
+  }
+  return expected
+}
+
 const normalizeVersion = (version: string) => version.trim().replace(/^v/i, '').split(/[+-]/)[0] || '0'
 
 const parseVersionParts = (version: string) =>
@@ -98,12 +119,11 @@ export const checkLatestRelease = async (
     }
 
     const release = (await response.json()) as GitHubRelease
-    const latestVersion = normalizeVersion(release.tag_name || '')
-    const releaseUrl = release.html_url?.trim() || GITHUB_RELEASES_URL
-
-    if (!latestVersion) {
-      throw new Error('GitHub latest release is missing tag_name')
+    const releaseUrl = getReleasePageUrl(release.tag_name, release.html_url)
+    if (releaseUrl === GITHUB_RELEASES_URL) {
+      throw new Error('GitHub latest release has no valid version tag')
     }
+    const latestVersion = normalizeVersion(release.tag_name || '')
 
     return {
       hasUpdate: compareVersions(latestVersion, currentVersion) > 0,

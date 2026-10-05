@@ -4,7 +4,7 @@ import type { Assistant } from '@renderer/types'
 import { Button, Input as AntdInput, Tooltip } from 'antd'
 import { SendHorizontal, Square } from 'lucide-react'
 import type { InputRef } from 'rc-input/lib/interface'
-import React, { useRef } from 'react'
+import React, { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
@@ -40,9 +40,18 @@ const InputBar = ({
   const { t } = useTranslation()
   const inputRef = useRef<InputRef>(null)
   const { setTimeoutTimer } = useTimer()
-  if (!loading) {
-    setTimeoutTimer('focus', () => inputRef.current?.input?.focus(), 0)
-  }
+  useEffect(() => {
+    if (loading) return
+    return setTimeoutTimer(
+      'focus',
+      () => {
+        const focused = document.activeElement
+        if (!focused || focused === document.body || focused === inputRef.current?.input)
+          inputRef.current?.input?.focus()
+      },
+      0
+    )
+  }, [loading, setTimeoutTimer])
   return (
     <InputWrapper ref={ref}>
       <ModelSlot>{assistant.model && <ModelAvatar model={assistant.model} size={24} />}</ModelSlot>

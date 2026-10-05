@@ -1,6 +1,25 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { checkLatestRelease, compareVersions, getPlatformAsset } from './appUpdate'
+import { checkLatestRelease, compareVersions, getPlatformAsset, getReleasePageUrl } from './appUpdate'
+
+describe('getReleasePageUrl', () => {
+  it('uses the exact repository release page and rejects unsafe or mismatched URLs', () => {
+    expect(getReleasePageUrl('v0.1.32', 'https://github.com/lich13/lich13studio/releases/tag/v0.1.32')).toBe(
+      'https://github.com/lich13/lich13studio/releases/tag/v0.1.32'
+    )
+    for (const url of [
+      undefined,
+      'https://example.invalid/releases/tag/v0.1.32',
+      'https://github.com/lich13/lich13studio/releases/download/v0.1.32/app.dmg',
+      'https://github.com/lich13/lich13studio/releases/tag/v0.1.31?redirect=example.invalid',
+      'javascript:alert(1)'
+    ]) {
+      expect(getReleasePageUrl('v0.1.32', url)).toBe('https://github.com/lich13/lich13studio/releases/tag/v0.1.32')
+    }
+    expect(getReleasePageUrl('vv0.1.32', undefined)).toBe('https://github.com/lich13/lich13studio/releases')
+    expect(getReleasePageUrl(undefined, undefined)).toBe('https://github.com/lich13/lich13studio/releases')
+  })
+})
 
 describe('compareVersions', () => {
   it('orders stable semantic versions with optional v prefixes', () => {

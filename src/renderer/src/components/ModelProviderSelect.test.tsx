@@ -48,10 +48,21 @@ vi.mock('antd', () => ({
 
 import { type ModelProviderSelection, resolveModelProviderSelection } from '@shared/modelProviderSelection'
 
-import ModelProviderSelect from './ModelProviderSelect'
+const loadAndroidComponent = async () => {
+  vi.resetModules()
+  Object.defineProperty(globalThis.navigator, 'userAgent', {
+    configurable: true,
+    value: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36'
+  })
+  return import('./ModelProviderSelect')
+}
 
-afterEach(() => vi.unstubAllGlobals())
-it('keeps model and provider independent and blocks incompatible choices until explicitly repaired', async () => {
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
+
+it('uses native Android optgroups, keeps selections independent, and preserves select nodes across redraws', async () => {
+  const { default: ModelProviderSelect } = await loadAndroidComponent()
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
   const container = document.createElement('div')
   const root = createRoot(container)
@@ -62,28 +73,76 @@ it('keeps model and provider independent and blocks incompatible choices until e
     return createElement(ModelProviderSelect, { selection, onChange: setSelection })
   }
   await act(async () => root.render(createElement(View)))
-  const selects = container.querySelectorAll('select')
-  expect([...selects[1].options].map((option) => option.value)).toEqual(['', 'one', 'two'])
+  const selects = () => [...container.querySelectorAll('select')] as HTMLSelectElement[]
+  const initialSelects = selects()
+  expect(initialSelects).toHaveLength(2)
+  const modelSelect = initialSelects[0]
+  const providerSelect = initialSelects[1]
+  expect(modelSelect.querySelectorAll('optgroup')).toHaveLength(3)
+  expect([...modelSelect.querySelectorAll('optgroup')].map((group) => group.label)).toEqual([
+    'OpenAI',
+    'grok',
+    'Anthropic'
+  ])
+  expect([...providerSelect.options].map((option) => option.value)).toEqual(['', 'one', 'two'])
+  expect(modelSelect.value).toBe(JSON.stringify(['openai', 'gpt-6-sol']))
+  expect(providerSelect.value).toBe('one')
   await act(async () => {
-    selects[1].value = 'two'
-    selects[1].dispatchEvent(new Event('change', { bubbles: true }))
+    providerSelect.value = 'two'
+    providerSelect.dispatchEvent(new Event('change', { bubbles: true }))
   })
   expect(selected).toEqual({ platform: 'openai', modelId: 'gpt-6-sol', providerId: 'two' })
   await act(async () => {
-    selects[0].value = JSON.stringify(['anthropic', 'claude-opus-4-7'])
-    selects[0].dispatchEvent(new Event('change', { bubbles: true }))
+    modelSelect.value = JSON.stringify(['anthropic', 'claude-opus-4-7'])
+    modelSelect.dispatchEvent(new Event('change', { bubbles: true }))
   })
   expect(selected.providerId).toBe('two')
+  expect(selects()[0]).toBe(modelSelect)
+  expect(selects()[1]).toBe(providerSelect)
   expect(resolveModelProviderSelection(selected, fixture.catalog as any).model).toBeUndefined()
   expect(container.textContent).toContain('settings.modelTest.providerUnavailable')
-  expect(selects[1].querySelector('option[value="two"]')?.getAttribute('disabled')).not.toBeNull()
+  expect(providerSelect.querySelector('option[value="two"]')?.getAttribute('disabled')).not.toBeNull()
   await act(async () => {
-    selects[1].value = 'claude'
-    selects[1].dispatchEvent(new Event('change', { bubbles: true }))
+    providerSelect.value = 'two'
+    providerSelect.dispatchEvent(new Event('change', { bubbles: true }))
+  })
+  expect(selected.providerId).toBe('two')
+  await act(async () => {
+    providerSelect.value = 'claude'
+    providerSelect.dispatchEvent(new Event('change', { bubbles: true }))
   })
   expect(resolveModelProviderSelection(selected, fixture.catalog as any).model).toMatchObject({
     id: 'claude-opus-4-7',
     provider: 'claude'
   })
+  expect(selects()[0]).toBe(modelSelect)
+  expect(selects()[1]).toBe(providerSelect)
+  await act(async () => {
+    const unknown = document.createElement('option')
+    unknown.value = JSON.stringify(['anthropic', 'not-in-catalog'])
+    modelSelect.append(unknown)
+    modelSelect.value = unknown.value
+    modelSelect.dispatchEvent(new Event('change', { bubbles: true }))
+  })
+  expect(selected).toEqual({ platform: 'anthropic', modelId: 'claude-opus-4-7', providerId: 'claude' })
   await act(async () => root.unmount())
+})
+
+it('rejects malformed, null, unknown-platform, empty, and wrong-shape selection values', async () => {
+  const { parseModelProviderSelectionValue } = await loadAndroidComponent()
+  expect(parseModelProviderSelectionValue(JSON.stringify(['openai', 'gpt-6-sol']))).toEqual(['openai', 'gpt-6-sol'])
+  for (const value of [
+    null,
+    undefined,
+    '',
+    'not-json',
+    '{}',
+    '[]',
+    '["openai"]',
+    '["unknown","model"]',
+    '["openai",""]',
+    '["openai",1]'
+  ]) {
+    expect(parseModelProviderSelectionValue(value)).toBeNull()
+  }
 })
