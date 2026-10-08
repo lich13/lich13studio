@@ -1,6 +1,8 @@
 package com.lich13.studio
 
 import android.content.Intent
+import android.app.ActivityManager
+import android.content.Context
 import android.net.Uri
 import android.webkit.WebView
 import android.Manifest
@@ -72,6 +74,115 @@ class MobileSmokeTest {
         // Repeating an already-granted request must also resolve.
         js(request)
         waitFor("already-granted notification callback") { js("window.__notificationOutcome") == "granted" }
+    }
+    private fun installLoopbackOnlyFetch() {
+        js("""
+            (() => {
+              const original = window.fetch.bind(window);
+              window.__modelTraceBlockedExternalFetches = 0;
+              window.fetch = (input, init) => {
+                const raw = typeof input === 'string' ? input : input.url;
+                const url = new URL(raw, location.href);
+                if (['http:', 'https:'].includes(url.protocol) &&
+                    !['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname)) {
+                  window.__modelTraceBlockedExternalFetches += 1;
+                  return Promise.reject(new TypeError('Instrumentation only permits loopback HTTP'));
+                }
+                return original(input, init);
+              };
+            })()
+        """.trimIndent())
+    }
+    private fun chooseModelTraceTarget(providerName: String) {
+        val modelChanged = js("""
+            (() => {
+              const selects = document.querySelectorAll('.model-provider-fields select');
+              if (selects.length !== 2) return false;
+              const option = Array.from(selects[0].options).find((item) => {
+                try {
+                  const value = JSON.parse(item.value);
+                  return value[0] === 'openai' && value[1] === 'gpt-5.4' && !item.disabled;
+                } catch { return false; }
+              });
+              if (!option) return false;
+              selects[0].value = option.value;
+              selects[0].dispatchEvent(new Event('change', { bubbles: true }));
+              return true;
+            })()
+        """.trimIndent())
+        assertEquals(true, modelChanged)
+        val modelValue = org.json.JSONObject.quote("[\"openai\",\"gpt-5.4\"]")
+        waitFor("ModelTrace model selection committed") {
+            js("document.querySelectorAll('.model-provider-fields select')[0].value === " + modelValue) == true
+        }
+        val providerNameLiteral = org.json.JSONObject.quote(providerName)
+        val providerChanged = js("""
+            (() => {
+              const selects = document.querySelectorAll('.model-provider-fields select');
+              const option = Array.from(selects[1].options).find((item) =>
+                item.textContent.trim() ===
+        """.trimIndent() + providerNameLiteral + """
+                && !item.disabled);
+              if (!option) return false;
+              selects[1].value = option.value;
+              selects[1].dispatchEvent(new Event('change', { bubbles: true }));
+              return true;
+            })()
+        """.trimIndent())
+        assertEquals(true, providerChanged)
+        waitFor("ModelTrace provider selection committed") {
+            js("document.querySelectorAll('.model-provider-fields select')[1].selectedOptions[0].textContent.trim() === " + providerNameLiteral) == true
+        }
+        assertEquals(false, js("document.querySelector('.ant-btn-primary')?.disabled"))
+    }
+    private fun assertEarlyModelTraceResult(sample: String) {
+        val ui = js("""
+            (() => {
+              const body = document.body.innerText;
+              const cards = Array.from(document.querySelectorAll('.ant-card-small'));
+              const prediction = Array.from(document.querySelectorAll('.ant-typography strong'))
+                .map((item) => item.textContent.trim())
+                .find((text) => text.startsWith('gpt-5.4 ·'));
+              return {
+                early: Array.from(document.querySelectorAll('.ant-tag')).some((tag) =>
+                  ['已提前完成', 'Completed early'].includes(tag.textContent.trim())),
+                usedOne: body.includes('参与分析：1 组') || body.includes('Groups analyzed: 1'),
+                probability: prediction
+                  ? Number(prediction.split('·').pop().trim().replace('%', ''))
+                  : 0,
+                statuses: cards.map((card) => card.querySelector('.ant-tag')?.textContent.trim() || ''),
+                outputs: cards.map((card) => card.querySelector('textarea')?.value || '')
+              };
+            })()
+        """.trimIndent()) as org.json.JSONObject
+        assertTrue("confidence result is visible", ui.optBoolean("early"))
+        assertTrue("only one output contributed", ui.optBoolean("usedOne"))
+        assertTrue("displayed confidence is at least 99%", ui.optDouble("probability") >= 99.0)
+        val statuses = checkNotNull(ui.optJSONArray("statuses"))
+        assertEquals(3, statuses.length())
+        assertTrue(statuses.optString(0) in setOf("已完成", "Completed"))
+        assertTrue(statuses.optString(1) in setOf("无需继续", "無需繼續", "Not needed"))
+        assertTrue(statuses.optString(2) in setOf("无需继续", "無需繼續", "Not needed"))
+        val outputs = checkNotNull(ui.optJSONArray("outputs"))
+        assertEquals(sample.trim(), outputs.optString(0))
+        assertEquals("", outputs.optString(1))
+        assertEquals("", outputs.optString(2))
+    }
+    private fun readNativeTaskState(): org.json.JSONObject {
+        js("""
+            window.__modelTraceTaskStateDone = false;
+            window.__modelTraceTaskState = null;
+            void window.__TAURI_INTERNALS__.invoke('mobile_command', {
+              command: 'taskState', args: {}
+            }).then((state) => {
+              window.__modelTraceTaskState = state;
+              window.__modelTraceTaskStateDone = true;
+            }, () => { window.__modelTraceTaskStateDone = true; });
+        """.trimIndent())
+        waitFor("native taskState reply") { js("window.__modelTraceTaskStateDone === true") == true }
+        val state = js("window.__modelTraceTaskState") as? org.json.JSONObject
+        js("delete window.__modelTraceTaskState; delete window.__modelTraceTaskStateDone")
+        return checkNotNull(state) { "mobile_command taskState did not return an object" }
     }
     @Test fun importsUseConfirmationAndPrivateCredentials() {
         val link = Uri.Builder().scheme("ccswitch").authority("v1").appendPath("import")
@@ -153,6 +264,78 @@ class MobileSmokeTest {
         assertEquals(true, js("window.__nativeProviderSelector === $providerSelector"))
         assertEquals(true, js("document.documentElement.scrollWidth <= innerWidth + 1"))
         js("delete window.__nativeModelSelector; delete window.__nativeProviderSelector")
+    }
+
+    @Test fun modelTraceEarlyFinishStopsAtOneResponseAndReleasesAndroidTask() {
+        val server = LoopbackModelTraceServer("modeltrace-fixture-key")
+        val providerName = "Android ModelTrace fixture " + server.port
+        try {
+            val link = Uri.Builder().scheme("ccswitch").authority("v1").appendPath("import")
+                .appendQueryParameter("resource", "provider").appendQueryParameter("app", "codex")
+                .appendQueryParameter("name", providerName)
+                .appendQueryParameter("endpoint", "http://127.0.0.1:" + server.port + "/v1")
+                .appendQueryParameter("apiKey", "modeltrace-fixture-key")
+                .appendQueryParameter("model", "gpt-5.4").build().toString()
+            open(link)
+            waitFor("loopback provider import confirmation") { js("!!document.querySelector('.ant-modal input')") == true }
+            assertEquals(providerName, js("document.querySelector('.ant-modal input').value"))
+            assertEquals(false, js("document.body.innerText.includes('modeltrace-fixture-key')"))
+            js("document.querySelector('.ant-modal-footer .ant-btn-primary').click()")
+            val providers = "JSON.parse(JSON.parse(localStorage.getItem('persist:cherry-studio')).llm).providers"
+            val providerNameLiteral = org.json.JSONObject.quote(providerName)
+            waitFor("loopback provider persisted") {
+                js(providers + ".some(p=>p.name===" + providerNameLiteral + ")") == true
+            }
+            assertEquals(false, js("JSON.stringify(localStorage).includes('modeltrace-fixture-key')"))
+            if (js("localStorage.getItem('onboarding-completed') === 'true'") != true) {
+                waitFor("onboarding skip button") { js("!!document.querySelector('button.ant-btn-text')") == true }
+                js("document.querySelector('button.ant-btn-text').click()")
+            }
+            waitFor("onboarding persisted") { js("localStorage.getItem('onboarding-completed') === 'true'") == true }
+            verifyNotificationPermission()
+            installLoopbackOnlyFetch()
+
+            js("document.querySelector('nav.mobile-navigation button:nth-child(2)').click()")
+            waitFor("ModelTrace test page") {
+                js("location.hash.endsWith('/model-test') && document.querySelectorAll('.ant-card-small').length === 3 && document.querySelectorAll('.model-provider-fields select').length === 2") == true
+            }
+            chooseModelTraceTarget(providerName)
+            assertEquals(true, js("document.querySelector('.ant-btn-primary').click(); true"))
+            waitFor("single loopback Responses request") { server.postCount == 1 || server.failure != null }
+            assertNull("loopback server failed", server.failure)
+            assertEquals(1, server.postCount)
+            assertEquals("/v1/responses", server.lastPath)
+            assertEquals("gpt-5.4", server.requestedModel)
+            assertTrue("fixture authorization reached the local provider", server.authorizationMatches)
+
+            waitFor("early result and native task release") {
+                js("document.body.innerText.includes('已提前完成') || document.body.innerText.includes('Completed early')") == true &&
+                    BackgroundService.tasks.isEmpty()
+            }
+            Thread.sleep(250)
+            assertEquals(1, server.postCount)
+            assertNull("no active native ModelTrace task", BackgroundService.tasks.firstOrNull())
+            val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+            waitFor("Android foreground service stopped") {
+                activityManager.getRunningServices(Int.MAX_VALUE).none {
+                    it.service.className == BackgroundService::class.java.name
+                }
+            }
+            val nativeState = readNativeTaskState()
+            assertTrue("taskState has no stop reason after release", nativeState.isNull("stoppedReason"))
+            assertEarlyModelTraceResult(LoopbackModelTraceServer.SAMPLE)
+
+            js("document.querySelector('nav.mobile-navigation button:first-child').click()")
+            waitFor("left ModelTrace page") { js("!!document.querySelector('#home-page')") == true }
+            js("document.querySelector('nav.mobile-navigation button:nth-child(2)').click()")
+            waitFor("returned to ModelTrace page with result") {
+                js("location.hash.endsWith('/model-test') && (document.body.innerText.includes('已提前完成') || document.body.innerText.includes('Completed early'))") == true
+            }
+            assertEarlyModelTraceResult(LoopbackModelTraceServer.SAMPLE)
+            assertEquals(1, server.postCount)
+        } finally {
+            server.close()
+        }
     }
 
     /** Run in a second instrumentation process after force-stopping the first. */

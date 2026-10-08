@@ -3,7 +3,6 @@
 ## Phase 0 已确认的事实
 
 - 本次盘点基于上游 `main @ e54cfe97ea63149be723cb1281eee2fdc719b132`。
-- 当前会话无法直接读取 `~/Documents`，因此工作副本克隆到 `/Users/gosu/build/lich13studio` 继续推进。
 - 上游仓库中已经存在大量 `v2 refactor` 标记文件，后续改动会与上游进行中的重构交叉。
 
 ## 当前不能一步完成的事项

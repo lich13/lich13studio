@@ -76,7 +76,8 @@ export function validateCatalog(value: unknown): asserts value is PlatformModelC
     fail()
   if (
     snapshot.sources.some(
-      (source) => !source || !hash(source.sha256) || typeof source.url !== 'string' || !/^https:\/\//.test(source.url)
+      (source) =>
+        !source || !hash(source.sha256) || typeof source.url !== 'string' || !source.url.startsWith('https://')
     )
   )
     fail()

@@ -29,7 +29,7 @@ Excluded:
 
 ## Current release
 
-**0.1.32** 修复快捷助手布局，模型和提供商保持横向排列；发现新版本后直接打开对应 GitHub Release 页面。Android 使用系统列表选择模型和提供商，避免下拉层瞬间关闭。主聊天工具栏中的 Waves 按钮继续控制全局流式模式，快捷助手自动跟随。
+**0.1.33** 模型测试先执行第一组，最高模型匹配概率达到 99% 时提前完成；未达到时再执行其余两组。桌面与 Android 使用同一规则，保留已有并发设置和后台运行。修复 lint 问题，并将完整代码检查纳入 CI 和发布流程。
 
 Android includes chat, assistants, topics, images, quick phrases, platform catalogs, ModelTrace and backup/restore. Active chat and test requests continue in a foreground service with a Stop notification. Force-stop or process loss ends the task without resending it. Android's system foreground-service limits still apply.
 
@@ -55,6 +55,7 @@ MCP, web search, health probes and phone-export servers remain removed. Existing
 - [v0.1.30 中文发布说明](./docs/releases/v0.1.30.zh-CN.md)
 - [v0.1.31 中文发布说明](./docs/releases/v0.1.31.zh-CN.md)
 - [v0.1.32 中文发布说明](./docs/releases/v0.1.32.zh-CN.md)
+- [v0.1.33 中文发布说明](./docs/releases/v0.1.33.zh-CN.md)
 
 ## Upstream Source
 

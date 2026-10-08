@@ -16,7 +16,7 @@ import {
   getModelTestMaxOutputTokens,
   type ModelTestLimit,
   ModelTestOutputGuard,
-  ModelTestOutputLimitError,
+  type ModelTestOutputLimitError,
   truncateAtIntegerLimit
 } from './OutputGuard'
 import { type OutputIssue, validateModelTraceOutput } from './outputValidation'
@@ -33,7 +33,9 @@ export interface ModelTestChallenge {
   prompt: string
 }
 
-export type ModelTestStatus = 'pending' | 'running' | 'retrying' | 'completed' | 'error' | 'aborted'
+export type ModelTestStatus = 'pending' | 'running' | 'retrying' | 'completed' | 'error' | 'aborted' | 'skipped'
+
+export type ModelTestCompletionReason = 'confidence-reached' | 'samples-finished' | 'fatal-error' | 'cancelled'
 
 export interface ModelTestOutput {
   id: string
@@ -66,6 +68,8 @@ export interface ModelTestProgress {
   challenge: ModelTestChallenge
   output: ModelTestOutput
   target: ModelTestTarget
+  report?: ModelTraceReport
+  completionReason?: ModelTestCompletionReason
 }
 
 export interface ModelTraceReport {
@@ -86,6 +90,7 @@ export interface ModelTraceReport {
 }
 
 export interface ModelTestRunResult {
+  completionReason: ModelTestCompletionReason
   concurrency: ModelTestConcurrency
   bankVersion: FingerprintBankVersion
   challenges: ModelTestChallenge[]
@@ -105,6 +110,7 @@ export interface ModelTestRunnerConfig {
 
 export const MODELTRACE_BANK_VERSION = bundledBankSnapshot.version.builtAt
 export const MODELTRACE_MAX_ATTEMPTS = 3
+export const MODELTRACE_EARLY_FINISH_PROBABILITY = 0.99
 const RETRY_DELAYS = [1000, 3000]
 const logger = loggerService.withContext('ModelTraceService')
 const safeWarn = (message: string) => {
@@ -153,6 +159,8 @@ export class ModelTestRunner {
   private outputs: ModelTestOutput[]
   private prepared?: Awaited<ReturnType<typeof prepareDirectModelTest>>
   private target: ModelTestTarget
+  private report?: ModelTraceReport
+  private completionReason?: ModelTestCompletionReason
   readonly concurrency: ModelTestConcurrency
   readonly bankSnapshot: FingerprintBankSnapshot
 
@@ -182,7 +190,9 @@ export class ModelTestRunner {
         total: this.challenges.length,
         challenge: { ...this.challenges[index] },
         output: { ...this.outputs[index] },
-        target: { ...this.target }
+        target: { ...this.target },
+        report: this.report,
+        completionReason: this.completionReason
       })
     } catch {
       // A view subscriber must never turn a successful provider stream into a
@@ -191,8 +201,28 @@ export class ModelTestRunner {
     }
   }
 
+  private result(error?: string): ModelTestRunResult {
+    return {
+      target: { ...this.target },
+      challenges: structuredClone(this.challenges),
+      outputs: structuredClone(this.outputs),
+      concurrency: this.concurrency,
+      bankVersion: this.bankSnapshot.version,
+      completionReason: this.completionReason ?? 'samples-finished',
+      error,
+      report: this.report
+    }
+  }
+
+  private hasEarlyResult(): boolean {
+    return this.completionReason === 'confidence-reached'
+  }
+
   async run({ retryFailedOnly = false }: { retryFailedOnly?: boolean } = {}): Promise<ModelTestRunResult> {
+    if (retryFailedOnly && this.hasEarlyResult()) return this.result()
     this.cancel()
+    this.completionReason = undefined
+    this.report = retryFailedOnly ? this.analyze(this.outputs) : undefined
     const generation = ++this.generation
     const controller = new AbortController()
     this.controller = controller
@@ -206,7 +236,9 @@ export class ModelTestRunner {
       this.target = { ...this.prepared.target }
       const indices = this.challenges
         .map((_, index) => index)
-        .filter((index) => !retryFailedOnly || this.outputs[index].status !== 'completed')
+        .filter(
+          (index) => !retryFailedOnly || !['completed', 'skipped'].includes(this.outputs[index].status || 'pending')
+        )
       for (const index of indices) {
         this.update(index, {
           text: '',
@@ -290,14 +322,46 @@ export class ModelTestRunner {
             if (!collector.completed)
               throw new Error('Incomplete stream: response ended without a provider terminal event')
             const validation = validateModelTraceOutput(collector.rawText, challenge.expected_count)
-            this.update(index, {
+            this.outputs[index] = {
+              ...this.outputs[index],
               text: validation.text,
               status: 'completed',
               parsedCount: validation.parsedCount,
               usableCount: validation.usableCount,
               excludedCount: validation.excludedCount,
               issue: validation.issue
-            })
+            }
+            // Make the stopping decision before publishing to views or releasing
+            // the request slot. A queued group must not start after this verdict.
+            this.report = this.analyze(this.outputs)
+            if (
+              this.report &&
+              this.report.used_outputs > 0 &&
+              this.report.probability >= MODELTRACE_EARLY_FINISH_PROBABILITY
+            ) {
+              this.completionReason = 'confidence-reached'
+              controller.abort(new DOMException('Model test confidence reached', 'AbortError'))
+              this.outputs.forEach((output, other) => {
+                if (output.status !== 'completed') {
+                  this.update(other, {
+                    status: 'skipped',
+                    text: '',
+                    parsedCount: 0,
+                    usableCount: 0,
+                    excludedCount: 0,
+                    issue: undefined,
+                    error: undefined,
+                    failureCode: undefined,
+                    failureCategory: undefined,
+                    retryable: false,
+                    retryDelayMs: undefined,
+                    retryStopReason: undefined,
+                    limit: undefined
+                  })
+                }
+              })
+            }
+            this.update(index, {})
             return
           } catch (error) {
             if (!current()) throw signal.reason ?? error
@@ -326,6 +390,7 @@ export class ModelTestRunner {
             })
             if (!retryable) {
               fatalError = classified.message
+              this.completionReason = 'fatal-error'
               controller.abort(failure)
               this.outputs.forEach((output, other) => {
                 if (['pending', 'running', 'retrying'].includes(output.status || 'pending')) {
@@ -347,38 +412,39 @@ export class ModelTestRunner {
           await waitForRetry(RETRY_DELAYS[attempt - 1], signal)
         }
       }
-      // Wait for cancelled peers to release their connections before resolving the run.
-      const settled = await Promise.allSettled(indices.map(executeGroup))
-      if (!fatalError) {
+      // The first challenge can settle the result without paying for peers.
+      // Only the remaining challenges share the configured concurrency limit.
+      const settled: PromiseSettledResult<void>[] = []
+      if (indices.includes(0)) {
+        try {
+          await executeGroup(0)
+        } catch (reason) {
+          settled.push({ status: 'rejected', reason })
+        }
+      }
+      if (current()) {
+        settled.push(...(await Promise.allSettled(indices.filter((index) => index !== 0).map(executeGroup))))
+      }
+      // All active connections have completed their cleanup before this result
+      // releases the background task, including internally cancelled peers.
+      if (generation !== this.generation) {
+        throw signal.reason ?? new DOMException('Model test superseded', 'AbortError')
+      }
+      if (!fatalError && !this.hasEarlyResult()) {
         signal.throwIfAborted()
         const rejected = settled.find((result) => result.status === 'rejected')
         if (rejected?.status === 'rejected') throw rejected.reason
       }
-      const outputs = structuredClone(this.outputs)
-      let report: ModelTraceReport | undefined
-      try {
-        report = this.analyze(outputs)
-      } catch {
-        // Attribution is local presentation work and must not become a
-        // provider failure or trigger another network request.
-        safeWarn('Model test attribution failed; outputs retained')
-      }
-      return {
-        target: { ...this.target },
-        challenges: structuredClone(this.challenges),
-        outputs,
-        concurrency: this.concurrency,
-        bankVersion: this.bankSnapshot.version,
-        error: fatalError,
-        report
-      }
+      this.completionReason ??= 'samples-finished'
+      return this.result(fatalError)
     } finally {
       if (this.controller === controller) this.controller = undefined
     }
   }
 
   cancel(): void {
-    if (!this.controller) return
+    if (!this.controller || this.hasEarlyResult()) return
+    this.completionReason = 'cancelled'
     this.controller.abort(new DOMException('Model test aborted', 'AbortError'))
     this.controller = undefined
     this.generation += 1

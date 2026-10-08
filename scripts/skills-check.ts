@@ -1,4 +1,3 @@
-import { execSync } from 'child_process'
 import * as fs from 'fs'
 import * as path from 'path'
 
@@ -13,6 +12,7 @@ import {
   readFileSafe,
   ROOT_DIR
 } from './skills-common'
+import { listSourceFiles } from './source-files.mjs'
 
 function isAgentsReadmeFile(file: string): boolean {
   return /^\.agents\/skills\/README(?:\.[a-z0-9-]+)?\.md$/i.test(file)
@@ -71,17 +71,10 @@ function checkTrackedFilesAgainstWhitelist(skillNames: string[], errors: string[
 
   let trackedFiles: string[]
   try {
-    const output = execSync('git ls-files -- .agents/skills .claude/skills', {
-      cwd: ROOT_DIR,
-      encoding: 'utf-8'
-    })
-    trackedFiles = output
-      .split('\n')
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0)
+    trackedFiles = listSourceFiles(ROOT_DIR, { roots: ['.agents/skills', '.claude/skills'] })
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    errors.push(`failed to read tracked skill files via git ls-files: ${message}`)
+    errors.push(`failed to enumerate skill source files: ${message}`)
     return
   }
 

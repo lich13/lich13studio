@@ -135,7 +135,7 @@ function section(markdown: string, title: string): string {
 /** Only the comparison's model-page row and explicit still-available legacy list are authoritative. */
 export function anthropicModelPages(markdown: string): string[] {
   const comparison = markdown.split(/\r?\n/).find((line) => /^\|\s*Model page\s*\|/.test(line))
-  const legacy = markdown.split(/\r?\n/).find((line) => /^Legacy models \(still available\):/.test(line))
+  const legacy = markdown.split(/\r?\n/).find((line) => line.startsWith('Legacy models (still available):'))
   if (!comparison || !legacy) return invalid('Claude model overview schema changed')
   const links = [
     ...`${comparison}\n${legacy}`.matchAll(/https:\/\/platform\.claude\.com\/docs\/en\/models\/([a-z0-9-]+)\/overview/g)

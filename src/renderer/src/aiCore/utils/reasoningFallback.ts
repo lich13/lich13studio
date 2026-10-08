@@ -78,8 +78,8 @@ export async function withReasoningFallback<T>({
   params: StreamTextParams
   requested: ReasoningEffort
   disabled: boolean
-  execute: (params: StreamTextParams, onChunk: (chunk: Chunk) => void) => Promise<T>
-  onChunk?: (chunk: Chunk) => void
+  execute: (params: StreamTextParams, onChunk: (chunk: Chunk) => void | Promise<void>) => Promise<T>
+  onChunk?: (chunk: Chunk) => void | Promise<void>
   onEffective?: (effort: ReasoningEffort) => void
 }): Promise<T> {
   const namespace = provider.type === 'anthropic' ? 'anthropic' : 'openai'

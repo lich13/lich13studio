@@ -28,7 +28,7 @@ export function isolateAnswer(text: string, complete = true, trim = true): { tex
     } else {
       stack.push(tag)
     }
-    cursor = match.index! + match[0].length
+    cursor = match.index + match[0].length
   }
   if (stack.length === 0) answer += text.slice(cursor)
   if (complete) {

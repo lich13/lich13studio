@@ -4584,6 +4584,7 @@
       "checkedAt": "上次检查：{{time}}",
       "concurrency": "并发",
       "count": "数字数量：{{actual}} / {{expected}}",
+      "earlyCompleted": "已提前完成",
       "familyResult": "模型家族：{{family}}（{{probability}}%）",
       "integerUnit": "个整数",
       "issue": {
@@ -4616,7 +4617,7 @@
         "quota": "余额或额度不足，已停止自动重试。"
       },
       "retryWaiting": "{{seconds}} 秒后自动重试",
-      "run": "开始三组测试",
+      "run": "开始测试",
       "runTarget": "本轮目标：{{provider}} · 模型 ID：{{model}}",
       "samples": "可用 {{usable}} 个 · 排除 {{excluded}} 个",
       "status": {
@@ -4625,7 +4626,8 @@
         "error": "请求失败",
         "pending": "待测试",
         "retrying": "等待重试",
-        "running": "接收中"
+        "running": "接收中",
+        "skipped": "无需继续"
       },
       "stop": "停止测试",
       "target": "服务商：{{provider}} · 模型 ID：{{model}}",

@@ -44,7 +44,7 @@ export class AiSdkToChunkAdapter {
 
   private emitChunk(chunk: Chunk) {
     const result = this.onChunk(chunk)
-    if (result && typeof (result as Promise<void>).then === 'function') {
+    if (result && typeof result.then === 'function') {
       this.pendingChunkCallbacks.push(result)
     }
   }

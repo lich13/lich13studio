@@ -18,6 +18,7 @@ import { purifyMarkdownImages } from '@renderer/utils/markdown'
 import { findFileBlocks, findImageBlocks, getMainTextContent } from '@renderer/utils/messageUtils/find'
 import { containsSupportedVariables, replacePromptVariables } from '@renderer/utils/prompt'
 import { NOT_SUPPORT_API_KEY_PROVIDER_TYPES, NOT_SUPPORT_API_KEY_PROVIDERS } from '@renderer/utils/provider'
+import type { ReasoningMode } from '@shared/reasoning'
 import { isEmpty, takeRight } from 'lodash'
 
 import { AiProvider } from '../aiCore'
@@ -63,7 +64,7 @@ export async function transformMessagesAndFetch(
     options: {
       signal?: AbortSignal
       headers?: Record<string, string>
-      reasoningMode?: import('@shared/reasoning').ReasoningMode
+      reasoningMode?: ReasoningMode
     }
   },
   onChunkReceived: StreamProcessor

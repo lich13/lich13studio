@@ -61,7 +61,7 @@ export function resolveModelCapabilities(model?: Model | null): ResolvedModelCap
       (capability) => capability.type === type && typeof capability.isUserSelected === 'boolean'
     )
     if (explicit) return explicit.isUserSelected!
-    if (typeof official?.capabilities[type] === 'boolean') return official.capabilities[type]!
+    if (typeof official?.capabilities[type] === 'boolean') return official.capabilities[type]
     if (entry) return registered
     if (model.capabilities?.some((capability) => capability.type === type) || model.type?.includes(type)) return true
     return fallback()

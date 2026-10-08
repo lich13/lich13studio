@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import type { Assistant, Model, Provider } from '@renderer/types'
+import type { StreamTextParams } from '@renderer/types/aiCoreTypes'
 import type { Message, MessageBlock } from '@renderer/types/newMessage'
 import { MessageBlockStatus, MessageBlockType, UserMessageStatus } from '@renderer/types/newMessage'
 import { act, createElement } from 'react'
@@ -14,6 +15,18 @@ const fixture = vi.hoisted(() => ({
     platformModels: { openai: [] as any[], grok: [] as any[], anthropic: [] as any[] }
   }
 }))
+const executorFixture = vi.hoisted(() => ({
+  createExecutor: undefined as (() => unknown) | undefined
+}))
+
+vi.mock('@cherrystudio/ai-core', async (importOriginal) => {
+  const actual = await importOriginal<any>()
+  return {
+    ...actual,
+    createExecutor: (...args: unknown[]) =>
+      executorFixture.createExecutor ? executorFixture.createExecutor() : actual.createExecutor(...args)
+  }
+})
 
 vi.mock('@renderer/hooks/useSettings', () => ({
   getStoreSetting: () => ({}),
@@ -242,6 +255,7 @@ const imageData = 'data:image/png;base64,ZmFrZS1pbWFnZS1ieXRlcw=='
 beforeEach(() => {
   fixture.blocks.clear()
   fixture.catalog = { providers: [], platformModels: { openai: [], grok: [], anthropic: [] } }
+  executorFixture.createExecutor = undefined
   clearReasoningCapabilityCache()
   for (const id of ['openai', 'anthropic']) extensionRegistry.get(id)?.clearCache()
 })
@@ -333,7 +347,11 @@ describe('model capability request pipeline', () => {
     fixture.catalog = {
       providers: [provider],
       platformModels: {
-        openai: models.map(({ provider: _provider, ...definition }) => definition),
+        openai: models.map((model) => {
+          const definition: Partial<Model> = { ...model }
+          delete definition.provider
+          return definition
+        }),
         grok: [],
         anthropic: []
       }
@@ -420,5 +438,27 @@ describe('model capability request pipeline', () => {
     expect(requests).toHaveLength(1)
     expect(requests[0].model).toBe(model.id)
     expect(requests[0]).not.toHaveProperty('reasoning')
+  })
+
+  it('preserves synchronous usage returned by non-stream generateText', async () => {
+    const provider = makeProvider('openai-response')
+    const model = makeModel('gpt-6-luna')
+    fixture.provider = provider
+    const usage = { inputTokens: 10, outputTokens: 1, totalTokens: 11 }
+    const generateText = vi.fn(async () => ({ text: 'non-stream answer', usage, finishReason: 'stop' }))
+    const createExecutor = vi.fn(async () => ({ generateText }))
+    executorFixture.createExecutor = createExecutor
+
+    const ai = new AiProvider(model, provider)
+    const result = await ai.completions(
+      model.id,
+      { messages: [{ role: 'user', content: 'plain text request' }], maxRetries: 0 } as StreamTextParams,
+      { ...middleware(makeAssistant(model)), chatRequestMode: 'non-stream' }
+    )
+
+    expect(result.getText()).toBe('non-stream answer')
+    expect(result.usage).toBe(usage)
+    expect(createExecutor).toHaveBeenCalledTimes(1)
+    expect(generateText).toHaveBeenCalledTimes(1)
   })
 })

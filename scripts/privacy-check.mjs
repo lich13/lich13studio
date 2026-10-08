@@ -1,11 +1,10 @@
-import { execFileSync } from 'node:child_process'
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
+import { listSourceFiles } from './source-files.mjs'
+
 const root = process.cwd()
-const tracked = execFileSync('git', ['ls-files', '-co', '--exclude-standard'], { encoding: 'utf8', cwd: root })
-  .split('\n')
-  .filter(Boolean)
+const tracked = listSourceFiles(root, { includeUntracked: true })
 
 const scanRoots = ['src', 'packages', 'scripts', 'docs', 'package.json', 'pnpm-lock.yaml']
 const files = new Set()

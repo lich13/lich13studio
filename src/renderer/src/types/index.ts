@@ -2,6 +2,7 @@ import type { LanguageModelV3Source } from '@ai-sdk/provider'
 import type { WebSearchResultBlock } from '@anthropic-ai/sdk/resources'
 import type OpenAI from '@cherrystudio/openai'
 import type { GenerateImagesConfig, GroundingMetadata, PersonGeneration } from '@google/genai'
+import type { ModelProviderSelection } from '@shared/modelProviderSelection'
 import type { ReasoningEffort, ReasoningMode } from '@shared/reasoning'
 import type { CSSProperties } from 'react'
 
@@ -29,7 +30,7 @@ export * from './serialize'
 export * from './skill'
 
 export type Assistant = {
-  modelSelection?: import('@shared/modelProviderSelection').ModelProviderSelection
+  modelSelection?: ModelProviderSelection
   id: string
   name: string
   prompt: string

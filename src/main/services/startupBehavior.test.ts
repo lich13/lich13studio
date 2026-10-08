@@ -47,14 +47,14 @@ describe('startup behavior helpers', () => {
     expect(getMacOSAppBundlePath('/Applications/lich13studio.app/Contents/MacOS/lich13studio')).toBe(
       '/Applications/lich13studio.app'
     )
-    expect(getMacOSAppBundlePath('/Users/dev/lich13studio/out/main/index.js')).toBe(
-      '/Users/dev/lich13studio/out/main/index.js'
+    expect(getMacOSAppBundlePath('/Users/example/lich13studio/out/main/index.js')).toBe(
+      '/Users/example/lich13studio/out/main/index.js'
     )
   })
 
   it('builds only the legacy macOS LaunchAgent cleanup path', () => {
-    expect(buildMacOSLegacyLaunchAgentPath('/Users/gosu')).toBe(
-      '/Users/gosu/Library/LaunchAgents/com.lich13.studio.plist'
+    expect(buildMacOSLegacyLaunchAgentPath('/Users/example')).toBe(
+      '/Users/example/Library/LaunchAgents/com.lich13.studio.plist'
     )
   })
 

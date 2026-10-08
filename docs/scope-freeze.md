@@ -4,7 +4,6 @@
 
 - Upstream base: `CherryHQ/cherry-studio`
 - Scan baseline: `main @ e54cfe97ea63149be723cb1281eee2fdc719b132`
-- Current workspace: `/Users/gosu/build/lich13studio`
 - Goal: build a Lite desktop app named `lich13studio`, keep core chat usefulness, remove non-core clutter, and prepare a Rust/Tauri migration path.
 
 ## 最终保留项

@@ -27,8 +27,8 @@ export class ModelTestOutputLimitError extends Error {
 export function countCompleteIntegers(raw: string, complete: boolean): number {
   const answer = isolateAnswer(raw, false, false).text
   let count = 0
-  for (const match of answer.matchAll(/(?<![\p{L}\p{N}_.+\-])[+-]?\d+(?![\p{L}\p{N}_.+\-])/gu)) {
-    if (complete || match.index! + match[0].length < answer.length) count += 1
+  for (const match of answer.matchAll(/(?<![\p{L}\p{N}_.+-])[+-]?\d+(?![\p{L}\p{N}_.+-])/gu)) {
+    if (complete || match.index + match[0].length < answer.length) count += 1
   }
   return count
 }
@@ -37,10 +37,10 @@ export function countCompleteIntegers(raw: string, complete: boolean): number {
 export function truncateAtIntegerLimit(raw: string, maximum: number): string {
   const answer = isolateAnswer(raw, false, false).text
   let count = 0
-  for (const match of answer.matchAll(/(?<![\p{L}\p{N}_.+\-])[+\-]?\d+(?![\p{L}\p{N}_.+\-])/gu)) {
-    if (match.index! + match[0].length >= answer.length) continue
+  for (const match of answer.matchAll(/(?<![\p{L}\p{N}_.+-])[+-]?\d+(?![\p{L}\p{N}_.+-])/gu)) {
+    if (match.index + match[0].length >= answer.length) continue
     count += 1
-    if (count > maximum) return answer.slice(0, match.index! + match[0].length)
+    if (count > maximum) return answer.slice(0, match.index + match[0].length)
   }
   return answer
 }
@@ -121,15 +121,15 @@ export class ModelTestOutputGuard {
       const maximum = this.expected * 2
       const isolated = isolateAnswer(answer, false, false).text
       let completeCount = 0
-      for (const match of isolated.matchAll(/(?<![\p{L}\p{N}_.+\-])[+\-]?\d+(?![\p{L}\p{N}_.+\-])/gu)) {
-        if (match.index! + match[0].length < isolated.length) {
+      for (const match of isolated.matchAll(/(?<![\p{L}\p{N}_.+-])[+-]?\d+(?![\p{L}\p{N}_.+-])/gu)) {
+        if (match.index + match[0].length < isolated.length) {
           completeCount += 1
           if (completeCount > maximum)
             return new ModelTestOutputLimitError({
               kind: 'integers',
               maximum,
               actual: maximum + 1,
-              position: match.index! + match[0].length
+              position: match.index + match[0].length
             })
         }
       }

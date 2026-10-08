@@ -6,8 +6,22 @@ import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const mocks = vi.hoisted(() => ({ execute: vi.fn(), prepare: vi.fn() }))
+import type * as FingerprintCore from './fingerprintCore'
+
+const mocks = vi.hoisted(() => ({ execute: vi.fn(), prepare: vi.fn(), rewriteReport: vi.fn(), acquire: vi.fn() }))
 vi.mock('./directModelTest', () => ({ prepareDirectModelTest: mocks.prepare }))
+vi.mock('./fingerprintCore', async (importOriginal) => {
+  const actual = await importOriginal<typeof FingerprintCore>()
+  return {
+    ...actual,
+    analyzeGlobalOutputs: (...args: Parameters<typeof actual.analyzeGlobalOutputs>) => {
+      const report = actual.analyzeGlobalOutputs(...args)
+      const rewrite = mocks.rewriteReport.getMockImplementation()
+      return rewrite ? rewrite(report, ...args) : report
+    }
+  }
+})
+vi.mock('@renderer/services/mobile/BackgroundTaskService', () => ({ backgroundTasks: { acquire: mocks.acquire } }))
 vi.mock('@logger', () => ({ loggerService: { withContext: () => ({ warn: vi.fn() }) } }))
 
 import { bundledBankSnapshot } from './fingerprintBank'
@@ -22,9 +36,16 @@ const emit = (onChunk: (chunk: Chunk) => void, count: number) => {
   onChunk({ type: ChunkType.TEXT_COMPLETE, text })
   onChunk({ type: ChunkType.LLM_RESPONSE_COMPLETE, response: { text } })
 }
+const setProbability = (probability: number) => {
+  mocks.rewriteReport.mockImplementation((report: any) => (report ? { ...report, probability } : report))
+}
 beforeEach(() => {
   vi.useFakeTimers()
   mocks.execute.mockReset()
+  mocks.rewriteReport
+    .mockReset()
+    .mockImplementation((report: any) => (report ? { ...report, probability: 0.5 } : report))
+  mocks.acquire.mockReset().mockImplementation(async () => vi.fn())
   mocks.prepare.mockReset().mockResolvedValue({
     target: { providerId: 'one', providerName: 'One', modelId: 'gpt-6-sol' },
     execute: mocks.execute
@@ -166,16 +187,18 @@ describe('route-independent model-test sessions', () => {
     )
     const run = service.start(model, 3)
     await vi.advanceTimersByTimeAsync(0)
-    expect(mocks.execute).toHaveBeenCalledTimes(3)
+    expect(mocks.execute).toHaveBeenCalledTimes(1)
     service.stop('system-budget')
     await run
     await vi.runAllTimersAsync()
-    expect(service.getSnapshot()).toMatchObject({ phase: 'stopped', canRetry: true })
+    expect(service.getSnapshot()).toMatchObject({ phase: 'stopped', canRetry: true, completionReason: 'cancelled' })
     expect(service.getSnapshot().error).toContain('background time limit')
-    expect(mocks.execute).toHaveBeenCalledTimes(3)
+    expect(mocks.execute).toHaveBeenCalledTimes(1)
   })
 
   it('keeps running across real hook unmount/remount and exposes the completed report without resending', async () => {
+    const release = vi.fn()
+    mocks.acquire.mockResolvedValue(release)
     const challenges = modelTestSession.getSnapshot().challenges
     let completeFirst!: () => void
     mocks.execute.mockImplementation((prompt, _signal, onChunk) => {
@@ -214,6 +237,7 @@ describe('route-independent model-test sessions', () => {
     expect(container.textContent).toBe('completed')
     expect(modelTestSession.getSnapshot().report?.used_outputs).toBe(3)
     expect(mocks.execute).toHaveBeenCalledTimes(3)
+    expect(release).toHaveBeenCalledTimes(1)
     await act(async () => {
       root.unmount()
     })
@@ -243,6 +267,14 @@ describe('route-independent model-test sessions', () => {
     await service.retryFailed()
     expect(mocks.prepare).toHaveBeenCalledTimes(1)
     expect(mocks.execute).toHaveBeenCalledTimes(6)
+    expect(mocks.execute.mock.calls.map(([prompt]) => prompt)).toEqual([
+      challenges[0].prompt,
+      challenges[0].prompt,
+      challenges[0].prompt,
+      challenges[1].prompt,
+      challenges[2].prompt,
+      challenges[0].prompt
+    ])
     expect(service.getSnapshot().target?.providerId).toBe('one')
     expect(service.getSnapshot().report?.used_outputs).toBe(3)
   })
@@ -266,6 +298,7 @@ describe('route-independent model-test sessions', () => {
     late({ type: ChunkType.TEXT_DELTA, text: 'late' })
     await run
     expect(service.getSnapshot().phase).toBe('stopped')
+    expect(service.getSnapshot().completionReason).toBe('cancelled')
     expect(service.getSnapshot().outputs[0].text).toBe('')
   })
 
@@ -278,7 +311,7 @@ describe('route-independent model-test sessions', () => {
     service.stop()
     await vi.runAllTimersAsync()
     await run
-    expect(mocks.execute).toHaveBeenCalledTimes(3)
+    expect(mocks.execute).toHaveBeenCalledTimes(1)
     challenges.forEach((challenge, index) =>
       service.editOutput(index, Array(challenge.expected_count).fill('247').join(' '))
     )
@@ -340,5 +373,61 @@ describe('route-independent model-test sessions', () => {
     expect(
       service.getSnapshot().outputs.map(({ status, issue, usableCount }) => ({ status, issue, usableCount }))
     ).toEqual(automatic)
+  })
+
+  it('keeps confidence success through peer cleanup, ignores Stop and disables retries', async () => {
+    setProbability(0.5)
+    const service = new ModelTestSessionService()
+    const challenges = service.getSnapshot().challenges
+    const releaseTask = vi.fn()
+    let finishSecond!: () => void
+    let releasePeer!: () => void
+    let peerSignal!: AbortSignal
+    mocks.acquire.mockResolvedValue(releaseTask)
+    mocks.execute.mockImplementation((prompt, signal, onChunk) => {
+      const challenge = challenges.find((entry) => entry.prompt === prompt)!
+      if (prompt === challenges[0].prompt) {
+        emit(onChunk, challenge.expected_count)
+        return Promise.resolve()
+      }
+      if (prompt === challenges[1].prompt)
+        return new Promise<void>((resolve) => {
+          finishSecond = () => {
+            emit(onChunk, challenge.expected_count)
+            resolve()
+          }
+        })
+      return new Promise<void>((_resolve, reject) => {
+        peerSignal = signal
+        releasePeer = () => reject(signal.reason)
+      })
+    })
+    const run = service.start(model, 3)
+    await vi.advanceTimersByTimeAsync(0)
+    expect(mocks.execute).toHaveBeenCalledTimes(3)
+
+    setProbability(0.99)
+    finishSecond()
+    await vi.advanceTimersByTimeAsync(0)
+    const duringCleanup = service.getSnapshot()
+    expect(duringCleanup).toMatchObject({
+      phase: 'running',
+      completionReason: 'confidence-reached',
+      report: { probability: 0.99, used_outputs: 2 }
+    })
+    expect(duringCleanup.outputs.map((output) => output.status)).toEqual(['completed', 'completed', 'skipped'])
+    expect(peerSignal.aborted).toBe(true)
+    service.stop()
+    expect(service.getSnapshot()).toBe(duringCleanup)
+    expect(releaseTask).not.toHaveBeenCalled()
+
+    releasePeer()
+    await run
+    const completed = service.getSnapshot()
+    expect(completed).toMatchObject({ phase: 'completed', completionReason: 'confidence-reached', canRetry: false })
+    expect(releaseTask).toHaveBeenCalledTimes(1)
+    await service.retryFailed()
+    expect(service.getSnapshot()).toBe(completed)
+    expect(mocks.execute).toHaveBeenCalledTimes(3)
   })
 })

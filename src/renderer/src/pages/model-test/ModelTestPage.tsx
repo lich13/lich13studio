@@ -28,7 +28,8 @@ const statusKeys = {
   retrying: 'settings.modelTest.status.retrying',
   completed: 'settings.modelTest.status.completed',
   error: 'settings.modelTest.status.error',
-  aborted: 'settings.modelTest.status.aborted'
+  aborted: 'settings.modelTest.status.aborted',
+  skipped: 'settings.modelTest.status.skipped'
 } as const
 const issueKeys = {
   empty: 'settings.modelTest.issue.empty',
@@ -62,7 +63,8 @@ const ModelTestPage = () => {
   const selection = useMemo(() => llm.modelTestSelection ?? initialModelTestSelection(llm), [llm])
   const resolved = resolveModelTestSelection(selection, llm)
   const canStart = resolved.model && !isEmbeddingModel(resolved.model) && !isRerankModel(resolved.model)
-  const { challenges, outputs, report, error, phase, target, canRetry, bankVersion } = useModelTestSession()
+  const { challenges, outputs, report, error, phase, target, canRetry, bankVersion, completionReason } =
+    useModelTestSession()
   const bankState = useSyncExternalStore(fingerprintBankService.subscribe, fingerprintBankService.getSnapshot)
   const shownBankVersion = bankVersion ?? bankState.active.version
   const concurrency = normalizeModelTestConcurrency(llm.modelTestConcurrency)
@@ -163,6 +165,11 @@ const ModelTestPage = () => {
 
           <SettingGroup theme={theme} aria-label={t('settings.modelTest.result')}>
             <SettingTitle>{t('settings.modelTest.result')}</SettingTitle>
+            {phase === 'completed' && completionReason === 'confidence-reached' && (
+              <Tag color="success" style={{ marginTop: 12 }}>
+                {t('settings.modelTest.earlyCompleted')}
+              </Tag>
+            )}
             {running && report && <Tag style={{ marginTop: 12 }}>{t('settings.modelTest.resultRunning')}</Tag>}
             {report ? (
               <Space direction="vertical" style={{ width: '100%', marginTop: 12 }}>

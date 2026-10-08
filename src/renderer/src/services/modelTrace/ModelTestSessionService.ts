@@ -5,11 +5,12 @@ import type { Model } from '@renderer/types'
 import { type ModelTestConcurrency, normalizeModelTestConcurrency } from '@shared/modelTestOptions'
 
 import type { FingerprintBankVersion } from './fingerprintBank'
-import { FingerprintBankService, fingerprintBankService } from './FingerprintBankService'
+import { type FingerprintBankService, fingerprintBankService } from './FingerprintBankService'
 import {
   analyzeModelTraceOutputs,
   createModelTraceChallenges,
   type ModelTestChallenge,
+  type ModelTestCompletionReason,
   type ModelTestOutput,
   ModelTestRunner,
   type ModelTestTarget,
@@ -31,6 +32,7 @@ export interface ModelTestSessionSnapshot {
   canRetry: boolean
   concurrency?: ModelTestConcurrency
   bankVersion?: FingerprintBankVersion
+  completionReason?: ModelTestCompletionReason
 }
 
 /** Lives outside routes. Unsubscribing a view must never cancel its network request. */
@@ -104,7 +106,7 @@ export class ModelTestSessionService {
       concurrency: normalizeModelTestConcurrency(concurrency),
       bankSnapshot: this.banks.capture(),
       challenges: this.snapshot.challenges,
-      onProgress: ({ index, output, target }) => {
+      onProgress: ({ index, output, target, report, completionReason }) => {
         if (this.runner !== runner) return
         const outputs = [...this.snapshot.outputs]
         const previous = outputs[index]
@@ -113,7 +115,8 @@ export class ModelTestSessionService {
           {
             outputs,
             target,
-            ...(output.status === 'completed' ? { report: runner.analyze(outputs) } : {})
+            report,
+            completionReason
           },
           output.status === 'running' && previous?.status === 'running' && previous.attempts === output.attempts
         )
@@ -139,7 +142,7 @@ export class ModelTestSessionService {
     const runner = this.runner
     if (!runner) return
     const generation = ++this.generation
-    this.update({ phase: 'running', error: undefined, canRetry: false })
+    this.update({ phase: 'running', error: undefined, canRetry: false, completionReason: undefined })
     let release: (() => void) | undefined
     try {
       release = await backgroundTasks.acquire((reason) => this.stop(reason))
@@ -148,8 +151,14 @@ export class ModelTestSessionService {
       if (generation !== this.generation || runner !== this.runner) return
       this.update({
         ...result,
-        phase: result.error || result.outputs.some((output) => output.status === 'error') ? 'error' : 'completed',
-        canRetry: result.outputs.some((output) => output.status !== 'completed')
+        phase:
+          result.completionReason !== 'confidence-reached' &&
+          (result.error || result.outputs.some((output) => output.status === 'error'))
+            ? 'error'
+            : 'completed',
+        canRetry:
+          result.completionReason !== 'confidence-reached' &&
+          result.outputs.some((output) => output.status !== 'completed' && output.status !== 'skipped')
       })
     } catch (error) {
       if (generation !== this.generation || runner !== this.runner) return
@@ -164,14 +173,14 @@ export class ModelTestSessionService {
   }
 
   stop(reason?: string) {
-    if (this.snapshot.phase !== 'running') return
+    if (this.snapshot.phase !== 'running' || this.snapshot.completionReason === 'confidence-reached') return
     this.generation += 1
     this.runner?.cancel()
     const error =
       reason && reason !== 'user-stop'
         ? i18n.t(reason === 'system-budget' ? 'mobile.systemBudget' : 'mobile.backgroundStopped')
         : undefined
-    this.update({ phase: 'stopped', error, canRetry: true })
+    this.update({ phase: 'stopped', error, canRetry: true, completionReason: 'cancelled' })
   }
 
   regenerate() {
@@ -186,7 +195,8 @@ export class ModelTestSessionService {
       error: undefined,
       canRetry: false,
       concurrency: undefined,
-      bankVersion: undefined
+      bankVersion: undefined,
+      completionReason: undefined
     })
   }
 
@@ -204,7 +214,8 @@ export class ModelTestSessionService {
       phase: 'idle',
       canRetry: false,
       bankVersion: undefined,
-      concurrency: undefined
+      concurrency: undefined,
+      completionReason: undefined
     })
   }
 
@@ -236,6 +247,7 @@ export class ModelTestSessionService {
       outputs,
       error: undefined,
       phase: 'completed',
+      completionReason: 'samples-finished',
       canRetry: false,
       bankVersion: bankSnapshot.version,
       concurrency: undefined,

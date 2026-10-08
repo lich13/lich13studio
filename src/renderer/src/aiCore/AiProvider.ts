@@ -313,10 +313,11 @@ export default class AiProvider {
     // the full stream internally so tool lifecycle events are preserved, but
     // buffer every event and publish it only after the stream is complete.
     if (nonStream && (!hasTools || !middlewareConfig.onChunk)) {
-      const { experimental_transform: _transform, ...generateParams } = params as any
-      const result = await executor.generateText({ ...generateParams, model: modelId } as any)
+      const generateParams = { ...params, model: modelId }
+      delete generateParams.experimental_transform
+      const result = await executor.generateText(generateParams as Parameters<typeof executor.generateText>[0])
       const finalText = result.text || ''
-      const usage = await result.usage
+      const usage = result.usage
 
       if (middlewareConfig.onChunk) {
         const response = { text: finalText, usage } as any
@@ -347,7 +348,11 @@ export default class AiProvider {
         ? middlewareConfig.textDeltaMode === 'cumulative'
         : this.model!.supported_text_delta !== false
       const adapter = new AiSdkToChunkAdapter(
-        nonStream ? (chunk) => bufferedChunks.push(chunk) : middlewareConfig.onChunk,
+        nonStream
+          ? (chunk) => {
+              bufferedChunks.push(chunk)
+            }
+          : middlewareConfig.onChunk,
         accumulate,
         undefined,
         undefined

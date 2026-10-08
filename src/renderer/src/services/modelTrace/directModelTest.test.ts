@@ -1,4 +1,4 @@
-import { createServer } from 'node:http'
+import { createServer, type ServerResponse } from 'node:http'
 import type { AddressInfo } from 'node:net'
 
 import { extensionRegistry } from '@cherrystudio/ai-core/provider'
@@ -6,8 +6,21 @@ import type { Assistant, Model, Provider } from '@renderer/types'
 import { ChunkType } from '@renderer/types/chunk'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const fixture = vi.hoisted(() => ({ provider: {} as Provider }))
+import type * as FingerprintCore from './fingerprintCore'
+
+const fixture = vi.hoisted(() => ({ provider: {} as Provider, rewriteReport: vi.fn() }))
 vi.mock('@renderer/hooks/useSettings', () => ({ getStoreSetting: () => ({}), getEnableDeveloperMode: () => false }))
+vi.mock('./fingerprintCore', async (importOriginal) => {
+  const actual = await importOriginal<typeof FingerprintCore>()
+  return {
+    ...actual,
+    analyzeGlobalOutputs: (...args: Parameters<typeof actual.analyzeGlobalOutputs>) => {
+      const report = actual.analyzeGlobalOutputs(...args)
+      const rewrite = fixture.rewriteReport.getMockImplementation()
+      return rewrite ? rewrite(report, ...args) : report
+    }
+  }
+})
 vi.mock('@renderer/services/AssistantService', () => ({
   requireCurrentModel: (model: Model) => model,
   getProviderByModel: () => fixture.provider,
@@ -68,6 +81,9 @@ import { getModelTestMaxOutputTokens } from './OutputGuard'
 
 beforeEach(() => {
   clearReasoningCapabilityCache()
+  fixture.rewriteReport
+    .mockReset()
+    .mockImplementation((report: any) => (report ? { ...report, probability: 0.5 } : report))
   vi.stubGlobal('window', { __LICH13_TAURI_SHIM__: true })
   // Each SDK provider captures fetch; don't reuse a previous test's mock transport.
   for (const id of ['openai', 'anthropic']) extensionRegistry.get(id)?.clearCache()
@@ -108,11 +124,24 @@ const anthropicEvents = [
 ]
 
 describe('ModelTrace actual SDK request pipeline', () => {
-  it('keeps three HTTP streams active and isolates interleaved answers with unchanged request safeguards', async () => {
+  it('finishes the first HTTP stream alone, then runs two streams with unchanged request safeguards', async () => {
     const requests: Array<{ body: any; authorization?: string; url?: string }> = []
-    const streams: Array<import('node:http').ServerResponse> = []
+    const streams: ServerResponse[] = []
+    const completedResponses = new Set<number>()
     let peak = 0
     let active = 0
+    let firstCompletedBeforeRemaining = false
+    const sendStream = (response: ServerResponse, index: number) => {
+      response.writeHead(200, { 'content-type': 'text/event-stream' })
+      response.write(`data: ${JSON.stringify(responseEvents[0])}\n\n`)
+      for (let part = 0; part < 80; part++) {
+        response.write(`data: ${JSON.stringify({ ...responseEvents[1], delta: `${index + 101} ` })}\n\n`)
+      }
+      for (const event of responseEvents.slice(3)) response.write(`data: ${JSON.stringify(event)}\n\n`)
+      completedResponses.add(index)
+      active -= 1
+      response.end()
+    }
     const server = createServer((request, response) => {
       let raw = ''
       request.on('data', (data) => {
@@ -121,23 +150,20 @@ describe('ModelTrace actual SDK request pipeline', () => {
       request.on('end', () => {
         requests.push({ body: JSON.parse(raw), authorization: request.headers.authorization, url: request.url })
         streams.push(response)
+        const index = streams.length - 1
         active += 1
         peak = Math.max(peak, active)
         response.on('close', () => {
-          active -= 1
+          if (!completedResponses.has(index)) active -= 1
         })
-        response.writeHead(200, { 'content-type': 'text/event-stream' })
-        response.write(`data: ${JSON.stringify(responseEvents[0])}\n\n`)
-        if (streams.length !== 3) return
-        // All three connections must have opened before any can finish.
-        for (let part = 0; part < 80; part++) {
-          for (const index of [2, 0, 1]) {
-            streams[index].write(`data: ${JSON.stringify({ ...responseEvents[1], delta: `${index + 101} ` })}\n\n`)
-          }
+        if (index === 0) {
+          sendStream(response, index)
+          return
         }
-        for (const index of [1, 2, 0]) {
-          for (const event of responseEvents.slice(3)) streams[index].write(`data: ${JSON.stringify(event)}\n\n`)
-          streams[index].end()
+        firstCompletedBeforeRemaining ||= completedResponses.has(0)
+        if (streams.length === 3) {
+          // Only groups one and two share the configured concurrency limit.
+          for (const remainingIndex of [1, 2]) sendStream(streams[remainingIndex], remainingIndex)
         }
       })
     })
@@ -157,7 +183,8 @@ describe('ModelTrace actual SDK request pipeline', () => {
     })
     try {
       const result = await runner.run()
-      expect(peak).toBe(3)
+      expect(firstCompletedBeforeRemaining).toBe(true)
+      expect(peak).toBe(2)
       expect(requests).toHaveLength(3)
       expect(result.outputs.map((output) => output.text.trim())).toEqual(
         [101, 102, 103].map((value) => Array(80).fill(String(value)).join(' '))
@@ -169,6 +196,108 @@ describe('ModelTrace actual SDK request pipeline', () => {
         expect(request.body).toMatchObject({ model: 'gpt-6-luna', max_output_tokens: getModelTestMaxOutputTokens(303) })
         for (const field of ['reasoning', 'thinking', 'tools', 'timeout'])
           expect(request.body).not.toHaveProperty(field)
+      }
+    } finally {
+      runner.cancel()
+      server.closeAllConnections()
+      await new Promise<void>((resolve) => server.close(() => resolve()))
+    }
+  }, 10000)
+
+  it('closes the open peer stream when the second completed group reaches confidence', async () => {
+    const requests: Array<{ body: any; authorization?: string; url?: string }> = []
+    let allowSecondToFinish!: () => void
+    const thirdRequestOpened = new Promise<void>((resolve) => {
+      allowSecondToFinish = resolve
+    })
+    let markThirdResponseClosed!: () => void
+    const thirdResponseClosed = new Promise<void>((resolve) => {
+      markThirdResponseClosed = resolve
+    })
+    let thirdClosedBeforeCleanup = false
+    const writeEvent = (response: ServerResponse, event: unknown) => {
+      response.write('data: ' + JSON.stringify(event) + '\n\n')
+    }
+    const finishResponse = (response: ServerResponse, index: number) => {
+      writeEvent(response, {
+        ...responseEvents[1],
+        delta: Array(80)
+          .fill(String(index + 101))
+          .join(' ')
+      })
+      for (const event of responseEvents.slice(3)) writeEvent(response, event)
+      response.end()
+    }
+    const server = createServer((request, response) => {
+      let raw = ''
+      request.on('data', (data) => {
+        raw += data
+      })
+      request.on('end', () => {
+        const index = requests.length
+        requests.push({ body: JSON.parse(raw), authorization: request.headers.authorization, url: request.url })
+        response.writeHead(200, { 'content-type': 'text/event-stream' })
+        writeEvent(response, responseEvents[0])
+        if (index === 0) {
+          finishResponse(response, index)
+          return
+        }
+        if (index === 1) {
+          void thirdRequestOpened.then(() => finishResponse(response, index))
+          return
+        }
+        response.on('close', () => {
+          thirdClosedBeforeCleanup = true
+          markThirdResponseClosed()
+        })
+        writeEvent(response, { ...responseEvents[1], delta: '103 ' })
+        allowSecondToFinish()
+      })
+    })
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
+    fixture.provider = {
+      id: 'local',
+      name: 'Isolated mock',
+      type: 'openai-response',
+      apiHost: 'http://127.0.0.1:' + (server.address() as AddressInfo).port + '/v1',
+      apiKey: 'dummy-one,dummy-two',
+      models: []
+    }
+    fixture.rewriteReport.mockImplementation((report: any) =>
+      report ? { ...report, probability: report.used_outputs >= 2 ? 0.99 : 0.5 } : report
+    )
+    const runner = new ModelTestRunner({
+      model: { id: 'gpt-6-luna', name: '', provider: 'local', group: '' },
+      challenges: [0, 1, 2].map((index) => ({
+        id: String(index),
+        expected_count: 303,
+        prompt: 'probe-' + index
+      })),
+      concurrency: 3
+    })
+    try {
+      const result = await runner.run()
+      await thirdResponseClosed
+      expect(thirdClosedBeforeCleanup).toBe(true)
+      expect(requests).toHaveLength(3)
+      expect(result.outputs.map((output) => output.status)).toEqual(['completed', 'completed', 'skipped'])
+      expect(result.outputs.map((output) => output.attempts)).toEqual([1, 1, 1])
+      expect(result.outputs[2].text).toBe('')
+      expect(result.report).toMatchObject({ probability: 0.99, used_outputs: 2, concurrency: 3 })
+      expect(result.completionReason).toBe('confidence-reached')
+      for (const request of requests) {
+        expect(request.url).toBe('/v1/responses')
+        expect(request.authorization).toBe('Bearer dummy-one')
+        expect(request.body).toMatchObject({
+          model: 'gpt-6-luna',
+          max_output_tokens: getModelTestMaxOutputTokens(303)
+        })
+        for (const field of ['reasoning', 'thinking', 'tools', 'timeout'])
+          expect(request.body).not.toHaveProperty(field)
+      }
+      const inputs = requests.map((request) => JSON.stringify(request.body.input))
+      for (let index = 0; index < 3; index += 1) {
+        expect(inputs.filter((input) => input.includes('probe-' + index)).length).toBe(1)
       }
     } finally {
       runner.cancel()
@@ -199,7 +328,7 @@ describe('ModelTrace actual SDK request pipeline', () => {
           setTimeout(() => response.destroy(), 20)
           return
         }
-        if (requests.length === 4) retriedAfterClose = firstClosed
+        if (requests.length === 2) retriedAfterClose = firstClosed
         for (const event of responseEvents.slice(3)) response.write(`data: ${JSON.stringify(event)}\n\n`)
         response.end()
       })
@@ -222,13 +351,14 @@ describe('ModelTrace actual SDK request pipeline', () => {
       }))
       const result = await new ModelTestRunner({
         model: { id: 'gpt-6-luna', name: '', provider: 'local', group: '' },
-        challenges
+        challenges,
+        concurrency: 3
       }).run()
       expect(requests).toHaveLength(4)
       expect(retriedAfterClose).toBe(true)
       expect(result.outputs.map((output) => output.attempts)).toEqual([2, 1, 1])
       expect(result.report?.used_outputs).toBe(3)
-      expect(requests[0]).toEqual(requests[3])
+      expect(requests[0]).toEqual(requests[1])
       for (const request of requests) {
         expect(request.url).toBe('/v1/responses')
         expect(request.authorization).toBe('Bearer dummy-one')

@@ -4584,6 +4584,7 @@
       "checkedAt": "Last checked: {{time}}",
       "concurrency": "Concurrency",
       "count": "Numbers: {{actual}} / {{expected}}",
+      "earlyCompleted": "Completed early",
       "familyResult": "Model family: {{family}} ({{probability}}%)",
       "integerUnit": "integers",
       "issue": {
@@ -4616,7 +4617,7 @@
         "quota": "Insufficient balance or quota. Automatic retries stopped."
       },
       "retryWaiting": "Retrying automatically in {{seconds}} seconds",
-      "run": "Start three challenges",
+      "run": "Start test",
       "runTarget": "Run target: {{provider}} · Model ID: {{model}}",
       "samples": "Usable: {{usable}} · Excluded: {{excluded}}",
       "status": {
@@ -4625,7 +4626,8 @@
         "error": "Request failed",
         "pending": "Pending",
         "retrying": "Waiting to retry",
-        "running": "Receiving"
+        "running": "Receiving",
+        "skipped": "Not needed"
       },
       "stop": "Stop test",
       "target": "Provider: {{provider}} · Model ID: {{model}}",

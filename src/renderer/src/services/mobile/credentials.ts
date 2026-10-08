@@ -15,7 +15,7 @@ export function mapCredentials(value: unknown, visit: (value: unknown) => unknow
       (field === '' ||
         field === 'persist:cherry-studio' ||
         ['llm', 'settings', 'backup', 'copilot', 'ocr', 'openclaw', 'codeTools'].includes(field)) &&
-      /^\s*[\[{]/.test(value)
+      /^\s*[[{]/.test(value)
     ) {
       let parsed: unknown
       try {

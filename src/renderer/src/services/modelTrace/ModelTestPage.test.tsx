@@ -4,9 +4,12 @@ import { createRoot, type Root } from 'react-dom/client'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import type * as FingerprintCore from './fingerprintCore'
+
 const fixtures = vi.hoisted(() => ({
   execute: vi.fn(),
   prepare: vi.fn(),
+  rewriteReport: vi.fn(),
   dispatch: vi.fn(),
   llm: {
     modelTestConcurrency: 1,
@@ -16,6 +19,17 @@ const fixtures = vi.hoisted(() => ({
   }
 }))
 vi.mock('./directModelTest', () => ({ prepareDirectModelTest: fixtures.prepare }))
+vi.mock('./fingerprintCore', async (importOriginal) => {
+  const actual = await importOriginal<typeof FingerprintCore>()
+  return {
+    ...actual,
+    analyzeGlobalOutputs: (...args: Parameters<typeof actual.analyzeGlobalOutputs>) => {
+      const report = actual.analyzeGlobalOutputs(...args)
+      const rewrite = fixtures.rewriteReport.getMockImplementation()
+      return rewrite ? rewrite(report, ...args) : report
+    }
+  }
+})
 vi.mock('@logger', () => ({ loggerService: { withContext: () => ({ warn: vi.fn() }) } }))
 vi.mock('@renderer/store', () => ({
   useAppSelector: (select: any) => select({ llm: fixtures.llm }),
@@ -75,6 +89,9 @@ beforeEach(() => {
     }))
   )
   fixtures.execute.mockReset()
+  fixtures.rewriteReport
+    .mockReset()
+    .mockImplementation((report: any) => (report ? { ...report, probability: 0.5 } : report))
   fixtures.dispatch.mockReset()
   fixtures.llm.modelTestConcurrency = 1
   fixtures.prepare.mockReset().mockResolvedValue({
@@ -98,10 +115,14 @@ afterEach(async () => {
 })
 
 describe('real ModelTestPage rendering', () => {
-  it('selects three concurrent requests, locks the control and restores the running view on return', async () => {
+  it('runs the first request alone, then honors up to two remaining requests and restores the view on return', async () => {
     const pending: Array<{ onChunk: (chunk: Chunk) => void; resolve: () => void }> = []
     fixtures.execute.mockImplementation(
-      (_prompt, _signal, onChunk) => new Promise<void>((resolve) => pending.push({ onChunk, resolve }))
+      (_prompt, signal, onChunk) =>
+        new Promise<void>((resolve, reject) => {
+          pending.push({ onChunk, resolve })
+          signal.addEventListener('abort', () => reject(signal.reason), { once: true })
+        })
     )
     const renderPage = () => root.render(createElement(MemoryRouter, null, createElement(ModelTestPage)))
     await act(async () => renderPage())
@@ -117,20 +138,23 @@ describe('real ModelTestPage rendering', () => {
       )!
       run.click()
     })
-    expect(pending).toHaveLength(3)
+    expect(pending).toHaveLength(1)
     expect([...container.querySelectorAll<HTMLInputElement>('input[type="radio"]')].every((i) => i.disabled)).toBe(true)
     await act(async () => root.render(createElement('div', null, 'home')))
     expect(modelTestSession.getSnapshot().phase).toBe('running')
-    for (const index of [2, 0, 1]) {
+    const complete = async (index: number, value: number) => {
       await act(async () => {
-        const text = Array(80)
-          .fill(String(index + 101))
-          .join(' ')
+        const text = Array(80).fill(String(value)).join(' ')
         pending[index].onChunk({ type: ChunkType.TEXT_DELTA, text })
         pending[index].onChunk({ type: ChunkType.LLM_RESPONSE_COMPLETE, response: { text }, finishReason: 'stop' })
         pending[index].resolve()
+        await vi.advanceTimersByTimeAsync(50)
+        await Promise.resolve()
       })
     }
+    await complete(0, 101)
+    expect(pending).toHaveLength(3)
+    for (const index of [2, 1]) await complete(index, index + 101)
     await act(async () => renderPage())
     expect(modelTestSession.getSnapshot()).toMatchObject({
       phase: 'completed',
@@ -149,7 +173,11 @@ describe('real ModelTestPage rendering', () => {
     const challenges = modelTestSession.getSnapshot().challenges
     const pending: Array<{ onChunk: (chunk: Chunk) => void; resolve: () => void }> = []
     fixtures.execute.mockImplementation(
-      (_prompt, _signal, onChunk) => new Promise<void>((resolve) => pending.push({ onChunk, resolve }))
+      (_prompt, signal, onChunk) =>
+        new Promise<void>((resolve, reject) => {
+          pending.push({ onChunk, resolve })
+          signal.addEventListener('abort', () => reject(signal.reason), { once: true })
+        })
     )
     await act(async () => {
       root.render(createElement(MemoryRouter, null, createElement(ModelTestPage)))
@@ -159,18 +187,21 @@ describe('real ModelTestPage rendering', () => {
       run = modelTestSession.start({ id: 'gpt-6-luna', name: 'gpt-6-luna', group: '', provider: 'happy' })
     })
     for (let group = 0; group < 3; group++) {
+      expect(pending).toHaveLength(group + 1)
+      const request = pending[group]
       const text = Array(challenges[group].expected_count).fill('247').join(' ')
       for (let offset = 0; offset < text.length; offset += 37) {
         await act(async () => {
           for (const character of text.slice(offset, offset + 37))
-            pending[group].onChunk({ type: ChunkType.TEXT_DELTA, text: character })
+            request.onChunk({ type: ChunkType.TEXT_DELTA, text: character })
           await vi.advanceTimersByTimeAsync(50)
         })
       }
       await act(async () => {
-        pending[group].onChunk({ type: ChunkType.TEXT_COMPLETE, text })
-        pending[group].onChunk({ type: ChunkType.LLM_RESPONSE_COMPLETE, response: { text }, finishReason: 'stop' })
-        pending[group].resolve()
+        request.onChunk({ type: ChunkType.TEXT_COMPLETE, text })
+        request.onChunk({ type: ChunkType.LLM_RESPONSE_COMPLETE, response: { text }, finishReason: 'stop' })
+        request.resolve()
+        await vi.advanceTimersByTimeAsync(0)
       })
     }
     await act(async () => {
@@ -237,5 +268,66 @@ describe('real ModelTestPage rendering', () => {
     })
     expect(fixtures.execute).toHaveBeenCalledTimes(3)
     expect(modelTestSession.getSnapshot().phase).toBe('completed')
+  })
+
+  it('shows early completion and preserves the result after leaving and returning to the page', async () => {
+    fixtures.rewriteReport.mockImplementation((report: any) => (report ? { ...report, probability: 0.99 } : report))
+    const pending: Array<{ onChunk: (chunk: Chunk) => void; resolve: () => void }> = []
+    fixtures.execute.mockImplementation(
+      (_prompt, signal, onChunk) =>
+        new Promise<void>((resolve, reject) => {
+          pending.push({ onChunk, resolve })
+          signal.addEventListener('abort', () => reject(signal.reason), { once: true })
+        })
+    )
+    const renderPage = () => root.render(createElement(MemoryRouter, null, createElement(ModelTestPage)))
+
+    await act(async () => renderPage())
+    await act(async () => {
+      const run = [...container.querySelectorAll('button')].find(
+        (button) => button.textContent === 'settings.modelTest.run'
+      )!
+      run.click()
+    })
+    expect(fixtures.execute).toHaveBeenCalledTimes(1)
+    expect(pending).toHaveLength(1)
+
+    const challenge = modelTestSession.getSnapshot().challenges[0]
+    const text = Array(challenge.expected_count).fill('101').join(' ')
+    await act(async () => {
+      pending[0].onChunk({ type: ChunkType.TEXT_DELTA, text })
+      pending[0].onChunk({ type: ChunkType.LLM_RESPONSE_COMPLETE, response: { text }, finishReason: 'stop' })
+      pending[0].resolve()
+      await vi.advanceTimersByTimeAsync(50)
+      await Promise.resolve()
+    })
+
+    const expectedResult = {
+      phase: 'completed',
+      completionReason: 'confidence-reached',
+      canRetry: false,
+      report: { probability: 0.99, used_outputs: 1 }
+    }
+    expect(modelTestSession.getSnapshot()).toMatchObject(expectedResult)
+    expect(modelTestSession.getSnapshot().outputs.map((output) => output.status)).toEqual([
+      'completed',
+      'skipped',
+      'skipped'
+    ])
+    expect(container.textContent).toContain('settings.modelTest.earlyCompleted')
+    expect(container.textContent).not.toContain('settings.modelTest.retryFailed')
+    expect(fixtures.execute).toHaveBeenCalledTimes(1)
+
+    await act(async () => root.render(createElement('div', null, 'home')))
+    await act(async () => renderPage())
+    expect(modelTestSession.getSnapshot()).toMatchObject(expectedResult)
+    expect(modelTestSession.getSnapshot().outputs.map((output) => output.status)).toEqual([
+      'completed',
+      'skipped',
+      'skipped'
+    ])
+    expect(container.textContent).toContain('settings.modelTest.earlyCompleted')
+    expect(container.textContent).not.toContain('settings.modelTest.retryFailed')
+    expect(fixtures.execute).toHaveBeenCalledTimes(1)
   })
 })

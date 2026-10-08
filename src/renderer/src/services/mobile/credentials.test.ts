@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import type * as CredentialsModule from './credentials'
+
 const native = vi.hoisted(() => ({
   android: true,
   secureJson: '{}',
@@ -109,7 +111,7 @@ function createMemoryStorage(): Storage {
 }
 
 let memoryStorage: Storage
-let credentials: typeof import('./credentials')
+let credentials: typeof CredentialsModule
 
 beforeEach(async () => {
   vi.resetModules()

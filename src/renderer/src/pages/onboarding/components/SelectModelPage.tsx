@@ -30,7 +30,7 @@ const SelectModelPage: FC<SelectModelPageProps> = ({ cherryInLoggedIn, setStep, 
           onClick={handleBack}
         />
       )}
-      <div className="flex w-full max-w-sm px-5 flex-col gap-6">
+      <div className="flex w-full max-w-sm flex-col gap-6 px-5">
         <div className="flex flex-col gap-2">
           <h1 className="m-0 font-semibold text-(--color-text) text-2xl">{t('onboarding.select_model.title')}</h1>
           <p className="m-0 text-(--color-text-2) text-sm">{t('onboarding.select_model.subtitle')}</p>

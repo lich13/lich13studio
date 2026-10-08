@@ -74,11 +74,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Validate release source
+        run: pnpm ci:basic-check
+
       - name: Sync app version
         run: node scripts/set-app-version.mjs --version "${{ steps.app_version.outputs.version }}"
 
       - name: Build renderer bundle
-        run: pnpm typecheck && pnpm test:upgrade && pnpm test:renderer && pnpm modeltrace:check && pnpm catalog:check && pnpm i18n:check && pnpm build:tauri:web
+        run: pnpm test:upgrade && pnpm test:renderer && pnpm modeltrace:check && pnpm catalog:check && pnpm build:tauri:web
 
       - name: Upload frontend assets
         uses: actions/upload-artifact@v7
@@ -293,6 +296,9 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.version != '')
 
     steps:
+      - name: Checkout release notes
+        uses: actions/checkout@v5
+
       - name: Download bundle artifacts
         uses: actions/download-artifact@v8
         with:
@@ -343,14 +349,20 @@ jobs:
           PYHASH
           release_files+=(release-assets/SHA256SUMS)
           TAG_NAME="${{ steps.tag.outputs.tag_name }}"
+          NOTES_FILE="docs/releases/${TAG_NAME}.zh-CN.md"
+          if [[ ! -s "${NOTES_FILE}" ]]; then
+            echo "Chinese release notes are required for ${TAG_NAME}." >&2
+            exit 1
+          fi
 
           if gh release view "${TAG_NAME}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
             gh release upload "${TAG_NAME}" "${release_files[@]}" --clobber --repo "${GITHUB_REPOSITORY}"
+            gh release edit "${TAG_NAME}" --notes-file "${NOTES_FILE}" --repo "${GITHUB_REPOSITORY}"
           else
             gh release create \
               "${TAG_NAME}" \
               "${release_files[@]}" \
               --repo "${GITHUB_REPOSITORY}" \
               --target "${GITHUB_SHA}" \
-              --generate-notes
+              --notes-file "${NOTES_FILE}"
           fi

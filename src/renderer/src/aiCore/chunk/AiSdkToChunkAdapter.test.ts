@@ -62,19 +62,47 @@ describe('AiSdkToChunkAdapter', () => {
   })
 
   it('waits for asynchronous chunk callbacks before returning', async () => {
-    let completed = false
-    const adapter = new AiSdkToChunkAdapter(async (chunk) => {
+    let finishCallback!: () => void
+    const callbackGate = new Promise<void>((resolve) => {
+      finishCallback = resolve
+    })
+    let signalCallbackStarted!: () => void
+    const callbackStarted = new Promise<void>((resolve) => {
+      signalCallbackStarted = resolve
+    })
+    let callbackCompleted = false
+    const adapter = new AiSdkToChunkAdapter((chunk) => {
       if (chunk.type === ChunkType.BLOCK_COMPLETE) {
-        await Promise.resolve()
-        completed = true
+        signalCallbackStarted()
+        return callbackGate.then(() => {
+          callbackCompleted = true
+        })
       }
     })
 
-    await adapter.processStream({
+    const processing = adapter.processStream({
       fullStream: streamFrom([{ type: 'text-delta', text: 'ok' }]),
       text: Promise.resolve('ok')
     })
+    let settled = false
+    void processing.then(
+      () => {
+        settled = true
+      },
+      () => {
+        settled = true
+      }
+    )
 
-    expect(completed).toBe(true)
+    await callbackStarted
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(callbackCompleted).toBe(false)
+    expect(settled).toBe(false)
+
+    finishCallback()
+    await processing
+
+    expect(callbackCompleted).toBe(true)
+    expect(settled).toBe(true)
   })
 })

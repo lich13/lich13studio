@@ -2,7 +2,7 @@ import { webcrypto } from 'node:crypto'
 
 import type { Provider } from '@renderer/types'
 import type { StreamTextParams } from '@renderer/types/aiCoreTypes'
-import { ChunkType } from '@renderer/types/chunk'
+import { type Chunk, ChunkType } from '@renderer/types/chunk'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
@@ -102,6 +102,69 @@ describe('bounded effort negotiation', () => {
     })
     await expect(run(execute, { disabled: true })).rejects.toThrow()
     expect(execute).toHaveBeenCalledTimes(1)
+  })
+  it.each([
+    { label: 'synchronous', asynchronous: false },
+    { label: 'asynchronous', asynchronous: true }
+  ])('forwards chunks with $label onChunk callbacks', async ({ asynchronous }) => {
+    const chunks: Chunk[] = []
+    const onChunk = asynchronous
+      ? vi.fn(async (chunk: Chunk) => {
+          chunks.push(chunk)
+        })
+      : vi.fn((chunk: Chunk) => {
+          chunks.push(chunk)
+        })
+    const execute = vi.fn(async (_options: StreamTextParams, emit: (chunk: Chunk) => void) => {
+      emit({ type: ChunkType.TEXT_DELTA, text: 'ok' })
+      return 'ok'
+    })
+
+    expect(await run(execute, { onChunk })).toBe('ok')
+    expect(chunks).toEqual([{ type: ChunkType.TEXT_DELTA, text: 'ok' }])
+    expect(onChunk).toHaveBeenCalledTimes(1)
+  })
+  it('waits for the final error callback and emits it only once', async () => {
+    const failure = Object.assign(new Error('Unauthorized'), { statusCode: 401 })
+    let finishCallback!: () => void
+    const callbackGate = new Promise<void>((resolve) => {
+      finishCallback = resolve
+    })
+    let signalCallbackStarted!: () => void
+    const callbackStarted = new Promise<void>((resolve) => {
+      signalCallbackStarted = resolve
+    })
+    let callbackFinished = false
+    const onChunk = vi.fn(async () => {
+      signalCallbackStarted()
+      await callbackGate
+      callbackFinished = true
+    })
+    const execute = vi.fn(async (_options: StreamTextParams, emit: (chunk: Chunk) => void) => {
+      emit({ type: ChunkType.ERROR, error: failure })
+      throw failure
+    })
+    let settled = false
+    const request = run(execute, { onChunk })
+    void request.then(
+      () => {
+        settled = true
+      },
+      () => {
+        settled = true
+      }
+    )
+
+    await callbackStarted
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(onChunk).toHaveBeenCalledTimes(1)
+    expect(callbackFinished).toBe(false)
+    expect(settled).toBe(false)
+
+    finishCallback()
+    await expect(request).rejects.toBe(failure)
+    expect(callbackFinished).toBe(true)
+    expect(onChunk).toHaveBeenCalledTimes(1)
   })
   it('expires capability cache and invalidates it for credentials, address and model changes', async () => {
     vi.useFakeTimers()

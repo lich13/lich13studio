@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import type { backgroundTasks as BackgroundTasksApi } from './BackgroundTaskService'
+
 const native = vi.hoisted(() => ({
   android: true,
   command: vi.fn<(command: string, args?: Record<string, unknown>) => Promise<unknown>>()
@@ -14,7 +16,7 @@ vi.mock('./runtime', () => ({
   }
 }))
 
-let backgroundTasks: typeof import('./BackgroundTaskService')['backgroundTasks']
+let backgroundTasks: typeof BackgroundTasksApi
 let fixtureWindow: EventTarget
 let fixtureDocument: EventTarget & { hidden: boolean }
 

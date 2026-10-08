@@ -13,7 +13,7 @@ export interface AiSdkMiddlewareConfig {
   /** Legacy plugin hint; ordinary chat uses chatRequestMode. */
   streamOutput?: boolean
   chatRequestMode?: ChatRequestMode
-  onChunk?: (chunk: Chunk) => void
+  onChunk?: (chunk: Chunk) => void | Promise<void>
   assistant?: Assistant
   enableReasoning: boolean
   isPromptToolUse: boolean

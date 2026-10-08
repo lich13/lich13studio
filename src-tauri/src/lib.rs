@@ -3091,8 +3091,8 @@ mod tests {
   #[test]
   fn macos_legacy_launch_agent_cleanup_path_is_stable() {
     assert_eq!(
-      macos_legacy_launch_agent_file(Path::new("/Users/gosu")),
-      PathBuf::from("/Users/gosu/Library/LaunchAgents/com.lich13.studio.plist")
+      macos_legacy_launch_agent_file(Path::new("/Users/example")),
+      PathBuf::from("/Users/example/Library/LaunchAgents/com.lich13.studio.plist")
     );
   }
 
