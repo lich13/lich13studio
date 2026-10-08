@@ -97,16 +97,4 @@ jobs:
           script: |
             adb install -r src-tauri/gen/android/app/build/outputs/apk/universal/debug/app-universal-debug.apk
             adb install -r src-tauri/gen/android/app/build/outputs/apk/androidTest/universal/debug/app-universal-debug-androidTest.apk
-            adb shell am instrument -w -e class com.lich13.studio.MobileSmokeTest#importsUseConfirmationAndPrivateCredentials com.lich13.studio.test/androidx.test.runner.AndroidJUnitRunner > android-device-test.log
-            cat android-device-test.log
-            grep -q 'OK (1 test)' android-device-test.log
-            adb shell am instrument -w -e class com.lich13.studio.MobileSmokeTest#nativeModelAndProviderSelectorsRemainStable com.lich13.studio.test/androidx.test.runner.AndroidJUnitRunner > android-selector-test.log
-            cat android-selector-test.log
-            grep -q 'OK (1 test)' android-selector-test.log
-            adb shell am instrument -w -e class com.lich13.studio.MobileSmokeTest#modelTraceEarlyFinishStopsAtOneResponseAndReleasesAndroidTask com.lich13.studio.test/androidx.test.runner.AndroidJUnitRunner > android-modeltrace-test.log
-            cat android-modeltrace-test.log
-            grep -q 'OK (1 test)' android-modeltrace-test.log
-            adb shell am force-stop com.lich13.studio
-            adb shell am instrument -w -e class com.lich13.studio.MobileSmokeTest#credentialsSurviveProcessRestart com.lich13.studio.test/androidx.test.runner.AndroidJUnitRunner > android-restart-test.log
-            cat android-restart-test.log
-            grep -q 'OK (1 test)' android-restart-test.log
+            bash scripts/run-android-device-tests.sh
