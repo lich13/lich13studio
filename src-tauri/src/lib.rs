@@ -1,6 +1,12 @@
 mod mobile;
 mod http_delivery;
 mod backup_crypto;
+#[cfg(any(not(target_os = "android"), test))]
+mod startup;
+#[cfg(not(target_os = "android"))]
+use startup::{RestoredWindowMode, ShowReason, StartupVisibility};
+#[cfg(not(any(target_os = "macos", target_os = "android")))]
+use startup::LOGIN_STARTUP_ARG;
 #[cfg(not(target_os = "android"))]
 use tauri::Monitor;
 #[cfg(not(target_os = "android"))]
@@ -69,8 +75,6 @@ const MINI_WINDOW_WIDTH: u32 = 420;
 const MINI_WINDOW_HEIGHT: u32 = 620;
 const GITHUB_LATEST_RELEASE_API_URL: &str = "https://api.github.com/repos/lich13/lich13studio/releases/latest";
 const GITHUB_RELEASES_URL: &str = "https://github.com/lich13/lich13studio/releases";
-#[cfg(any(not(target_os = "macos"), test))]
-const LOGIN_STARTUP_ARG: &str = "--lich13studio-login-startup";
 #[cfg(any(target_os = "macos", test))]
 const MACOS_LOGIN_ITEM_ARG: &str = "--hidden";
 const RUNTIME_SETTINGS_KEY: &str = "runtimeSettings";
@@ -294,14 +298,6 @@ enum DockVisibility {
   Hidden,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum StartupSource {
-  Normal,
-  #[cfg(any(not(target_os = "macos"), test))]
-  LoginStartupArg,
-  MacOSHiddenLoginItem,
-}
-
 #[cfg(any(target_os = "macos", test))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct MacOSLoginItemConfig {
@@ -324,7 +320,10 @@ const NATIVE_HTTP_CHUNK_EVENT: &str = "native_http_chunk";
 const FOCUS_CHAT_INPUT_EVENT: &str = "focus_chat_input";
 
 static HTTP_REQUEST_ABORTS: OnceLock<Mutex<HashMap<String, Arc<AtomicBool>>>> = OnceLock::new();
-static MAIN_WINDOW_SHOWN: AtomicBool = AtomicBool::new(false);
+#[cfg(not(target_os = "android"))]
+static STARTUP_VISIBILITY: OnceLock<Mutex<StartupVisibility>> = OnceLock::new();
+#[cfg(not(target_os = "android"))]
+static DEFERRED_MAIN_WINDOW_MODE: OnceLock<Mutex<RestoredWindowMode>> = OnceLock::new();
 static MINI_WINDOW_PINNED: AtomicBool = AtomicBool::new(false);
 static STARTED_SILENTLY: AtomicBool = AtomicBool::new(false);
 static RUNTIME_SETTINGS: OnceLock<Mutex<RuntimeSettings>> = OnceLock::new();
@@ -440,58 +439,6 @@ fn should_prevent_implicit_exit(exit_code_present: bool, app_exiting: bool, sett
   !exit_code_present && !app_exiting && matches!(main_window_close_action(settings), MainWindowCloseAction::KeepBackground)
 }
 
-#[cfg(any(not(target_os = "macos"), test))]
-fn has_login_startup_arg(args: &[String]) -> bool {
-  args.iter().any(|arg| arg == LOGIN_STARTUP_ARG)
-}
-
-fn should_start_silently_for_source(source: StartupSource, settings: RuntimeSettings) -> bool {
-  if !settings.launch_to_tray {
-    return false;
-  }
-
-  match source {
-    #[cfg(any(not(target_os = "macos"), test))]
-    StartupSource::LoginStartupArg => true,
-    StartupSource::MacOSHiddenLoginItem => true,
-    StartupSource::Normal => false,
-  }
-}
-
-#[cfg(any(not(target_os = "macos"), test))]
-fn should_start_silently_from_args(args: &[String], settings: RuntimeSettings) -> bool {
-  should_start_silently_for_source(
-    if has_login_startup_arg(args) {
-      StartupSource::LoginStartupArg
-    } else {
-      StartupSource::Normal
-    },
-    settings,
-  )
-}
-
-#[cfg(any(target_os = "macos", test))]
-fn should_start_silently_from_macos_login_item(is_hidden_login_item: bool, settings: RuntimeSettings) -> bool {
-  should_start_silently_for_source(
-    if is_hidden_login_item {
-      StartupSource::MacOSHiddenLoginItem
-    } else {
-      StartupSource::Normal
-    },
-    settings,
-  )
-}
-
-#[cfg(target_os = "macos")]
-fn is_current_macos_app_hidden() -> bool {
-  use objc2::MainThreadMarker;
-  use objc2_app_kit::NSApplication;
-
-  MainThreadMarker::new()
-    .map(|marker| NSApplication::sharedApplication(marker).isHidden())
-    .unwrap_or(false)
-}
-
 #[cfg(target_os = "macos")]
 fn unhide_current_macos_app() {
   use objc2::MainThreadMarker;
@@ -500,17 +447,6 @@ fn unhide_current_macos_app() {
   if let Some(marker) = MainThreadMarker::new() {
     NSApplication::sharedApplication(marker).unhide(None);
   }
-}
-
-#[cfg(target_os = "macos")]
-fn should_start_silently(args: &[String], settings: RuntimeSettings) -> bool {
-  let _ = args;
-  should_start_silently_from_macos_login_item(is_current_macos_app_hidden(), settings)
-}
-
-#[cfg(not(target_os = "macos"))]
-fn should_start_silently(args: &[String], settings: RuntimeSettings) -> bool {
-  should_start_silently_from_args(args, settings)
 }
 
 fn dock_visibility_for_main_window_show() -> DockVisibility {
@@ -713,26 +649,42 @@ fn is_auto_launch_enabled() -> Result<bool, String> {
 }
 
 #[cfg(not(target_os = "android"))]
-fn mark_main_window_shown(window: &WebviewWindow) -> Result<(), String> {
-  if !MAIN_WINDOW_SHOWN.swap(true, Ordering::SeqCst) {
-    apply_dock_visibility(window.app_handle(), dock_visibility_for_main_window_show());
-    window.show().map_err(|error| error.to_string())?;
-    let _ = window.set_focus();
-  }
-
-  Ok(())
+fn show_and_focus_main_window(app: &AppHandle) -> Result<(), String> {
+  request_main_window(app, ShowReason::User)
 }
 
 #[cfg(not(target_os = "android"))]
-fn show_and_focus_main_window(app: &AppHandle) -> Result<(), String> {
+fn request_main_window(app: &AppHandle, reason: ShowReason) -> Result<(), String> {
+  // The single-instance callback runs off the main thread. Both AppKit's
+  // activation and the deferred window mode must be applied on the UI thread.
+  let app_handle = app.clone();
+  app.run_on_main_thread(move || {
+    let _ = present_main_window(&app_handle, reason);
+  }).map_err(|error| error.to_string())
+}
+
+#[cfg(not(target_os = "android"))]
+fn present_main_window(app: &AppHandle, reason: ShowReason) -> Result<(), String> {
+  let Some(visibility) = STARTUP_VISIBILITY.get() else { return Ok(()); };
+  if !visibility.lock().map_err(|_| String::from("startup visibility lock poisoned"))?
+    .request_show(reason, current_runtime_settings().launch_to_tray) {
+    return Ok(());
+  }
   let main_window = app
     .get_webview_window("main")
     .ok_or_else(|| String::from("Main window not found"))?;
 
-  MAIN_WINDOW_SHOWN.store(true, Ordering::SeqCst);
   apply_dock_visibility(app, dock_visibility_for_main_window_show());
   main_window.show().map_err(|error| error.to_string())?;
   let _ = main_window.unminimize();
+  let mode = DEFERRED_MAIN_WINDOW_MODE.get()
+    .and_then(|mode| mode.lock().ok().map(|mut mode| std::mem::take(&mut *mode)))
+    .unwrap_or_default();
+  match mode {
+    RestoredWindowMode::Fullscreen => { let _ = main_window.set_fullscreen(true); }
+    RestoredWindowMode::Maximized => { let _ = main_window.maximize(); }
+    RestoredWindowMode::Normal => {}
+  }
   let _ = main_window.set_focus();
   let _ = main_window.emit(FOCUS_CHAT_INPUT_EVENT, ());
   Ok(())
@@ -987,6 +939,13 @@ fn load_window_state(label: &str) -> Result<Option<PersistedWindowState>, String
 
 #[cfg(not(target_os = "android"))]
 fn persist_window_state(window: &Window) -> Result<(), String> {
+  // Geometry changes during hidden startup must not overwrite the saved
+  // fullscreen/maximized mode that is waiting for the first explicit show.
+  if window.label() == "main" && !STARTUP_VISIBILITY.get()
+    .and_then(|visibility| visibility.lock().ok().map(|visibility| visibility.has_presented()))
+    .unwrap_or(false) {
+    return Ok(());
+  }
   let label = window.label().to_string();
   let mut state = load_state_file().unwrap_or_else(|_| json!({}));
   let mut persisted_state = load_window_state(&label)?.unwrap_or_default();
@@ -1098,7 +1057,8 @@ fn handle_run_event(_app: &AppHandle, _event: &RunEvent) {
       has_visible_windows, ..
     } => {
       if !has_visible_windows {
-        let _ = show_and_focus_main_window(_app);
+        let reason = startup::launch_show_reason(&[], startup::current_launch_event());
+        let _ = request_main_window(_app, reason);
       }
     }
     _ => {}
@@ -2594,6 +2554,14 @@ fn show_main_window(app: AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn show_startup_window(app: AppHandle) -> Result<(), String> {
+  #[cfg(not(target_os = "android"))]
+  { request_main_window(&app, ShowReason::Automatic) }
+  #[cfg(target_os = "android")]
+  { let _ = app; Ok(()) }
+}
+
+#[tauri::command]
 #[cfg(not(target_os = "android"))]
 fn show_mini_window(app: AppHandle) -> Result<(), String> {
   show_mini_window_at(&app, None)
@@ -2638,6 +2606,11 @@ fn set_mini_window_pin(is_pinned: bool) -> Result<(), String> {
 struct PendingProviderImports(Mutex<Vec<String>>);
 
 impl PendingProviderImports {
+  #[cfg(not(target_os = "android"))]
+  fn has_pending(&self) -> bool {
+    !self.0.lock().unwrap().is_empty()
+  }
+
   fn enqueue(&self, urls: &[Url]) {
     let mut pending = self.0.lock().unwrap();
     for url in urls.iter().filter(|url| url.scheme() == "ccswitch") {
@@ -2666,9 +2639,23 @@ fn take_pending_provider_imports(app: AppHandle, window: Window, pending: tauri:
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+  let context = tauri::generate_context!();
+  #[cfg(target_os = "macos")]
+  let context = {
+    let mut context = context;
+    // Build the hidden main window only after launch provenance is captured and
+    // the pre-launch activation guard has been released.
+    if let Some(window) = context.config_mut().app.windows.iter_mut().find(|window| window.label == "main") {
+      window.create = false;
+    }
+    context
+  };
   let builder = tauri::Builder::default().manage(PendingProviderImports::default());
   #[cfg(not(target_os = "android"))]
-  let builder = builder.plugin(tauri_plugin_single_instance::init(|app, _, _| { let _ = show_and_focus_main_window(app); }));
+  let builder = builder.plugin(tauri_plugin_single_instance::init(|app, args, _| {
+    let reason = startup::launch_show_reason(&args, None);
+    let _ = request_main_window(app, reason);
+  }));
   #[cfg(target_os = "android")]
   let builder = builder.plugin(mobile::plugin()).on_page_load(|webview, payload| {
     if payload.event() == tauri::webview::PageLoadEvent::Started {
@@ -2680,7 +2667,7 @@ pub fn run() {
       });
     }
   });
-  builder
+  let app = builder
     .plugin(tauri_plugin_deep_link::init())
     .plugin(tauri_plugin_notification::init())
     .setup(|app| {
@@ -2693,6 +2680,30 @@ pub fn run() {
         let path = app.path().app_data_dir()?;
         fs::create_dir_all(&path)?;
         let _ = MOBILE_DATA_DIR.set(path);
+      }
+      #[cfg(not(target_os = "android"))]
+      let initial_window_state = {
+        // Capture provenance during Tauri's Ready callback, while the launch
+        // Apple event is current. AppKit activation has no bearing on this.
+        let runtime_settings = load_runtime_settings_from_state().unwrap_or_default();
+        replace_runtime_settings(runtime_settings);
+        let launch_args = std::env::args().collect::<Vec<_>>();
+        let source = startup::startup_source(&launch_args, startup::current_launch_event());
+        let visibility = StartupVisibility::new(source, runtime_settings.launch_to_tray);
+        STARTED_SILENTLY.store(visibility.is_silent(), Ordering::SeqCst);
+        let _ = STARTUP_VISIBILITY.set(Mutex::new(visibility));
+        let state = load_window_state("main")?;
+        let mode = state.as_ref().map(|state| RestoredWindowMode::from_saved(state.fullscreen, state.maximized))
+          .unwrap_or_default();
+        let _ = DEFERRED_MAIN_WINDOW_MODE.set(Mutex::new(mode));
+        state
+      };
+      #[cfg(target_os = "macos")]
+      {
+        app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+        if let Some(config) = app.config().app.windows.iter().find(|window| window.label == "main") {
+          WebviewWindowBuilder::from_config(app.handle(), config)?.build()?;
+        }
       }
       use tauri_plugin_deep_link::DeepLinkExt;
       let import_app = app.handle().clone();
@@ -2707,26 +2718,19 @@ pub fn run() {
       });
       #[cfg(not(target_os = "android"))]
       {
-      let runtime_settings = load_runtime_settings_from_state().unwrap_or_default();
-      replace_runtime_settings(runtime_settings);
-      let launch_args = std::env::args().collect::<Vec<_>>();
-      let start_silently = should_start_silently(&launch_args, runtime_settings);
-      STARTED_SILENTLY.store(start_silently, Ordering::SeqCst);
-      MAIN_WINDOW_SHOWN.store(start_silently, Ordering::SeqCst);
-
       if let Some(main_window) = app.get_webview_window("main") {
-        if start_silently {
+        if STARTED_SILENTLY.load(Ordering::SeqCst) {
           let _ = main_window.hide();
           apply_dock_visibility(app.handle(), dock_visibility_for_background_keepalive());
         } else {
-          let fallback_window = main_window.clone();
+          let fallback_app = app.handle().clone();
           tauri::async_runtime::spawn(async move {
             tokio::time::sleep(Duration::from_secs(3)).await;
-            let _ = mark_main_window_shown(&fallback_window);
+            let _ = request_main_window(&fallback_app, ShowReason::Automatic);
           });
         }
 
-        if let Some(state) = load_window_state(main_window.label())? {
+        if let Some(state) = initial_window_state {
           if let (Some(width), Some(height)) = (state.width, state.height) {
             let _ = main_window.set_size(Size::Physical(PhysicalSize::new(width, height)));
           }
@@ -2735,15 +2739,13 @@ pub fn run() {
             let _ = main_window.set_position(Position::Physical(PhysicalPosition::new(x, y)));
           }
 
-          if state.fullscreen {
-            let _ = main_window.set_fullscreen(true);
-          } else if state.maximized {
-            let _ = main_window.maximize();
-          }
         }
       }
 
       setup_tray(app)?;
+      if app.state::<PendingProviderImports>().has_pending() {
+        let _ = show_and_focus_main_window(app.handle());
+      }
       }
 
       Ok(())
@@ -2799,6 +2801,7 @@ pub fn run() {
       webdav_backup,
       webdav_restore,
       show_main_window,
+      show_startup_window,
       show_mini_window,
       hide_mini_window,
       close_mini_window,
@@ -2809,9 +2812,18 @@ pub fn run() {
       start_http_request,
       abort_http_request
     ])
-    .build(tauri::generate_context!())
-    .expect("failed to build lich13studio tauri runtime")
-    .run(|app, event| {
+    .build(context)
+    .expect("failed to build lich13studio tauri runtime");
+  #[cfg(target_os = "macos")]
+  let app = {
+    let mut app = app;
+    // Tao activates applications before Ready/setup. Prevent that initial
+    // activation; setup permits hidden windows and the show policy opts in to
+    // foreground activation only for normal startup or a user action.
+    app.set_activation_policy(tauri::ActivationPolicy::Prohibited);
+    app
+  };
+  app.run(|app, event| {
       #[cfg(not(target_os = "android"))]
       handle_run_event(app, &event);
       let _ = (app, event);
@@ -3026,54 +3038,6 @@ mod tests {
   }
 
   #[test]
-  fn non_macos_startup_arg_uses_silent_setting() {
-    assert!(should_start_silently_from_args(
-      &[LOGIN_STARTUP_ARG.to_string()],
-      RuntimeSettings {
-        launch_to_tray: true,
-        ..RuntimeSettings::default()
-      }
-    ));
-    assert!(!should_start_silently_from_args(
-      &[LOGIN_STARTUP_ARG.to_string()],
-      RuntimeSettings {
-        launch_to_tray: false,
-        ..RuntimeSettings::default()
-      }
-    ));
-    assert!(!should_start_silently_from_args(
-      &["--lich13studio-login-startup=1".to_string()],
-      RuntimeSettings {
-        launch_to_tray: true,
-        ..RuntimeSettings::default()
-      }
-    ));
-  }
-
-  #[test]
-  fn startup_source_silent_policy_requires_background_setting() {
-    let silent_settings = RuntimeSettings {
-      launch_to_tray: true,
-      ..RuntimeSettings::default()
-    };
-    let visible_settings = RuntimeSettings {
-      launch_to_tray: false,
-      ..RuntimeSettings::default()
-    };
-
-    assert!(should_start_silently_for_source(StartupSource::LoginStartupArg, silent_settings));
-    assert!(should_start_silently_for_source(
-      StartupSource::MacOSHiddenLoginItem,
-      silent_settings
-    ));
-    assert!(!should_start_silently_for_source(StartupSource::Normal, silent_settings));
-    assert!(!should_start_silently_for_source(
-      StartupSource::MacOSHiddenLoginItem,
-      visible_settings
-    ));
-  }
-
-  #[test]
   fn macos_login_item_uses_manageable_hidden_app_mode() {
     let config = macos_login_item_config_for_path(Path::new("/Applications/lich13studio.app"));
 
@@ -3094,31 +3058,6 @@ mod tests {
       macos_legacy_launch_agent_file(Path::new("/Users/example")),
       PathBuf::from("/Users/example/Library/LaunchAgents/com.lich13.studio.plist")
     );
-  }
-
-  #[test]
-  fn macos_silent_start_uses_hidden_login_item_and_setting() {
-    assert!(should_start_silently_from_macos_login_item(
-      true,
-      RuntimeSettings {
-        launch_to_tray: true,
-        ..RuntimeSettings::default()
-      }
-    ));
-    assert!(!should_start_silently_from_macos_login_item(
-      true,
-      RuntimeSettings {
-        launch_to_tray: false,
-        ..RuntimeSettings::default()
-      }
-    ));
-    assert!(!should_start_silently_from_macos_login_item(
-      false,
-      RuntimeSettings {
-        launch_to_tray: true,
-        ..RuntimeSettings::default()
-      }
-    ));
   }
 
   #[test]

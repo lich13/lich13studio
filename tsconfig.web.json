@@ -45,6 +45,7 @@
     "incremental": true,
     "tsBuildInfoFile": ".tsbuildinfo/tsconfig.web.tsbuildinfo",
     "jsx": "react-jsx",
+    "types": ["vite/client"],
     "moduleResolution": "bundler",
     "paths": {
       "@logger": ["./src/renderer/src/services/LoggerService"],

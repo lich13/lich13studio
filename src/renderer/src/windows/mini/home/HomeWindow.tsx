@@ -799,18 +799,31 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
       <BrandArea>
         {currentAssistant.model ? <ModelAvatar model={currentAssistant.model} size={22} /> : <ImageIcon size={18} />}
         <BrandText>
-          <BrandTitle>lich13studio</BrandTitle>
-          <BrandSubTitle>{t('miniwindow.header.default_assistant')}</BrandSubTitle>
+          <BrandTitle title="lich13studio">lich13studio</BrandTitle>
+          <BrandSubTitle title={t('miniwindow.header.default_assistant')}>
+            {t('miniwindow.header.default_assistant')}
+          </BrandSubTitle>
         </BrandText>
       </BrandArea>
       <HeaderActions className="nodrag">
-        <ModelProviderSelect compact layout="inline" showEffort selection={selection} onChange={handleModelChange} />
-        <Tooltip placement="bottomRight" title={newTopicLabel} mouseLeaveDelay={0} arrow>
-          <HeaderIconButton type="text" aria-label={newTopicLabel} onClick={() => void handleNewTopic()}>
-            <MessageSquareDiff size={16} />
-          </HeaderIconButton>
-        </Tooltip>
+        <ModelProviderSelect
+          compact
+          layout="inline"
+          shrinkToFit
+          showEffort
+          selection={selection}
+          onChange={handleModelChange}
+        />
       </HeaderActions>
+      <Tooltip placement="bottomRight" title={newTopicLabel} mouseLeaveDelay={0} arrow>
+        <HeaderIconButton
+          className="nodrag"
+          type="text"
+          aria-label={newTopicLabel}
+          onClick={() => void handleNewTopic()}>
+          <MessageSquareDiff size={16} />
+        </HeaderIconButton>
+      </Tooltip>
     </MiniHeader>
   )
 
@@ -899,14 +912,12 @@ const Container = styled.div<{ $draggable: boolean }>`
 `
 
 const MiniHeader = styled.header`
-  display: flex;
-  flex-wrap: nowrap;
+  display: grid;
+  grid-template-columns: minmax(0, 22%) minmax(0, 1fr) 30px;
   flex-shrink: 0;
-  overflow-x: auto;
-  overflow-y: hidden;
+  min-width: 0;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
   min-height: 36px;
   padding: 2px 0 5px;
 `
@@ -916,8 +927,9 @@ const BrandArea = styled.div`
   align-items: center;
   gap: 8px;
   min-width: 0;
-  flex: 0 0 auto;
-  max-width: 160px;
+  overflow: hidden;
+
+  > :first-child { flex-shrink: 0; }
 `
 
 const BrandText = styled.div`
@@ -945,23 +957,19 @@ const BrandSubTitle = styled.div`
 `
 
 const HeaderActions = styled.div`
-  display: inline-flex;
-  flex: 0 0 auto;
+  display: flex;
   align-items: center;
   gap: 6px;
   min-width: 0;
-  -webkit-app-region: none;
-
-  .ant-select {
-    min-width: min(132px, 100%);
-    max-width: 180px;
-  }
+  -webkit-app-region: no-drag;
 `
 
 const HeaderIconButton = styled(Button)`
   display: inline-flex;
   width: 30px;
+  min-width: 30px;
   height: 30px;
+  padding: 0;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;

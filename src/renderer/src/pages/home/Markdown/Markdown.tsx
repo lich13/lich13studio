@@ -1,6 +1,6 @@
 import 'katex/dist/katex.min.css'
-import 'katex/dist/contrib/copy-tex'
-import 'katex/dist/contrib/mhchem'
+import 'katex/contrib/copy-tex'
+import 'katex/contrib/mhchem'
 import 'remark-github-blockquote-alert/alert.css'
 
 import ImageViewer from '@renderer/components/ImageViewer'

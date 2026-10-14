@@ -25,7 +25,7 @@ vi.hoisted(() => {
   })
 })
 
-import { shouldShowStartupWindow } from '../components/startupWindow'
+import { shouldShowStartupWindow, showStartupWindow } from '../components/startupWindow'
 import { getMainProcessSettingUpdates, isMainProcessSettingKey } from './settingsSync'
 
 describe('useSettings startup/background sync helpers', () => {
@@ -86,5 +86,37 @@ describe('useSettings startup/background sync helpers', () => {
 
     await expect(shouldShowStartupWindow({ __TAURI__: { core: { invoke } } })).resolves.toBe(true)
     await expect(shouldShowStartupWindow({})).resolves.toBe(true)
+  })
+
+  it('uses the guarded startup command when native policy allows showing', async () => {
+    const invoke = vi.fn(async (command: string) => (command === 'is_startup_silent' ? false : undefined))
+
+    await expect(showStartupWindow({ __TAURI__: { core: { invoke } } })).resolves.toBeUndefined()
+
+    expect(invoke.mock.calls).toEqual([['is_startup_silent'], ['show_startup_window']])
+    expect(invoke).not.toHaveBeenCalledWith('show_main_window')
+  })
+
+  it('skips the window show command for silent startup', async () => {
+    const invoke = vi.fn(async () => true)
+
+    await showStartupWindow({ __TAURI__: { core: { invoke } } })
+
+    expect(invoke).toHaveBeenCalledTimes(1)
+    expect(invoke).toHaveBeenCalledWith('is_startup_silent')
+    expect(invoke).not.toHaveBeenCalledWith('show_startup_window')
+    expect(invoke).not.toHaveBeenCalledWith('show_main_window')
+  })
+
+  it('falls back to the native startup guard when the silent-state query fails', async () => {
+    const invoke = vi.fn(async (command: string) => {
+      if (command === 'is_startup_silent') throw new Error('unavailable')
+      return undefined
+    })
+
+    await expect(showStartupWindow({ __TAURI__: { core: { invoke } } })).resolves.toBeUndefined()
+
+    expect(invoke.mock.calls).toEqual([['is_startup_silent'], ['show_startup_window']])
+    expect(invoke).not.toHaveBeenCalledWith('show_main_window')
   })
 })

@@ -39,6 +39,7 @@ export default function ModelProviderSelect({
   onChange,
   compact = false,
   layout = 'responsive',
+  shrinkToFit = false,
   filter,
   showEffort = false
 }: {
@@ -46,6 +47,7 @@ export default function ModelProviderSelect({
   onChange: (selection: ModelProviderSelection) => void
   compact?: boolean
   layout?: 'inline' | 'responsive'
+  shrinkToFit?: boolean
   showEffort?: boolean
   filter?: (model: Model) => boolean
 }) {
@@ -128,7 +130,11 @@ export default function ModelProviderSelect({
     onChange(next)
   }
   return (
-    <Controls className="model-provider-selection nodrag" $compact={compact} $inline={layout === 'inline'}>
+    <Controls
+      className="model-provider-selection nodrag"
+      $compact={compact}
+      $inline={layout === 'inline'}
+      $shrink={shrinkToFit}>
       {runtimeCapabilities.android ? (
         <NativeFields className="model-provider-fields">
           <NativeSelect
@@ -166,7 +172,7 @@ export default function ModelProviderSelect({
           </NativeSelect>
         </NativeFields>
       ) : (
-        <Fields className="model-provider-fields" $inline={layout === 'inline'}>
+        <Fields className="model-provider-fields" $inline={layout === 'inline'} $shrink={shrinkToFit}>
           <Select
             aria-label={t('settings.modelTest.modelLabel')}
             title={selection.modelId}
@@ -254,31 +260,34 @@ const ModelOption = styled.div`
   > :last-child { flex-shrink: 0; }
 `
 
-const Controls = styled.div<{ $compact: boolean; $inline: boolean }>`
+const Controls = styled.div<{ $compact: boolean; $inline: boolean; $shrink: boolean }>`
   display: flex;
   flex-direction: ${({ $inline }) => ($inline ? 'row' : 'column')};
   align-items: ${({ $inline }) => ($inline ? 'center' : 'stretch')};
-  flex: ${({ $inline }) => ($inline ? '0 0 auto' : '0 1 auto')};
+  flex: ${({ $inline, $shrink }) => ($shrink ? '1 1 0' : $inline ? '0 0 auto' : '0 1 auto')};
   gap: 6px;
   min-width: 0;
-  width: ${({ $compact, $inline }) => ($inline ? 'auto' : $compact ? 'min(380px, 100%)' : '100%')};
+  width: ${({ $compact, $inline, $shrink }) =>
+    $shrink ? '100%' : $inline ? 'auto' : $compact ? 'min(380px, 100%)' : '100%'};
   -webkit-app-region: no-drag;
   .ant-typography { font-size: 12px; }
   .selection-status { display: inline-flex; align-items: center; flex-shrink: 0; }
 `
-const Fields = styled.div<{ $inline: boolean }>`
+const Fields = styled.div<{ $inline: boolean; $shrink: boolean }>`
   display: flex;
+  flex: ${({ $shrink }) => ($shrink ? '1 1 0' : '0 1 auto')};
   align-items: center;
   flex-wrap: ${({ $inline }) => ($inline ? 'nowrap' : 'wrap')};
   min-width: 0;
   gap: 6px;
   .ant-select {
-    flex: ${({ $inline }) => ($inline ? '0 0 auto' : '1 1 140px')};
+    flex: ${({ $inline, $shrink }) => ($shrink ? '1.2 1 0' : $inline ? '0 0 auto' : '1 1 140px')};
     min-width: 0;
-    width: ${({ $inline }) => ($inline ? 'clamp(140px, 15vw, 220px)' : 'auto')};
+    width: ${({ $inline, $shrink }) => ($shrink ? '0' : $inline ? 'clamp(140px, 15vw, 220px)' : 'auto')};
   }
   .ant-select + .ant-select {
-    width: ${({ $inline }) => ($inline ? 'clamp(120px, 12vw, 170px)' : 'auto')};
+    flex-grow: ${({ $inline, $shrink }) => ($shrink || !$inline ? 1 : 0)};
+    width: ${({ $inline, $shrink }) => ($shrink ? '0' : $inline ? 'clamp(120px, 12vw, 170px)' : 'auto')};
   }
 `
 

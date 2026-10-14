@@ -1,6 +1,6 @@
 [package]
 name = "lich13studio"
-version = "0.1.33"
+version = "0.1.34"
 description = "lich13studio Tauri Lite runtime"
 authors = ["lich13studio"]
 edition = "2021"
@@ -45,6 +45,7 @@ tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6"
 objc2-app-kit = { version = "0.3", default-features = false, features = ["NSApplication", "NSResponder"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["NSAppleEventManager", "NSAppleEventDescriptor", "objc2-core-services"] }
 
 [patch.crates-io]
 # macOS 27 drops tray-icon click forwarding while an NSMenu is permanently
