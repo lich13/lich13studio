@@ -1916,127 +1916,14 @@
     "title": "Externe Gespräche importieren"
   },
   "knowledge": {
-    "add": {
-      "title": "Wissensdatenbank hinzufügen"
-    },
-    "add_directory": "Verzeichnis hinzufügen",
-    "add_file": "Datei hinzufügen",
-    "add_image": "Bild hinzufügen",
-    "add_note": "Notiz hinzufügen",
-    "add_sitemap": "Sitemap",
-    "add_url": "URL hinzufügen",
-    "add_video": "Video hinzufügen",
-    "cancel_index": "Indexierung abbrechen",
-    "chunk_overlap": "Überlappungsgröße",
-    "chunk_overlap_placeholder": "Standardwert (Änderung nicht empfohlen)",
-    "chunk_overlap_tooltip": "Menge an wiederholtem Inhalt zwischen benachbarten Textblöcken, um den Kontext nach der Segmentierung aufrechtzuerhalten und die Gesamtleistung des Modells bei langen Texten zu verbessern",
-    "chunk_size": "Segmentgröße",
-    "chunk_size_change_warning": "Änderungen an Segmentgröße und Überlappungsgröße gelten nur für neu hinzugefügte Inhalte",
-    "chunk_size_placeholder": "Standardwert (Änderung nicht empfohlen)",
-    "chunk_size_too_large": "Segmentgröße darf Modellkontextlimit ({{max_context}}) nicht überschreiten",
-    "chunk_size_tooltip": "Größe jedes Segments beim Aufteilen von Dokumenten, darf das Modellkontextlimit nicht überschreiten",
-    "clear_selection": "Auswahl löschen",
-    "delete": "Löschen",
-    "delete_confirm": "Möchten Sie diese Wissensdatenbank wirklich löschen?",
-    "dimensions": "Embedding-Dimensionen",
-    "dimensions_auto_set": "Embedding-Dimensionen automatisch setzen",
-    "dimensions_default": "Modell verwendet Standard-Embedding-Dimensionen",
-    "dimensions_error_invalid": "Ungültige Embedding-Dimensionen",
-    "dimensions_set_right": "⚠️ Bitte stellen Sie sicher, dass das Modell die festgelegte Embedding-Dimensionsgröße unterstützt",
-    "dimensions_size_placeholder": "Leer lassen, um nicht zu setzen",
-    "dimensions_size_too_large": "Embedding-Dimensionen dürfen Modellkontextlimit ({{max_context}}) nicht überschreiten",
-    "dimensions_size_tooltip": "Embedding-Dimensionsgröße. Höhere Werte verbrauchen mehr Token. Leer lassen, um den dimensions-Parameter nicht zu übergeben.",
-    "directories": "Verzeichnisse",
-    "directory_placeholder": "Bitte Verzeichnispfad eingeben",
-    "document_count": "Anzahl angeforderter Dokumentfragmente",
-    "document_count_default": "Standard",
-    "document_count_help": "Mehr Dokumentfragmente bedeuten mehr Informationen, aber auch höheren Token-Verbrauch",
     "drag_file": "Datei hierher ziehen",
-    "drag_image": "Bild hierher ziehen",
-    "edit_remark": "Bemerkung bearbeiten",
-    "edit_remark_placeholder": "Bitte Bemerkung eingeben",
-    "embedding_model": "Embedding-Modell",
-    "embedding_model_required": "Embedding-Modell für Wissensdatenbank ist erforderlich",
-    "empty": "Keine Wissensdatenbanken vorhanden",
     "error": {
-      "failed_to_create": "Wissensdatenbank erstellen fehlgeschlagen",
-      "failed_to_edit": "Wissensdatenbank bearbeiten fehlgeschlagen",
-      "model_invalid": "Kein Modell ausgewählt",
-      "video": {
-        "local_file_missing": "Videodatei existiert nicht",
-        "youtube_url_missing": "YouTube-Video-Link existiert nicht"
-      }
+      "model_invalid": "Kein Modell ausgewählt"
     },
     "file_hint": "{{file_types}}-Formate werden unterstützt",
-    "image_hint": "{{image_types}}-Formate werden unterstützt",
-    "images": "Bilder",
-    "index_all": "Alle indizieren",
-    "index_cancelled": "Indexierung abgebrochen",
-    "index_started": "Indexierung gestartet",
-    "invalid_url": "Ungültige URL",
-    "migrate": {
-      "button": {
-        "text": "Migrieren"
-      },
-      "confirm": {
-        "content": "Änderungen am Embedding-Modell oder den Dimensionen erkannt. Konfiguration kann nicht direkt gespeichert werden. Migration kann durchgeführt werden. Die Migration löscht die alte Wissensdatenbank nicht, sondern erstellt eine Kopie und verarbeitet alle Einträge neu. Dies kann viele Tokens verbrauchen. Bitte mit Vorsicht fortfahren.",
-        "ok": "Migration starten",
-        "title": "Wissensdatenbank-Migration"
-      },
-      "error": {
-        "failed": "Migration fehlgeschlagen"
-      },
-      "source_dimensions": "Quell-Dimensionen",
-      "source_model": "Quellmodell",
-      "target_dimensions": "Ziel-Dimensionen",
-      "target_model": "Zielmodell"
-    },
-    "model_info": "Modellinformationen",
-    "name_required": "Wissensdatenbankname ist erforderlich",
-    "no_bases": "Keine Wissensdatenbanken vorhanden",
-    "no_match": "Keine Übereinstimmung mit Wissensdatenbankinhalt",
-    "no_provider": "Modellanbieter für Wissensdatenbank fehlt. Diese Wissensdatenbank wird nicht mehr unterstützt. Bitte erstellen Sie eine neue",
-    "not_set": "Nicht gesetzt",
-    "not_support": "Datenbank-Engine der Wissensdatenbank wurde aktualisiert. Diese Wissensdatenbank wird nicht mehr unterstützt. Bitte erstellen Sie eine neue",
-    "notes": "Notizen",
-    "notes_placeholder": "Zusätzliche Informationen oder Kontext für diese Wissensdatenbank eingeben...",
-    "provider_not_found": "Anbieter nicht gefunden",
-    "rename": "Umbenennen",
-    "search": "Wissensdatenbank durchsuchen",
     "search_placeholder": "Suchanfrage eingeben",
-    "settings": {
-      "preprocessing": "Vorverarbeitung",
-      "preprocessing_tooltip": "OCR zur Vorverarbeitung hochgeladener Dateien verwenden",
-      "title": "Wissensdatenbank-Einstellungen"
-    },
-    "sitemap_added": "Erfolgreich hinzugefügt",
-    "sitemap_placeholder": "Bitte Sitemap-URL eingeben",
-    "sitemaps": "Websites",
-    "source": "Quelle",
-    "status": "Status",
-    "status_completed": "Abgeschlossen",
-    "status_embedding_completed": "Embedding abgeschlossen",
-    "status_embedding_failed": "Embedding fehlgeschlagen",
-    "status_failed": "Fehlgeschlagen",
-    "status_new": "Hinzugefügt",
-    "status_pending": "Wartend",
-    "status_preprocess_completed": "Vorverarbeitung abgeschlossen",
-    "status_preprocess_failed": "Vorverarbeitung fehlgeschlagen",
-    "status_processing": "In Bearbeitung",
     "subtitle_file": "Untertiteldatei",
-    "threshold": "Übereinstimmungsschwelle",
-    "threshold_placeholder": "Nicht gesetzt",
-    "threshold_too_large_or_small": "Schwelle darf nicht größer als 1 oder kleiner als 0 sein",
-    "threshold_tooltip": "Misst die Relevanz zwischen Benutzerfrage und Wissensdatenbankinhalt (0-1)",
     "title": "Wissensdatenbank",
-    "topN": "Anzahl zurückgegebener Ergebnisse",
-    "topN_placeholder": "Nicht gesetzt",
-    "topN_too_large_or_small": "Anzahl zurückgegebener Ergebnisse darf nicht größer als 30 oder kleiner als 1 sein",
-    "topN_tooltip": "Anzahl zurückgegebener Übereinstimmungsergebnisse. Höhere Werte bedeuten mehr Ergebnisse, aber auch höheren Token-Verbrauch",
-    "url_added": "URL hinzugefügt",
-    "url_placeholder": "Bitte URL eingeben, mehrere URLs mit Enter trennen",
-    "urls": "URLs",
-    "videos": "Videos",
     "videos_file": "Videodatei"
   },
   "languages": {
@@ -2189,9 +2076,7 @@
     },
     "api": {
       "check": {
-        "model": {
-          "title": "Bitte zu testendes Modell auswählen"
-        }
+        "model": {}
       },
       "connection": {
         "failed": "Verbindung fehlgeschlagen",
@@ -4960,8 +4845,6 @@
       "import_invalid": "[to be translated]:Import failed. Use a valid Responses or Anthropic provider link.",
       "import_success": "[to be translated]:Provider imported.",
       "misc": "Sonstige",
-      "no_models_for_check": "Keine testbaren Modelle (z.B. Chat-Modelle)",
-      "not_checked": "Nicht getestet",
       "notes": {
         "markdown_editor_default_value": "Vorschau-Bereich",
         "placeholder": "Bitte Markdown-Format-Inhalt eingeben...",
@@ -5214,51 +5097,6 @@
         "time": "Themenzeit anzeigen"
       }
     },
-    "translate": {
-      "custom": {
-        "delete": {
-          "description": "Wirklich löschen?",
-          "title": "Benutzerdefinierte Sprache löschen"
-        },
-        "error": {
-          "add": "Hinzufügen fehlgeschlagen",
-          "delete": "Löschen fehlgeschlagen",
-          "langCode": {
-            "builtin": "Sprache ist bereits integriert",
-            "empty": "Sprachcode ist leer",
-            "exists": "Sprache ist bereits vorhanden",
-            "invalid": "Ungültiger Sprachcode"
-          },
-          "update": "Aktualisierung fehlgeschlagen",
-          "value": {
-            "empty": "Sprachname darf nicht leer sein",
-            "too_long": "Sprachname zu lang"
-          }
-        },
-        "langCode": {
-          "help": "Format: [Sprache+Region], z. B. de-de",
-          "label": "Sprachcode",
-          "placeholder": "de-de"
-        },
-        "success": {
-          "add": "Erfolgreich hinzugefügt",
-          "delete": "Erfolgreich gelöscht",
-          "update": "Erfolgreich aktualisiert"
-        },
-        "table": {
-          "action": {
-            "title": "Aktionen"
-          }
-        },
-        "value": {
-          "help": "1-32 Zeichen",
-          "label": "Sprachname",
-          "placeholder": "Chinesisch"
-        }
-      },
-      "prompt": "Übersetzungs-Prompt",
-      "title": "Übersetzungseinstellungen"
-    },
     "tray": {
       "keep_background_on_close": "[to be translated]:Keep Running in Background on Close",
       "onclose": "Bei Schließen ins Tray minimieren",
@@ -5310,135 +5148,10 @@
     "traceWindow": "Aufrufkette-Fenster"
   },
   "translate": {
-    "alter_language": "Alternative Sprache",
-    "any": {
-      "language": "Beliebige Sprache"
-    },
-    "button": {
-      "translate": "Übersetzen"
-    },
-    "close": "Schließen",
-    "closed": "Übersetzung deaktiviert",
-    "complete": "Übersetzung abgeschlossen",
-    "confirm": {
-      "content": "Übersetzung überschreibt Original. Fortfahren?",
-      "title": "Übersetzung bestätigen"
-    },
-    "copied": "Übersetzungsinhalt wurde kopiert",
-    "custom": {
-      "label": "Benutzerdefinierte Sprache"
-    },
-    "detect": {
-      "method": {
-        "algo": {
-          "label": "Algorithmus",
-          "tip": "Verwenden Sie franc für die Spracherkennung"
-        },
-        "auto": {
-          "label": "Automatisch",
-          "tip": "Automatisch das geeignete Erkennungsverfahren auswählen"
-        },
-        "label": "Automatische Erkennungsmethode",
-        "llm": {
-          "tip": "Verwenden Sie das Schnellmodell für die Spracherkennung, was wenige Token kostet."
-        },
-        "placeholder": "Automatische Erkennungsmethode auswählen",
-        "tip": "Verwenden Sie die Methode, die beim automatischen Erkennen der Eingabe-Sprache verwendet wird"
-      }
-    },
-    "detected": {
-      "language": "Automatische Erkennung"
-    },
-    "detected_source": "Erfasst",
-    "detecting": "Erkenne...",
-    "empty": "Übersetzungsinhalt leer",
     "error": {
-      "chat_qwen_mt": "Qwen MT-Modell kann nicht in der Konversation verwendet werden, bitte gehen Sie zur Übersetzungsseite",
-      "detect": {
-        "qwen_mt": "QwenMT-Modell kann nicht für die Spracherkennung verwendet werden",
-        "unknown": "Unbekannte Sprache erkannt",
-        "update_setting": "Einstellung fehlgeschlagen"
-      },
-      "empty": "Übersetzungsergebnis ist leer",
-      "failed": "Übersetzung fehlgeschlagen",
-      "invalid_source": "Ungültige Quellsprache",
-      "not_configured": "Übersetzungsmodell nicht konfiguriert",
-      "not_supported": "Sprache {{language}} wird nicht unterstützt",
-      "unknown": "Unbekannter Fehler während Übersetzung"
+      "not_configured": "Übersetzungsmodell nicht konfiguriert"
     },
-    "exchange": {
-      "label": "Quell- und Zielsprache tauschen"
-    },
-    "files": {
-      "drag_text": "Hierher ziehen und ablegen",
-      "error": {
-        "check_type": "Fehler beim Überprüfen des Dateityps",
-        "multiple": "Mehrfach-Upload nicht erlaubt",
-        "too_large": "Datei zu groß",
-        "unknown": "Dateiinhalt lesen fehlgeschlagen"
-      },
-      "reading": "Dateiinhalt wird gelesen..."
-    },
-    "history": {
-      "clear": "Verlauf löschen",
-      "clear_description": "Verlauf löschen entfernt alle Übersetzungshistorien. Fortfahren?",
-      "delete": "Übersetzungshistorie löschen",
-      "empty": "Keine Übersetzungshistorie",
-      "error": {
-        "delete": "Löschen fehlgeschlagen",
-        "save": "Speichern der Übersetzungshistorie fehlgeschlagen"
-      },
-      "search": {
-        "placeholder": "Übersetzungshistorie durchsuchen"
-      },
-      "title": "Übersetzungsverlauf"
-    },
-    "info": {
-      "aborted": "Übersetzung abgebrochen"
-    },
-    "input": {
-      "placeholder": "Text, Textdatei, Bild (OCR unterstützt) können eingefügt oder gezogen werden"
-    },
-    "language": {
-      "not_pair": "Quellsprache unterscheidet sich von eingestellter Sprache",
-      "same": "Quell- und Zielsprache sind identisch"
-    },
-    "language_settings": "Spracheinstellungen",
-    "menu": {
-      "description": "Inhalt des aktuellen Eingabefelds übersetzen"
-    },
-    "not": {
-      "found": "Übersetzungsinhalt nicht gefunden"
-    },
-    "output": {
-      "placeholder": "Übersetzen"
-    },
-    "preferred_target": "Bevorzugtes Ziel",
-    "processing": "Wird übersetzt...",
-    "settings": {
-      "autoCopy": "Nach Übersetzung automatisch kopieren",
-      "bidirectional": "Bidirektionale Übersetzungseinstellungen",
-      "bidirectional_tip": "Nach Aktivierung nur bidirektionale Übersetzung zwischen Quell- und Zielsprache unterstützt",
-      "model": "Modelleinstellungen",
-      "model_desc": "Verwendete Modelle für die Übersetzung",
-      "model_placeholder": "Übersetzungsmodell auswählen",
-      "no_model_warning": "Kein Übersetzungsmodell ausgewählt",
-      "preview": "Markdown-Vorschau",
-      "scroll_sync": "Scroll-Synchronisierungs-Einstellungen",
-      "title": "Übersetzungseinstellungen"
-    },
-    "stop": "Übersetzung stoppen",
-    "success": {
-      "custom": {
-        "delete": "Erfolgreich gelöscht",
-        "update": "Erfolgreich aktualisiert"
-      }
-    },
-    "target_language": "Zielsprache",
-    "title": "Übersetzen",
-    "tooltip": {
-      "newline": "Zeilenumbruch"
-    }
+    "title": "Übersetzen"
   },
   "tray": {
     "check_update": "[to be translated]:Check for Updates",

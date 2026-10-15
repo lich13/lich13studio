@@ -1916,127 +1916,14 @@
     "title": "Importă conversații externe"
   },
   "knowledge": {
-    "add": {
-      "title": "Adaugă bază de cunoștințe"
-    },
-    "add_directory": "Adaugă director",
-    "add_file": "Adaugă fișier",
-    "add_image": "Adaugă imagine",
-    "add_note": "Adaugă notă",
-    "add_sitemap": "Hartă site",
-    "add_url": "Adaugă URL",
-    "add_video": "Adaugă video",
-    "cancel_index": "Anulează indexarea",
-    "chunk_overlap": "Suprapunere fragmente",
-    "chunk_overlap_placeholder": "Implicit (nu se recomandă modificarea)",
-    "chunk_overlap_tooltip": "Cantitatea de conținut duplicat între fragmentele adiacente, asigurând că fragmentele sunt încă legate contextual, îmbunătățind efectul general al procesării textului lung",
-    "chunk_size": "Dimensiune fragment",
-    "chunk_size_change_warning": "Modificările dimensiunii fragmentului și ale suprapunerii se aplică doar conținutului nou",
-    "chunk_size_placeholder": "Implicit (nu se recomandă modificarea)",
-    "chunk_size_too_large": "Dimensiunea fragmentului nu poate depăși limita de context a modelului ({{max_context}})",
-    "chunk_size_tooltip": "Împarte documentele în fragmente; dimensiunea fiecărui fragment nu trebuie să depășească limita de context a modelului",
-    "clear_selection": "Șterge selecția",
-    "delete": "Șterge",
-    "delete_confirm": "Ești sigur că vrei să ștergi această bază de cunoștințe?",
-    "dimensions": "Dimensiune embedding",
-    "dimensions_auto_set": "Setează automat dimensiunile embedding",
-    "dimensions_default": "Modelul va folosi dimensiunile implicite de embedding",
-    "dimensions_error_invalid": "Dimensiune embedding invalidă",
-    "dimensions_set_right": "⚠️ Te rugăm să te asiguri că modelul acceptă dimensiunea embedding setată",
-    "dimensions_size_placeholder": "Lasă gol pentru a nu transmite dimensiuni",
-    "dimensions_size_too_large": "Dimensiunea embedding nu poate depăși limita de context a modelului ({{max_context}}).",
-    "dimensions_size_tooltip": "Dimensiunea embedding; cu cât valoarea este mai mare, cu atât se vor consuma mai mulți tokeni. Lasă gol pentru a nu transmite parametrul dimensions.",
-    "directories": "Directoare",
-    "directory_placeholder": "Introdu calea directorului",
-    "document_count": "Fragmente de document solicitate",
-    "document_count_default": "Implicit",
-    "document_count_help": "Cu cât sunt solicitate mai multe fragmente de document, cu atât sunt incluse mai multe informații, dar se consumă mai mulți tokeni",
     "drag_file": "Trage fișierul aici",
-    "drag_image": "Trage imaginea aici",
-    "edit_remark": "Editează observația",
-    "edit_remark_placeholder": "Te rugăm să introduci conținutul observației",
-    "embedding_model": "Model embedding",
-    "embedding_model_required": "Modelul de embedding pentru baza de cunoștințe este necesar",
-    "empty": "Nu a fost găsită nicio bază de cunoștințe",
     "error": {
-      "failed_to_create": "Crearea bazei de cunoștințe a eșuat",
-      "failed_to_edit": "Editarea bazei de cunoștințe a eșuat",
-      "model_invalid": "Niciun model selectat",
-      "video": {
-        "local_file_missing": "Fișierul video nu a fost găsit",
-        "youtube_url_missing": "URL-ul video YouTube nu a fost găsit"
-      }
+      "model_invalid": "Niciun model selectat"
     },
     "file_hint": "Acceptă {{file_types}}",
-    "image_hint": "Acceptă {{image_types}}",
-    "images": "Imagini",
-    "index_all": "Indexează tot",
-    "index_cancelled": "Indexare anulată",
-    "index_started": "Indexare pornită",
-    "invalid_url": "URL invalid",
-    "migrate": {
-      "button": {
-        "text": "Migrează"
-      },
-      "confirm": {
-        "content": "S-au detectat modificări în modelul sau dimensiunea de embedding; configurarea nu poate fi salvată direct. Migrarea bazei de cunoștințe nu va șterge baza existentă, ci va crea o copie și apoi va reprocesa toate intrările, ceea ce poate consuma un număr mare de tokeni. Te rugăm să procedezi cu precauție.",
-        "ok": "Începe migrarea",
-        "title": "Migrare bază de cunoștințe"
-      },
-      "error": {
-        "failed": "Migrarea a eșuat"
-      },
-      "source_dimensions": "Dimensiuni sursă",
-      "source_model": "Model sursă",
-      "target_dimensions": "Dimensiuni țintă",
-      "target_model": "Model țintă"
-    },
-    "model_info": "Informații model",
-    "name_required": "Numele bazei de cunoștințe este obligatoriu",
-    "no_bases": "Nu există baze de cunoștințe disponibile",
-    "no_match": "Nu s-a găsit conținut potrivit în baza de cunoștințe.",
-    "no_provider": "Furnizorul modelului pentru baza de cunoștințe nu este setat, baza de cunoștințe nu va mai fi acceptată; te rugăm să creezi o nouă bază de cunoștințe",
-    "not_set": "Nesetat",
-    "not_support": "Motorul bazei de date de cunoștințe a fost actualizat, baza de cunoștințe nu va mai fi acceptată; te rugăm să creezi o nouă bază de cunoștințe",
-    "notes": "Note",
-    "notes_placeholder": "Introdu informații suplimentare sau context pentru această bază de cunoștințe...",
-    "provider_not_found": "Furnizorul nu a fost găsit",
-    "rename": "Redenumește",
-    "search": "Caută în baza de cunoștințe",
     "search_placeholder": "Introdu text pentru căutare",
-    "settings": {
-      "preprocessing": "Preprocesare",
-      "preprocessing_tooltip": "Preprocesează fișierele încărcate",
-      "title": "Setări bază de cunoștințe"
-    },
-    "sitemap_added": "Adăugat cu succes",
-    "sitemap_placeholder": "Introdu URL-ul sitemap-ului",
-    "sitemaps": "Site-uri web",
-    "source": "Sursă",
-    "status": "Stare",
-    "status_completed": "Finalizat",
-    "status_embedding_completed": "Embedding finalizat",
-    "status_embedding_failed": "Embedding eșuat",
-    "status_failed": "Eșuat",
-    "status_new": "Adăugat",
-    "status_pending": "În așteptare",
-    "status_preprocess_completed": "Preprocesare finalizată",
-    "status_preprocess_failed": "Preprocesare eșuată",
-    "status_processing": "În procesare",
     "subtitle_file": "fișier subtitrare",
-    "threshold": "Prag de potrivire",
-    "threshold_placeholder": "Nesetat",
-    "threshold_too_large_or_small": "Pragul nu poate fi mai mare de 1 sau mai mic de 0",
-    "threshold_tooltip": "Folosit pentru a evalua relevanța dintre întrebarea utilizatorului și conținutul din baza de cunoștințe (0-1)",
     "title": "Bază de cunoștințe",
-    "topN": "Număr rezultate returnate",
-    "topN_placeholder": "Nesetat",
-    "topN_too_large_or_small": "Numărul de rezultate returnate nu poate fi mai mare de 30 sau mai mic de 1.",
-    "topN_tooltip": "Numărul de rezultate potrivite returnate; cu cât valoarea este mai mare, cu atât mai multe rezultate, dar și un consum mai mare de tokeni.",
-    "url_added": "URL adăugat",
-    "url_placeholder": "Introdu URL-ul; separă mai multe URL-uri prin Enter",
-    "urls": "URL-uri",
-    "videos": "video",
     "videos_file": "fișier video"
   },
   "languages": {
@@ -2189,9 +2076,7 @@
     },
     "api": {
       "check": {
-        "model": {
-          "title": "Selectează modelul de utilizat pentru detectare"
-        }
+        "model": {}
       },
       "connection": {
         "failed": "Conexiune eșuată",
@@ -4960,8 +4845,6 @@
       "import_invalid": "[to be translated]:Import failed. Use a valid Responses or Anthropic provider link.",
       "import_success": "[to be translated]:Provider imported.",
       "misc": "Altele",
-      "no_models_for_check": "Nu există modele disponibile pentru verificare (de ex. modele chat)",
-      "not_checked": "Neverificat",
       "notes": {
         "markdown_editor_default_value": "Zonă previzualizare",
         "placeholder": "Introdu conținut Markdown...",
@@ -5214,51 +5097,6 @@
         "time": "Afișează ora subiectului"
       }
     },
-    "translate": {
-      "custom": {
-        "delete": {
-          "description": "Ești sigur că vrei să ștergi această limbă?",
-          "title": "Șterge limba personalizată"
-        },
-        "error": {
-          "add": "Adăugarea a eșuat",
-          "delete": "Ștergerea a eșuat",
-          "langCode": {
-            "builtin": "Limbă deja integrată",
-            "empty": "Codul limbii lipsește",
-            "exists": "Limba există deja",
-            "invalid": "Cod limbă invalid"
-          },
-          "update": "Actualizarea a eșuat",
-          "value": {
-            "empty": "Numele limbii este obligatoriu",
-            "too_long": "Numele limbii este prea lung"
-          }
-        },
-        "langCode": {
-          "help": "Format [limbă+regiune], [2-3 litere mici]-[2-3 litere mici]",
-          "label": "Cod limbă",
-          "placeholder": "en-us"
-        },
-        "success": {
-          "add": "Adăugată cu succes",
-          "delete": "Ștearsă cu succes",
-          "update": "Actualizată cu succes"
-        },
-        "table": {
-          "action": {
-            "title": "Acțiuni"
-          }
-        },
-        "value": {
-          "help": "1~32 caractere",
-          "label": "Nume limbă",
-          "placeholder": "Engleză"
-        }
-      },
-      "prompt": "Prompt traducere",
-      "title": "Setări traducere"
-    },
     "tray": {
       "keep_background_on_close": "[to be translated]:Keep Running in Background on Close",
       "onclose": "Minimizează în zona de notificare la închidere",
@@ -5310,135 +5148,10 @@
     "traceWindow": "Fereastră lanț de apelare"
   },
   "translate": {
-    "alter_language": "Limbă alternativă",
-    "any": {
-      "language": "Orice limbă"
-    },
-    "button": {
-      "translate": "Tradu"
-    },
-    "close": "Închide",
-    "closed": "Traducere închisă",
-    "complete": "Traducere finalizată",
-    "confirm": {
-      "content": "Traducerea va înlocui textul original, continui?",
-      "title": "Confirmare traducere"
-    },
-    "copied": "Conținutul traducerii copiat",
-    "custom": {
-      "label": "Limbă personalizată"
-    },
-    "detect": {
-      "method": {
-        "algo": {
-          "label": "Algoritm",
-          "tip": "Folosește biblioteca franc pentru detectarea limbii"
-        },
-        "auto": {
-          "label": "Automat",
-          "tip": "Selectează automat metoda de detectare potrivită"
-        },
-        "label": "Metodă de detectare automată",
-        "llm": {
-          "tip": "Folosirea modelului rapid pentru detectarea limbii consumă mai puțini tokeni."
-        },
-        "placeholder": "Selectează metoda de detectare automată",
-        "tip": "Metoda folosită la detectarea automată a limbii de intrare"
-      }
-    },
-    "detected": {
-      "language": "Detectare automată"
-    },
-    "detected_source": "Detectat",
-    "detecting": "Se detectează...",
-    "empty": "Conținutul traducerii este gol",
     "error": {
-      "chat_qwen_mt": "Modelul Qwen MT nu poate fi folosit în chat. Te rugăm să mergi la pagina de traducere.",
-      "detect": {
-        "qwen_mt": "Modelul QwenMT nu poate fi folosit pentru detectarea limbii",
-        "unknown": "Limbă necunoscută detectată",
-        "update_setting": "Setarea a eșuat"
-      },
-      "empty": "Rezultatul traducerii este un conținut gol",
-      "failed": "Traducerea a eșuat",
-      "invalid_source": "Limbă sursă invalidă",
-      "not_configured": "Modelul de traducere nu este configurat",
-      "not_supported": "Limbă neacceptată {{language}}",
-      "unknown": "A apărut o eroare necunoscută în timpul traducerii"
+      "not_configured": "Modelul de traducere nu este configurat"
     },
-    "exchange": {
-      "label": "Schimbă limbile sursă și țintă"
-    },
-    "files": {
-      "drag_text": "Trage aici",
-      "error": {
-        "check_type": "A apărut o eroare la verificarea tipului de fișier",
-        "multiple": "Încărcarea mai multor fișiere nu este permisă",
-        "too_large": "Fișier prea mare",
-        "unknown": "Citirea conținutului fișierului a eșuat"
-      },
-      "reading": "Se citește conținutul fișierului..."
-    },
-    "history": {
-      "clear": "Golește istoricul",
-      "clear_description": "Golirea istoricului va șterge tot istoricul traducerilor, continui?",
-      "delete": "Șterge istoricul traducerilor",
-      "empty": "Niciun istoric de traducere",
-      "error": {
-        "delete": "Ștergerea a eșuat",
-        "save": "Salvarea istoricului traducerilor a eșuat"
-      },
-      "search": {
-        "placeholder": "Caută în istoricul traducerilor"
-      },
-      "title": "Istoric traduceri"
-    },
-    "info": {
-      "aborted": "Traducere anulată"
-    },
-    "input": {
-      "placeholder": "Textul, fișierele text sau imaginile (cu suport OCR) pot fi lipite sau trase aici"
-    },
-    "language": {
-      "not_pair": "Limba sursă este diferită de limba setată",
-      "same": "Limbile sursă și țintă sunt aceleași"
-    },
-    "language_settings": "Setări limbă",
-    "menu": {
-      "description": "Tradu conținutul casetei de intrare curente"
-    },
-    "not": {
-      "found": "Conținutul traducerii nu a fost găsit"
-    },
-    "output": {
-      "placeholder": "Traducere"
-    },
-    "preferred_target": "Țintă Preferată",
-    "processing": "Traducere în curs...",
-    "settings": {
-      "autoCopy": "Copiază după traducere ",
-      "bidirectional": "Setări traducere bidirecțională",
-      "bidirectional_tip": "Când este activat, este acceptată doar traducerea bidirecțională între limbile sursă și țintă",
-      "model": "Setări model",
-      "model_desc": "Model folosit pentru serviciul de traducere",
-      "model_placeholder": "Selectează modelul de traducere",
-      "no_model_warning": "Niciun model de traducere selectat",
-      "preview": "Previzualizare Markdown",
-      "scroll_sync": "Setări sincronizare derulare",
-      "title": "Setări traducere"
-    },
-    "stop": "Oprește traducerea",
-    "success": {
-      "custom": {
-        "delete": "Șters cu succes",
-        "update": "Actualizare reușită"
-      }
-    },
-    "target_language": "Limbă țintă",
-    "title": "Traducere",
-    "tooltip": {
-      "newline": "Linie nouă"
-    }
+    "title": "Traducere"
   },
   "tray": {
     "check_update": "[to be translated]:Check for Updates",

@@ -1916,127 +1916,14 @@
     "title": "外部会話をインポート"
   },
   "knowledge": {
-    "add": {
-      "title": "ナレッジベースを追加"
-    },
-    "add_directory": "ディレクトリを追加",
-    "add_file": "ファイルを追加",
-    "add_image": "画像を追加",
-    "add_note": "ノートを追加",
-    "add_sitemap": "サイトマップを追加",
-    "add_url": "URLを追加",
-    "add_video": "動画を追加",
-    "cancel_index": "インデックスをキャンセル",
-    "chunk_overlap": "チャンクの重なり",
-    "chunk_overlap_placeholder": "デフォルト（変更しないでください）",
-    "chunk_overlap_tooltip": "隣接するチャンク間の重複内容量。チャンク間のコンテキスト関連性を確保し、長文テキストの処理効果を向上させます。",
-    "chunk_size": "チャンクサイズ",
-    "chunk_size_change_warning": "チャンクサイズと重複サイズの変更は、新しく追加された内容にのみ適用されます",
-    "chunk_size_placeholder": "デフォルト（変更しないでください）",
-    "chunk_size_too_large": "チャンクサイズはモデルのコンテキスト制限を超えることはできません（{{max_context}}）",
-    "chunk_size_tooltip": "ドキュメントを分割し、各チャンクのサイズ。モデルのコンテキスト制限を超えないようにしてください。",
-    "clear_selection": "選択をクリア",
-    "delete": "削除",
-    "delete_confirm": "このナレッジベースを削除してもよろしいですか？",
-    "dimensions": "埋め込み次元",
-    "dimensions_auto_set": "埋め込み次元を自動設定",
-    "dimensions_default": "モデルはデフォルトの埋め込み次元を使用します",
-    "dimensions_error_invalid": "無効な埋め込み次元",
-    "dimensions_set_right": "⚠️ モデルが設定した埋め込み次元のサイズをサポートしていることを確認してください",
-    "dimensions_size_placeholder": "次元数を設定しない場合は空欄のままにしてください",
-    "dimensions_size_too_large": "埋め込み次元はモデルのコンテキスト制限（{{max_context}}）を超えてはなりません。",
-    "dimensions_size_tooltip": "埋め込み次元のサイズは、数値が大きいほど消費するトークンも増えます。空欄の場合はdimensionsパラメータを渡しません。",
-    "directories": "ディレクトリ",
-    "directory_placeholder": "ディレクトリパスを入力",
-    "document_count": "要求されたドキュメント分段数",
-    "document_count_default": "デフォルト",
-    "document_count_help": "要求されたドキュメント分段数が多いほど、付随する情報が多くなりますが、トークンの消費量も増加します",
     "drag_file": "ファイルをここにドラッグ",
-    "drag_image": "画像をここにドラッグ",
-    "edit_remark": "備考を編集",
-    "edit_remark_placeholder": "備考内容を入力してください",
-    "embedding_model": "埋め込みモデル",
-    "embedding_model_required": "ナレッジベース埋め込みモデルが必要です",
-    "empty": "ナレッジベースが見つかりません",
     "error": {
-      "failed_to_create": "ナレッジベースの作成に失敗しました",
-      "failed_to_edit": "ナレッジベースの編集に失敗しました",
-      "model_invalid": "モデルが選択されていません",
-      "video": {
-        "local_file_missing": "動画ファイルが見つかりません",
-        "youtube_url_missing": "YouTube動画のURLが見つかりません"
-      }
+      "model_invalid": "モデルが選択されていません"
     },
     "file_hint": "{{file_types}} 形式をサポート",
-    "image_hint": "{{image_types}} 形式に対応しています",
-    "images": "画像",
-    "index_all": "すべてをインデックス",
-    "index_cancelled": "インデックスがキャンセルされました",
-    "index_started": "インデックスを開始",
-    "invalid_url": "無効なURL",
-    "migrate": {
-      "button": {
-        "text": "移行"
-      },
-      "confirm": {
-        "content": "埋め込みモデルまたは次元に変更が検出されました。設定を直接保存することはできませんが、移行を実行できます。ナレッジベースの移行では古いナレッジベースは削除されず、代わりにコピーを作成してすべてのエントリを再処理します。大量のトークンを消費する可能性があるため、慎重に操作してください。",
-        "ok": "移行を開始",
-        "title": "ナレッジベースの移行"
-      },
-      "error": {
-        "failed": "移行が失敗しました"
-      },
-      "source_dimensions": "ソース次元",
-      "source_model": "ソースモデル",
-      "target_dimensions": "ターゲット次元",
-      "target_model": "ターゲットモデル"
-    },
-    "model_info": "モデル情報",
-    "name_required": "ナレッジベース名は必須です",
-    "no_bases": "ナレッジベースがありません",
-    "no_match": "知識ベースの内容が見つかりませんでした。",
-    "no_provider": "ナレッジベースモデルプロバイダーが設定されていません。ナレッジベースはもうサポートされていません。新しいナレッジベースを作成してください",
-    "not_set": "未設定",
-    "not_support": "ナレッジベースデータベースエンジンが更新されました。このナレッジベースはもうサポートされていません。新しいナレッジベースを作成してください",
-    "notes": "ノート",
-    "notes_placeholder": "このナレッジベースの追加情報やコンテキストを入力...",
-    "provider_not_found": "プロバイダーが見つかりません",
-    "rename": "名前を変更",
-    "search": "ナレッジベースを検索",
     "search_placeholder": "検索するテキストを入力",
-    "settings": {
-      "preprocessing": "預処理",
-      "preprocessing_tooltip": "アップロードされたファイルの預処理",
-      "title": "ナレッジベース設定"
-    },
-    "sitemap_added": "追加成功",
-    "sitemap_placeholder": "サイトマップURLを入力",
-    "sitemaps": "サイトマップ",
-    "source": "ソース",
-    "status": "状態",
-    "status_completed": "完了",
-    "status_embedding_completed": "埋め込み完了",
-    "status_embedding_failed": "埋め込み失敗",
-    "status_failed": "失敗",
-    "status_new": "追加済み",
-    "status_pending": "保留中",
-    "status_preprocess_completed": "前処理完了",
-    "status_preprocess_failed": "前処理に失敗しました",
-    "status_processing": "処理中",
     "subtitle_file": "字幕ファイル",
-    "threshold": "マッチング度閾値",
-    "threshold_placeholder": "未設置",
-    "threshold_too_large_or_small": "しきい値は0より大きく1より小さい必要があります",
-    "threshold_tooltip": "ユーザーの質問と知識ベースの内容の関連性を評価するためのしきい値（0-1）",
     "title": "ナレッジベース",
-    "topN": "返却される結果の数",
-    "topN_placeholder": "未設定",
-    "topN_too_large_or_small": "結果の数は30より大きくてはならず、1より小さくてはなりません。",
-    "topN_tooltip": "返されるマッチ結果の数は、数値が大きいほどマッチ結果が多くなりますが、消費されるトークンも増えます。",
-    "url_added": "URLが追加されました",
-    "url_placeholder": "URLを入力, 複数のURLはEnterで区切る",
-    "urls": "URL",
-    "videos": "動画",
     "videos_file": "動画ファイル"
   },
   "languages": {
@@ -2189,9 +2076,7 @@
     },
     "api": {
       "check": {
-        "model": {
-          "title": "検出に使用するモデルを選択してください"
-        }
+        "model": {}
       },
       "connection": {
         "failed": "接続に失敗しました",
@@ -4960,8 +4845,6 @@
       "import_invalid": "[to be translated]:Import failed. Use a valid Responses or Anthropic provider link.",
       "import_success": "[to be translated]:Provider imported.",
       "misc": "その他",
-      "no_models_for_check": "チェックするモデルがありません（例：会話モデル）",
-      "not_checked": "未チェック",
       "notes": {
         "markdown_editor_default_value": "プレビュー領域",
         "placeholder": "Markdown形式の内容を入力してください...",
@@ -5214,51 +5097,6 @@
         "time": "トピックの時間を表示"
       }
     },
-    "translate": {
-      "custom": {
-        "delete": {
-          "description": "本当に削除しますか？",
-          "title": "カスタム言語を削除する"
-        },
-        "error": {
-          "add": "追加に失敗しました",
-          "delete": "削除に失敗しました",
-          "langCode": {
-            "builtin": "その言語はすでに組み込みサポートされています",
-            "empty": "言語コードが空です",
-            "exists": "該言語は既に存在します",
-            "invalid": "無効な言語コード"
-          },
-          "update": "更新に失敗しました",
-          "value": {
-            "empty": "言語名は空にできません",
-            "too_long": "言語名が長すぎます"
-          }
-        },
-        "langCode": {
-          "help": "[2~3文字の小文字]-[2~3文字の小文字]の形式の[言語+地域]",
-          "label": "言語コード",
-          "placeholder": "ja-jp"
-        },
-        "success": {
-          "add": "追加成功",
-          "delete": "削除が成功しました",
-          "update": "更新成功"
-        },
-        "table": {
-          "action": {
-            "title": "操作"
-          }
-        },
-        "value": {
-          "help": "1〜32文字",
-          "label": "言語名",
-          "placeholder": "日本語"
-        }
-      },
-      "prompt": "翻訳プロンプト",
-      "title": "翻訳設定"
-    },
     "tray": {
       "keep_background_on_close": "[to be translated]:Keep Running in Background on Close",
       "onclose": "閉じるときにトレイに最小化",
@@ -5310,135 +5148,10 @@
     "traceWindow": "呼び出しチェーンウィンドウ"
   },
   "translate": {
-    "alter_language": "備用言語",
-    "any": {
-      "language": "任意の言語"
-    },
-    "button": {
-      "translate": "翻訳"
-    },
-    "close": "閉じる",
-    "closed": "翻訳は閉じられました",
-    "complete": "翻訳完了",
-    "confirm": {
-      "content": "翻訳すると元のテキストが上書きされます。続行しますか？",
-      "title": "翻訳確認"
-    },
-    "copied": "翻訳内容がコピーされました",
-    "custom": {
-      "label": "カスタム言語"
-    },
-    "detect": {
-      "method": {
-        "algo": {
-          "label": "アルゴリズム",
-          "tip": "francを使用して言語検出を行う"
-        },
-        "auto": {
-          "label": "自動",
-          "tip": "適切な検出方法を自動的に選択します"
-        },
-        "label": "自動検出方法",
-        "llm": {
-          "tip": "高速モデルを使用して言語検出を行い、少量のトークンを消費します。"
-        },
-        "placeholder": "自動検出方法を選択してください",
-        "tip": "入力言語を自動検出する際に使用する方法"
-      }
-    },
-    "detected": {
-      "language": "自動検出"
-    },
-    "detected_source": "検出されました",
-    "detecting": "検出中...",
-    "empty": "翻訳内容が空です",
     "error": {
-      "chat_qwen_mt": "Qwen MT モデルは対話で使用できません。翻訳ページに移動してください",
-      "detect": {
-        "qwen_mt": "QwenMTモデルは言語検出に使用できません",
-        "unknown": "検出された言語は不明です",
-        "update_setting": "設定に失敗しました"
-      },
-      "empty": "翻訳結果が空の内容です",
-      "failed": "翻訳に失敗しました",
-      "invalid_source": "無効なソース言語",
-      "not_configured": "翻訳モデルが設定されていません",
-      "not_supported": "サポートされていない言語 {{language}}",
-      "unknown": "翻訳中に不明なエラーが発生しました"
+      "not_configured": "翻訳モデルが設定されていません"
     },
-    "exchange": {
-      "label": "入力言語と出力言語を入れ替える"
-    },
-    "files": {
-      "drag_text": "ここにドラッグ＆ドロップしてください",
-      "error": {
-        "check_type": "ファイルタイプの確認中にエラーが発生しました",
-        "multiple": "複数のファイルのアップロードは許可されていません",
-        "too_large": "ファイルが大きすぎます",
-        "unknown": "ファイルの内容を読み取るのに失敗しました"
-      },
-      "reading": "ファイルの内容を読み込んでいます..."
-    },
-    "history": {
-      "clear": "履歴をクリア",
-      "clear_description": "履歴をクリアすると、すべての翻訳履歴が削除されます。続行しますか？",
-      "delete": "翻訳履歴を削除する",
-      "empty": "翻訳履歴がありません",
-      "error": {
-        "delete": "削除に失敗しました",
-        "save": "保存翻訳履歴に失敗しました"
-      },
-      "search": {
-        "placeholder": "翻訳履歴を検索する"
-      },
-      "title": "翻訳履歴"
-    },
-    "info": {
-      "aborted": "翻訳中止"
-    },
-    "input": {
-      "placeholder": "テキスト、テキストファイル、画像（OCR対応）を貼り付けたり、ドラッグして挿入したりできます"
-    },
-    "language": {
-      "not_pair": "ソース言語が設定された言語と異なります",
-      "same": "ソース言語と目標言語が同じです"
-    },
-    "language_settings": "言語設定",
-    "menu": {
-      "description": "對當前輸入框內容進行翻譯"
-    },
-    "not": {
-      "found": "翻訳内容が見つかりません"
-    },
-    "output": {
-      "placeholder": "翻訳"
-    },
-    "preferred_target": "優先ターゲット",
-    "processing": "翻訳中...",
-    "settings": {
-      "autoCopy": "翻訳完了後、自動的にコピー",
-      "bidirectional": "双方向翻訳設定",
-      "bidirectional_tip": "有効にすると、ソース言語と目標言語間の双方向翻訳のみがサポートされます",
-      "model": "モデル設定",
-      "model_desc": "翻訳サービスで使用されるモデル",
-      "model_placeholder": "翻訳モデルを選択してください",
-      "no_model_warning": "翻訳モデルが選択されていません",
-      "preview": "Markdown プレビュー",
-      "scroll_sync": "スクロール同期設定",
-      "title": "翻訳設定"
-    },
-    "stop": "翻訳を停止",
-    "success": {
-      "custom": {
-        "delete": "削除が成功しました",
-        "update": "更新成功"
-      }
-    },
-    "target_language": "目標言語",
-    "title": "翻訳",
-    "tooltip": {
-      "newline": "改行"
-    }
+    "title": "翻訳"
   },
   "tray": {
     "check_update": "[to be translated]:Check for Updates",

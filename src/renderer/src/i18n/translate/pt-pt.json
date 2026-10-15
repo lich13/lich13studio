@@ -1916,127 +1916,14 @@
     "title": "Importar Conversas Externas"
   },
   "knowledge": {
-    "add": {
-      "title": "Adicionar Base de Conhecimento"
-    },
-    "add_directory": "Adicionar diretório",
-    "add_file": "Adicionar arquivo",
-    "add_image": "Adicionar imagens",
-    "add_note": "Adicionar nota",
-    "add_sitemap": "Adicionar mapa do site",
-    "add_url": "Adicionar URL",
-    "add_video": "Adicionar vídeo",
-    "cancel_index": "Cancelar índice",
-    "chunk_overlap": "Sobreposição de bloco",
-    "chunk_overlap_placeholder": "Valor padrão (não recomendado alterar)",
-    "chunk_overlap_tooltip": "Quantidade de conteúdo repetido entre blocos de texto adjacentes, garantindo que os blocos de texto divididos ainda tenham conexões de contexto, melhorando o desempenho geral do modelo em textos longos",
-    "chunk_size": "Tamanho do bloco",
-    "chunk_size_change_warning": "A alteração do tamanho do bloco e da sobreposição de bloco é válida apenas para novos conteúdos adicionados",
-    "chunk_size_placeholder": "Valor padrão (não recomendado alterar)",
-    "chunk_size_too_large": "O tamanho do bloco não pode exceder o limite de contexto do modelo ({{max_context}})",
-    "chunk_size_tooltip": "Dividir o documento em blocos, o tamanho de cada bloco, que não pode exceder o limite de contexto do modelo",
-    "clear_selection": "Limpar seleção",
-    "delete": "Excluir",
-    "delete_confirm": "Tem certeza de que deseja excluir este repositório de conhecimento?",
-    "dimensions": "Dimensão de incorporação",
-    "dimensions_auto_set": "Definição automática de dimensões de incorporação",
-    "dimensions_default": "O modelo utilizará as dimensões de incorporação padrão",
-    "dimensions_error_invalid": "Por favor insira o tamanho da dimensão de incorporação",
-    "dimensions_set_right": "⚠️ Certifique-se de que o modelo suporta o tamanho da dimensão de incorporação definido",
-    "dimensions_size_placeholder": " Tamanho da dimensão de incorporação, ex. 1024",
-    "dimensions_size_too_large": "A dimensão de incorporação não pode exceder o limite do contexto do modelo ({{max_context}})",
-    "dimensions_size_tooltip": "Tamanho da dimensão de incorporação, quanto maior o valor, maior a dimensão de incorporação, mas também maior o consumo de tokens",
-    "directories": "Diretórios",
-    "directory_placeholder": "Digite o caminho do diretório",
-    "document_count": "Número de fragmentos de documentos solicitados",
-    "document_count_default": "Padrão",
-    "document_count_help": "Quanto mais fragmentos de documentos solicitados, mais informações são incluídas, mas mais tokens são consumidos",
     "drag_file": "Arraste o arquivo aqui",
-    "drag_image": "Arraste a imagem para aqui",
-    "edit_remark": "Editar observação",
-    "edit_remark_placeholder": "Digite o conteúdo da observação",
-    "embedding_model": "Modelo de incorporação",
-    "embedding_model_required": "O modelo de incorporação da base de conhecimento é obrigatório",
-    "empty": "Sem repositório de conhecimento",
     "error": {
-      "failed_to_create": "Falha ao criar o repositório de conhecimento",
-      "failed_to_edit": "Falha ao editar o repositório de conhecimento",
-      "model_invalid": "Modelo não selecionado ou eliminado",
-      "video": {
-        "local_file_missing": "O ficheiro de vídeo não existe.",
-        "youtube_url_missing": "O link do vídeo do YouTube não existe."
-      }
+      "model_invalid": "Modelo não selecionado ou eliminado"
     },
     "file_hint": "Formatos suportados: {{file_types}}",
-    "image_hint": "Suporta formatos {{image_types}}",
-    "images": "imagem",
-    "index_all": "Índice total",
-    "index_cancelled": "Índice cancelado",
-    "index_started": "Índice iniciado",
-    "invalid_url": "URL inválida",
-    "migrate": {
-      "button": {
-        "text": "Migrar"
-      },
-      "confirm": {
-        "content": "Foram detectadas alterações no modelo de incorporação ou dimensões, o que impede a gravação da configuração. Você pode executar a migração para evitar a perda de dados. A migração do repositório de conhecimento não exclui o repositório de conhecimento anterior, mas cria uma cópia e processa todos os itens do repositório de conhecimento, o que pode consumir muitos tokens. Por favor, agir com cuidado.",
-        "ok": "Iniciar migração",
-        "title": "Migração do repositório de conhecimento"
-      },
-      "error": {
-        "failed": "Falha na migração"
-      },
-      "source_dimensions": "Dimensões de origem",
-      "source_model": "Modelo de origem",
-      "target_dimensions": "Dimensões de destino",
-      "target_model": "Modelo de destino"
-    },
-    "model_info": "Informações do modelo",
-    "name_required": "O nome da base de conhecimento é obrigatório",
-    "no_bases": "Sem repositório de conhecimento",
-    "no_match": "Não houve correspondência com o conteúdo do repositório de conhecimento",
-    "no_provider": "O provedor do modelo do repositório de conhecimento foi perdido, este repositório de conhecimento não será mais suportado, por favor, crie um novo repositório de conhecimento",
-    "not_set": "Não definido",
-    "not_support": "O motor de banco de dados do repositório de conhecimento foi atualizado, este repositório de conhecimento não será mais suportado, por favor, crie um novo repositório de conhecimento",
-    "notes": "Notas",
-    "notes_placeholder": "Digite informações adicionais ou contexto para este repositório de conhecimento...",
-    "provider_not_found": "O provedor do modelo do repositório de conhecimento foi perdido, este repositório de conhecimento não será mais suportado, por favor, crie um novo repositório de conhecimento",
-    "rename": "Renomear",
-    "search": "Pesquisar repositório de conhecimento",
     "search_placeholder": "Digite o conteúdo da consulta",
-    "settings": {
-      "preprocessing": "Pré-processamento",
-      "preprocessing_tooltip": "Pré-processar arquivos enviados usando OCR",
-      "title": "Configurações do Banco de Conhecimento"
-    },
-    "sitemap_added": "Adicionado com sucesso",
-    "sitemap_placeholder": "Digite a URL do mapa do site",
-    "sitemaps": "Sites",
-    "source": "Fonte",
-    "status": "Status",
-    "status_completed": "Concluído",
-    "status_embedding_completed": "Incorporação concluída",
-    "status_embedding_failed": "Falha na incorporação",
-    "status_failed": "Falhou",
-    "status_new": "Adicionado",
-    "status_pending": "Pendente",
-    "status_preprocess_completed": "Pré-processamento concluído",
-    "status_preprocess_failed": "Falha no pré-processamento",
-    "status_processing": "Processando",
     "subtitle_file": "arquivo de legenda",
-    "threshold": "Limite de correspondência",
-    "threshold_placeholder": "Não definido",
-    "threshold_too_large_or_small": "O limite não pode ser maior que 1 ou menor que 0",
-    "threshold_tooltip": "Usado para medir a relevância entre a pergunta do usuário e o conteúdo do repositório de conhecimento (0-1)",
     "title": "Repositório de conhecimento",
-    "topN": "Número de resultados retornados",
-    "topN_placeholder": "Não definido",
-    "topN_too_large_or_small": "O número de resultados retornados não pode ser maior que 30 nem menor que 1",
-    "topN_tooltip": "Número de resultados correspondentes retornados, quanto maior o valor, mais resultados correspondentes, mas mais tokens são consumidos",
-    "url_added": "URL adicionada",
-    "url_placeholder": "Digite a URL, várias URLs separadas por enter",
-    "urls": "URLs",
-    "videos": "vídeo",
     "videos_file": "Arquivo de vídeo"
   },
   "languages": {
@@ -2189,9 +2076,7 @@
     },
     "api": {
       "check": {
-        "model": {
-          "title": "Selecione o modelo a ser verificado"
-        }
+        "model": {}
       },
       "connection": {
         "failed": "Conexão falhou",
@@ -4960,8 +4845,6 @@
       "import_invalid": "[to be translated]:Import failed. Use a valid Responses or Anthropic provider link.",
       "import_success": "[to be translated]:Provider imported.",
       "misc": "outro",
-      "no_models_for_check": "Não há modelos disponíveis para verificação (por exemplo, modelos de conversa)",
-      "not_checked": "Não verificado",
       "notes": {
         "markdown_editor_default_value": "Área de Visualização",
         "placeholder": "Por favor, insira o conteúdo no formato Markdown...",
@@ -5214,51 +5097,6 @@
         "time": "Mostrar tempo do tópico"
       }
     },
-    "translate": {
-      "custom": {
-        "delete": {
-          "description": "Tem a certeza de que deseja eliminar?",
-          "title": "Eliminar idioma personalizado"
-        },
-        "error": {
-          "add": "Falha ao adicionar",
-          "delete": "Falha ao eliminar",
-          "langCode": {
-            "builtin": "O idioma já tem suporte integrado",
-            "empty": "Código de idioma vazio",
-            "exists": "Este idioma já existe",
-            "invalid": "Código de idioma inválido"
-          },
-          "update": "Falha ao atualizar",
-          "value": {
-            "empty": "O nome do idioma não pode estar vazio",
-            "too_long": "O nome do idioma é muito longo"
-          }
-        },
-        "langCode": {
-          "help": "[linguagem+região] no formato, [2~3 letras minúsculas]-[2~3 letras minúsculas]",
-          "label": "código do idioma",
-          "placeholder": "pt-pt"
-        },
-        "success": {
-          "add": "Adicionado com sucesso",
-          "delete": "Eliminação bem-sucedida",
-          "update": "Atualização bem-sucedida"
-        },
-        "table": {
-          "action": {
-            "title": "Operação"
-          }
-        },
-        "value": {
-          "help": "1~32 caracteres",
-          "label": "Nome do idioma",
-          "placeholder": "Português"
-        }
-      },
-      "prompt": "Prompt de tradução",
-      "title": "Definições de tradução"
-    },
     "tray": {
       "keep_background_on_close": "[to be translated]:Keep Running in Background on Close",
       "onclose": "Minimizar para bandeja ao fechar",
@@ -5310,135 +5148,10 @@
     "traceWindow": "Janela de rastreamento"
   },
   "translate": {
-    "alter_language": "Idioma alternativo",
-    "any": {
-      "language": "qualquer idioma"
-    },
-    "button": {
-      "translate": "Traduzir"
-    },
-    "close": "Fechar",
-    "closed": "A tradução foi desativada",
-    "complete": "Tradução concluída",
-    "confirm": {
-      "content": "A tradução substituirá o texto original, deseja continuar?",
-      "title": "Confirmação de Tradução"
-    },
-    "copied": "Conteúdo de tradução copiado",
-    "custom": {
-      "label": "idioma personalizado"
-    },
-    "detect": {
-      "method": {
-        "algo": {
-          "label": "algoritmo",
-          "tip": "Usar o algoritmo franc para detecção de idioma"
-        },
-        "auto": {
-          "label": "automático",
-          "tip": "Selecionar automaticamente o método de detecção adequado"
-        },
-        "label": "Método de detecção automática",
-        "llm": {
-          "tip": "Usar modelo rápido para detecção de idioma, consumindo poucos tokens."
-        },
-        "placeholder": "Escolha o método de detecção automática",
-        "tip": "Método utilizado para detecção automática do idioma de entrada"
-      }
-    },
-    "detected": {
-      "language": "Detecção automática"
-    },
-    "detected_source": "Detectado",
-    "detecting": "Detectando...",
-    "empty": "O conteúdo de tradução está vazio",
     "error": {
-      "chat_qwen_mt": "Modelos Qwen MT não estão disponíveis para uso em conversas. Por favor, vá para a página de tradução.",
-      "detect": {
-        "qwen_mt": "O modelo QwenMT não pode ser usado para detecção de idioma",
-        "unknown": "Idioma desconhecido detectado",
-        "update_setting": "Falha na configuração"
-      },
-      "empty": "Resultado da tradução está vazio",
-      "failed": "Tradução falhou",
-      "invalid_source": "Idioma de origem inválido",
-      "not_configured": "Modelo de tradução não configurado",
-      "not_supported": "Idioma não suportado {{language}}",
-      "unknown": "Ocorreu um erro desconhecido durante a tradução"
+      "not_configured": "Modelo de tradução não configurado"
     },
-    "exchange": {
-      "label": "Trocar idioma de origem e idioma de destino"
-    },
-    "files": {
-      "drag_text": "Arraste e solte aqui",
-      "error": {
-        "check_type": "Ocorreu um erro ao verificar o tipo de arquivo",
-        "multiple": "Não é permitido fazer upload de vários arquivos",
-        "too_large": "Arquivo muito grande",
-        "unknown": "Falha ao ler o conteúdo do arquivo"
-      },
-      "reading": "Lendo o conteúdo do arquivo..."
-    },
-    "history": {
-      "clear": "Limpar Histórico",
-      "clear_description": "Limpar histórico irá deletar todos os registros de tradução. Deseja continuar?",
-      "delete": "Apagar histórico de traduções",
-      "empty": "Nenhum histórico de tradução disponível",
-      "error": {
-        "delete": "Falha ao excluir",
-        "save": "Falha ao guardar o histórico de traduções"
-      },
-      "search": {
-        "placeholder": "Pesquisar histórico de tradução"
-      },
-      "title": "Histórico de Tradução"
-    },
-    "info": {
-      "aborted": "Tradução interrompida"
-    },
-    "input": {
-      "placeholder": "Pode colar ou arrastar texto, arquivos de texto ou imagens (com suporte a OCR)"
-    },
-    "language": {
-      "not_pair": "O idioma de origem é diferente do idioma definido",
-      "same": "O idioma de origem e o idioma de destino são iguais"
-    },
-    "language_settings": "Configurações de Idioma",
-    "menu": {
-      "description": "Traduzir o conteúdo da caixa de entrada atual"
-    },
-    "not": {
-      "found": "Conteúdo de tradução não encontrado"
-    },
-    "output": {
-      "placeholder": "Tradução"
-    },
-    "preferred_target": "Alvo Preferencial",
-    "processing": "Traduzindo...",
-    "settings": {
-      "autoCopy": "Cópia automática após a tradução",
-      "bidirectional": "Configuração de Tradução Bidirecional",
-      "bidirectional_tip": "Quando ativado, suporta apenas tradução bidirecional entre o idioma de origem e o idioma de destino",
-      "model": "Configuração de Modelo",
-      "model_desc": "Modelo utilizado pelo serviço de tradução",
-      "model_placeholder": "Escolha o modelo de tradução",
-      "no_model_warning": "Nenhum modelo de tradução selecionado",
-      "preview": "Pré-visualização Markdown",
-      "scroll_sync": "Configuração de Sincronização de Rolagem",
-      "title": "Configurações de Tradução"
-    },
-    "stop": "Parar Tradução",
-    "success": {
-      "custom": {
-        "delete": "Eliminação bem-sucedida",
-        "update": "Atualização bem-sucedida"
-      }
-    },
-    "target_language": "Idioma de destino",
-    "title": "Tradução",
-    "tooltip": {
-      "newline": "Quebra de linha"
-    }
+    "title": "Tradução"
   },
   "tray": {
     "check_update": "[to be translated]:Check for Updates",

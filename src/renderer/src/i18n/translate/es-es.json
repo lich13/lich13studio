@@ -1916,127 +1916,14 @@
     "title": "Importar Conversaciones Externas"
   },
   "knowledge": {
-    "add": {
-      "title": "Agregar base de conocimientos"
-    },
-    "add_directory": "Agregar directorio",
-    "add_file": "Agregar archivo",
-    "add_image": "Añadir imagen",
-    "add_note": "Agregar nota",
-    "add_sitemap": "Mapa del sitio",
-    "add_url": "Agregar URL",
-    "add_video": "Añadir video",
-    "cancel_index": "Cancelar índice",
-    "chunk_overlap": "Superposición de fragmentos",
-    "chunk_overlap_placeholder": "Valor predeterminado (no recomendado para modificar)",
-    "chunk_overlap_tooltip": "La cantidad de contenido repetido entre bloques de texto adyacentes, asegurando que los fragmentos de texto divididos aún mantengan un contexto, mejorando el rendimiento general del modelo en textos largos",
-    "chunk_size": "Tamaño de fragmento",
-    "chunk_size_change_warning": "Las modificaciones del tamaño de fragmento y la superposición solo se aplican al nuevo contenido agregado",
-    "chunk_size_placeholder": "Valor predeterminado (no recomendado para modificar)",
-    "chunk_size_too_large": "El tamaño de fragmento no puede exceder el límite de contexto del modelo ({{max_context}})",
-    "chunk_size_tooltip": "Divide el documento en fragmentos de este tamaño, no debe exceder el límite de contexto del modelo",
-    "clear_selection": "Limpiar selección",
-    "delete": "Eliminar",
-    "delete_confirm": "¿Está seguro de querer eliminar esta base de conocimientos?",
-    "dimensions": "Dimensión de incrustación",
-    "dimensions_auto_set": "Configuración automática de dimensiones de incrustación",
-    "dimensions_default": "El modelo utilizará las dimensiones de incrustación predeterminadas",
-    "dimensions_error_invalid": "Por favor ingrese el tamaño de dimensión de incrustación",
-    "dimensions_set_right": "⚠️ Asegúrese de que el modelo admita el tamaño de dimensión de incrustación establecido",
-    "dimensions_size_placeholder": " Tamaño de dimensión de incrustación, ej. 1024",
-    "dimensions_size_too_large": "La dimensión de incrustación no puede exceder el límite del contexto del modelo ({{max_context}})",
-    "dimensions_size_tooltip": "Tamaño de la dimensión de incrustación, cuanto mayor sea el valor, mayor será la dimensión de incrustación, pero también consumirá más Tokens",
-    "directories": "Directorios",
-    "directory_placeholder": "Ingrese la ruta del directorio",
-    "document_count": "Número de fragmentos de documentos solicitados",
-    "document_count_default": "Predeterminado",
-    "document_count_help": "Más fragmentos de documentos solicitados significa más información adjunta, pero también consume más tokens",
     "drag_file": "Arrastre archivos aquí",
-    "drag_image": "Arrastra la imagen aquí",
-    "edit_remark": "Editar observación",
-    "edit_remark_placeholder": "Ingrese el contenido de la observación",
-    "embedding_model": "Modelo de incrustación",
-    "embedding_model_required": "El modelo de incrustación de la base de conocimientos es obligatorio",
-    "empty": "Sin bases de conocimientos",
     "error": {
-      "failed_to_create": "Error al crear la base de conocimientos",
-      "failed_to_edit": "Error al editar la base de conocimientos",
-      "model_invalid": "No se ha seleccionado un modelo o ha sido eliminado",
-      "video": {
-        "local_file_missing": "El archivo de video no existe.",
-        "youtube_url_missing": "El enlace del vídeo de YouTube no existe."
-      }
+      "model_invalid": "No se ha seleccionado un modelo o ha sido eliminado"
     },
     "file_hint": "Formatos soportados: {{file_types}}",
-    "image_hint": "Soporta formatos {{image_types}}",
-    "images": "Imagen",
-    "index_all": "Indexar todo",
-    "index_cancelled": "Índice cancelado",
-    "index_started": "Índice iniciado",
-    "invalid_url": "URL inválida",
-    "migrate": {
-      "button": {
-        "text": "Migrar"
-      },
-      "confirm": {
-        "content": "Se detectaron cambios en el modelo de incrustación o las dimensiones, por lo que no se puede guardar la configuración. Puede ejecutar la migración para evitar la pérdida de datos. La migración de la base de conocimientos no elimina la base de conocimientos anterior, sino que crea una copia y procesa todos los elementos de la base de conocimientos, lo que puede consumir muchos tokens. Por favor, tenga cuidado.",
-        "ok": "Iniciar migración",
-        "title": "Migración de base de conocimientos"
-      },
-      "error": {
-        "failed": "Error en la migración"
-      },
-      "source_dimensions": "Dimensiones de origen",
-      "source_model": "Modelo de origen",
-      "target_dimensions": "Dimensiones de destino",
-      "target_model": "Modelo de destino"
-    },
-    "model_info": "Información del modelo",
-    "name_required": "El nombre de la base de conocimientos es obligatorio",
-    "no_bases": "Sin bases de conocimientos",
-    "no_match": "No se encontraron coincidencias en la base de conocimientos",
-    "no_provider": "El proveedor del modelo de la base de conocimientos está perdido, esta base de conocimientos ya no es compatible, por favor cree una nueva base de conocimientos",
-    "not_set": "No configurado",
-    "not_support": "El motor de base de datos de la base de conocimientos ha sido actualizado, esta base de conocimientos ya no es compatible, por favor cree una nueva base de conocimientos",
-    "notes": "Notas",
-    "notes_placeholder": "Ingrese información adicional o contexto para esta base de conocimientos...",
-    "provider_not_found": "El proveedor del modelo de la base de conocimientos ha sido perdido, esta base de conocimientos ya no es compatible, por favor cree una nueva base de conocimientos",
-    "rename": "Renombrar",
-    "search": "Buscar en la base de conocimientos",
     "search_placeholder": "Ingrese el contenido de la consulta",
-    "settings": {
-      "preprocessing": "Preprocesamiento",
-      "preprocessing_tooltip": "Preprocesar los archivos cargados usando OCR",
-      "title": "Configuración de la Base de Conocimiento"
-    },
-    "sitemap_added": "Agregado con éxito",
-    "sitemap_placeholder": "Ingrese la URL del mapa del sitio",
-    "sitemaps": "Sitios web",
-    "source": "Fuente",
-    "status": "Estado",
-    "status_completed": "Completado",
-    "status_embedding_completed": "Incrustación completada",
-    "status_embedding_failed": "Error en la incrustación",
-    "status_failed": "Fallido",
-    "status_new": "Nuevo",
-    "status_pending": "Pendiente",
-    "status_preprocess_completed": "Preprocesamiento completado",
-    "status_preprocess_failed": "Error en el preprocesamiento",
-    "status_processing": "Procesando",
     "subtitle_file": "Archivo de subtítulos",
-    "threshold": "Umbral de coincidencia",
-    "threshold_placeholder": "No configurado",
-    "threshold_too_large_or_small": "El umbral no puede ser mayor que 1 o menor que 0",
-    "threshold_tooltip": "Se usa para medir la relevancia entre la pregunta del usuario y el contenido de la base de conocimientos (0-1)",
     "title": "Base de conocimientos",
-    "topN": "Número de resultados devueltos",
-    "topN_placeholder": "No configurado",
-    "topN_too_large_or_small": "La cantidad de resultados devueltos no puede ser mayor que 30 ni menor que 1",
-    "topN_tooltip": "Número de resultados coincidentes devueltos, un valor más alto significa más resultados coincidentes, pero también consume más tokens",
-    "url_added": "URL agregada",
-    "url_placeholder": "Ingrese la URL, múltiples URLs separadas por enter",
-    "urls": "URLs",
-    "videos": "vídeo",
     "videos_file": "video file"
   },
   "languages": {
@@ -2189,9 +2076,7 @@
     },
     "api": {
       "check": {
-        "model": {
-          "title": "Seleccione el modelo a verificar"
-        }
+        "model": {}
       },
       "connection": {
         "failed": "Conexión fallida",
@@ -4960,8 +4845,6 @@
       "import_invalid": "[to be translated]:Import failed. Use a valid Responses or Anthropic provider link.",
       "import_success": "[to be translated]:Provider imported.",
       "misc": "otro",
-      "no_models_for_check": "No hay modelos disponibles para revisar (por ejemplo, modelos de conversación)",
-      "not_checked": "No verificado",
       "notes": {
         "markdown_editor_default_value": "Área de vista previa",
         "placeholder": "Por favor, introduzca el contenido en formato Markdown...",
@@ -5214,51 +5097,6 @@
         "time": "Mostrar tiempo del tema"
       }
     },
-    "translate": {
-      "custom": {
-        "delete": {
-          "description": "¿Está seguro de que desea eliminarlo?",
-          "title": "Eliminar idioma personalizado"
-        },
-        "error": {
-          "add": "Error al agregar",
-          "delete": "Error al eliminar",
-          "langCode": {
-            "builtin": "El idioma ya tiene soporte integrado",
-            "empty": "El código de idioma está vacío",
-            "exists": "El idioma ya existe",
-            "invalid": "Código de idioma no válido"
-          },
-          "update": "Actualización fallida",
-          "value": {
-            "empty": "El nombre del idioma no puede estar vacío",
-            "too_long": "El nombre del idioma es demasiado largo"
-          }
-        },
-        "langCode": {
-          "help": "[idioma+región] en formato [2-3 letras minúsculas]-[2-3 letras minúsculas]",
-          "label": "código de idioma",
-          "placeholder": "es-es"
-        },
-        "success": {
-          "add": "Agregado correctamente",
-          "delete": "Eliminado correctamente",
-          "update": "Actualización exitosa"
-        },
-        "table": {
-          "action": {
-            "title": "operación"
-          }
-        },
-        "value": {
-          "help": "1~32 caracteres",
-          "label": "nombre del idioma",
-          "placeholder": "español"
-        }
-      },
-      "prompt": "Seguir el mensaje del sistema",
-      "title": "Configuración de traducción"
-    },
     "tray": {
       "keep_background_on_close": "[to be translated]:Keep Running in Background on Close",
       "onclose": "Minimizar a la bandeja al cerrar",
@@ -5310,135 +5148,10 @@
     "traceWindow": "Ventana de cadena de llamadas"
   },
   "translate": {
-    "alter_language": "Idioma alternativo",
-    "any": {
-      "language": "cualquier idioma"
-    },
-    "button": {
-      "translate": "Traducir"
-    },
-    "close": "Cerrar",
-    "closed": "La traducción ha sido desactivada",
-    "complete": "traducción completada",
-    "confirm": {
-      "content": "La traducción reemplazará el texto original, ¿desea continuar?",
-      "title": "Confirmación de traducción"
-    },
-    "copied": "El contenido traducido ha sido copiado",
-    "custom": {
-      "label": "Idioma personalizado"
-    },
-    "detect": {
-      "method": {
-        "algo": {
-          "label": "algoritmo",
-          "tip": "Detección de idioma utilizando el algoritmo franc"
-        },
-        "auto": {
-          "label": "automático",
-          "tip": "Seleccionar automáticamente el método de detección adecuado"
-        },
-        "label": "Método de detección automática",
-        "llm": {
-          "tip": "Utiliza un modelo rápido para la detección de idioma, consumiendo pocos tokens."
-        },
-        "placeholder": "Seleccionar método de detección automática",
-        "tip": "Método utilizado para detectar automáticamente el idioma de entrada"
-      }
-    },
-    "detected": {
-      "language": "Detección automática"
-    },
-    "detected_source": "Detectado",
-    "detecting": "Detectando...",
-    "empty": "El contenido de traducción está vacío",
     "error": {
-      "chat_qwen_mt": "El modelo Qwen MT no está disponible para uso en conversaciones, por favor vaya a la página de traducción.",
-      "detect": {
-        "qwen_mt": "El modelo QwenMT no se puede utilizar para la detección de idiomas",
-        "unknown": "Se detectó un idioma desconocido",
-        "update_setting": "Configuración fallida"
-      },
-      "empty": "El resultado de la traducción está vacío",
-      "failed": "Fallo en la traducción",
-      "invalid_source": "Invalid source language",
-      "not_configured": "El modelo de traducción no está configurado",
-      "not_supported": "Idioma no compatible {{language}}",
-      "unknown": "Se produjo un error desconocido durante la traducción"
+      "not_configured": "El modelo de traducción no está configurado"
     },
-    "exchange": {
-      "label": "Intercambiar el idioma de origen y el idioma de destino"
-    },
-    "files": {
-      "drag_text": "Arrastrar y soltar aquí",
-      "error": {
-        "check_type": "Se produjo un error al verificar el tipo de archivo",
-        "multiple": "No se permite cargar varios archivos",
-        "too_large": "El archivo es demasiado grande",
-        "unknown": "Error al leer el contenido del archivo"
-      },
-      "reading": "Leyendo el contenido del archivo..."
-    },
-    "history": {
-      "clear": "Borrar historial",
-      "clear_description": "Borrar el historial eliminará todos los registros de traducciones, ¿desea continuar?",
-      "delete": "Eliminar historial de traducción",
-      "empty": "Sin historial de traducciones por el momento",
-      "error": {
-        "delete": "Eliminación fallida",
-        "save": "Error al guardar el historial de traducciones"
-      },
-      "search": {
-        "placeholder": "Historial de búsqueda de traducción"
-      },
-      "title": "Historial de traducciones"
-    },
-    "info": {
-      "aborted": "Traducción cancelada"
-    },
-    "input": {
-      "placeholder": "Puede pegar o arrastrar texto, archivos de texto o imágenes (compatible con OCR)"
-    },
-    "language": {
-      "not_pair": "El idioma de origen es diferente al idioma configurado",
-      "same": "El idioma de origen y el idioma de destino son iguales"
-    },
-    "language_settings": "Configuración de idioma",
-    "menu": {
-      "description": "Traducir el contenido del campo de entrada actual"
-    },
-    "not": {
-      "found": "No se encontró el contenido de traducción"
-    },
-    "output": {
-      "placeholder": "Traducción"
-    },
-    "preferred_target": "Objetivo Preferido",
-    "processing": "Traduciendo...",
-    "settings": {
-      "autoCopy": "Copiar automáticamente después de completar la traducción",
-      "bidirectional": "Configuración de traducción bidireccional",
-      "bidirectional_tip": "Una vez activada, solo se admitirá la traducción bidireccional entre el idioma de origen y el idioma de destino",
-      "model": "Configuración del modelo",
-      "model_desc": "Modelo utilizado por el servicio de traducción",
-      "model_placeholder": "Seleccionar modelo de traducción",
-      "no_model_warning": "No se ha seleccionado ningún modelo de traducción",
-      "preview": "Vista previa de Markdown",
-      "scroll_sync": "Configuración de sincronización de desplazamiento",
-      "title": "Configuración de traducción"
-    },
-    "stop": "Detener Traducción",
-    "success": {
-      "custom": {
-        "delete": "Eliminado correctamente",
-        "update": "Actualización exitosa"
-      }
-    },
-    "target_language": "Idioma de destino",
-    "title": "Traducción",
-    "tooltip": {
-      "newline": "Salto de línea"
-    }
+    "title": "Traducción"
   },
   "tray": {
     "check_update": "[to be translated]:Check for Updates",
