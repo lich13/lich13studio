@@ -1,5 +1,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-  lich13studio_lib::run();
+    lich13studio_lib::run();
 }
