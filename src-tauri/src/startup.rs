@@ -4,6 +4,8 @@
 pub const LOGIN_STARTUP_ARG: &str = "--lich13studio-login-startup";
 const OPEN_APPLICATION: u32 = u32::from_be_bytes(*b"oapp");
 const LOGIN_ITEM: u32 = u32::from_be_bytes(*b"lgit");
+#[cfg(target_os = "macos")]
+const APPLE_EVENT_PROPERTY_DATA: u32 = u32::from_be_bytes(*b"prdt");
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StartupSource {
@@ -116,6 +118,17 @@ impl RestoredWindowMode {
 }
 
 #[cfg(target_os = "macos")]
+fn decode_launch_event(event: &objc2_foundation::NSAppleEventDescriptor) -> LaunchAppleEvent {
+    LaunchAppleEvent {
+        event_id: event.eventID(),
+        // keyAEPropData carries the launch reason; keyAEPropID ('prop') does not.
+        launch_reason: event
+            .paramDescriptorForKeyword(APPLE_EVENT_PROPERTY_DATA)
+            .map(|descriptor| descriptor.enumCodeValue()),
+    }
+}
+
+#[cfg(target_os = "macos")]
 pub fn current_launch_event() -> Option<LaunchAppleEvent> {
     use objc2::MainThreadMarker;
     use objc2_foundation::NSAppleEventManager;
@@ -124,12 +137,7 @@ pub fn current_launch_event() -> Option<LaunchAppleEvent> {
     // The current launch Apple event still carries the original login reason.
     let _main_thread = MainThreadMarker::new()?;
     let event = NSAppleEventManager::sharedAppleEventManager().currentAppleEvent()?;
-    Some(LaunchAppleEvent {
-        event_id: event.eventID(),
-        launch_reason: event
-            .paramDescriptorForKeyword(u32::from_be_bytes(*b"prop"))
-            .map(|descriptor| descriptor.enumCodeValue()),
-    })
+    Some(decode_launch_event(&event))
 }
 
 #[cfg(not(target_os = "macos"))]
