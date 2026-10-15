@@ -35,7 +35,7 @@ const SCRIPT_CONFIG = {
 
 /*
 Usage Instructions:
-1. Before first use, replace API_KEY with your actual API key
+1. Set TRANSLATION_API_KEY in your private environment; never edit credentials into this file
 2. Adjust MAX_CONCURRENT_TRANSLATIONS and TRANSLATION_DELAY_MS based on your API service limits
 3. To translate only specific languages, add unwanted language codes to SKIP_LANGUAGES array
 4. Supported language codes:
@@ -71,8 +71,7 @@ const validateConfig = () => {
   const config = SCRIPT_CONFIG
 
   if (!config.API_KEY) {
-    console.error('❌ Please update SCRIPT_CONFIG.API_KEY with your actual API key')
-    console.log('💡 Edit the script and replace "your-api-key-here" with your real API key')
+    console.error('Set TRANSLATION_API_KEY in your private environment before running this script')
     process.exit(1)
   }
 

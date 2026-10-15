@@ -399,7 +399,7 @@ await client.streamObject({
 
 ## 📄 License
 
-MIT License - 详见 [LICENSE](https://github.com/CherryHQ/cherry-studio/blob/main/LICENSE) 文件
+包元数据沿用上游 MIT 声明，但原链接指向的根许可证为 AGPL-3.0，并非包专属 MIT 文件。本仓库不据此重新授权；完整来源与待确认边界见 [NOTICE](../../NOTICE.md)，整应用遵循根 [LICENSE](../../LICENSE)。
 
 ---
 

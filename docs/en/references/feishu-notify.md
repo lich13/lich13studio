@@ -1,6 +1,6 @@
 # Feishu Notification Script
 
-`scripts/feishu-notify.ts` is a CLI tool for sending notifications to Feishu (Lark) Webhook. This script is primarily used in GitHub Actions workflows to enable automatic notifications.
+`scripts/feishu-notify.ts` is a CLI tool for sending notifications to Feishu (Lark) Webhook. It runs only when a developer explicitly invokes it with their own webhook configuration; the current CI and release workflows do not call it.
 
 ## Features
 

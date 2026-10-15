@@ -1,92 +1,51 @@
 # lich13studio
 
-`lich13studio` is a AI workspace for macOS, Windows and Android focused on the pieces that matter most:
+基于 Tauri 的 macOS、Windows 与 Android AI 工作区，源自 [Cherry Studio](https://github.com/CherryHQ/cherry-studio)。当前版本 **0.1.34**，使用 AGPL-3.0，保留上游版权和第三方许可，详见 [NOTICE](NOTICE.md)。
 
-- assistants and topics
-- provider and model management
-- quick phrases
-- local and WebDAV backup
-- single-window streaming chat
+## 功能范围
 
-## Scope
+- 助手、话题、聊天记录和快捷短语；普通聊天支持全局流式／非流式选择。
+- OpenAI、grok、Anthropic 三平台共享模型目录；模型与提供商分别选择，不自动替换提供商。OpenAI、grok 使用 Responses，Anthropic 使用 Messages。
+- 官方公开模型目录、CLI 版本与兼容的 ModelTrace 指纹库自动同步，支持离线缓存和手动检查。
+- ModelTrace 先运行第一组，模型匹配概率达到 99% 提前结束；否则按已选并发数运行剩余组。结果不进入聊天记录，离开页面后继续执行。
+- 图片附件、本地／WebDAV 备份及恢复。含凭据备份必须设置密码；默认备份不含凭据。
+- 桌面托盘与快捷助手；Android 支持 Android 12（API 31）以上、ARM64，提供后台任务通知和停止操作。
+- 接管 `ccswitch://v1/import`，兼容 Sub2API 与 New API。确认后才保存，地址规范化、模型合并和去重由两端共用规则处理。
 
-This repository is being reduced from a larger upstream baseline into a smaller product with a stricter feature boundary.
+已移除内置翻译、知识库／RAG、助手市场、MCP、网页搜索、健康探测和手机导出服务器。旧记录及迁移兼容类型继续保留，不代表相关功能重新启用。
 
-Included:
+## 数据与隐私
 
-- assistant CRUD
-- topic and message persistence
-- global default model and assistant model override
-- provider CRUD and model list management
-- quick phrase CRUD with variables
-- backup and restore
+聊天和设置默认保存在本机；模型请求发往用户配置的提供商，WebDAV 使用用户指定的服务器。公共目录、指纹库和版本查询不附带提供商凭据或聊天内容。应用不提供自有遥测或隐藏上传。详情见 [数据与隐私](docs/privacy.md)。
 
-Excluded:
+Android 使用 Keystore 保护凭据，桌面凭据目前仍在本地普通持久化存储中；两者不能视为相同的静态存储保护。备份采用独立随机盐和 nonce 的 Argon2id／AES-256-GCM 容器，密码不保存。请保护设备和备份密码。
 
-- built-in translation
-- knowledge base / RAG
-- assistant marketplace
+## 构建与检查
 
-## Current release
+Node 版本以 [`.nvmrc`](.nvmrc) 为准，pnpm 版本以 [`package.json`](package.json) 的 `packageManager` 为准。使用已安装的 Rust stable，原生依赖与 Android 环境见开发文档。
 
-**0.1.33** 模型测试先执行第一组，最高模型匹配概率达到 99% 时提前完成；未达到时再执行其余两组。桌面与 Android 使用同一规则，保留已有并发设置和后台运行。修复 lint 问题，并将完整代码检查纳入 CI 和发布流程。
+```sh
+pnpm install --frozen-lockfile
+pnpm dev
+pnpm run ci
+```
 
-Android includes chat, assistants, topics, images, quick phrases, platform catalogs, ModelTrace and backup/restore. Active chat and test requests continue in a foreground service with a Stop notification. Force-stop or process loss ends the task without resending it. Android's system foreground-service limits still apply.
+`pnpm run ci` 是本地和 CI 的检查定义：`ci:frontend` 包含静态检查、类型、测试和 Web 构建，`ci:rust` 包含 Rust fmt、clippy 和测试。CI 按平台拆分执行，依赖审计仅报告。
 
-Both desktop and Android handle `ccswitch://v1/import` from Sub2API and New API. Imports require confirmation, normalize endpoints and deduplicate providers. No other application protocol is registered.
+```sh
+pnpm build:mac
+pnpm build:windows:x64
+pnpm build:windows:arm64
+pnpm tauri:build:android
+```
 
-Android credentials are encrypted with Android Keystore; ordinary state stores references. Backups omit credentials by default. Including credentials requires a password and produces an Argon2id/AES-256-GCM encrypted backup that can be restored on either platform. Keep this password: it is not stored by the app.
+发布打包使用 Tauri。`electron.vite.config.ts` 仍承担 renderer 与兼容源码构建；`build/` 中仍有托盘及兼容窗口资源，不能按目录整体删除。Electron Builder 已不作为发布打包入口。
 
-OpenAI, grok and Anthropic model catalogs and CLI identities synchronize independently from official public sources. User edits, order, deletion choices and current selections are retained. The local capability registry and OpenAI brand icons work offline.
+## 文档与反馈
 
-ModelTrace supports 1–3 concurrent challenges and compatible fingerprint updates from Hanmo123/ModelTrace. Tests stay local to the selected provider, send no reasoning parameters or tools, and never create chat history. Output guards and finite retries remain enabled; model requests have no application timeout. Persistence is version **223**; the global request mode is migrated from legacy assistant settings once.
+- [文档索引](docs/README.md)、[开发与检查](docs/zh/guides/development.md)、[Android 构建](docs/android.md)
+- [当前范围](docs/scope-freeze.md)、[模块地图](docs/module-map.md)、[架构](docs/architecture-lite.md)、[迁移规则](docs/migration-notes.md)
+- [最新发布说明](docs/releases/v0.1.34.zh-CN.md)、[早期版本记录](docs/releases/early-versions.zh-CN.md)
+- [贡献指南](CONTRIBUTING.md)、[问题反馈](https://github.com/lich13/lich13studio/issues)、[安全报告](SECURITY.md)
 
-MCP, web search, health probes and phone-export servers remain removed. Existing history is preserved.
-
-## Docs
-
-- [Scope Freeze](./docs/scope-freeze.md)
-- [Module Map](./docs/module-map.md)
-- [Delete List](./docs/delete-list.md)
-- [Rename Plan](./docs/rename-plan.md)
-- [Icon Concept](./docs/icon-concept.md)
-- [Architecture Lite](./docs/architecture-lite.md)
-- [Migration Notes](./docs/migration-notes.md)
-- [v0.1.30 中文发布说明](./docs/releases/v0.1.30.zh-CN.md)
-- [v0.1.31 中文发布说明](./docs/releases/v0.1.31.zh-CN.md)
-- [v0.1.32 中文发布说明](./docs/releases/v0.1.32.zh-CN.md)
-- [v0.1.33 中文发布说明](./docs/releases/v0.1.33.zh-CN.md)
-
-## Upstream Source
-
-This project is currently derived from the upstream [CherryHQ/cherry-studio](https://github.com/CherryHQ/cherry-studio) repository.
-
-That upstream reference is kept only as source acknowledgement and migration context.
-
-## Build And Release
-
-- Local dev: `pnpm dev`
-- Local mac bundle: `pnpm build:mac`
-- Local Windows bundle:
-  - `pnpm build:windows:x64`
-  - `pnpm build:windows:arm64`
-- Android: see [Android build and storage](./docs/android.md)
-- GitHub release build: push a tag or run `.github/workflows/release-build.yml`
-
-The repository now uses a Tauri-first release flow. Legacy Electron Builder packaging files and workflows have been removed.
-
-## 0.1.17
-
-- Shared platform model catalogs with add, edit, remove and reorder controls.
-- Sub2API and New API CCS imports, including multiple Claude models and editable platform selection.
-- Address normalization fixes duplicate slashes and `/v1`; a trailing `#` preserves explicit endpoints.
-- Official Codex CLI, Grok CLI and Claude Code UA synchronization, with stable-version filtering and offline caching.
-- Model health checks and API Key connection tests removed.
-- Migration 217 merges existing models without replacing user edits; subsequent requests resolve the latest catalog and retain the selected provider.
-
-## 0.1.16
-
-- Five reasoning levels: low, medium, high, xhigh, max (default max).
-- Responses and Anthropic providers only; upgrade clears old provider credentials while preserving chat history.
-- Sub2API “Import to CCS” via `ccswitch://v1/import`.
-- MCP execution, configuration, installers and endpoints removed; historical records remain read-only.
+手动执行 `release-build.yml` 时留空 version 只构建制品；推送标签或填写 version 会发布 Release。

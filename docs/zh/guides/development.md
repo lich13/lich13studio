@@ -1,91 +1,51 @@
-# 🖥️ 开发指南
+# 开发与检查
 
-## IDE 配置
+## 环境
 
-### VSCode like
+Node 使用根目录 `.nvmrc`（当前 24.21.0），pnpm 使用 `package.json` 的 `packageManager`（当前 12.11.2）。Rust 使用本机已安装的 stable，不为常规检查更换工具链。原生应用需要 Tauri 2 的平台构建依赖；Android 另见 [Android](../../android.md)。
 
-- 编辑器：[Cursor](https://www.cursor.com/) 等，任何 VS Code 兼容编辑器均可。
-- 推荐扩展见 [`.vscode/extensions.json`](/.vscode/extensions.json)。
+Windows 需 Visual Studio C++ 工具与 Windows SDK；脚本 `run-in-vsdevcmd.mjs` 负责对应架构环境。macOS 需要 Xcode Command Line Tools。Linux CI 安装 WebKitGTK 4.1、Ayatana AppIndicator、librsvg 与 patchelf。
 
-### Zed
-
-1. 安装扩展：[Biome](https://github.com/biomejs/biome-zed)、[oxc](https://github.com/oxc-project/zed-oxc)
-2. 复制示例配置文件到本地 Zed 配置目录：
-   ```bash
-   cp .zed/settings.json.example .zed/settings.json
-   ```
-3. 按需自定义 `.zed/settings.json`（该文件已被 git 忽略）。
-
-## Windows：启用符号链接
-
-本项目使用符号链接同步 AGENTS.md、skills 等文件。Windows 开发者在克隆前需启用符号链接支持：
-
-1. **启用开发者模式**（设置 → 更新和安全 → 开发者选项），或通过 `secpol.msc` 授予 `SeCreateSymbolicLinkPrivilege` 权限。
-2. **配置 Git**：
-   ```bash
-   git config --global core.symlinks true
-   ```
-3. 启用后重新克隆仓库。
-
-## 项目配置
-
-### 安装 Node.js
-
-项目所需的 Node.js 版本定义在 `.node-version` 文件中。推荐使用 [nvm](https://github.com/nvm-sh/nvm)、[fnm](https://github.com/Schniz/fnm) 等版本管理工具自动切换：
-
-```bash
-nvm install
-```
-
-### 安装 pnpm
-
-pnpm 版本已锁定在 `package.json` 的 `packageManager` 字段中，通过 corepack 即可自动安装对应版本：
-
-```bash
-corepack enable
-```
-
-### 安装依赖
-
-```bash
-pnpm install
-```
-
-### 环境变量
-
-```bash
-cp .env.example .env
-```
-
-### 启动开发
-
-```bash
+```sh
+pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-### 调试
+依赖变动时才更新锁文件。不要删除缓存来代替故障定位。`.env.example` 只用于开发者主动运行的辅助脚本；普通聊天在应用内配置提供商，不能把真实凭据写进源码。
 
-```bash
-pnpm debug
+## 同一套检查定义
+
+```sh
+pnpm run ci                 # 前端检查、测试、Web 构建和原生检查
+pnpm ci:frontend        # CI 前端 job 使用相同定义
+pnpm ci:rust            # cargo +stable fmt / clippy / test
 ```
 
-然后在浏览器中访问 chrome://inspect
+`ci:basic-check` 包含静态检查、格式、类型、国际化、隐私、OpenAPI 与技能检查。pre-commit 调用它，不自动修改待提交文件。完整前端检查还运行 renderer、升级迁移、内置目录／指纹库校验和构建。CI 单独运行 `pnpm audit`、固定版本 `cargo audit`，先报告、不阻断。
 
-### 测试
+检查器职责：Biome 负责格式和 Tailwind 类顺序；Oxlint 负责通用及类型静态规则；ESLint 负责 React、导入排序、i18n 和日志项目规则，已有 Oxlint 规则映射关闭重复项。`pnpm lint` 为开发者主动修复入口，不作为只读 CI 检查。
 
-```bash
-pnpm test
+针对性检查可直接运行对应测试文件，提交证据必须来自该提交的完整快照。应用功能与界面验收使用虚拟接口，未执行项目须明确标记。
+
+## 候选清理扫描
+
+```sh
+npm exec --yes --ignore-scripts --package=knip@6.41.0 -- knip --no-progress
+npm exec --yes --ignore-scripts --package=depcheck@1.4.7 -- depcheck
+cargo +stable machete --skip-target-dir src-tauri
 ```
 
-### 构建
+Knip 入口见 `knip.json`，包括多窗口、worker、包导出及手动 CLI。cargo-machete 使用已核验的 0.9.2。扫描不是删除许可：动态加载、类型兼容、历史迁移和构建资源必须另核引用。
 
-```bash
-# macOS
-$ pnpm build:mac
+## 构建
 
-# Windows x64
-$ pnpm build:windows:x64
-
-# Windows arm64
-$ pnpm build:windows:arm64
+```sh
+pnpm build:mac
+pnpm build:windows:x64
+pnpm build:windows:arm64
+pnpm tauri:build:android
 ```
+
+`electron.vite.config.ts` 仍构建前端与兼容源码，Tauri 读取 `out/renderer` 打包。`.github/workflows/release-build.yml` 手动运行且 version 留空时只生成制品；只有标签或显式版本输入才发布。
+
+工作流 Action 固定提交，Node／pnpm 与本地共用版本源，原生依赖使用 Cargo.lock。平台 SDK 和签名环境也影响产物，不能把构建输入固定等同于不同机器逐字节相同。

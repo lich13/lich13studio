@@ -1,3 +1,5 @@
+> 此脚本仅供开发者手动调用；当前 CI 与发布流程不自动执行。
+
 # 飞书通知脚本
 
 `scripts/feishu-notify.ts` 是一个 CLI 工具，用于向飞书 Webhook 发送通知。该脚本主要在 GitHub Actions 工作流中使用，实现自动通知功能。

@@ -1,61 +1,37 @@
-# lich13studio Lite architecture
+# 运行架构
 
-The desktop and Android packages use Tauri for window, filesystem, backup, native HTTP and protocol handling. The React renderer owns assistants, topics, messages, quick phrases and provider settings. Shared OpenTelemetry helpers live in `packages/trace`.
+桌面和 Android 使用 Tauri 处理窗口、文件、备份、原生 HTTP 与协议。React renderer 负责助手、话题、消息、选择和测试会话。`src/main`、`src/preload` 及内部包还保留兼容源码；当前发布入口是 Tauri。
 
-## Model requests
+## 模型请求
 
-Providers are grouped by `ProviderPlatform = openai | grok | anthropic`. OpenAI and grok use Responses, Anthropic uses Messages. Each platform owns one model catalog. Stored providers contain credentials and configuration, while runtime selectors attach the current catalog and CLI version. Saved model references retain their provider ID and resolve current definitions before requests; missing providers/models produce a selection error.
+平台为 `openai | grok | anthropic`，协议为 `openai-response | anthropic`。平台目录集中保存型号，运行时与选定提供商组合。选择失效时提示修正，不替换提供商。`settings.chatRequestMode` 控制普通聊天流式／非流式，发送时冻结模式与目标。
 
-Provider types are `openai-response` (Responses) and `anthropic`. There are no built-in providers. The AI SDK constructs requests and the Tauri native HTTP transport streams them. The unused Rust Chat Completions/Gemini chat and health-check commands have been removed.
+AI SDK 构建请求，原生 HTTP 传输；用户取消会结束当前连接。模型请求无应用层超时。五档推理强度默认 max，仅明确拒绝档位且尚无内容时在同一目标降级；Anthropic 按能力映射，预算低于输出上限。
 
-Reasoning levels are `low / medium / high / xhigh / max`, defaulting to `max`. Responses negotiates a lower level only after an explicit unsupported-effort error and before any generated content, keeping the same provider and model. Anthropic maps only where model capabilities require it; older thinking budgets stay below the total output limit. SDK request tests cover the actual serialized payloads.
+## ModelTrace
 
-## Model testing
+`ModelTestSessionService` 持有独立内存会话。页面切换只取消订阅，后台继续；当前目标、凭据、挑战、指纹库和并发配置在运行开始时冻结，结果不写入聊天或备份。
 
-ModelTrace is available from the home chat toolbar at `/model-test`; the old settings path redirects there. Separate model and provider preferences are persisted globally without changing chat selections. A route-independent `ModelTestSessionService` owns one runner with 1–3 concurrent challenges and retains its progress/results in memory. Leaving the page only unsubscribes the view; it does not abort requests or retries. Draft selection changes affect the next run. Only explicit Stop or application exit ends an active test.
+首组独立执行。每次正常完成后用已完成的有效样本分析，模型概率未经四舍五入达到 0.99 即提前结束，取消未完成连接、排队与重试等待；其余组标记 skipped。未达标才按并发 1／2／3 启动剩余两组。用户停止与致命请求错误终止本轮，普通错误每组最多三次、等待 1 秒和 3 秒，等待不占名额。
 
-ModelTrace runs directly against the selected provider; no third-party test relay exists. A session freezes the provider credentials, actual model ID and all three challenges. Its requests disable reasoning, tools and SDK retries, use incremental text events, and have no model-request timeout. Cancellation ends active requests and scheduled retries.
+回答按块区分增量和快照，隔离 reasoning、commentary 与思考标签。流式保护在第 2N+1 个完整整数或总输出超过 32 KiB 时取消该尝试；预算 `min(4096, max(1024, N*4))`。正常终态后的数量／范围偏差只影响分析。至少 80 个范围内整数的组参与既有评分，不排序、不去重、不补齐；失败或未完成样本不评分。
 
-Each attempt has its own answer collector. Complete text events replace snapshots, native reasoning and explicit commentary stay outside the answer, and inline thought tags are isolated across chunks. A provider-confirmed finish (including an output limit) completes the request independently of answer quality. Missing terminal events and real provider/transport errors remain failures. Count and range differences never abort or retry a completed request.
+指纹库跟踪 Hanmo123/ModelTrace 的 hanmo 分支；确定提交后校验评分核心、挑战和数据，再原子缓存。失败保留旧库；运行中更新不改变当前结果。没有代理、思考参数、工具或 SDK 隐式重试。
 
-Automatic and pasted outputs share one analysis parser. Complete integer sequences retain their original text, order and duplicates; only the scoring array excludes values outside 1–355. Prose, decimals, exponents and malformed thought tags are not mined for numbers. A group with at least 80 usable integers contributes to the unchanged bundled scoring algorithm, using the bank's calibration for one, two or three available groups. The report refreshes after each completed group; no usable samples produces an empty result, not a request failure.
+## 导入、目录与持久化
 
-Temporary request failures get at most two extra attempts after 1 and 3 seconds. Authentication, missing-model and other permanent request errors stop immediately. Retrying failed groups skips every completed request, including completed answers that cannot be analyzed. Results are memory-only and never create chat records. Persistence is version 223. The page places test controls and attribution side by side at a 960px content width, followed by the full-width challenges; narrower layouts stack all three areas.
+原生内存队列保留 `ccswitch://v1/import`，renderer 串行确认。支持 Sub2API／New API 的 codex、grokbuild、claude 客户端；平台、规范化地址和 Key 决定去重。确认前不保存，不执行 usageScript，不把完整链接写入路由或日志。当前接收长度和队列行为不在本轮改变。
 
-## Imports and persistence
+三平台目录和 CLI 身份分别同步公开官方来源，不访问服务商 `/models`，不携带服务商凭据。共享端点规则保留子路径和显式完整端点。用户编辑、排序、删除记录与当前选择不会被同步覆盖。
 
-The installed app registers `ccswitch://v1/import`. A native queue retains every pending provider link in memory until the main renderer is ready; mini windows cannot drain it. A renderer queue serializes confirmation dialogs. Only provider resources for codex (OpenAI), grokbuild (grok) and claude (Anthropic) are accepted. Both Sub2API and New API CCS links are supported, including `model`, `haikuModel`, `sonnetModel` and `opusModel`. Platform, normalized address and key define import identity. Confirmation allows platform correction; duplicate imports may add catalog models. Only `ccswitch` is registered, never `cherrystudio`. Keys are masked at confirmation and never placed in routes or import logs. Usage scripts are ignored.
+业务持久化版本为 223，启动与恢复共用幂等规则，见 [迁移说明](migration-notes.md)。已移除功能的历史记录仍只读兼容。
 
-Redux persistence version 223 initializes the global stream/non-stream request mode from the legacy default assistant once and removes the obsolete assistant-level flag. Version 219 initializes independent model-test selection from the existing default model once, including backup restore. Invalid selections remain visible for explicit correction. Version 218 removes persisted web-search settings, search credentials and assistant search toggles while preserving historical chat blocks as read-only content. Version 217 merges old provider models into platform catalogs in original provider order, then appends missing seed models. Existing definitions take precedence. It repairs addresses and removes per-provider model copies, UA overrides and detection state. Both startup and backup restore share idempotent migration. Version 216 still clears providers and invalid references for backups older than 216. Every rehydrate and backup restore sanitizes removed configuration. New providers survive restart and current-version backups. Chat messages, assistants and quick phrases remain intact.
+## Android 与备份
 
-## CLI identity and endpoint handling
+`RuntimeCapabilities` 隔离桌面能力。Android 原生层处理系统栏、键盘、SAF 和前台服务。后台任务租约覆盖聊天／测试及重试等待；通知 Stop、服务终止、退出推进取消 epoch 并释放连接和唤醒锁。256 KiB／128 事件有界确认队列在 WebView 恢复后重播未确认事件，旧事件不得恢复停止任务。系统杀进程后不自动重发。
 
-`packages/shared/cliIdentity.ts` filters stable official Codex/Claude GitHub releases and Grok's stable endpoint. Startup checks cached versions once they are at least an hour old, followed by an hourly timer. Queries time out after ten seconds, contain no provider credentials, and never downgrade a cached/bundled version. Platform identity headers are applied after SDK request construction, including retries. A trailing `#` routes directly to the explicit endpoint; ordinary addresses normalize to a base URL with one version suffix.
+Android 普通状态只存凭据引用，Keystore 加密写入成功后再清除明文；桌面仍使用既有本地持久化。备份默认排除凭据，含凭据时采用版本化 Argon2id／AES-256-GCM 容器，随机 salt／nonce 独立，认证和结构校验先于恢复。附件单独暂存，失败回滚。
 
-The release catalog and initial CLI versions are pinned to Codex `rust-v0.156.1`, Claude Code `v2.1.281`, Grok `1.0.41`, and Sub2API `a3eb7ef302961cba716dc78b39b93b60c467db0e`. PlatformModelCatalogService also checks official public model catalogs hourly and on demand, keeping a validated per-platform cache separate from backups. User edits and deletion exclusions survive synchronization.
+## 检查
 
-Model health probes and individual/batch API Key connection tests have no services, types or UI entries. Key management and ordinary request errors remain.
-
-## Removed MCP functionality
-
-There are no MCP settings, server runtimes, OAuth flows, installers, Redux slice, IPC/preload API, Tauri commands or HTTP routes. Historical tool messages keep their existing storage key and render as read-only records. Agent SDK configuration explicitly excludes external MCP configuration. The removed network-search feature has no provider, tool factory, request injection, UI entry, IPC path or API route; ordinary URL opening and historical citation rendering remain.
-
-## Validation
-
-`pnpm test:upgrade`, `pnpm test:renderer`, `pnpm typecheck`, `pnpm i18n:check`, `pnpm openapi:check`, `pnpm build:tauri:web`, and `cargo test --manifest-path src-tauri/Cargo.toml`. Automated transport tests use local mocks. The v0.1.20 installed-app acceptance additionally uses the explicitly authorized Happy Code provider and actual `gpt-6-sol` model ID; no other provider is called.
-
-ModelTrace fingerprint updates follow Hanmo123/ModelTrace `hanmo`: commit-pinned data downloads are checked against the supported scoring/challenge blobs and statistical schema before an atomic write to a separate disposable cache. Startup/hourly checks and manual refresh never send provider credentials. Every run and failed-group retry captures its bank revision, data digest and concurrency. Cache failures preserve the last valid bank; incompatible algorithms require an app update. The original upstream JSON remains unmodified; the local parser admission policy is separate.
-
-Migration 221 normalizes the remembered challenge concurrency to 1, 2 or 3 (default 1) on both startup and backup restore. Each request owns its collector, guard and controller; backoff releases its slot. Fatal request errors cancel all unfinished work; user Stop also clears queued attempts and retry timers.
-
-## Android
-
-`RuntimeCapabilities` separates desktop windows, tray, screenshot and launch settings from Android. `MainActivity` applies system-bar/IME insets to the WebView container. The renderer uses a single-column layout, bottom navigation and native Back handling. System file pickers provide attachments, copied into the private managed files directory.
-
-`BackgroundTaskService` holds leases for chat requests and complete ModelTrace runs, including backoff. A native `dataSync` foreground service owns the notification and wake lock. Native cancellation advances an epoch and aborts active connections. Sequenced HTTP events have a 256 KiB / 128-event acknowledged queue; resuming the renderer replays unconsumed events without duplicating text. Process loss never retries old tasks automatically.
-
-Android Redux persistence uses credential references. The encrypted vault is atomically stored in `noBackupFilesDir` with a non-exportable Keystore AES key; OS backup is disabled. Migration writes the vault before redacting ordinary state. Failed writes leave the previous state recoverable.
-
-Portable backups omit credentials unless explicitly requested. Credential-bearing backups use the `LICH13BK` versioned container, Argon2id (64 MiB, 3 iterations, 1 lane) and AES-256-GCM with independent random salt/nonce. Authentication and schema validation precede restore. Attachments stage separately; failed restore rolls back state and files. Business migrations are at 223.
-
-Android API 31/36 device smoke tests are compiled into a separate instrumentation APK; release artifacts have no test routes or debug WebView bridge. Release checks verify signing, ARM64-only libraries and 16 KiB ELF/APK alignment.
+本地和 CI 使用 `pnpm run ci` 的同一前端／Rust 检查定义。协议、生命周期、迁移、备份和 ModelTrace 测试采用虚拟接口；Android API 31／36 设备检查由独立 instrumentation APK 执行。通过项以实际日志为准，不将构建成功等同于功能验收。

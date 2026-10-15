@@ -1,41 +1,42 @@
 # Android
 
-Requires Android 12 (API 31) or newer, ARM64. The release targets API 36 and supports 16 KiB memory pages.
+支持 Android 12（API 31）以上、ARM64。发布目标为 API 36，制品验证包含 16 KiB 内存页兼容。
 
-## Build
+## 环境与构建
 
-Install Node 24, pnpm 10.27, Rust with `aarch64-linux-android`, Tauri CLI 2.10.1, JDK 21, Android SDK 36 / build-tools 36.0.0 and NDK 28.2.13676358. Set `JAVA_HOME`, `ANDROID_HOME` and `NDK_HOME` for those installations.
+Node 与 pnpm 版本分别取 `.nvmrc`、`package.json#packageManager`。使用 Rust stable 及 `aarch64-linux-android` target、Tauri CLI 2.10.1、JDK 21、SDK 36／build-tools 36.0.0、NDK 28.2.13676358。按实际安装位置配置 `JAVA_HOME`、`ANDROID_HOME`、`NDK_HOME`。
 
 ```sh
 pnpm install --frozen-lockfile
 pnpm build:tauri:web
-cargo tauri android build --debug --target aarch64 --apk --ci
+cargo +stable tauri android build --debug --target aarch64 --apk --ci
 ```
 
-The APK is under `src-tauri/gen/android/app/build/outputs/apk/universal/debug/`.
+调试 APK 在 `src-tauri/gen/android/app/build/outputs/apk/universal/debug/`。正式构建可用 `pnpm tauri:build:android`；签名材料须先按下节配置。
 
-## Release signing
+## 签名
 
-`node scripts/android-signing.mjs` creates one independent release key in `~/.config/lich13studio/android-signing/` and refuses to replace existing material. Keep both files outside Git. `--github` stores the key and properties in this repository's Actions secrets without printing their contents.
+`node scripts/android-signing.mjs` 创建独立发布密钥，默认放在用户配置目录，拒绝覆盖已有材料。`--github` 可将其写入本仓库 Actions secrets，不打印内容。密钥和 properties 不能提交 Git；后续升级必须沿用同一签名。
+
+设置 `LICH13_ANDROID_SIGNING_PROPERTIES` 指向私密 properties 后执行：
 
 ```sh
-export LICH13_ANDROID_SIGNING_PROPERTIES="$HOME/.config/lich13studio/android-signing/release.properties"
-cargo tauri android build --target aarch64 --apk --ci
+pnpm tauri:build:android
 python3 scripts/verify-android.py src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk
 ```
 
-The same key is required for future installed-app upgrades. GitHub Release includes a signed APK and `SHA256SUMS` alongside macOS and Windows packages.
+Release 提供签名 APK 和 `SHA256SUMS`。本地调试包不能替代正式签名验证。
 
-## Device checks
+## 设备检查
 
-CI builds a separate x86_64 debug APK for API 31/36 emulators. `LICH13_ANDROID_TEST_ABI=x86_64` is rejected for release builds. `app/src/androidTest` is instrumentation-only and is not packaged in the application. Local release acceptance uses ARM64 emulators, including a 16 KiB API 36 image.
+CI 为 API 31／36 模拟器构建单独的 x86_64 debug APK。`LICH13_ANDROID_TEST_ABI=x86_64` 不允许用于 release；`app/src/androidTest` 不进入正式应用。
 
-`python3 scripts/android-fixture.py` starts the loopback-only streaming fixture and CCswitch sample page on port 18765. Use `adb reverse tcp:18765 tcp:18765` for an emulator. Its metrics contain request shape and counters, never credentials or chat content. Do not use production credentials in this fixture.
+`python3 scripts/android-fixture.py` 提供回环模拟接口及 CCswitch 示例页，端口 18765；模拟器用 `adb reverse tcp:18765 tcp:18765` 访问。只使用虚拟凭据，指标只记录请求形状与计数。
 
-## Data and background tasks
+## 文件、后台与导入
 
-Android data is independent from desktop data. Backups transfer data between devices; there is no automatic cross-device synchronization. Credentials are excluded by default. Including them requires an encrypted backup password that is never retained. Imported credentials move into Android Keystore-backed storage.
+Android 数据与桌面独立，依靠备份迁移，不自动跨设备同步。系统 SAF 负责选择和导出文件，附件复制到私有受管目录。默认备份排除凭据，包含时必须加密；导入凭据写入 Keystore。
 
-Active chats and model tests use a foreground notification with a Stop action. Returning to the app restores the current session. Force-stop, process termination and Android's `dataSync` time budget stop outstanding work; the app does not resend it. Notification permission is requested when the first task starts.
+聊天和模型测试运行期间显示前台通知，可停止全部活动任务。强制退出、进程终止或 Android dataSync 系统时间预算耗尽会结束请求，不自动重发。模型请求没有应用层超时，不等于不受系统限制。
 
-Only `ccswitch` is registered. Android handles selection between multiple installed protocol handlers. The app confirms each import and clears consumed Intent data; it never executes attached usage scripts.
+仅注册 `ccswitch`，遵循 Android 协议处理程序选择。导入必须确认，消费后清除 Intent 数据，不执行 usageScript。

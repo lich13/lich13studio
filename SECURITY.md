@@ -1,63 +1,17 @@
-# Security Policy
+# 安全报告
 
-## 📢 Reporting a Vulnerability
+请通过本项目的 [私密漏洞报告入口](https://github.com/lich13/lich13studio/security/advisories/new) 提交安全问题，不要在公开 Issue 中发布漏洞细节、凭据、聊天记录或备份。
 
-At Cherry Studio, we take security seriously and appreciate your efforts to responsibly disclose vulnerabilities. If you discover a security issue, please report it as soon as possible.
+报告请包含受影响版本、平台、最小复现步骤、影响范围和可公开的虚拟数据。维护者会在私密报告中讨论修复及披露时间。普通使用问题请前往 [Issues](https://github.com/lich13/lich13studio/issues)。
 
-**Please do not create public issues for security-related reports.**
+安全修正以当前维护的 main 与最新发布版本为基准；旧版本请先核对最新修正。不要将本分支的问题报告到 Cherry Studio 上游。
 
-- To report a security issue, please use the GitHub Security Advisories tab to "[Open a draft security advisory](https://github.com/CherryHQ/cherry-studio/security/advisories/new)".
-- Include a detailed description of the issue, steps to reproduce, potential impact, and any possible mitigations.
-- If applicable, please also attach proof-of-concept code or screenshots.
+## 当前安全边界
 
-We will acknowledge your report within **72 hours** and provide a status update as we investigate.
+- 模型请求仅使用用户配置的提供商，公共目录同步不携带聊天内容或提供商凭据。
+- Android 凭据由 Keystore 加密保护；桌面凭据仍在本地普通持久化存储中。桌面存储加密迁移尚未实现。
+- 默认备份排除凭据；包含凭据时必须设置密码。密码不持久化，认证失败不会进入数据恢复。
+- 本地日志使用共享脱敏器。报告中仍应使用虚拟数据，不提交原始用户日志或数据库。
+- CCswitch 导入必须经过确认；本版没有增加链接长度及队列上限。
 
----
-
-## 🔒 Supported Versions
-
-We aim to support the latest released version and one previous minor release.
-
-| Version         | Supported        |
-| --------------- | ---------------- |
-| Latest (`main`) | ✅ Supported     |
-| Previous minor  | ✅ Supported     |
-| Older versions  | ❌ Not supported |
-
-If you are using an unsupported version, we strongly recommend updating to the latest release to receive security fixes.
-
----
-
-## 💡 Security Measures
-
-Cherry Studio integrates several security best practices, including:
-
-- Strict dependency updates and regular vulnerability scanning.
-- TypeScript strict mode and linting to reduce potential injection or runtime issues.
-- Enforced code formatting and pre-commit hooks.
-- Internal security reviews before releases.
-
----
-
-## 🛡️ Disclosure Policy
-
-- We follow a **coordinated disclosure** approach.
-- We will not publicly disclose vulnerabilities until a fix has been developed and released.
-- Credit will be given to researchers who responsibly disclose vulnerabilities, if requested.
-
----
-
-## 🤝 Acknowledgements
-
-We greatly appreciate contributions from the security community and strive to recognize all researchers who help keep Cherry Studio safe.
-
----
-
-## 🌟 Questions?
-
-For any security-related questions not involving vulnerabilities, please reach out to:  
-**security@cherry-ai.com**
-
----
-
-Thank you for helping keep Cherry Studio and its users secure!
+许可证和第三方归属见 [NOTICE](NOTICE.md)，数据边界见 [隐私说明](docs/privacy.md)。

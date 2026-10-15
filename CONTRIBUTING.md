@@ -1,102 +1,17 @@
-[中文](docs/zh/guides/contributing.md) | [English](CONTRIBUTING.md)
+# 贡献指南
 
-# Cherry Studio Contributor Guide
+本仓库维护 lich13studio。问题、代码和文档变更请提交到 [lich13/lich13studio](https://github.com/lich13/lich13studio)，安全问题使用 [私密报告](SECURITY.md)。上游 Cherry Studio 链接只用于来源与授权说明。
 
-Welcome to the Cherry Studio contributor community! We are committed to making Cherry Studio a project that provides long-term value and hope to invite more developers to join us. Whether you are an experienced developer or a beginner just starting out, your contributions will help us better serve users and improve software quality.
+## 开始修改
 
-## How to Contribute
+1. 阅读 [功能范围](docs/scope-freeze.md)、[架构](docs/architecture-lite.md) 和 [迁移规则](docs/migration-notes.md)。
+2. 使用 `main` 为基线，保持每个提交只解决一个问题。需要扩大范围或改变兼容行为时，先在本项目 Issue 中讨论。
+3. 按 [开发指南](docs/zh/guides/development.md) 安装固定工具链和锁定依赖。
+4. 修复应带有针对实际行为的回归测试，测试使用虚拟凭据和隔离接口，不调用真实模型。
+5. 提交前执行 `pnpm run ci`；CI 使用同一检查定义，并完成跨平台构建。PR 说明应列出改动、验证和未覆盖边界。
 
-Here are several ways you can participate:
+## 数据与许可
 
-1.  **Contribute Code**: Help us develop new features or optimize existing code. Please ensure your code adheres to our coding standards and passes all tests.
+不得提交 API Key、密码、Cookie、聊天记录、数据库、签名密钥或含敏感信息的截图。不要随意删除旧迁移、持久化键或第三方版权说明。
 
-2.  **Fix Bugs**: If you find a bug, you are welcome to submit a fix. Please confirm the issue is resolved before submitting and include relevant tests.
-
-3.  **Maintain Issues**: Help us manage issues on GitHub by assisting with tagging, classifying, and resolving problems.
-
-4.  **Product Design**: Participate in product design discussions to help us improve user experience and interface design.
-
-5.  **Write Documentation**: Help us improve the user manual, API documentation, and developer guides.
-
-6.  **Community Maintenance**: Participate in community discussions, help answer user questions, and promote community activity.
-
-7.  **Promote Usage**: Promote Cherry Studio through blogs, social media, and other channels to attract more users and developers.
-
-## Before You Start
-
-Please make sure you have read the [Code of Conduct](CODE_OF_CONDUCT.md) and the [LICENSE](LICENSE).
-
-## Setting Up Your Development Environment
-
-Please refer to the [Developer Guide](docs/en/guides/development.md) for instructions on setting up your local development environment, including prerequisites, installation steps, and available commands.
-
-For a comprehensive overview of the project architecture, tech stack, conventions, and available commands, see [`CLAUDE.md`](CLAUDE.md).
-
-## Getting Started
-
-To help you get familiar with the codebase, we recommend tackling issues tagged with one or more of the following labels: [good-first-issue](https://github.com/CherryHQ/cherry-studio/labels/good%20first%20issue), [help-wanted](https://github.com/CherryHQ/cherry-studio/labels/help%20wanted), or [kind/bug](https://github.com/CherryHQ/cherry-studio/labels/kind%2Fbug). Any help is welcome.
-
-### Testing
-
-Features without tests are considered non-existent. To ensure code is truly effective, relevant processes should be covered by unit tests and functional tests. Therefore, when considering contributions, please also consider testability. All tests can be run locally without dependency on CI. Please refer to the "Testing" section in the [Developer Guide](docs/zh/guides/development.md).
-
-### Automated Testing for Pull Requests
-
-Automated tests are triggered on pull requests (PRs) opened by members of the Cherry Studio organization, except for draft PRs. PRs opened by new contributors will initially be marked with the `needs-ok-to-test` label and will not be automatically tested. Once a Cherry Studio organization member adds `/ok-to-test` to the PR, the test pipeline will be created.
-
-### Consider Opening Your Pull Request as a Draft
-
-Not all pull requests are ready for review when created. This might be because the author wants to start a discussion, they are not entirely sure if the changes are heading in the right direction, or the changes are not yet complete. Please consider creating these PRs as [draft pull requests](https://github.blog/2019-02-14-introducing-draft-pull-requests/). Draft PRs are skipped by CI, thus saving CI resources. This also means reviewers will not be automatically assigned, and the community will understand that this PR is not yet ready for review.
-Reviewers will be assigned after you mark the draft pull request as ready for review.
-
-### Contributor Compliance with Project Terms
-
-We require every contributor to certify that they have the right to legally contribute to our project. Contributors express this by consciously signing their commits, thereby indicating their compliance with the [LICENSE](LICENSE).
-A signed commit is one where the commit message includes the following:
-
-You can generate a signed commit using the following command [git commit --signoff](https://git-scm.com/docs/git-commit#Documentation/git-commit.txt---signoff):
-
-```
-git commit --signoff -m "Your commit message"
-```
-
-### Getting Code Reviewed/Merged
-
-Maintainers are here to help you implement your use case within a reasonable timeframe. They will do their best to review your code and provide constructive feedback promptly. However, if you get stuck during the review process or feel your Pull Request is not receiving the attention it deserves, please contact us via comments in the Issue or through the [Community](README.md#-community).
-
-### Participating in the Test Plan
-
-The Test Plan aims to provide users with a more stable application experience and faster iteration speed. For details, please refer to the [Test Plan](docs/en/guides/test-plan.md).
-
-### Other Suggestions
-
-- **Contact Developers**: Before submitting a PR, you can contact the developers first to discuss or get help.
-
-## Important Contribution Guidelines & Focus Areas
-
-Please review the following critical information before submitting your Pull Request:
-
-### Branch Strategy Change (Effective April 3, 2026) 🚨
-
-**The `main` branch is now under code freeze.** The merge strategy is as follows:
-
-*   **`main` branch**: Only accepts **critical bug fixes**. Fix PRs must be submitted via `hotfix/*` branches (e.g., `hotfix/fix-crash-on-startup`), kept minimal in scope, and must not include any refactoring code.
-*   **`v2` branch**: All new feature development, refactoring, and optimizations should be done on the `v2` branch.
-
-### Participate in v2 Development 🚀
-
-v2 is the next major milestone for Cherry Studio, and we invite every developer to actively participate! Whether it's new feature development, architecture optimization, or code refactoring, your contributions on the `v2` branch are welcome. Let's build a better Cherry Studio together!
-
-> **Note**: The `v2` branch will only accept new feature submissions after all current features have been fully refactored.
-
-We appreciate your understanding and continued support during this important development phase. Thank you!
-
-
-## Contact Us
-
-If you have any questions or suggestions, feel free to contact us through the following ways:
-
-- WeChat: kangfenmao
-- [GitHub Issues](https://github.com/CherryHQ/cherry-studio/issues)
-
-Thank you for your support and contributions! We look forward to working with you to make Cherry Studio a better product.
+贡献应遵循 [行为准则](CODE_OF_CONDUCT.md) 与 [AGPL-3.0](LICENSE)。请确认有权提交代码，并用 `git commit --signoff` 记录贡献者声明。第三方文件仍保留各自许可证，详见 [NOTICE](NOTICE.md)。
