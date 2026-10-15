@@ -286,6 +286,7 @@ impl Default for RuntimeSettings {
     }
 }
 
+#[cfg(any(target_os = "macos", test))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum MainWindowCloseAction {
     KeepBackground,
@@ -431,6 +432,7 @@ fn apply_runtime_setting(
     Ok(())
 }
 
+#[cfg(any(target_os = "macos", test))]
 fn main_window_close_action(settings: RuntimeSettings) -> MainWindowCloseAction {
     if settings.tray && settings.tray_on_close {
         MainWindowCloseAction::KeepBackground
@@ -439,6 +441,7 @@ fn main_window_close_action(settings: RuntimeSettings) -> MainWindowCloseAction 
     }
 }
 
+#[cfg(any(target_os = "macos", test))]
 fn should_prevent_implicit_exit(
     exit_code_present: bool,
     app_exiting: bool,
@@ -488,7 +491,7 @@ fn apply_dock_visibility(_app: &AppHandle, _visibility: DockVisibility) {
     }
 }
 
-#[cfg(any(target_os = "macos", test))]
+#[cfg(target_os = "macos")]
 fn macos_app_bundle_path(executable_path: &Path) -> Option<PathBuf> {
     let path = executable_path.to_string_lossy();
     path.find(".app/Contents/MacOS/")
