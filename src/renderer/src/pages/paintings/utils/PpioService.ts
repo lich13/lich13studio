@@ -89,13 +89,12 @@ class PpioService {
       const response = await fetch(url, options)
 
       if (!response.ok) {
-        const errorText = await response.text()
-        logger.error('PPIO API error', { status: response.status, error: errorText })
-        throw new PpioApiError(`PPIO API error: ${response.status} - ${errorText}`, response.status)
+        logger.error('PPIO API error', { status: response.status })
+        throw new PpioApiError(`PPIO API error: ${response.status}`, response.status)
       }
 
       const data = await response.json()
-      logger.debug('PPIO API response', data)
+      logger.debug('PPIO API response', { status: response.status })
       return data as T
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {

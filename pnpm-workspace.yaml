@@ -64,7 +64,7 @@ allowBuilds:
   "@j178/prek": true
   "@kangfenmao/keyv-storage": true
   "@paymoapp/electron-shutdown-handler": true
-  "@scarf/scarf": true
+  "@scarf/scarf": false
   "@swc/core": true
   "electron": true
   "esbuild": true

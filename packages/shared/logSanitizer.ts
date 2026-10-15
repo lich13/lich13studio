@@ -1,29 +1,64 @@
 const SENSITIVE_KEY =
-  /^(authorization|proxy-authorization|cookie|set-cookie|headers?|api[-_]?key|token|access[-_]?token|refresh[-_]?token|password|secret|prompt|messages|content|body|request[-_]?body(?:values)?|response[-_]?body|request|response|tool[-_]?(input|args)|arguments?)$/i
+  /^(authorization|proxy[-_]?authorization|cookie|set[-_]?cookie|headers?|(?:x[-_]?)?api[-_]?keys?|(?:access[-_]?|refresh[-_]?|id[-_]?)?tokens?|(?:backup[-_]?|webdav[-_]?)?password|secrets?|credentials?|private[-_]?key|prompt|system(?:[-_]?prompt)?|messages|content|body|request[-_]?body(?:values)?|response[-_]?body|request|response|tool[-_]?(input|args)|arguments?)$/i
 
-const SENSITIVE_TEXT = [
-  /(\bBearer\s+)[^\s,;]+/gi,
-  /([?&](?:api[-_]?key|key|token|access[-_]?token|refresh[-_]?token|password|secret)=)[^&#\s]+/gi,
-  /(\b(?:api[-_]?key|token|password|secret|cookie)\s*[:=]\s*)[^\s,;&?#]+/gi,
-  /\b(?:sk|xai|ghp|github_pat|AIza)[A-Za-z0-9_-]{12,}/g
-]
+const REDACTED = '[REDACTED]'
+
+/** Read a complete quoted or structured value, including escaped quotes. */
+function fieldValueEnd(text: string, start: number): number {
+  const first = text[start]
+  let quote = first === '"' || first === "'" ? first : ''
+  let nesting = first === '[' || first === '{' ? 1 : 0
+  if (!quote && !nesting) {
+    const end = text.slice(start).search(/[,;\r\n&?#]/)
+    return end < 0 ? text.length : start + end
+  }
+
+  for (let index = start + 1; index < text.length; index++) {
+    const char = text[index]
+    if (quote) {
+      if (char === '\\') index++
+      else if (char === quote) {
+        quote = ''
+        if (!nesting) return index + 1
+      }
+    } else if (char === '"' || char === "'") quote = char
+    else if (char === '[' || char === '{') nesting++
+    else if ((char === ']' || char === '}') && --nesting === 0) return index + 1
+  }
+  // An incomplete log value must not expose the remaining secret.
+  return text.length
+}
+
+function redactFields(text: string): string {
+  const fields = /(["']?)([a-z][\w-]*)\1\s*[:=]\s*/gi
+  let result = ''
+  let cursor = 0
+  for (let match = fields.exec(text); match; match = fields.exec(text)) {
+    if (!SENSITIVE_KEY.test(match[2])) continue
+    const start = fields.lastIndex
+    const end = fieldValueEnd(text, start)
+    const first = text[start]
+    const structured = first === '"' || first === "'" || first === '[' || first === '{'
+    result += text.slice(cursor, start) + (structured ? JSON.stringify(REDACTED) : REDACTED)
+    cursor = end
+    fields.lastIndex = end
+  }
+  return result + text.slice(cursor)
+}
 
 /** Remove credentials and user content before values enter local logs. */
 export function sanitizeLogText(value: string): string {
-  return SENSITIVE_TEXT.reduce(
-    (result, pattern) =>
-      result.replace(pattern, (...args) => {
-        const capture = typeof args[1] === 'string' ? args[1] : ''
-        return `${capture}[REDACTED]`
-      }),
-    value
-  )
+  return redactFields(value)
+    .replace(/(\bhttps?:\/\/)[^/\s?#]*@/gi, `$1${REDACTED}@`)
+    .replace(/(\b(?:Bearer|Basic)\s+)[^\s,;"']+/gi, `$1${REDACTED}`)
+    .replace(/([?&]key=)[^&#\s]+/gi, `$1${REDACTED}`)
+    .replace(/\b(?:sk|xai|ghp|github_pat|AIza)[A-Za-z0-9_-]{12,}/g, REDACTED)
 }
 
 export function sanitizeLogError(error: unknown): Error {
   const source = error instanceof Error ? error : new Error(String(error))
   const safe = new Error(sanitizeLogText(source.message).slice(0, 256))
-  safe.name = source.name || 'Error'
+  safe.name = sanitizeLogText(source.name || 'Error')
   return safe
 }
 
@@ -33,7 +68,7 @@ export function sanitizeLogValue(value: unknown, depth = 0, seen = new WeakSet<o
   }
   if (typeof value === 'string') return sanitizeLogText(value)
   if (value instanceof Error) {
-    return { name: value.name, message: sanitizeLogText(value.message) }
+    return { name: sanitizeLogText(value.name), message: sanitizeLogText(value.message) }
   }
   if (typeof value !== 'object') return String(value)
   if (seen.has(value)) return '[Circular]'

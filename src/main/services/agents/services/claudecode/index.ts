@@ -415,7 +415,7 @@ class ClaudeCodeService implements AgentServiceInterface {
     let assistantSystemPrompt: string | undefined
     if (isAssistant) {
       try {
-        const context = await buildAssistantContext()
+        const context = buildAssistantContext()
         assistantSystemPrompt = session.instructions ? `${session.instructions}\n\n${context}` : context
       } catch (err) {
         logger.warn('Failed to build assistant context', { error: err })
@@ -910,7 +910,7 @@ class ClaudeCodeService implements AgentServiceInterface {
  * Build a lightweight environment snapshot (~200 tokens) for Cherry Assistant.
  * Injected into system prompt so the agent knows the user's setup immediately.
  */
-async function buildAssistantContext(): Promise<string> {
+function buildAssistantContext(): string {
   const appVersion = app.getVersion()
   const platform = `${os.platform()} ${os.release()}`
   const language = configManager.getLanguage()
@@ -923,41 +923,14 @@ async function buildAssistantContext(): Promise<string> {
     .filter((p) => p.apiKey || p.enabled)
     .map((p) => `${p.name || p.id}(${(p.models as unknown[])?.length || 0} models)`)
 
-  // Network probe (parallel, 2s timeout each)
-  const probeResults = await Promise.allSettled([
-    probeHost('github.com'),
-    probeHost('google.com'),
-    probeHost('docs.cherry-ai.com')
-  ])
-  const networkLines = probeResults.map((r) => {
-    const v = r.status === 'fulfilled' ? r.value : { host: '?', ok: false, ms: 0 }
-    return `- ${v.host}: ${v.ok ? `reachable (${v.ms}ms)` : 'unreachable'}`
-  })
-
   return [
     '## Current Environment',
     `- App: lich13studio v${appVersion}`,
     `- OS: ${platform}`,
     `- Language: ${language}, Theme: ${theme}`,
-    proxy ? `- Proxy: ${proxy}` : '- Proxy: none',
-    `- Providers (${configuredProviders.length}): ${configuredProviders.join(', ') || 'none configured'}`,
-    '',
-    '## Network',
-    ...networkLines
+    proxy ? '- Proxy: configured' : '- Proxy: none',
+    `- Providers (${configuredProviders.length}): ${configuredProviders.join(', ') || 'none configured'}`
   ].join('\n')
-}
-
-async function probeHost(host: string): Promise<{ host: string; ok: boolean; ms: number }> {
-  const start = Date.now()
-  try {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 2000)
-    await fetch(`https://${host}`, { method: 'HEAD', signal: controller.signal })
-    clearTimeout(timeout)
-    return { host, ok: true, ms: Date.now() - start }
-  } catch {
-    return { host, ok: false, ms: Date.now() - start }
-  }
 }
 
 export default ClaudeCodeService

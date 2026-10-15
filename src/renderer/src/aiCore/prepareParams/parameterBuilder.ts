@@ -4,7 +4,6 @@
  */
 
 import { combineHeaders } from '@ai-sdk/provider-utils'
-import { loggerService } from '@logger'
 import { MAX_TOOL_CALLS, MIN_TOOL_CALLS } from '@renderer/config/constant'
 import {
   isAnthropicModel,
@@ -26,8 +25,6 @@ import type { ProviderCapabilities } from '../types'
 import { buildProviderOptions } from '../utils/options'
 import { addAnthropicHeaders } from './header'
 import { getMaxTokens, getTemperature, getTopP } from './modelParameters'
-
-const logger = loggerService.withContext('parameterBuilder')
 
 /**
  * Validates and clamps maxToolCalls to valid range
@@ -140,8 +137,6 @@ export async function buildStreamTextParams(
   if (systemPrompt) {
     params.system = systemPrompt
   }
-
-  logger.debug('params', params)
 
   return {
     params,

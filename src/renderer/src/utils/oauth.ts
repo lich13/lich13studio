@@ -112,9 +112,8 @@ export const oauthWithPPIO = async (setKey) => {
         })
 
         if (!tokenResponse.ok) {
-          const errorText = await tokenResponse.text()
-          logger.error(`[PPIO OAuth] Token exchange failed: ${tokenResponse.status} ${errorText}`)
-          throw new Error(`Failed to exchange code for token: ${tokenResponse.status} ${errorText}`)
+          logger.error('[PPIO OAuth] Token exchange failed', { status: tokenResponse.status })
+          throw new Error(`Failed to exchange code for token: ${tokenResponse.status}`)
         }
 
         const tokenData = await tokenResponse.json()

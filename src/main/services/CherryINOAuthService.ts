@@ -208,13 +208,11 @@ class CherryINOAuthService {
       })
 
       if (!tokenResponse.ok) {
-        const errorText = await tokenResponse.text()
-        logger.error(`Token exchange failed: ${tokenResponse.status} ${errorText}`)
+        logger.error('Token exchange failed', { status: tokenResponse.status })
         throw new CherryINOAuthServiceError(`Failed to exchange code for token: ${tokenResponse.status}`)
       }
 
       const tokenJson = await tokenResponse.json()
-      logger.debug('Token exchange raw response:', tokenJson)
       const tokenData = TokenResponseSchema.parse(tokenJson)
 
       const { access_token: accessToken, refresh_token: refreshToken } = tokenData
@@ -232,13 +230,11 @@ class CherryINOAuthService {
       })
 
       if (!apiKeysResponse.ok) {
-        const errorText = await apiKeysResponse.text()
-        logger.error(`Failed to fetch API keys: ${apiKeysResponse.status} ${errorText}`)
+        logger.error('Failed to fetch API keys', { status: apiKeysResponse.status })
         throw new CherryINOAuthServiceError(`Failed to fetch API keys: ${apiKeysResponse.status}`)
       }
 
       const apiKeysJson = await apiKeysResponse.json()
-      logger.debug('API keys raw response:', apiKeysJson)
       // Schema transforms and extracts keys to string array
       const keysArray = ApiKeysResponseSchema.parse(apiKeysJson)
       const apiKeys = keysArray.filter(Boolean).join(',')
@@ -353,8 +349,7 @@ class CherryINOAuthService {
       })
 
       if (!response.ok) {
-        const errorText = await response.text()
-        logger.error(`Token refresh failed: ${response.status} ${errorText}`)
+        logger.error('Token refresh failed', { status: response.status })
         return null
       }
 
@@ -428,7 +423,6 @@ class CherryINOAuthService {
       }
 
       const json = await response.json()
-      logger.debug('Balance API raw response:', json)
       const parsed = BalanceResponseSchema.parse(json)
 
       if (!parsed.success) {

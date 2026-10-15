@@ -19,6 +19,8 @@ for (const file of tracked) {
 }
 
 const forbidden = [
+  ['implicit environment connectivity probe', /\bprobeHost\(/],
+  ['implicit model error classification', /\bclassifyErrorByAI\b|\bbuildModelsToTry\b/],
   ['application analytics service', /AnalyticsService|Analytics_TrackTokenUsage|trackTokenUsage/],
   ['telemetry plugin injection', /createTelemetryPlugin|experimental_telemetry/],
   ['hidden marketplace reporting', /reportInstall|api\.claude-plugins\.dev/]
@@ -29,6 +31,10 @@ const secretPatterns = [
   /(?:^|[^A-Za-z0-9])(AIza[0-9A-Za-z_-]{30,})/
 ]
 const failures = []
+const installPolicy = readFileSync(join(root, 'pnpm-workspace.yaml'), 'utf8')
+if (!/^\s+["']?@scarf\/scarf["']?:\s*false\s*$/m.test(installPolicy)) {
+  failures.push('installation statistics must remain disabled: pnpm-workspace.yaml')
+}
 for (const file of files) {
   if (file === 'scripts/privacy-check.mjs') continue
   const absolute = join(root, file)
