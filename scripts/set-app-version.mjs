@@ -28,8 +28,27 @@ function normalizeVersion(version) {
 async function updateJsonVersion(filePath, nextVersion) {
   const raw = await fs.readFile(filePath, 'utf8')
   const parsed = JSON.parse(raw)
-  parsed.version = nextVersion
-  await fs.writeFile(filePath, `${JSON.stringify(parsed, null, 2)}\n`)
+  if (parsed.version === nextVersion) return
+
+  let depth = 0
+  for (const match of raw.matchAll(/[{}[\]]|"(?:\\.|[^"\\])*"/g)) {
+    const token = match[0]
+    if (token === '{' || token === '[') {
+      depth += 1
+    } else if (token === '}' || token === ']') {
+      depth -= 1
+    } else if (depth === 1 && JSON.parse(token) === 'version') {
+      const value = /^\s*:\s*("(?:\\.|[^"\\])*")/.exec(raw.slice(match.index + token.length))
+      if (!value) continue
+      const start = match.index + token.length + value[0].length - value[1].length
+      await fs.writeFile(
+        filePath,
+        raw.slice(0, start) + JSON.stringify(nextVersion) + raw.slice(start + value[1].length)
+      )
+      return
+    }
+  }
+  throw new Error(`Failed to locate the root version in ${filePath}`)
 }
 
 async function updateCargoTomlVersion(filePath, nextVersion) {
@@ -58,7 +77,7 @@ async function updateCargoTomlVersion(filePath, nextVersion) {
     throw new Error(`Failed to update Cargo.toml version in ${filePath}`)
   }
 
-  await fs.writeFile(filePath, `${updatedLines.join(newline)}${newline}`)
+  await fs.writeFile(filePath, updatedLines.join(newline))
 }
 
 async function updateCargoLockVersion(filePath, packageName, nextVersion) {
@@ -93,7 +112,7 @@ async function updateCargoLockVersion(filePath, packageName, nextVersion) {
     throw new Error(`Failed to update Cargo.lock version for ${packageName}`)
   }
 
-  await fs.writeFile(filePath, `${updatedLines.join(newline)}${newline}`)
+  await fs.writeFile(filePath, updatedLines.join(newline))
 }
 
 async function main() {

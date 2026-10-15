@@ -63,7 +63,7 @@ jobs:
           name: ci-frontend
           path: out
       - name: Install Tauri system libraries
-        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev libpipewire-0.3-dev librsvg2-dev patchelf
       - name: Check native source
         run: pnpm ci:rust
 
@@ -75,7 +75,6 @@ jobs:
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version-file: .nvmrc
-          cache: pnpm
       - name: Report JavaScript advisories
         continue-on-error: true
         run: pnpm audit
