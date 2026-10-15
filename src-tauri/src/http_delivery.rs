@@ -1,13 +1,18 @@
 //! Android WebView delivery with acknowledgements and bounded backpressure.
-use crate::{NativeHttpChunkEvent, NATIVE_HTTP_CHUNK_EVENT};
+use crate::NativeHttpChunkEvent;
+#[cfg(target_os = "android")]
+use crate::NATIVE_HTTP_CHUNK_EVENT;
 use std::collections::{BTreeMap, HashMap};
+#[cfg(any(target_os = "android", test))]
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
+#[cfg(target_os = "android")]
 use tauri::{Emitter, Window};
 use tokio::sync::Notify;
 
 #[derive(Default)]
 struct Pending {
+    #[cfg(any(target_os = "android", test))]
     next: u64,
     bytes: usize,
     events: BTreeMap<u64, NativeHttpChunkEvent>,
@@ -21,6 +26,7 @@ static DELIVERIES: OnceLock<Mutex<HashMap<String, Arc<Delivery>>>> = OnceLock::n
 fn deliveries() -> &'static Mutex<HashMap<String, Arc<Delivery>>> {
     DELIVERIES.get_or_init(Default::default)
 }
+#[cfg(any(target_os = "android", test))]
 pub fn register(id: &str) {
     deliveries()
         .lock()
@@ -33,6 +39,7 @@ pub fn remove(id: &str) {
     }
 }
 
+#[cfg(any(target_os = "android", test))]
 impl Delivery {
     async fn enqueue(
         &self,
@@ -63,6 +70,7 @@ impl Delivery {
     }
 }
 
+#[cfg(target_os = "android")]
 pub async fn emit(window: &Window, event: NativeHttpChunkEvent, abort: &AtomicBool) {
     let Some(delivery) = deliveries().lock().unwrap().get(&event.request_id).cloned() else {
         return;

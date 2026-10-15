@@ -1,0 +1,43 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "workspaces": {
+    ".": {
+      "entry": [
+        "src/main/services/proxy/bootstrap.ts",
+        "src/renderer/src/workers/*.worker.ts",
+        "scripts/android-signing.mjs",
+        "scripts/feishu-notify.ts",
+        "scripts/update-model-capabilities.mjs",
+        "scripts/prepare-tauri-bundled-binary.mjs",
+        "resources/scripts/install-{bun,uv,ovms,openclaw}.js"
+      ],
+      "project": [
+        "src/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}",
+        "scripts/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}",
+        "packages/{shared,trace}/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}",
+        "resources/scripts/**/*.js"
+      ],
+      "electron-vite": { "config": "electron.vite.config.ts" },
+      "vitest": { "config": "vitest.renderer.config.ts" }
+    },
+    "packages/aiCore": {
+      "entry": ["src/index.ts", "src/core/plugins/built-in/index.ts", "src/core/providers/index.ts"],
+      "project": ["src/**/*.ts", "test_utils/**/*.ts"]
+    },
+    "packages/ai-sdk-provider": {
+      "entry": ["src/index.ts"],
+      "project": ["src/**/*.ts"]
+    },
+    "packages/extension-table-plus": {
+      "entry": [
+        "src/index.ts",
+        "src/table/index.ts",
+        "src/cell/index.ts",
+        "src/header/index.ts",
+        "src/kit/index.ts",
+        "src/row/index.ts"
+      ],
+      "project": ["src/**/*.ts"]
+    }
+  }
+}

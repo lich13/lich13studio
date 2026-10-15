@@ -83,7 +83,7 @@ export default defineConfig([
         {
           selector: 'CallExpression[callee.object.name="console"]',
           message:
-            '❗CherryStudio uses unified LoggerService: 📖 docs/en/guides/logging.md\n❗CherryStudio 使用统一的日志服务：📖 docs/zh/guides/logging.md\n\n'
+            'lich13studio 使用统一 LoggerService，见 docs/zh/guides/logging.md'
         }
       ]
     }

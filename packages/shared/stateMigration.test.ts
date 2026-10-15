@@ -250,4 +250,23 @@ describe('223 global chat request mode', () => {
     expect(once.settings.chatRequestMode).toBe('stream')
     expect(once.assistants.assistants[0].settings.streamOutput).toBeUndefined()
   })
+
+  it('keeps the legacy non-stream choice through repeated current backup restores', () => {
+    const state: any = fixture(222)
+    state.settings = { enableDataCollection: true }
+    state.assistants.assistants[0].settings.streamOutput = false
+    state.assistants.defaultAssistant = { settings: { streamOutput: false } }
+
+    migrateChatRequestModeState(state)
+    state._persist.version = 223
+
+    const firstRestore = decode(sanitizePersistedState(encode(state)))
+    const secondRestore = decode(sanitizePersistedState(encode(firstRestore)))
+
+    expect(firstRestore.settings.chatRequestMode).toBe('non-stream')
+    expect(secondRestore.settings.chatRequestMode).toBe('non-stream')
+    expect(firstRestore.assistants.assistants[0].settings.streamOutput).toBeUndefined()
+    expect(secondRestore.assistants.assistants[0].settings.streamOutput).toBeUndefined()
+    expect(secondRestore.assistants.defaultAssistant.settings.streamOutput).toBeUndefined()
+  })
 })

@@ -1154,13 +1154,11 @@ fn handle_run_event(_app: &AppHandle, _event: &RunEvent) {
             APP_EXITING.store(true, Ordering::Relaxed);
         }
         RunEvent::Reopen {
-            has_visible_windows,
+            has_visible_windows: false,
             ..
         } => {
-            if !has_visible_windows {
-                let reason = startup::launch_show_reason(&[], startup::current_launch_event());
-                let _ = request_main_window(_app, reason);
-            }
+            let reason = startup::launch_show_reason(&[], startup::current_launch_event());
+            let _ = request_main_window(_app, reason);
         }
         _ => {}
     }
@@ -1228,18 +1226,18 @@ fn default_obsidian_config_path() -> Result<PathBuf, String> {
     {
         let base =
             dirs::config_dir().ok_or_else(|| String::from("Unable to resolve config directory"))?;
-        return Ok(base.join("obsidian").join("obsidian.json"));
+        Ok(base.join("obsidian").join("obsidian.json"))
     }
 
     #[cfg(target_os = "macos")]
     {
         let home =
             dirs::home_dir().ok_or_else(|| String::from("Unable to resolve home directory"))?;
-        return Ok(home
+        Ok(home
             .join("Library")
             .join("Application Support")
             .join("obsidian")
-            .join("obsidian.json"));
+            .join("obsidian.json"))
     }
 
     #[cfg(not(any(target_os = "windows", target_os = "macos")))]
@@ -1676,8 +1674,7 @@ fn parse_webdav_listing(xml: &str) -> Result<Vec<RemoteBackupFileInfo>, String> 
         let file_name = href
             .trim_end_matches('/')
             .split('/')
-            .filter(|segment| !segment.is_empty())
-            .last()
+            .rfind(|segment| !segment.is_empty())
             .unwrap_or_default()
             .to_string();
 
@@ -2018,7 +2015,7 @@ fn tray_menu_item_ids() -> [&'static str; 3] {
 fn normalize_update_version(version: &str) -> String {
     version
         .trim()
-        .trim_start_matches(|value| value == 'v' || value == 'V')
+        .trim_start_matches(['v', 'V'])
         .split(['+', '-'])
         .next()
         .filter(|value| !value.is_empty())
@@ -2577,9 +2574,9 @@ fn ensure_screen_capture_access() -> Result<(), String> {
             return Ok(());
         }
 
-        return Err(String::from(
+        Err(String::from(
       "Screen capture permission is required. Enable Screen Recording for lich13studio in System Settings and relaunch the app.",
-    ));
+    ))
     }
 
     #[cfg(not(target_os = "macos"))]
@@ -3256,7 +3253,7 @@ mod tests {
             }
         })
         .await;
-        assert_eq!(result.unwrap(), true);
+        assert!(result.unwrap());
     }
 
     #[test]
@@ -3306,7 +3303,7 @@ mod tests {
             vec![first.to_string(), second.to_string()]
         );
         assert!(pending.take("main").is_empty());
-        pending.enqueue(&[first.clone()]);
+        pending.enqueue(std::slice::from_ref(&first));
         assert_eq!(pending.take("main"), vec![first.to_string()]);
     }
 
