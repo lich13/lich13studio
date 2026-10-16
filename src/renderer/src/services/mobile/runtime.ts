@@ -20,3 +20,12 @@ export function mobileCommand<T = unknown>(command: string, args: Record<string,
 if (runtimeCapabilities.android && typeof document !== 'undefined') {
   document.documentElement.dataset.runtime = 'android'
 }
+
+/** Desktop Tauri builds keep credentials in the OS credential store. */
+export function desktopCredentialStoreAvailable(): boolean {
+  return !runtimeCapabilities.android && typeof window !== 'undefined' && Boolean((window as any).__TAURI_INTERNALS__)
+}
+
+export function isMainTauriWindow(): boolean {
+  return (window as any).__TAURI_INTERNALS__?.metadata?.currentWindow?.label === 'main'
+}

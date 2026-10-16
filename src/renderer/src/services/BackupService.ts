@@ -12,7 +12,7 @@ import dayjs from 'dayjs'
 import { Dexie } from 'dexie'
 
 import { buildDefaultBackupFileName, ensureBackupFileName, isBackupOwnedByDevice } from './BackupNaming'
-import { mobilePersistStorage } from './mobile/credentials'
+import { credentialStorageEnabled, mobilePersistStorage } from './mobile/credentials'
 import { runtimeCapabilities } from './mobile/runtime'
 import { NotificationService } from './NotificationService'
 import { type BackupOptions, exportPortableBackup } from './PortableBackupService'
@@ -763,9 +763,9 @@ export async function handleData(data: Record<string, any>) {
   let stateWritten = false
   const writeState = async (value: string | null) => {
     if (value === null) {
-      if (runtimeCapabilities.android) await mobilePersistStorage.removeItem(LEGACY_PERSIST_KEY)
+      if (credentialStorageEnabled) await mobilePersistStorage.removeItem(LEGACY_PERSIST_KEY)
       else localStorage.removeItem(LEGACY_PERSIST_KEY)
-    } else if (runtimeCapabilities.android) await mobilePersistStorage.setItem(LEGACY_PERSIST_KEY, value)
+    } else if (credentialStorageEnabled) await mobilePersistStorage.setItem(LEGACY_PERSIST_KEY, value)
     else localStorage.setItem(LEGACY_PERSIST_KEY, value)
   }
   try {
@@ -786,7 +786,7 @@ export async function handleData(data: Record<string, any>) {
     persistor.pause()
     paused = true
     await persistor.flush()
-    previousState = runtimeCapabilities.android
+    previousState = credentialStorageEnabled
       ? await mobilePersistStorage.getItem(LEGACY_PERSIST_KEY)
       : localStorage.getItem(LEGACY_PERSIST_KEY)
     await db.transaction('rw', db.tables, async (tx) => {

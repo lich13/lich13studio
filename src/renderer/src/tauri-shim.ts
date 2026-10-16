@@ -9,7 +9,12 @@ import {
   requestPermission as requestNotificationPermission
 } from '@tauri-apps/plugin-notification'
 
-import { hydrateCredentials, mobilePersistStorage, stripCredentials } from './services/mobile/credentials'
+import {
+  credentialStorageEnabled,
+  hydrateCredentials,
+  mobilePersistStorage,
+  stripCredentials
+} from './services/mobile/credentials'
 import { mobileCommand, runtimeCapabilities } from './services/mobile/runtime'
 import { startProviderImportListener } from './services/ProviderImportQueue'
 import { attachmentMime, managedAttachmentId } from './utils/attachmentMime'
@@ -886,7 +891,7 @@ const api = {
   isNotEmptyDir: async () => false,
   relaunchApp: async () => location.reload(),
   resetData: async () => {
-    if (runtimeCapabilities.android) await mobilePersistStorage.removeItem('persist:cherry-studio')
+    if (credentialStorageEnabled) await mobilePersistStorage.removeItem('persist:cherry-studio')
     localStorage.clear()
     location.reload()
   },

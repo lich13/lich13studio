@@ -2,6 +2,7 @@ mod backup_crypto;
 mod http_delivery;
 mod mobile;
 mod net_policy;
+mod secure_store;
 #[cfg(any(not(target_os = "android"), test))]
 mod startup;
 #[cfg(not(target_os = "android"))]
@@ -3269,6 +3270,9 @@ pub fn run() {
             backup_crypto::decrypt_backup,
             app_info,
             take_pending_provider_imports,
+            secure_store::read_secure_credentials,
+            secure_store::write_secure_credentials,
+            secure_store::clear_secure_credentials,
             get_device_type,
             get_hostname,
             load_state,

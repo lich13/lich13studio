@@ -16,8 +16,7 @@
  */
 import { loggerService } from '@logger'
 import { combineReducers, configureStore } from '@reduxjs/toolkit'
-import { mobilePersistStorage } from '@renderer/services/mobile/credentials'
-import { runtimeCapabilities } from '@renderer/services/mobile/runtime'
+import { credentialStorageEnabled, mobilePersistStorage } from '@renderer/services/mobile/credentials'
 import { useDispatch, useSelector, useStore } from 'react-redux'
 import { FLUSH, PAUSE, PERSIST, persistReducer, persistStore, PURGE, REGISTER, REHYDRATE } from 'redux-persist'
 import storage from 'redux-persist/lib/storage'
@@ -75,7 +74,7 @@ const rootReducer = combineReducers({
 const persistedReducer = persistReducer(
   {
     key: 'cherry-studio',
-    storage: runtimeCapabilities.android ? mobilePersistStorage : storage,
+    storage: credentialStorageEnabled ? mobilePersistStorage : storage,
     version: 223,
     blacklist: ['runtime', 'messages', 'messageBlocks', 'tabs', 'toolPermissions'],
     migrate

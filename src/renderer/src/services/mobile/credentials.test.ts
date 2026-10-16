@@ -7,11 +7,19 @@ const native = vi.hoisted(() => ({
   secureJson: '{}',
   writeCount: 0,
   failAtWrite: 0,
+  desktop: false,
+  desktopJson: '{}' as string | null,
+  desktopFailWrite: false,
+  invoke: vi.fn<(command: string, args?: Record<string, unknown>) => Promise<unknown>>(),
   command: vi.fn<(command: string, args?: Record<string, unknown>) => Promise<unknown>>()
 }))
 
+vi.mock('@logger', () => ({ loggerService: { withContext: () => ({ warn: vi.fn(), info: vi.fn(), error: vi.fn() }) } }))
+vi.mock('@tauri-apps/api/core', () => ({ invoke: native.invoke }))
 vi.mock('./runtime', () => ({
   mobileCommand: native.command,
+  desktopCredentialStoreAvailable: () => native.desktop,
+  isMainTauriWindow: () => true,
   runtimeCapabilities: {
     get android() {
       return native.android
@@ -119,6 +127,29 @@ beforeEach(async () => {
   native.secureJson = '{}'
   native.writeCount = 0
   native.failAtWrite = 0
+  native.desktop = false
+  native.desktopJson = '{}'
+  native.desktopFailWrite = false
+  native.invoke.mockReset()
+  native.invoke.mockImplementation(async (command, args) => {
+    switch (command) {
+      case 'read_secure_credentials':
+        if (native.desktopJson === null) throw new Error('Secure credential store is unavailable')
+        return native.desktopJson
+      case 'write_secure_credentials': {
+        if (native.desktopJson === null || native.desktopFailWrite)
+          throw new Error('Secure credential store is unavailable')
+        const entries = JSON.parse(String(args?.value))
+        native.desktopJson = JSON.stringify(args?.replace ? entries : { ...JSON.parse(native.desktopJson), ...entries })
+        return undefined
+      }
+      case 'clear_secure_credentials':
+        native.desktopJson = '{}'
+        return undefined
+      default:
+        throw new Error(`Unexpected desktop command: ${command}`)
+    }
+  })
   native.command.mockReset()
   native.command.mockImplementation(async (command, args) => {
     switch (command) {
@@ -384,5 +415,86 @@ describe('mobilePersistStorage', () => {
     expect(memoryStorage.getItem('language')).toBe('zh-CN')
     expect(JSON.parse(native.secureJson)).toEqual({})
     expect(native.command.mock.calls.filter(([command]) => command === 'clearCredentials')).toHaveLength(1)
+  })
+})
+
+describe('desktop OS credential store', () => {
+  async function startDesktop() {
+    native.android = false
+    native.desktop = true
+    vi.resetModules()
+    credentials = await import('./credentials')
+  }
+
+  it('migrates plaintext into the OS store only after a successful write and is idempotent', async () => {
+    const state = createState()
+    memoryStorage.setItem(PERSIST_KEY, encodeState(state))
+    await startDesktop()
+    expect(credentials.credentialStorageEnabled).toBe(true)
+    await credentials.initializeMobileCredentials()
+    const persisted = memoryStorage.getItem(PERSIST_KEY)!
+    expect(persisted).not.toContain('fixture-provider-a-key')
+    expect(persisted).not.toContain('fixture-webdav-password')
+    expect(persisted).not.toContain('fixture-auth-header')
+    expect(Object.values(JSON.parse(native.desktopJson!))).toContain('fixture-provider-a-key')
+    expect(decodeState((await credentials.mobilePersistStorage.getItem(PERSIST_KEY))!)).toEqual(state)
+    expect(native.command).not.toHaveBeenCalled()
+
+    const secureBefore = native.desktopJson
+    vi.resetModules()
+    credentials = await import('./credentials')
+    await credentials.initializeMobileCredentials()
+    expect(memoryStorage.getItem(PERSIST_KEY)).toBe(persisted)
+    expect(native.desktopJson).toBe(secureBefore)
+    expect(decodeState((await credentials.mobilePersistStorage.getItem(PERSIST_KEY))!)).toEqual(state)
+  })
+
+  it('keeps plaintext and warns when the OS store is unavailable (headless Linux)', async () => {
+    const previous = encodeState(createState())
+    memoryStorage.setItem(PERSIST_KEY, previous)
+    native.desktopJson = null
+    await startDesktop()
+    await credentials.initializeMobileCredentials()
+    expect(memoryStorage.getItem(PERSIST_KEY)).toBe(previous)
+    const next = createState()
+    next.settings.theme = 'light'
+    await credentials.mobilePersistStorage.setItem(PERSIST_KEY, encodeState(next))
+    expect(memoryStorage.getItem(PERSIST_KEY)).toBe(encodeState(next))
+    expect(decodeState((await credentials.mobilePersistStorage.getItem(PERSIST_KEY))!)).toEqual(next)
+  })
+
+  it('never drops credentials when a secure write fails after migration', async () => {
+    await startDesktop()
+    const state = createState()
+    await credentials.mobilePersistStorage.setItem(PERSIST_KEY, encodeState(state))
+    native.desktopFailWrite = true
+    const next = createState()
+    next.llm.providers[0].apiKey = 'fixture-replacement-key'
+    await credentials.mobilePersistStorage.setItem(PERSIST_KEY, encodeState(next))
+    expect(decodeState(memoryStorage.getItem(PERSIST_KEY)!)).toEqual(next)
+    expect(decodeState((await credentials.mobilePersistStorage.getItem(PERSIST_KEY))!)).toEqual(next)
+  })
+
+  it('refuses to start without the store when local data holds references, leaving data intact', async () => {
+    await startDesktop()
+    await credentials.mobilePersistStorage.setItem(PERSIST_KEY, encodeState(createState()))
+    const referenced = memoryStorage.getItem(PERSIST_KEY)
+    native.desktopJson = null
+    vi.resetModules()
+    credentials = await import('./credentials')
+    await expect(credentials.initializeMobileCredentials()).rejects.toThrow(/unavailable/)
+    expect(memoryStorage.getItem(PERSIST_KEY)).toBe(referenced)
+  })
+
+  it('excludes credentials from backups by default', async () => {
+    await startDesktop()
+    const state = createState()
+    await credentials.mobilePersistStorage.setItem(PERSIST_KEY, encodeState(state))
+    const backup = credentials.stripCredentials({ [PERSIST_KEY]: memoryStorage.getItem(PERSIST_KEY)! })
+    for (const secret of ['fixture-provider-a-key', 'fixture-webdav-password', 'fixture-auth-header', REF_PREFIX]) {
+      expect(backup[PERSIST_KEY]).not.toContain(secret)
+    }
+    expect(decodeState(backup[PERSIST_KEY]).messages).toEqual(state.messages)
+    expect(decodeState(credentials.hydrateCredentials(memoryStorage.getItem(PERSIST_KEY)!))).toEqual(state)
   })
 })
