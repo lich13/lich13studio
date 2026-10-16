@@ -1,3 +1,4 @@
+import './tauriGlobals'
 import './services/mobile/webviewCompatibility'
 
 import { loggerService } from '@logger'

@@ -1,7 +1,7 @@
 {
   "app": {
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: http:; font-src 'self' data:; media-src 'self' data: blob: https: http:; connect-src 'self' ipc: http://ipc.localhost https: http: wss: ws: data: blob:; worker-src 'self' blob:; frame-src 'self' blob: data:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
     },
     "windows": [
       {
@@ -16,7 +16,7 @@
         "width": 1420
       }
     ],
-    "withGlobalTauri": true
+    "withGlobalTauri": false
   },
   "build": {
     "frontendDist": "../out/renderer"
