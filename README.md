@@ -30,7 +30,7 @@ pnpm dev
 pnpm run ci
 ```
 
-`pnpm run ci` 是本地和 CI 的检查定义：`ci:frontend` 包含静态检查、类型、测试和 Web 构建，`ci:rust` 包含 Rust fmt、clippy 和测试。CI 按平台拆分执行，依赖审计仅报告。
+`pnpm run ci` 是本地和 CI 的检查定义：`ci:frontend` 包含静态检查、类型、测试和 Web 构建，`ci:rust` 包含 Rust fmt、clippy 和测试。CI 按平台拆分执行，每个 job 设有超时；依赖审计中的高危／严重告警会阻断 CI（无法通过补丁或次版本升级修复的条目在 `pnpm-workspace.yaml` 的 `auditConfig` 与 CI 的 `cargo audit --ignore` 中逐条列出）。
 
 ```sh
 pnpm build:mac

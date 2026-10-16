@@ -4,7 +4,7 @@
 
 Node 使用根目录 `.nvmrc`（当前 24.21.0），pnpm 使用 `package.json` 的 `packageManager`（当前 12.11.2）。Rust 使用本机已安装的 stable，不为常规检查更换工具链。原生应用需要 Tauri 2 的平台构建依赖；Android 另见 [Android](../../android.md)。
 
-Windows 需 Visual Studio C++ 工具与 Windows SDK；脚本 `run-in-vsdevcmd.mjs` 负责对应架构环境。macOS 需要 Xcode Command Line Tools。Linux CI 安装 WebKitGTK 4.1、Ayatana AppIndicator、librsvg 与 patchelf。
+Windows 需 Visual Studio C++ 工具与 Windows SDK；脚本 `run-in-vsdevcmd.mjs` 负责对应架构环境。macOS 需要 Xcode Command Line Tools。Linux CI 安装 WebKitGTK 4.1、Ayatana AppIndicator、librsvg、libdbus（系统凭据库 Secret Service）与 patchelf。
 
 ```sh
 pnpm install --frozen-lockfile
@@ -21,7 +21,7 @@ pnpm ci:frontend        # CI 前端 job 使用相同定义
 pnpm ci:rust            # cargo +stable fmt / clippy / test
 ```
 
-`ci:basic-check` 包含静态检查、格式、类型、国际化、隐私、OpenAPI 与技能检查。pre-commit 调用它，不自动修改待提交文件。完整前端检查还运行 renderer、升级迁移、内置目录／指纹库校验和构建。CI 单独运行 `pnpm audit`、固定版本 `cargo audit`，先报告、不阻断。
+`ci:basic-check` 包含静态检查、格式、类型、国际化、隐私、OpenAPI 与技能检查。pre-commit 调用它，不自动修改待提交文件。完整前端检查还运行 renderer、升级迁移、内置目录／指纹库校验和构建。CI 单独运行 `pnpm audit --audit-level high` 与固定版本 `cargo audit`，高危／严重告警阻断合并；暂无法修复的条目（仅能通过主版本升级或上游无修复，主要是 Electron 遗留依赖）记录在 `pnpm-workspace.yaml` 的 `auditConfig.ignoreGhsas` 与 CI 的 `--ignore` 参数中。所有 job 均设置 `timeout-minutes`，Android 模拟器步骤单独限时 40 分钟；Actions 继续固定到提交 SHA。
 
 检查器职责：Biome 负责格式和 Tailwind 类顺序；Oxlint 负责通用及类型静态规则；ESLint 负责 React、导入排序、i18n 和日志项目规则，已有 Oxlint 规则映射关闭重复项。`pnpm lint` 为开发者主动修复入口，不作为只读 CI 检查。
 

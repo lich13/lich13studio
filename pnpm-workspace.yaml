@@ -123,3 +123,31 @@ allowBuilds:
   "sharp": true
   "tesseract.js": true
   "zipfile": true
+
+# 仅限无法通过补丁/次版本升级修复的高危告警（见 docs/zh/guides/development.md）
+auditConfig:
+  ignoreGhsas:
+    - GHSA-xcpc-8h2w-3j85 # adm-zip
+    - GHSA-7q85-xj36-vmfc # adm-zip
+    - GHSA-rcw4-f5rp-g42v # adm-zip
+    - GHSA-j5f4-cc29-5x44 # adm-zip
+    - GHSA-8238-w5pm-2374 # adm-zip
+    - GHSA-c475-qrg2-pj4r # basic-ftp
+    - GHSA-mp2f-45pm-3cg9 # decompress
+    - GHSA-hrh2-vp3x-79xf # decompress
+    - GHSA-gpj5-g38j-94v9 # drizzle-orm
+    - GHSA-9f4c-93c8-jc8g # electron
+    - GHSA-hq2x-r82h-9wj4 # electron
+    - GHSA-gr2m-v5gq-v685 # electron
+    - GHSA-j84w-jfhq-vhvj # electron
+    - GHSA-9qh4-3jw8-366w # electron
+    - GHSA-22p9-wv53-3rq4 # linkify-it
+    - GHSA-v245-v573-v5vm # linkify-it
+    - GHSA-35jh-r3h4-6jhm # lodash
+    - GHSA-4xc9-xhrj-v574 # lodash
+    - GHSA-jf85-cpcp-j695 # lodash
+    - GHSA-p6mc-m468-83gw # lodash
+    - GHSA-c8x8-7fp4-3x9w # prosemirror-view
+    - GHSA-f88m-g3jw-g9cj # sharp
+    - GHSA-rgj7-g3m4-5g8c # sharp
+    - GHSA-wq5f-xc86-pv6w # sharp
