@@ -1,6 +1,6 @@
 # lich13studio
 
-基于 Tauri 的 macOS、Windows 与 Android AI 工作区，源自 [Cherry Studio](https://github.com/CherryHQ/cherry-studio)。当前版本 **0.1.36**，使用 AGPL-3.0，保留上游版权和第三方许可，详见 [NOTICE](NOTICE.md)。
+基于 Tauri 的 macOS、Windows 与 Android AI 工作区，源自 [Cherry Studio](https://github.com/CherryHQ/cherry-studio)。当前版本 **0.1.37**，使用 AGPL-3.0，保留上游版权和第三方许可，详见 [NOTICE](NOTICE.md)。
 
 ## 功能范围
 
@@ -45,7 +45,7 @@ pnpm tauri:build:android
 
 - [文档索引](docs/README.md)、[开发与检查](docs/zh/guides/development.md)、[Android 构建](docs/android.md)
 - [当前范围](docs/scope-freeze.md)、[模块地图](docs/module-map.md)、[架构](docs/architecture-lite.md)、[迁移规则](docs/migration-notes.md)
-- [最新发布说明](docs/releases/v0.1.36.zh-CN.md)、[早期版本记录](docs/releases/early-versions.zh-CN.md)
+- [最新发布说明](docs/releases/v0.1.37.zh-CN.md)、[早期版本记录](docs/releases/early-versions.zh-CN.md)
 - [贡献指南](CONTRIBUTING.md)、[问题反馈](https://github.com/lich13/lich13studio/issues)、[安全报告](SECURITY.md)
 
 手动执行 `release-build.yml` 时留空 version 只构建制品；推送标签或填写 version 会发布 Release。

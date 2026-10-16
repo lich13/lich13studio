@@ -6,7 +6,7 @@
 - [隐私说明](privacy.md)
 - [Android 构建、文件与后台任务](android.md)
 - [数据迁移](migration-notes.md)
-- [最新版本说明](releases/v0.1.36.zh-CN.md)与 [早期版本记录](releases/early-versions.zh-CN.md)
+- [最新版本说明](releases/v0.1.37.zh-CN.md)与 [早期版本记录](releases/early-versions.zh-CN.md)
 
 ## 开发
 
