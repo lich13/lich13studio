@@ -1,6 +1,7 @@
 import { createServer } from 'node:http'
 
 import { loggerService } from '@logger'
+import { isLoopbackHost } from '@shared/apiServerSecurity'
 import { IpcChannel } from '@shared/IpcChannel'
 
 import { windowService } from '../services/WindowService'
@@ -30,6 +31,9 @@ export class ApiServer {
 
     // Load config
     const { port, host } = await config.load()
+    if (!isLoopbackHost(host)) {
+      throw new Error('API server must listen on a loopback address')
+    }
 
     // Create server with Express app
     this.server = createServer(app)

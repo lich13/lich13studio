@@ -1,16 +1,9 @@
-import crypto from 'crypto'
+import { safeTokenEqual } from '@shared/apiServerSecurity'
 import type { NextFunction, Request, Response } from 'express'
 
 import { config } from '../config'
 
-const isValidToken = (token: string, apiKey: string): boolean => {
-  if (token.length !== apiKey.length) {
-    return false
-  }
-  const tokenBuf = Buffer.from(token)
-  const keyBuf = Buffer.from(apiKey)
-  return crypto.timingSafeEqual(tokenBuf, keyBuf)
-}
+const isValidToken = (token: string, apiKey: string): boolean => safeTokenEqual(token, apiKey)
 
 export const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {
   const auth = req.header('authorization') || ''

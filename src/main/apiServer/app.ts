@@ -1,4 +1,5 @@
 import { loggerService } from '@main/services/LoggerService'
+import { isAllowedApiOrigin } from '@shared/apiServerSecurity'
 import cors from 'cors'
 import express from 'express'
 import { v4 as uuidv4 } from 'uuid'
@@ -43,7 +44,8 @@ app.use((_req, res, next) => {
 
 app.use(
   cors({
-    origin: '*',
+    // Only the app's own webview origin; other browser pages cannot read responses.
+    origin: (origin, callback) => callback(null, isAllowedApiOrigin(origin)),
     allowedHeaders: ['Content-Type', 'Authorization'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
   })

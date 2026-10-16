@@ -1,3 +1,4 @@
+import { isLoopbackHost } from '@shared/apiServerSecurity'
 import { API_SERVER_DEFAULTS } from '@shared/config/constant'
 import type { ApiServerConfig } from '@types'
 import { v4 as uuidv4 } from 'uuid'
@@ -29,7 +30,7 @@ class ConfigManager {
       this._config = {
         enabled: serverSettings?.enabled ?? false,
         port: serverSettings?.port ?? API_SERVER_DEFAULTS.PORT,
-        host: serverSettings?.host ?? API_SERVER_DEFAULTS.HOST,
+        host: isLoopbackHost(serverSettings?.host) ? serverSettings!.host! : API_SERVER_DEFAULTS.HOST,
         apiKey: apiKey
       }
       return this._config
