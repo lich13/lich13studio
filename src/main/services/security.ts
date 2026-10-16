@@ -2,12 +2,13 @@
  * Security utility functions for the main process.
  */
 
-const ALLOWED_EXTERNAL_PROTOCOLS = new Set(['http:', 'https:', 'mailto:'])
+const ALLOWED_EXTERNAL_PROTOCOLS = new Set(['http:', 'https:', 'mailto:', 'tel:'])
 
 /**
  * Check whether a URL is safe to open via shell.openExternal().
  *
- * Only http(s) and mailto links are allowed. This prevents attackers from
+ * Only http(s), mailto and tel links are allowed (kept in sync with the native
+ * EXTERNAL_URL_SCHEMES list in src-tauri/src/lib.rs). This prevents attackers from
  * abusing custom protocol handlers (e.g. file://, ms-msdt:, calculator:)
  * to execute local files or launch arbitrary applications.
  *

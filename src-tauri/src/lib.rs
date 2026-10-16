@@ -2008,17 +2008,68 @@ fn system_hostname() -> String {
         .unwrap_or_else(|| String::from("unknown"))
 }
 
+/// Keep in sync with ALLOWED_EXTERNAL_PROTOCOLS in src/main/services/security.ts.
+const EXTERNAL_URL_SCHEMES: [&str; 4] = ["http", "https", "mailto", "tel"];
+
 fn normalize_external_url(value: &str) -> Result<String, String> {
     let trimmed = value.trim();
     if trimmed.is_empty() {
         return Err(String::from("External URL is required"));
     }
+    if trimmed.chars().any(char::is_control) {
+        return Err(String::from("Invalid external URL"));
+    }
 
     let parsed = Url::parse(trimmed).map_err(|_| String::from("Invalid external URL"))?;
-    match parsed.scheme() {
-        "http" | "https" | "mailto" | "tel" => Ok(trimmed.to_string()),
-        scheme => Err(format!("Blocked external URL scheme: {scheme}")),
+    if !EXTERNAL_URL_SCHEMES.contains(&parsed.scheme()) {
+        return Err(format!("Blocked external URL scheme: {}", parsed.scheme()));
     }
+    if matches!(parsed.scheme(), "http" | "https")
+        && (parsed.host().is_none() || !parsed.username().is_empty() || parsed.password().is_some())
+    {
+        return Err(String::from("Invalid external URL"));
+    }
+    Ok(trimmed.to_string())
+}
+
+#[cfg_attr(target_os = "android", allow(dead_code))]
+#[derive(Debug, PartialEq, Eq)]
+enum OpenTarget {
+    Url(std::ffi::OsString),
+    Path(PathBuf),
+}
+
+/// Desktop `open_path` accepts an existing absolute local path, an allowed external
+/// URL, or an Obsidian export URI. Anything else that looks like a URL is rejected so
+/// `file:`, `javascript:` or handler schemes cannot be smuggled in as a "path".
+#[cfg_attr(target_os = "android", allow(dead_code))]
+fn validate_open_path(value: &str) -> Result<OpenTarget, String> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() || trimmed.chars().any(char::is_control) {
+        return Err(String::from("Invalid path"));
+    }
+    let scheme_len = trimmed.find(':').filter(|&end| {
+        end >= 2
+            && trimmed[..end].chars().enumerate().all(|(i, c)| {
+                c.is_ascii_alphabetic() || (i > 0 && (c.is_ascii_digit() || "+-.".contains(c)))
+            })
+    });
+    if let Some(end) = scheme_len {
+        let scheme = trimmed[..end].to_ascii_lowercase();
+        if scheme == "obsidian" {
+            let parsed = Url::parse(trimmed).map_err(|_| String::from("Invalid path"))?;
+            return Ok(OpenTarget::Url(parsed.to_string().into()));
+        }
+        return normalize_external_url(trimmed).map(|url| OpenTarget::Url(url.into()));
+    }
+    let path = Path::new(trimmed);
+    if !path.is_absolute() {
+        return Err(String::from("Path must be absolute"));
+    }
+    let canonical = path
+        .canonicalize()
+        .map_err(|_| String::from("Path does not exist"))?;
+    Ok(OpenTarget::Path(canonical))
 }
 
 fn tray_menu_item_ids() -> [&'static str; 3] {
@@ -2731,22 +2782,22 @@ fn get_obsidian_files(vault_name: String) -> Result<Vec<ObsidianFileInfo>, Strin
 #[tauri::command]
 #[cfg(not(target_os = "android"))]
 async fn open_path(path: String) -> Result<bool, String> {
-    if path.trim().is_empty() {
-        return Ok(false);
-    }
+    let target = match validate_open_path(&path)? {
+        OpenTarget::Url(url) => url,
+        OpenTarget::Path(path) => path.into_os_string(),
+    };
 
     let status = if cfg!(target_os = "macos") {
-        Command::new("open").arg(&path).status().await
+        Command::new("open").arg(&target).status().await
     } else if cfg!(target_os = "windows") {
-        hidden_command("cmd")
-            .arg("/C")
-            .arg("start")
-            .arg("")
-            .arg(&path)
+        // ShellExecute through url.dll avoids cmd.exe parsing of `&`, `|` and `^`.
+        hidden_command("rundll32")
+            .arg("url.dll,FileProtocolHandler")
+            .arg(&target)
             .status()
             .await
     } else {
-        Command::new("xdg-open").arg(&path).status().await
+        Command::new("xdg-open").arg(&target).status().await
     }
     .map_err(|error| error.to_string())?;
 
@@ -3439,12 +3490,50 @@ mod tests {
             "javascript:alert(1)",
             "tauri://localhost/#/",
             "x-apple.systempreferences:com.apple.preference.security",
+            "intent://scan/#Intent;scheme=zxing;end",
+            "JavaScript:alert(1)",
+            "https://user:pass@example.com/",
+            "https://example.com/\nfoo",
+            "   ",
         ] {
             assert!(
                 normalize_external_url(url).is_err(),
                 "{url} should be rejected"
             );
         }
+    }
+
+    #[test]
+    fn open_path_rejects_url_disguised_and_empty_paths() {
+        for value in [
+            "",
+            "  ",
+            "file:///etc/passwd",
+            "javascript:alert(1)",
+            "intent://x#Intent;end",
+            "smb://host/share",
+            "relative/path.txt",
+            "/definitely/missing/lich13studio-path",
+            "/tmp\nfoo",
+        ] {
+            assert!(
+                validate_open_path(value).is_err(),
+                "{value:?} should be rejected"
+            );
+        }
+        let dir = std::env::temp_dir();
+        assert_eq!(
+            validate_open_path(dir.to_str().unwrap()).unwrap(),
+            OpenTarget::Path(dir.canonicalize().unwrap())
+        );
+        assert!(matches!(
+            validate_open_path("https://example.com/a"),
+            Ok(OpenTarget::Url(_))
+        ));
+        assert!(matches!(
+            validate_open_path("obsidian://new?vault=v&file=f"),
+            Ok(OpenTarget::Url(_))
+        ));
     }
 
     #[test]

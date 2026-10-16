@@ -128,13 +128,11 @@ mod commands {
     }
     #[tauri::command]
     pub async fn open_path(app: AppHandle, path: String) -> Result<bool, String> {
-        mobile_command(
-            app,
-            "openUrl".into(),
-            Some(serde_json::json!({"url": path})),
-        )
-        .await
-        .map(|_| true)
+        // Android cannot hand app-private paths to other apps; only allowed URLs open.
+        let url = crate::normalize_external_url(&path)?;
+        mobile_command(app, "openUrl".into(), Some(serde_json::json!({"url": url})))
+            .await
+            .map(|_| true)
     }
     #[tauri::command]
     pub async fn open_external_url(app: AppHandle, url: String) -> Result<bool, String> {
