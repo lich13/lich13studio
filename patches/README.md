@@ -20,7 +20,7 @@
 | [@ai-sdk/google@3.0.55](https://github.com/vercel/ai) | 保持已有 models/ 前缀 | [Apache-2.0](licenses/ai-sdk-google-3.0.55.txt) | [@ai-sdk__google@3.0.55.patch](@ai-sdk__google@3.0.55.patch) |
 | [@ai-sdk/anthropic@3.0.64](https://github.com/vercel/ai) | 推理 effort 的 xhigh 类型与校验 | [Apache-2.0](licenses/ai-sdk-anthropic-3.0.64.txt) | [@ai-sdk__anthropic@3.0.64.patch](@ai-sdk__anthropic@3.0.64.patch) |
 
-`licenses/` 从对应已安装精确版本复制原文件，保留原字节及版权。Copilot provider 1.0.0 仅有 package metadata 的 MIT 声明，没有可复制的许可证文件；此处如实记录，未补造文本。根 AGPL 不替代这些包各自的许可证。
+`licenses/` 从对应已安装精确版本复制原文件，保留原字节及版权。`@ai-sdk/*` 包自带的 LICENSE 仅为指向 Apache-2.0 的简短声明，未附许可证全文；按 Apache-2.0 第 4(a) 条，[licenses/Apache-2.0.txt](licenses/Apache-2.0.txt) 收录取自 apache.org 的许可证全文，供上述 Apache-2.0 条目共同引用。Copilot provider 1.0.0 仅有 package metadata 的 MIT 声明，没有可复制的许可证文件；此处如实记录，未补造文本。根 AGPL 不替代这些包各自的许可证。
 
 ## 升级或删除
 
