@@ -38,6 +38,16 @@ describe('provider deep link lifecycle', () => {
     mocks.nativeQueue.push(received[2])
     mocks.callback!()
     await vi.waitFor(() => expect(received).toHaveLength(4))
+    for (const url of received) providerImportQueue.complete(url)
+    received.length = 0
+    const { PROVIDER_IMPORT_MAX_QUEUE, PROVIDER_IMPORT_REJECTED_MARKER, PROVIDER_IMPORT_MAX_LINK_LENGTH } =
+      await import('@shared/providerImport')
+    const flood = Array.from({ length: PROVIDER_IMPORT_MAX_QUEUE + 3 }, (_, i) => `ccswitch://v1/import?flood=${i}`)
+    mocks.nativeQueue.push(`ccswitch://v1/import?${'x'.repeat(PROVIDER_IMPORT_MAX_LINK_LENGTH)}`, ...flood)
+    mocks.callback!()
+    await vi.waitFor(() => expect(received).toHaveLength(PROVIDER_IMPORT_MAX_QUEUE + 1))
+    expect(received.slice(0, PROVIDER_IMPORT_MAX_QUEUE)).toEqual(flood.slice(0, PROVIDER_IMPORT_MAX_QUEUE))
+    expect(received.at(-1)).toBe(PROVIDER_IMPORT_REJECTED_MARKER)
     stop()
     vi.unstubAllGlobals()
   })

@@ -4,7 +4,11 @@ import {
   matchesProviderImport,
   normalizeImportEndpoint,
   normalizeProviderEndpoint,
-  parseProviderImport
+  parseProviderImport,
+  PROVIDER_IMPORT_MAX_LINK_LENGTH,
+  PROVIDER_IMPORT_MAX_PARAM_LENGTH,
+  PROVIDER_IMPORT_REJECTED_MARKER,
+  ProviderImportLimitError
 } from './providerImport'
 const link = (params: Record<string, string> = {}) =>
   `ccswitch://v1/import?${new URLSearchParams({ resource: 'provider', app: 'codex', name: 'Local test', endpoint: 'http://127.0.0.1:45678/subpath', apiKey: 'test-key', ...params })}`
@@ -103,5 +107,34 @@ describe('Sub2API CCS imports', () => {
     expect(matchesProviderImport({ ...incoming, apiHost: 'http://127.0.0.1:45678/subpath' }, incoming)).toBe(true)
     expect(matchesProviderImport({ ...incoming, apiKey: 'another-test-key' }, incoming)).toBe(false)
     expect(matchesProviderImport({ ...incoming, type: 'anthropic' }, incoming)).toBe(false)
+  })
+})
+
+describe('CCS import size limits', () => {
+  it('rejects over-long links, oversized params and the native rejection marker with a limit error', () => {
+    const longLink = `${link()}&name=${'n'.repeat(PROVIDER_IMPORT_MAX_LINK_LENGTH)}`
+    expect(() => parseProviderImport(longLink)).toThrow(ProviderImportLimitError)
+    expect(() => parseProviderImport(link({ apiKey: 'k'.repeat(PROVIDER_IMPORT_MAX_PARAM_LENGTH + 1) }))).toThrow(
+      ProviderImportLimitError
+    )
+    expect(() => parseProviderImport(`${link()}&${'x'.repeat(PROVIDER_IMPORT_MAX_PARAM_LENGTH + 1)}=1`)).toThrow(
+      ProviderImportLimitError
+    )
+    expect(() => parseProviderImport(PROVIDER_IMPORT_REJECTED_MARKER)).toThrow(ProviderImportLimitError)
+  })
+
+  it('keeps limit errors free of credentials', () => {
+    const secret = `sk-${'s'.repeat(PROVIDER_IMPORT_MAX_PARAM_LENGTH)}`
+    try {
+      parseProviderImport(link({ apiKey: secret }))
+      expect.unreachable()
+    } catch (error) {
+      expect(String((error as Error).message)).not.toContain(secret)
+    }
+  })
+
+  it('still accepts values at the limit', () => {
+    const apiKey = 'k'.repeat(PROVIDER_IMPORT_MAX_PARAM_LENGTH)
+    expect(parseProviderImport(link({ apiKey })).apiKey).toBe(apiKey)
   })
 })

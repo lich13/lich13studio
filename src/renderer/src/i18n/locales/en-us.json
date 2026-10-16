@@ -4846,6 +4846,7 @@
       "import_duplicate": "This provider is already imported.",
       "import_invalid": "Import failed. Use a valid Responses or Anthropic provider link.",
       "import_success": "Provider imported.",
+      "import_too_large": "Import link is too large or too many imports are pending. Nothing was imported; check the link and try again.",
       "misc": "Other",
       "notes": {
         "markdown_editor_default_value": "Preview area",

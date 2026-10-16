@@ -11,6 +11,20 @@ export interface ProviderImport {
   models: string[]
 }
 
+/** Caps keep hostile deep links from exhausting memory before user confirmation. */
+export const PROVIDER_IMPORT_MAX_LINK_LENGTH = 8192
+export const PROVIDER_IMPORT_MAX_PARAM_LENGTH = 2048
+export const PROVIDER_IMPORT_MAX_QUEUE = 8
+/** Native queue marker for links dropped by size or queue depth; never carries credentials. */
+export const PROVIDER_IMPORT_REJECTED_MARKER = 'ccswitch://v1/import?lich13studioRejected=limit'
+
+export class ProviderImportLimitError extends Error {
+  constructor() {
+    super('导入链接超出大小或数量限制')
+    this.name = 'ProviderImportLimitError'
+  }
+}
+
 export function normalizeImportEndpoint(value: string, appendVersion = true): string {
   let url: URL
   try {
@@ -41,6 +55,9 @@ export function providerRequestBase(value: string): string {
 }
 
 export function parseProviderImport(raw: string): ProviderImport {
+  if (raw === PROVIDER_IMPORT_REJECTED_MARKER || raw.length > PROVIDER_IMPORT_MAX_LINK_LENGTH) {
+    throw new ProviderImportLimitError()
+  }
   let url: URL
   try {
     if (!/^ccswitch:\/\//i.test(raw)) throw new Error('Invalid scheme')
@@ -60,6 +77,11 @@ export function parseProviderImport(raw: string): ProviderImport {
     url.searchParams.get('resource') !== 'provider'
   ) {
     throw new Error('仅支持 CCS v1 服务商导入链接')
+  }
+  for (const [key, value] of url.searchParams) {
+    if (key.length > PROVIDER_IMPORT_MAX_PARAM_LENGTH || value.length > PROVIDER_IMPORT_MAX_PARAM_LENGTH) {
+      throw new ProviderImportLimitError()
+    }
   }
   const app = url.searchParams.get('app')
   const platform =

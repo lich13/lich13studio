@@ -3,7 +3,7 @@ import { providerImportQueue, startProviderImportListener } from '@renderer/serv
 import store from '@renderer/store'
 import { importPlatformProvider } from '@renderer/store/llm'
 import { uuid } from '@renderer/utils'
-import { matchesProviderImport, parseProviderImport } from '@shared/providerImport'
+import { matchesProviderImport, parseProviderImport, ProviderImportLimitError } from '@shared/providerImport'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
@@ -44,9 +44,15 @@ export default function ProviderImportHandler() {
             window.toast.success(
               current.current.t(existing ? 'settings.provider.import_duplicate' : 'settings.provider.import_success')
             )
-          } catch {
+          } catch (error) {
             // Neither raw URLs nor credentials appear in logs, navigation or error text.
-            window.toast.error(current.current.t('settings.provider.import_invalid'))
+            window.toast.error(
+              current.current.t(
+                error instanceof ProviderImportLimitError
+                  ? 'settings.provider.import_too_large'
+                  : 'settings.provider.import_invalid'
+              )
+            )
           } finally {
             providerImportQueue.complete(raw)
           }

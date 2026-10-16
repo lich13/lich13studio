@@ -2974,22 +2974,42 @@ fn set_mini_window_pin(is_pinned: bool) -> Result<(), String> {
 }
 
 // Keep import credentials only in memory until the main renderer can receive them.
+// Caps mirror packages/shared/providerImport.ts so hostile links cannot grow the queue.
+const PROVIDER_IMPORT_MAX_LINK_LENGTH: usize = 8192;
+const PROVIDER_IMPORT_MAX_QUEUE: usize = 8;
+const PROVIDER_IMPORT_REJECTED_MARKER: &str = "ccswitch://v1/import?lich13studioRejected=limit";
+
 #[derive(Default)]
-struct PendingProviderImports(Mutex<Vec<String>>);
+struct PendingProviderImports(Mutex<PendingProviderImportQueue>);
+
+#[derive(Default)]
+struct PendingProviderImportQueue {
+    urls: Vec<String>,
+    rejected: bool,
+}
 
 impl PendingProviderImports {
     #[cfg(not(target_os = "android"))]
     fn has_pending(&self) -> bool {
-        !self.0.lock().unwrap().is_empty()
+        let pending = self.0.lock().unwrap();
+        !pending.urls.is_empty() || pending.rejected
     }
 
     fn enqueue(&self, urls: &[Url]) {
         let mut pending = self.0.lock().unwrap();
         for url in urls.iter().filter(|url| url.scheme() == "ccswitch") {
-            let value = url.as_str().to_owned();
-            if !pending.contains(&value) {
-                pending.push(value);
+            let value = url.as_str();
+            if pending.urls.iter().any(|existing| existing == value) {
+                continue;
             }
+            // Over-limit links are dropped without logging or retaining their contents.
+            if value.len() > PROVIDER_IMPORT_MAX_LINK_LENGTH
+                || pending.urls.len() >= PROVIDER_IMPORT_MAX_QUEUE
+            {
+                pending.rejected = true;
+                continue;
+            }
+            pending.urls.push(value.to_owned());
         }
     }
 
@@ -2997,7 +3017,12 @@ impl PendingProviderImports {
         if window_label != "main" {
             return Vec::new();
         }
-        std::mem::take(&mut *self.0.lock().unwrap())
+        let mut pending = self.0.lock().unwrap();
+        let mut urls = std::mem::take(&mut pending.urls);
+        if std::mem::take(&mut pending.rejected) {
+            urls.push(PROVIDER_IMPORT_REJECTED_MARKER.to_owned());
+        }
+        urls
     }
 }
 
@@ -3308,6 +3333,29 @@ mod tests {
         assert!(pending.take("main").is_empty());
         pending.enqueue(std::slice::from_ref(&first));
         assert_eq!(pending.take("main"), vec![first.to_string()]);
+    }
+
+    #[test]
+    fn caps_provider_import_link_length_and_queue_depth() {
+        let pending = PendingProviderImports::default();
+        let long = Url::parse(&format!(
+            "ccswitch://v1/import?apiKey={}",
+            "k".repeat(PROVIDER_IMPORT_MAX_LINK_LENGTH)
+        ))
+        .unwrap();
+        pending.enqueue(&[long]);
+        assert_eq!(
+            pending.take("main"),
+            vec![PROVIDER_IMPORT_REJECTED_MARKER.to_owned()]
+        );
+        let flood: Vec<Url> = (0..PROVIDER_IMPORT_MAX_QUEUE + 3)
+            .map(|i| Url::parse(&format!("ccswitch://v1/import?n={i}")).unwrap())
+            .collect();
+        pending.enqueue(&flood);
+        let taken = pending.take("main");
+        assert_eq!(taken.len(), PROVIDER_IMPORT_MAX_QUEUE + 1);
+        assert_eq!(taken.last().unwrap(), PROVIDER_IMPORT_REJECTED_MARKER);
+        assert!(pending.take("main").is_empty());
     }
 
     #[test]

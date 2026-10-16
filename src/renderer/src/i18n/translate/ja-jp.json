@@ -4844,6 +4844,7 @@
       "import_duplicate": "[to be translated]:This provider is already imported.",
       "import_invalid": "[to be translated]:Import failed. Use a valid Responses or Anthropic provider link.",
       "import_success": "[to be translated]:Provider imported.",
+      "import_too_large": "[to be translated]:Import link is too large or too many imports are pending. Nothing was imported; check the link and try again.",
       "misc": "その他",
       "notes": {
         "markdown_editor_default_value": "プレビュー領域",

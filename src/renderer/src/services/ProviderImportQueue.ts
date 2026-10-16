@@ -1,3 +1,8 @@
+import {
+  PROVIDER_IMPORT_MAX_LINK_LENGTH,
+  PROVIDER_IMPORT_MAX_QUEUE,
+  PROVIDER_IMPORT_REJECTED_MARKER
+} from '@shared/providerImport'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { getCurrentWindow } from '@tauri-apps/api/window'
@@ -9,10 +14,21 @@ let listener: (() => void) | undefined
 let started = false
 
 function enqueue(urls: string[]) {
+  let rejected = false
   for (const url of urls) {
-    if (!url.startsWith('ccswitch:') || pending.has(url)) continue
+    if (typeof url !== 'string' || !url.startsWith('ccswitch:') || pending.has(url)) continue
+    if (url.length > PROVIDER_IMPORT_MAX_LINK_LENGTH || pending.size >= PROVIDER_IMPORT_MAX_QUEUE) {
+      rejected = true
+      continue
+    }
     pending.add(url)
     queue.push(url)
+  }
+  // Over-limit links are dropped without retaining their contents; one marker
+  // lets the handler show a single notice.
+  if (rejected && !pending.has(PROVIDER_IMPORT_REJECTED_MARKER)) {
+    pending.add(PROVIDER_IMPORT_REJECTED_MARKER)
+    queue.push(PROVIDER_IMPORT_REJECTED_MARKER)
   }
   listener?.()
 }

@@ -4846,6 +4846,7 @@
       "import_duplicate": "此服务商已导入",
       "import_invalid": "导入失败：仅支持有效的 Responses 或 Anthropic 服务商链接。",
       "import_success": "服务商已导入",
+      "import_too_large": "导入链接过长或待处理的导入过多，已拒绝且未导入任何内容。请检查链接后重试。",
       "misc": "其他",
       "notes": {
         "markdown_editor_default_value": "预览区域",
