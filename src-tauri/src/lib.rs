@@ -1,6 +1,7 @@
 mod backup_crypto;
 mod http_delivery;
 mod mobile;
+mod net_policy;
 #[cfg(any(not(target_os = "android"), test))]
 mod startup;
 #[cfg(not(target_os = "android"))]
@@ -1447,17 +1448,24 @@ async fn start_http_request(
     let abort_flag = register_native_http_abort(&request_id);
     #[cfg(target_os = "android")]
     http_delivery::register(&request_id);
-    let client = Client::builder()
-        .build()
-        .map_err(|error| error.to_string())?;
+    let (target, client) = tokio::select! {
+      result = net_policy::guarded_client(&request.url, net_policy::HostPolicy::User) => result?,
+      _ = wait_for_http_abort(&abort_flag) => {
+        return Err(String::from("Request was aborted"));
+      }
+    };
+    let client = client.build().map_err(|error| error.to_string())?;
 
     let method =
         Method::from_bytes(request.method.as_bytes()).map_err(|error| error.to_string())?;
-    let mut builder = client.request(method, &request.url);
+    let mut builder = client.request(method, target);
 
     for header in &request.headers {
         let header_name =
             HeaderName::from_bytes(header.name.as_bytes()).map_err(|error| error.to_string())?;
+        if net_policy::is_forbidden_header(&header_name) {
+            continue;
+        }
         let header_value =
             HeaderValue::from_str(&header.value).map_err(|error| error.to_string())?;
         builder = builder.header(header_name, header_value);
@@ -1577,8 +1585,14 @@ async fn abort_http_request(request_id: String) -> Result<bool, String> {
     Ok(false)
 }
 
+async fn webdav_client(config: &BackupWebDavConfig) -> Result<Client, String> {
+    let (_, builder) =
+        net_policy::guarded_client(&config.url, net_policy::HostPolicy::User).await?;
+    builder.build().map_err(|error| error.to_string())
+}
+
 async fn upload_webdav(config: &BackupWebDavConfig, payload: Vec<u8>) -> Result<String, String> {
-    let client = Client::new();
+    let client = webdav_client(config).await?;
     let file_name = config
         .file_name
         .clone()
@@ -1611,7 +1625,7 @@ async fn upload_webdav(config: &BackupWebDavConfig, payload: Vec<u8>) -> Result<
 }
 
 async fn download_webdav(config: &BackupWebDavConfig) -> Result<Vec<u8>, String> {
-    let client = Client::new();
+    let client = webdav_client(config).await?;
     let file_name = config
         .file_name
         .clone()
@@ -1716,7 +1730,7 @@ fn parse_webdav_listing(xml: &str) -> Result<Vec<RemoteBackupFileInfo>, String> 
 }
 
 async fn list_webdav(config: &BackupWebDavConfig) -> Result<Vec<RemoteBackupFileInfo>, String> {
-    let client = Client::new();
+    let client = webdav_client(config).await?;
     let target = normalize_base_url(&config.url);
     let body = r#"<?xml version="1.0" encoding="utf-8" ?><propfind xmlns="DAV:"><prop><getlastmodified/><getcontentlength/><resourcetype/></prop></propfind>"#;
 
@@ -1750,7 +1764,7 @@ async fn list_webdav(config: &BackupWebDavConfig) -> Result<Vec<RemoteBackupFile
 }
 
 async fn check_webdav(config: &BackupWebDavConfig) -> Result<bool, String> {
-    let client = Client::new();
+    let client = webdav_client(config).await?;
     let target = normalize_base_url(&config.url);
     let body = r#"<?xml version="1.0" encoding="utf-8" ?><propfind xmlns="DAV:"><prop><displayname/></prop></propfind>"#;
 
@@ -1778,7 +1792,7 @@ async fn check_webdav(config: &BackupWebDavConfig) -> Result<bool, String> {
 }
 
 async fn create_webdav_folder(config: &BackupWebDavConfig, dir_path: &str) -> Result<bool, String> {
-    let client = Client::new();
+    let client = webdav_client(config).await?;
     let mut current = normalize_base_url(&config.url);
 
     for segment in dir_path
@@ -1816,7 +1830,7 @@ async fn create_webdav_folder(config: &BackupWebDavConfig, dir_path: &str) -> Re
 }
 
 async fn delete_webdav(config: &BackupWebDavConfig, file_name: &str) -> Result<bool, String> {
-    let client = Client::new();
+    let client = webdav_client(config).await?;
     let target = format!("{}/{}", normalize_base_url(&config.url), file_name);
 
     let mut request = client
@@ -2205,8 +2219,13 @@ async fn fetch_latest_update_info(
     current_version: &str,
     platform: &str,
 ) -> Result<AppUpdateInfo, String> {
-    let release = Client::new()
-        .get(GITHUB_LATEST_RELEASE_API_URL)
+    let (target, client) =
+        net_policy::guarded_client(GITHUB_LATEST_RELEASE_API_URL, net_policy::HostPolicy::App)
+            .await?;
+    let release = client
+        .build()
+        .map_err(|error| error.to_string())?
+        .get(target)
         .header(USER_AGENT, "lich13studio")
         .send()
         .await
