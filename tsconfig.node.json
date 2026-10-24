@@ -1,28 +1,26 @@
 {
-  "extends": "@electron-toolkit/tsconfig/tsconfig.node.json",
+  "extends": "./tsconfig.base.json",
   "include": [
-    "electron.vite.config.*",
+    "vite.config.ts",
     "scripts",
-    "src/main/**/*",
-    "src/main/env.d.ts",
-    "src/preload/**/*",
     "src/renderer/src/services/traceApi.ts",
     "src/renderer/src/types/*",
     "packages/trace/**/*",
-    "packages/shared/**/*"
+    "packages/shared/**/*",
+    "src/renderer/src/env.d.ts"
   ],
   "compilerOptions": {
     "composite": true,
     "incremental": true,
     "moduleResolution": "bundler",
     "tsBuildInfoFile": ".tsbuildinfo/tsconfig.node.tsbuildinfo",
-    "types": ["electron-vite/node"],
+    "types": ["node"],
     "paths": {
-      "@logger": ["./src/main/services/LoggerService"],
-      "@main/*": ["./src/main/*"],
+      "@logger": ["./src/renderer/src/services/LoggerService"],
       "@types": ["./src/renderer/src/types/index.ts"],
       "@shared/*": ["./packages/shared/*"],
-      "@trace/*": ["./packages/trace/*"]
+      "@trace/*": ["./packages/trace/*"],
+      "@renderer/*": ["./src/renderer/src/*"]
     },
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,

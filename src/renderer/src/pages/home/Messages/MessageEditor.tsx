@@ -273,7 +273,7 @@ const MessageBlockEditor: FC<Props> = ({ message, topicId, onSave, onResend, onC
                 PasteService.setLastFocusedComponent('messageEditor')
               }}
               onContextMenu={(e) => {
-                // 阻止事件冒泡，避免触发全局的 Electron contextMenu
+                // 阻止事件冒泡，避免触发全局上下文菜单
                 e.stopPropagation()
               }}
               autoSize={{ minRows: 1, maxRows: 15 }}

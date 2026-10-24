@@ -229,7 +229,7 @@ class SpanManagerService {
       entity.removeSpan(span)
       span = entity.getCurrentSpan()
     }
-    void this.finishModelTrace(params.topicId)
+    void this.finishChatTrace(params.topicId)
     cleanContext(params.topicId)
     void window.api.trace.saveData(params.topicId)
   }
@@ -320,7 +320,7 @@ class SpanManagerService {
     }
   }
 
-  async finishModelTrace(topicId: string) {
+  async finishChatTrace(topicId: string) {
     this.spanMap.get(topicId)?.forEach((entity) => entity.finishSpan())
     this.spanMap.delete(topicId)
   }
@@ -390,7 +390,7 @@ export const endTrace = spanManagerService.endTrace.bind(spanManagerService)
 export const endSpan = spanManagerService.endSpan.bind(spanManagerService)
 export const currentSpan = spanManagerService.getCurrentSpan.bind(spanManagerService)
 export const addTokenUsage = spanManagerService.addTokenUsage.bind(spanManagerService)
-export const pauseTrace = spanManagerService.finishModelTrace.bind(spanManagerService)
+export const pauseTrace = spanManagerService.finishChatTrace.bind(spanManagerService)
 export const appendTrace = spanManagerService.appendTrace.bind(spanManagerService)
 export const appendMessageTrace = spanManagerService.appendMessageTrace.bind(spanManagerService)
 export const restartTrace = spanManagerService.restartTrace.bind(spanManagerService)

@@ -3,7 +3,7 @@ import { useTheme } from '@renderer/context/ThemeProvider'
 import { useProvider } from '@renderer/hooks/useProvider'
 import { formatApiKeys } from '@renderer/utils/api'
 import { inferProviderPlatform, PLATFORM_NAMES, PROVIDER_PLATFORMS, type ProviderPlatform } from '@shared/platforms'
-import { normalizeProviderEndpoint, providerRequestBase } from '@shared/providerImport'
+import { normalizeProviderEndpoint, providerRequestBase } from '@shared/providerEndpoint'
 import { Button, Input, Select, Space, Switch } from 'antd'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -68,6 +68,7 @@ export default function ProviderSetting({ providerId }: { providerId: string; is
       <SettingSubtitle>API Key</SettingSubtitle>
       <Space.Compact style={{ width: '100%' }}>
         <Input.Password
+          name="apiKey"
           value={key}
           autoComplete="off"
           spellCheck={false}
@@ -80,6 +81,7 @@ export default function ProviderSetting({ providerId }: { providerId: string; is
       </Space.Compact>
       <SettingSubtitle>{t('settings.provider.api_host')}</SettingSubtitle>
       <Input
+        name="apiHost"
         value={host}
         status={hostInvalid ? 'error' : undefined}
         onChange={(event) => setHost(event.target.value)}

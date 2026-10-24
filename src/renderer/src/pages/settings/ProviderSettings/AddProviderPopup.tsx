@@ -250,6 +250,7 @@ const PopupContainer: React.FC<Props> = ({ provider, resolve, initialPlatform = 
       <Form layout="vertical" style={{ gap: 8 }}>
         <Form.Item label={t('settings.provider.add.name.label')} style={{ marginBottom: 8 }}>
           <Input
+            name="providerName"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={t('settings.provider.add.name.placeholder')}

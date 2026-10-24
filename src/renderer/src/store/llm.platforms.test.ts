@@ -5,14 +5,12 @@ import reducer, {
   addModel,
   addProvider,
   applyPlatformCatalog,
-  importPlatformProvider,
   initialState,
-  setModelTestSelection,
+  setDefaultModel,
   setPlatformModels
 } from '@renderer/store/llm'
 import { bundledModelCatalogs } from '@shared/modelCatalog/runtime'
 import { inferProviderPlatform, resolveProviders } from '@shared/platforms'
-import { matchesProviderImport, parseProviderImport } from '@shared/providerImport'
 import type { Provider } from '@types'
 
 const provider = (id: string): Provider => ({
@@ -28,8 +26,11 @@ const provider = (id: string): Provider => ({
 describe('shared platform catalogs', () => {
   it('merges a pending update against latest edits without restoring deleted models or changing selections', () => {
     let state = reducer(initialState, addProvider(provider('one')))
-    state = reducer(state, setModelTestSelection({ platform: 'openai', modelId: 'gpt-6-sol', providerId: 'one' }))
-    const selection = state.modelTestSelection
+    state = reducer(
+      state,
+      setDefaultModel({ model: { id: 'gpt-6-sol', name: 'Selected', group: '', provider: 'one' } })
+    )
+    const selection = state.defaultModel
     const edited = {
       id: 'gpt-6-sol',
       name: 'Keep this name',
@@ -40,7 +41,7 @@ describe('shared platform catalogs', () => {
     const persisted = JSON.parse(JSON.stringify(state))
     state = reducer(persisted, applyPlatformCatalog(bundledModelCatalogs.openai))
     expect(state.platformModels.openai).toEqual([edited])
-    expect(state.modelTestSelection).toEqual(selection)
+    expect(state.defaultModel).toEqual(selection)
     expect(state.providers).toEqual(persisted.providers)
     expect(state).not.toHaveProperty('snapshot')
     state = reducer(
@@ -50,33 +51,6 @@ describe('shared platform catalogs', () => {
     expect(state.modelCatalogExclusions.openai).not.toContain('gpt-6.1-sol')
     state = reducer(state, applyPlatformCatalog(bundledModelCatalogs.openai))
     expect(state.platformModels.openai.map((model) => model.name)).toEqual(['Keep this name', 'Added again'])
-  })
-  it('explicit imports clear a deletion without replacing the current default', () => {
-    let state = reducer(
-      initialState,
-      importPlatformProvider({ provider: provider('one'), models: ['gpt-6-sol'], primaryModel: 'gpt-6-sol' })
-    )
-    const selected = state.defaultModel
-    state = reducer(state, setPlatformModels({ platform: 'openai', models: [] }))
-    state = reducer(
-      state,
-      importPlatformProvider({ provider: provider('one'), models: ['gpt-6.1-sol'], primaryModel: 'gpt-6.1-sol' })
-    )
-    expect(state.modelCatalogExclusions.openai).not.toContain('gpt-6.1-sol')
-    expect(state.defaultModel).toEqual(selected)
-    expect(state.platformModels.openai.map((model) => model.id)).toEqual(['gpt-6.1-sol'])
-  })
-  it('remembers test model and provider independently without overwriting chat defaults', () => {
-    let state = reducer(
-      initialState,
-      setModelTestSelection({ platform: 'openai', modelId: 'gpt-6-sol', providerId: 'one' })
-    )
-    state = reducer(state, setModelTestSelection({ providerId: 'two' }))
-    expect(state.modelTestSelection).toEqual({ platform: 'openai', modelId: 'gpt-6-sol', providerId: 'two' })
-    state = reducer(state, setModelTestSelection({ platform: 'anthropic', modelId: 'claude-sonnet-4-6' }))
-    expect(state.modelTestSelection?.providerId).toBe('two')
-    expect(state.defaultModel).toEqual(initialState.defaultModel)
-    expect(JSON.parse(JSON.stringify(state)).modelTestSelection).toEqual(state.modelTestSelection)
   })
   it('has no default providers and shares edits immediately while retaining provider binding', () => {
     expect(initialState.providers).toEqual([])
@@ -91,34 +65,6 @@ describe('shared platform catalogs', () => {
       expect(p.models).toEqual([{ id: 'my-model', name: 'Edited', group: 'Custom', provider: p.id }])
     state = reducer(state, setPlatformModels({ platform: 'openai', models: [] }))
     expect(resolveProviders(state).every((p) => p.models.length === 0)).toBe(true)
-  })
-  it('merges repeated imports, chooses the primary model once, and preserves later selection', () => {
-    const incoming = parseProviderImport(
-      'ccswitch://v1/import?resource=provider&app=codex&endpoint=http%3A%2F%2Flocalhost%2F%2Fv1&apiKey=mock-key&model=custom-one'
-    )
-    let state = reducer(
-      initialState,
-      importPlatformProvider({ provider: provider('one'), models: incoming.models, primaryModel: incoming.model })
-    )
-    expect(state.defaultModel).toMatchObject({ id: 'custom-one', provider: 'one' })
-    const existing = state.providers.find((p) => matchesProviderImport(p, incoming))!
-    expect(existing.id).toBe('one')
-    state = reducer(
-      state,
-      importPlatformProvider({
-        provider: { ...existing, models: [] },
-        models: ['custom-one', 'custom-two'],
-        primaryModel: 'custom-two'
-      })
-    )
-    expect(state.providers).toHaveLength(1)
-    expect(state.platformModels.openai.filter((m) => m.id === 'custom-one')).toHaveLength(1)
-    expect(state.platformModels.openai.some((m) => m.id === 'custom-two')).toBe(true)
-    expect(state.defaultModel?.id).toBe('custom-one')
-  })
-  it('uses the first platform model when an import has no model', () => {
-    const state = reducer(initialState, importPlatformProvider({ provider: provider('one'), models: [] }))
-    expect(state.defaultModel).toEqual({ ...state.platformModels.openai[0], provider: 'one' })
   })
   it('only infers grok from explicit model or official xAI host evidence', () => {
     expect(inferProviderPlatform({ type: 'openai-response', apiHost: 'https://api.x.ai/v1' })).toBe('grok')

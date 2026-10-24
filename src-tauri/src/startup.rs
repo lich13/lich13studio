@@ -40,14 +40,6 @@ pub fn should_start_silently(source: StartupSource, launch_to_tray: bool) -> boo
     launch_to_tray && source != StartupSource::Normal
 }
 
-pub fn has_provider_import(args: &[String]) -> bool {
-    args.iter().any(|arg| {
-        url::Url::parse(arg)
-            .map(|url| url.scheme() == "ccswitch")
-            .unwrap_or(false)
-    })
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ShowReason {
     Automatic,
@@ -56,11 +48,7 @@ pub enum ShowReason {
 }
 
 pub fn launch_show_reason(args: &[String], event: Option<LaunchAppleEvent>) -> ShowReason {
-    if has_provider_import(args) {
-        ShowReason::User
-    } else {
-        ShowReason::Launch(startup_source(args, event))
-    }
+    ShowReason::Launch(startup_source(args, event))
 }
 
 #[derive(Debug, Default)]

@@ -33,7 +33,6 @@
     "ignoreUnknown": false,
     "includes": [
       "**",
-      "!src/renderer/src/services/modelTrace/data/**",
       "!**/.claude/**",
       "!**/.vscode/**",
       "!**/.conductor/**",
@@ -67,7 +66,6 @@
       "!*.mjs",
       "!*.cjs",
       "!*.md",
-      "!src/main/integration/**",
       "!**/tailwind.css"
     ],
     "indentStyle": "space",

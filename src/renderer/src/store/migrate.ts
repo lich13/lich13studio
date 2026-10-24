@@ -54,8 +54,6 @@ import {
   migrateAssistantSelectionState,
   migrateChatRequestModeState,
   migrateModelCatalogState,
-  migrateModelTestConcurrencyState,
-  migrateModelTestState,
   migratePlatformState,
   sanitizeState
 } from '@shared/stateMigration'
@@ -3360,9 +3358,7 @@ const migrateConfig = {
   '216': (state: RootState) => sanitizeState(state, true),
   '217': (state: RootState) => migratePlatformState(state),
   '218': (state: RootState) => sanitizeState(state),
-  '219': (state: RootState) => migrateModelTestState(state),
   '220': (state: RootState) => migrateAssistantSelectionState(state),
-  '221': (state: RootState) => migrateModelTestConcurrencyState(state),
   '222': (state: RootState) => migrateModelCatalogState(state),
   '223': (state: RootState) => migrateChatRequestModeState(state)
 }
@@ -3373,9 +3369,7 @@ const migrateConfig = {
 const versionedMigrate = createMigrate(migrateConfig as any)
 const migrate: typeof versionedMigrate = async (state, version) => {
   const migrated = await versionedMigrate(state, version)
-  return migrated
-    ? migrateChatRequestModeState(migrateModelCatalogState(migrateModelTestConcurrencyState(sanitizeState(migrated))))
-    : migrated
+  return migrated ? migrateChatRequestModeState(migrateModelCatalogState(sanitizeState(migrated))) : migrated
 }
 
 export default migrate

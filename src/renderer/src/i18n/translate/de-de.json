@@ -2489,8 +2489,7 @@
     "backgroundStopped": "[to be translated]:The background service stopped. The task was not sent again.",
     "chat": "[to be translated]:Chat",
     "navigation": "[to be translated]:Navigation",
-    "systemBudget": "[to be translated]:Android stopped this task after reaching its background time limit.",
-    "test": "[to be translated]:Test"
+    "systemBudget": "[to be translated]:Android stopped this task after reaching its background time limit."
   },
   "models": {
     "add_parameter": "Parameter hinzufügen",
@@ -4067,6 +4066,7 @@
         "default_vault_placeholder": "Bitte Standard-Obsidian-Tresor auswählen",
         "title": "Obsidian-Konfiguration"
       },
+      "obsolete_cache_cleanup_failed": "Alte Testdaten konnten nicht gelöscht werden. Schließen Sie die anderen App-Fenster und starten Sie neu.",
       "siyuan": {
         "api_url": "API-Adresse",
         "api_url_placeholder": "z. B.: http://127.0.0.1:6806",
@@ -4444,79 +4444,13 @@
       "visible": "Angezeigte Mini-Apps"
     },
     "model": "Standardmodell",
-    "modelTest": {
-      "analyzeManual": "[to be translated]:Analyze pasted output",
-      "attempts": "Attempt {{count}} / {{max}}",
-      "backHome": "Zur Startseite",
-      "bank": "[to be translated]:Fingerprint bank",
-      "bankError": {
-        "cache": "[to be translated]:Unable to save the update. Using the current fingerprint bank.",
-        "incompatible": "[to be translated]:The upstream algorithm changed. Update the app.",
-        "invalid-data": "[to be translated]:Invalid update data. Using the current fingerprint bank.",
-        "network": "[to be translated]:Sync failed. Using the current fingerprint bank.",
-        "rate-limit": "[to be translated]:GitHub rate limit reached. Try again later.",
-        "timeout": "[to be translated]:The update request timed out. Using the current fingerprint bank."
-      },
-      "bankStatus": {
-        "up-to-date": "[to be translated]:Fingerprint bank is up to date.",
-        "updated": "[to be translated]:Fingerprint bank updated."
-      },
-      "byteUnit": "[to be translated]:bytes",
-      "challenge": "[to be translated]:Challenge {{index}} · {{count}} numbers",
-      "challenges": "[to be translated]:Number challenges",
-      "checkBank": "[to be translated]:Check for updates",
-      "checkedAt": "[to be translated]:Last checked: {{time}}",
-      "concurrency": "[to be translated]:Concurrency",
-      "count": "Numbers: {{actual}} / {{expected}}",
-      "familyResult": "[to be translated]:Model family: {{family}} ({{probability}}%)",
-      "integerUnit": "[to be translated]:integers",
-      "issue": {
-        "empty": "No answer text received.",
-        "format": "Answer contains non-numeric text or unsupported formatting.",
-        "insufficient": "Weniger als 80 verwendbare ganze Zahlen.",
-        "reasoning-tag": "Incomplete or mismatched thinking tags."
-      },
+    "modelSelection": {
       "modelLabel": "Modell",
       "modelUnavailable": "Wählen Sie ein gültiges Modell aus dem Plattformkatalog.",
-      "noSamples": "Abgeschlossen; keine auswertbaren Daten",
-      "noUsableSamples": "Keine auswertbaren Daten",
-      "outputLimit": "[to be translated]:Output protection reached: item {{actual}} exceeds {{maximum}} {{unit}}. Retrying.",
-      "pastePlaceholder": "[to be translated]:Paste the complete model response here",
       "providerLabel": "Anbieter",
       "providerPlaceholder": "Anbieter auswählen",
       "providerUnavailable": "Wählen Sie einen aktiven Anbieter für diese Modellplattform. Ihre Auswahl wird nicht automatisch ersetzt.",
-      "regenerate": "[to be translated]:New challenges",
-      "restoreView": "Testansicht wiederherstellen",
-      "result": "[to be translated]:Attribution result",
-      "resultPending": "Warten auf Testergebnisse",
-      "resultRunning": "Test läuft",
-      "retryFailed": "Retry failed challenges only",
-      "retryStop": {
-        "auth": "Authentifizierung fehlgeschlagen. Prüfen Sie Ihre Zugangsdaten.",
-        "cancelled": "Von Ihnen gestoppt. Keine weiteren automatischen Versuche.",
-        "exhausted": "Alle 3 Versuche verbraucht. Nur fehlgeschlagene Gruppen können erneut getestet werden.",
-        "invalidRequest": "Ungültige Anfrageparameter oder Adresse. Automatische Versuche gestoppt.",
-        "model": "Modell nicht gefunden. Prüfen Sie die Modell-ID.",
-        "quota": "Guthaben oder Kontingent unzureichend. Automatische Versuche gestoppt."
-      },
-      "retryWaiting": "Automatischer Neuversuch in {{seconds}} Sekunden",
-      "run": "Start three challenges",
-      "runTarget": "Testziel: {{provider}} · Modell-ID: {{model}}",
-      "samples": "Verwendbar: {{usable}} · Ausgeschlossen: {{excluded}}",
-      "status": {
-        "aborted": "Stopped",
-        "completed": "Abgeschlossen",
-        "error": "Request failed",
-        "pending": "Pending",
-        "retrying": "Waiting to retry",
-        "running": "Receiving"
-      },
-      "stop": "[to be translated]:Stop test",
-      "target": "Provider: {{provider}} · Model ID: {{model}}",
-      "title": "[to be translated]:Model Test",
-      "unavailable": "Nicht verfügbar",
-      "usedOutputs": "Ausgewertete Gruppen: {{count}}",
-      "viewError": "Die Testansicht hat einen Fehler. Die Sitzung bleibt erhalten; stellen Sie die Ansicht wieder her, um Fortschritt und Ergebnisse zu sehen."
+      "unavailable": "Nicht verfügbar"
     },
     "models": {
       "add": {
@@ -4569,10 +4503,6 @@
         "remove_whole_group": "Gesamte Gruppe entfernen"
       },
       "provider_id": "Dienstanbieter-ID",
-      "provider_key_add_confirm": "API-Schlüssel für {{provider}} hinzufügen?",
-      "provider_key_add_failed_by_empty_data": "API-Schlüssel für Dienstanbieter hinzufügen fehlgeschlagen, Daten sind leer",
-      "provider_key_add_failed_by_invalid_data": "API-Schlüssel für Dienstanbieter hinzufügen fehlgeschlagen, Datenformat ist falsch",
-      "provider_key_added": "API-Schlüssel für {{provider}} erfolgreich hinzugefügt",
       "provider_key_already_exists": "{{provider}} hat bereits denselben API-Schlüssel, der nicht erneut hinzugefügt wird",
       "provider_key_confirm_title": "API-Schlüssel für {{provider}} hinzufügen",
       "provider_key_no_change": "{{provider}} hat keine API-Schlüssel-Änderungen",
@@ -4841,10 +4771,6 @@
       },
       "filter_agent": "Von Filter-Agent unterstützte Anbieter",
       "get_api_key": "Hier klicken um Schlüssel zu erhalten",
-      "import_duplicate": "[to be translated]:This provider is already imported.",
-      "import_invalid": "[to be translated]:Import failed. Use a valid Responses or Anthropic provider link.",
-      "import_success": "[to be translated]:Provider imported.",
-      "import_too_large": "[to be translated]:Import link is too large or too many imports are pending. Nothing was imported; check the link and try again.",
       "misc": "Sonstige",
       "notes": {
         "markdown_editor_default_value": "Vorschau-Bereich",

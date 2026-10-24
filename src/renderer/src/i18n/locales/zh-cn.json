@@ -2489,8 +2489,7 @@
     "backgroundStopped": "后台服务已停止，任务未重新发送。",
     "chat": "聊天",
     "navigation": "导航",
-    "systemBudget": "已达到 Android 后台运行时限，任务已停止。",
-    "test": "测试"
+    "systemBudget": "已达到 Android 后台运行时限，任务已停止。"
   },
   "models": {
     "add_parameter": "添加参数",
@@ -4067,6 +4066,7 @@
         "default_vault_placeholder": "请选择默认 Obsidian 仓库",
         "title": "Obsidian 配置"
       },
+      "obsolete_cache_cleanup_failed": "旧版测试缓存清理未完成，请关闭其他应用窗口后重启。",
       "siyuan": {
         "api_url": "API 地址",
         "api_url_placeholder": "例如：http://127.0.0.1:6806",
@@ -4444,81 +4444,13 @@
       "visible": "显示的小程序"
     },
     "model": "默认模型",
-    "modelTest": {
-      "analyzeManual": "分析粘贴结果",
-      "attempts": "尝试 {{count}} / {{max}}",
-      "backHome": "返回首页",
-      "bank": "指纹库",
-      "bankError": {
-        "cache": "无法保存更新，继续使用当前指纹库",
-        "incompatible": "上游算法已变化，请升级应用",
-        "invalid-data": "更新数据校验失败，继续使用当前指纹库",
-        "network": "网络连接失败，继续使用当前指纹库",
-        "rate-limit": "GitHub 请求达到限流，请稍后重试",
-        "timeout": "更新请求超时，继续使用当前指纹库"
-      },
-      "bankStatus": {
-        "up-to-date": "指纹库已是最新",
-        "updated": "指纹库已更新"
-      },
-      "byteUnit": "字节",
-      "challenge": "挑战 {{index}} · 目标 {{count}} 个数字",
-      "challenges": "数字挑战",
-      "checkBank": "检查更新",
-      "checkedAt": "上次检查：{{time}}",
-      "concurrency": "并发",
-      "count": "数字数量：{{actual}} / {{expected}}",
-      "earlyCompleted": "已提前完成",
-      "familyResult": "模型家族：{{family}}（{{probability}}%）",
-      "integerUnit": "个整数",
-      "issue": {
-        "empty": "没有收到回答正文。",
-        "format": "回答混有非数字文字或不支持的格式。",
-        "insufficient": "可用样本不足 80 个。",
-        "reasoning-tag": "思考标签不完整或不匹配。"
-      },
+    "modelSelection": {
       "modelLabel": "模型",
       "modelUnavailable": "请选择平台目录中有效的模型。",
-      "noSamples": "已完成，暂无可分析样本",
-      "noUsableSamples": "暂无可分析样本",
-      "outputLimit": "已达到保护上限：第 {{actual}} 个{{unit}}超过 {{maximum}}，正在重试。",
-      "pastePlaceholder": "将模型完整回答粘贴到这里",
       "providerLabel": "提供商",
       "providerPlaceholder": "请选择提供商",
       "providerUnavailable": "请选择该模型平台下已启用的提供商。当前选择不会自动替换。",
-      "regenerate": "换一组挑战",
-      "restoreView": "恢复测试界面",
-      "result": "归因结果",
-      "resultPending": "等待测试结果",
-      "resultRunning": "测试进行中",
-      "retryFailed": "仅重试失败组",
-      "retryStop": {
-        "auth": "鉴权失败，请检查凭据后重试。",
-        "cancelled": "已停止，不再自动重试。",
-        "exhausted": "已达 3 次尝试上限，可仅重试失败组。",
-        "invalidRequest": "请求参数或地址无效，已停止自动重试。",
-        "model": "模型不存在，请检查模型 ID。",
-        "quota": "余额或额度不足，已停止自动重试。"
-      },
-      "retryWaiting": "{{seconds}} 秒后自动重试",
-      "run": "开始测试",
-      "runTarget": "本轮目标：{{provider}} · 模型 ID：{{model}}",
-      "samples": "可用 {{usable}} 个 · 排除 {{excluded}} 个",
-      "status": {
-        "aborted": "已停止",
-        "completed": "已完成",
-        "error": "请求失败",
-        "pending": "待测试",
-        "retrying": "等待重试",
-        "running": "接收中",
-        "skipped": "无需继续"
-      },
-      "stop": "停止测试",
-      "target": "服务商：{{provider}} · 模型 ID：{{model}}",
-      "title": "模型测试",
-      "unavailable": "不可用",
-      "usedOutputs": "参与分析：{{count}} 组",
-      "viewError": "测试界面显示异常，会话已保留。恢复界面即可查看进度和结果。"
+      "unavailable": "不可用"
     },
     "models": {
       "add": {
@@ -4571,10 +4503,6 @@
         "remove_whole_group": "移除整个分组"
       },
       "provider_id": "服务商 ID",
-      "provider_key_add_confirm": "是否要为 {{provider}} 添加 API 密钥？",
-      "provider_key_add_failed_by_empty_data": "添加服务商 API 密钥失败，数据为空",
-      "provider_key_add_failed_by_invalid_data": "添加服务商 API 密钥失败，数据格式错误",
-      "provider_key_added": "成功为 {{provider}} 添加 API 密钥",
       "provider_key_already_exists": "{{provider}} 已存在相同API 密钥，不会重复添加",
       "provider_key_confirm_title": "为{{provider}}添加 API 密钥",
       "provider_key_no_change": "{{provider}} 的 API 密钥没有变化",
@@ -4843,10 +4771,6 @@
       },
       "filter_agent": "筛选支持 Agent 的服务商",
       "get_api_key": "点击这里获取密钥",
-      "import_duplicate": "此服务商已导入",
-      "import_invalid": "导入失败：仅支持有效的 Responses 或 Anthropic 服务商链接。",
-      "import_success": "服务商已导入",
-      "import_too_large": "导入链接过长或待处理的导入过多，已拒绝且未导入任何内容。请检查链接后重试。",
       "misc": "其他",
       "notes": {
         "markdown_editor_default_value": "预览区域",

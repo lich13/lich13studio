@@ -80,7 +80,7 @@ export default function ModelProviderSelect({
   }))
   if (activeSelection.modelId && !resolved.definition)
     models.push({
-      label: t('settings.modelTest.unavailable'),
+      label: t('settings.modelSelection.unavailable'),
       options: [
         {
           value: JSON.stringify([activeSelection.platform, activeSelection.modelId]),
@@ -98,7 +98,7 @@ export default function ModelProviderSelect({
   if (activeSelection.providerId && !resolved.provider)
     providers.push({
       value: activeSelection.providerId,
-      label: `${llm.providers.find((provider) => provider.id === activeSelection.providerId)?.name || activeSelection.providerId} (${t('settings.modelTest.unavailable')})`,
+      label: `${llm.providers.find((provider) => provider.id === activeSelection.providerId)?.name || activeSelection.providerId} (${t('settings.modelSelection.unavailable')})`,
       disabled: true
     })
   const issue =
@@ -106,7 +106,11 @@ export default function ModelProviderSelect({
       ? 'modelUnavailable'
       : resolved.issue
   const issueText = issue
-    ? t(issue === 'modelUnavailable' ? 'settings.modelTest.modelUnavailable' : 'settings.modelTest.providerUnavailable')
+    ? t(
+        issue === 'modelUnavailable'
+          ? 'settings.modelSelection.modelUnavailable'
+          : 'settings.modelSelection.providerUnavailable'
+      )
     : undefined
   const effortText =
     effort && t('chat.effectiveReasoning', { requested: effort.requested, effective: effort.effective })
@@ -138,7 +142,7 @@ export default function ModelProviderSelect({
       {runtimeCapabilities.android ? (
         <NativeFields className="model-provider-fields">
           <NativeSelect
-            aria-label={t('settings.modelTest.modelLabel')}
+            aria-label={t('settings.modelSelection.modelLabel')}
             title={activeSelection.modelId}
             value={activeSelection.modelId ? JSON.stringify([activeSelection.platform, activeSelection.modelId]) : ''}
             onChange={(event) => handleModelChange(event.currentTarget.value)}>
@@ -156,13 +160,13 @@ export default function ModelProviderSelect({
             ))}
           </NativeSelect>
           <NativeSelect
-            aria-label={t('settings.modelTest.providerLabel')}
+            aria-label={t('settings.modelSelection.providerLabel')}
             title={providers.find((provider) => provider.value === activeSelection.providerId)?.label}
             value={activeSelection.providerId || ''}
             disabled={!activeSelection.modelId}
             onChange={(event) => handleProviderChange(event.currentTarget.value)}>
             <option value="" disabled>
-              {t('settings.modelTest.providerPlaceholder')}
+              {t('settings.modelSelection.providerPlaceholder')}
             </option>
             {providers.map((provider) => (
               <option key={provider.value} value={provider.value} disabled={provider.disabled}>
@@ -174,7 +178,7 @@ export default function ModelProviderSelect({
       ) : (
         <Fields className="model-provider-fields" $inline={layout === 'inline'} $shrink={shrinkToFit}>
           <Select
-            aria-label={t('settings.modelTest.modelLabel')}
+            aria-label={t('settings.modelSelection.modelLabel')}
             title={selection.modelId}
             showSearch
             filterOption={(input, option) =>
@@ -217,14 +221,14 @@ export default function ModelProviderSelect({
             onChange={handleModelChange}
           />
           <Select
-            aria-label={t('settings.modelTest.providerLabel')}
+            aria-label={t('settings.modelSelection.providerLabel')}
             title={providers.find((provider) => provider.value === selection.providerId)?.label}
             showSearch
             optionFilterProp="label"
             size={compact ? 'small' : 'middle'}
             options={providers}
             value={activeSelection.providerId}
-            placeholder={t('settings.modelTest.providerPlaceholder')}
+            placeholder={t('settings.modelSelection.providerPlaceholder')}
             disabled={!activeSelection.modelId}
             getPopupContainer={() => document.body}
             open={openField === 'provider'}

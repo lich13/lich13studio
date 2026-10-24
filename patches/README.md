@@ -4,14 +4,8 @@
 
 | 来源 | 差异用途 | 原许可证 | 补丁 |
 | --- | --- | --- | --- |
-| [@napi-rs/system-ocr@1.0.2](ssh://git@github.com/Brooooooklyn/system-ocr) | Linux 无原生绑定时的兼容导出 | [MIT](licenses/napi-rs-system-ocr-1.0.2.txt) | [@napi-rs-system-ocr-npm-1.0.2-59e7a78e8b.patch](@napi-rs-system-ocr-npm-1.0.2-59e7a78e8b.patch) |
-| [tesseract.js@6.0.1](https://github.com/naptha/tesseract.js) | 补全 OCR 语言类型 | [Apache-2.0](licenses/tesseract.js-6.0.1.txt) | [tesseract.js-npm-6.0.1-2562a7e46d.patch](tesseract.js-npm-6.0.1-2562a7e46d.patch) |
 | [@tiptap/extension-drag-handle@3.2.0](https://github.com/ueberdosis/tiptap) | 滚动时收起拖动句柄 | [MIT](licenses/tiptap-extension-drag-handle-3.2.0.txt) | [@tiptap-extension-drag-handle-npm-3.2.0-5a9ebff7c9.patch](@tiptap-extension-drag-handle-npm-3.2.0-5a9ebff7c9.patch) |
 | [antd@5.27.0](https://github.com/ant-design/ant-design) | 统一下拉与菜单箭头图标 | [MIT](licenses/antd-5.27.0.txt) | [antd-npm-5.27.0-aa91c36546.patch](antd-npm-5.27.0-aa91c36546.patch) |
-| [electron-updater@6.7.0](https://github.com/electron-userland/electron-builder) | 保留兼容更新器的缓存参数处理 | [MIT](licenses/electron-updater-6.7.0.txt) | [electron-updater-npm-6.7.0-47b11bb0d4.patch](electron-updater-npm-6.7.0-47b11bb0d4.patch) |
-| [atomically@1.7.0](https://github.com/fabiospampinato/atomically) | 显式引入 Node process | [MIT](licenses/atomically-1.7.0.txt) | [atomically-npm-1.7.0-e742e5293b.patch](atomically-npm-1.7.0-e742e5293b.patch) |
-| [file-stream-rotator@0.6.1](https://github.com/rogerc/file-stream-rotator) | 兼容 moment 的默认导出 | [MIT](licenses/file-stream-rotator-0.6.1.txt) | [file-stream-rotator-npm-0.6.1-eab45fb13d.patch](file-stream-rotator-npm-0.6.1-eab45fb13d.patch) |
-| [libsql@0.4.7](https://github.com/tursodatabase/libsql-js) | Windows ARM64 绑定路径 | [MIT](licenses/libsql-0.4.7.txt) | [libsql-npm-0.4.7-444e260fb1.patch](libsql-npm-0.4.7-444e260fb1.patch) |
 | [ollama-ai-provider-v2@3.3.1](https://github.com/nordwestt/ollama-ai-provider-v2) | 既有 thinking 类型与 provider 导出 | [Apache-2.0](licenses/ollama-ai-provider-v2-3.3.1.txt) | [ollama-ai-provider-v2@3.3.1.patch](ollama-ai-provider-v2@3.3.1.patch) |
 | [@openrouter/ai-sdk-provider@2.3.3](https://github.com/OpenRouterTeam/ai-sdk-provider) | 文件注释与严格工具 schema 参数 | [Apache-2.0](licenses/openrouter-ai-sdk-provider-2.3.3.txt) | [@openrouter__ai-sdk-provider.patch](@openrouter__ai-sdk-provider.patch) |
 | [@opeoginni/github-copilot-openai-compatible@1.0.0](https://github.com/OpeOginni/github-copilot-openai-compatible) | 既有 GPT-5 系列参数分支 | 元数据 MIT；未附原文 | [@opeoginni__github-copilot-openai-compatible@1.0.0.patch](@opeoginni__github-copilot-openai-compatible@1.0.0.patch) |

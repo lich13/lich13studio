@@ -1,4 +1,3 @@
-import tseslint from '@electron-toolkit/eslint-config-ts'
 import eslint from '@eslint/js'
 import eslintReact from '@eslint-react/eslint-plugin'
 import { defineConfig } from 'eslint/config'
@@ -7,10 +6,13 @@ import oxlint from 'eslint-plugin-oxlint'
 import reactHooks from 'eslint-plugin-react-hooks'
 import simpleImportSort from 'eslint-plugin-simple-import-sort'
 import unusedImports from 'eslint-plugin-unused-imports'
+import globals from 'globals'
+import tseslint from 'typescript-eslint'
 
 export default defineConfig([
   eslint.configs.recommended,
-  tseslint.configs.recommended,
+  ...tseslint.configs.recommended,
+  { languageOptions: { globals: { ...globals.browser, ...globals.es2021, ...globals.node } } },
   eslintReact.configs['recommended-typescript'],
   reactHooks.configs['recommended-latest'],
   {
@@ -20,6 +22,8 @@ export default defineConfig([
       'import-zod': importZod
     },
     rules: {
+      '@typescript-eslint/ban-ts-comment': ['error', { 'ts-ignore': 'allow-with-description' }],
+      '@typescript-eslint/no-empty-function': ['error', { allow: ['arrowFunctions'] }],
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-non-null-asserted-optional-chain': 'off',
@@ -64,7 +68,6 @@ export default defineConfig([
       '.gitignore',
       '.conductor/**',
       'scripts/cloudflare-worker.js',
-      'src/main/integration/cherryai/index.js',
       'src/renderer/src/ui/**',
       'packages/**/dist'
     ]
@@ -76,7 +79,7 @@ export default defineConfig([
   {
     // LoggerService Custom Rules - only apply to src directory
     files: ['src/**/*.{ts,tsx,js,jsx}'],
-    ignores: ['src/**/__tests__/**', 'src/**/__mocks__/**', 'src/**/*.test.*', 'src/preload/**'],
+    ignores: ['src/**/__tests__/**', 'src/**/__mocks__/**', 'src/**/*.test.*'],
     rules: {
       'no-restricted-syntax': [
         process.env.CI ? 'error' : 'warn',

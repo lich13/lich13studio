@@ -139,7 +139,7 @@ import { isEmbeddingModel, isRerankModel, isVisionModel } from '@renderer/config
 import { resolveModelCapabilities } from '@renderer/config/models/capabilities'
 import { ConversationService } from '@renderer/services/ConversationService'
 import { getMiniWindowChatModels } from '@renderer/windows/mini/home/miniWindowHelpers'
-import { resolveModelTestSelection } from '@shared/modelTestSelection'
+import { resolveModelProviderSelection } from '@shared/modelProviderSelection'
 
 const openAiEvents = [
   { type: 'response.output_item.added', output_index: 0, item: { type: 'message', id: 'm', phase: 'final_answer' } },
@@ -320,7 +320,7 @@ describe('model capability request pipeline', () => {
     })
   })
 
-  it('uses the live catalog and capability filters for chat, mini, and model-test targets', async () => {
+  it('uses the live catalog and capability filters for chat and mini targets', async () => {
     for (const id of [
       'gpt-6-sol',
       'gpt-6-luna',
@@ -358,14 +358,14 @@ describe('model capability request pipeline', () => {
     }
 
     const selection = { platform: 'openai' as const, modelId: 'gpt-6-luna', providerId: 'local' }
-    const firstTarget = resolveModelTestSelection(selection, fixture.catalog as any)
+    const firstTarget = resolveModelProviderSelection(selection, fixture.catalog as any)
     expect(firstTarget.model?.id).toBe('gpt-6-luna')
     fixture.catalog.platformModels.openai[0] = {
       ...fixture.catalog.platformModels.openai[0],
       name: 'Catalog updated Luna',
       capabilities: [{ type: 'vision', isUserSelected: false }]
     }
-    const updatedTarget = resolveModelTestSelection(selection, fixture.catalog as any)
+    const updatedTarget = resolveModelProviderSelection(selection, fixture.catalog as any)
     expect(updatedTarget.model?.name).toBe('Catalog updated Luna')
     expect(isVisionModel(updatedTarget.model)).toBe(false)
 

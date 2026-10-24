@@ -21,7 +21,7 @@ pnpm ci:frontend        # CI 前端 job 使用相同定义
 pnpm ci:rust            # cargo +stable fmt / clippy / test
 ```
 
-`ci:basic-check` 包含静态检查、格式、类型、国际化、隐私、OpenAPI 与技能检查。pre-commit 调用它，不自动修改待提交文件。完整前端检查还运行 renderer、升级迁移、内置目录／指纹库校验和构建。CI 单独运行 `pnpm audit --audit-level high` 与固定版本 `cargo audit`，高危／严重告警阻断合并；暂无法修复的条目（仅能通过主版本升级或上游无修复，主要是 Electron 遗留依赖）记录在 `pnpm-workspace.yaml` 的 `auditConfig.ignoreGhsas` 与 CI 的 `--ignore` 参数中。所有 job 均设置 `timeout-minutes`，Android 模拟器步骤单独限时 40 分钟；Actions 继续固定到提交 SHA。
+`ci:basic-check` 包含静态检查、格式、类型、国际化、隐私与技能检查。pre-commit 调用它，不自动修改待提交文件。完整前端检查还运行 renderer、升级迁移、内置目录校验和构建。CI 单独运行 `pnpm audit --audit-level high` 与固定版本 `cargo audit`，高危／严重告警阻断合并；暂无法修复的条目（仅能通过主版本升级或上游无修复）记录在 `pnpm-workspace.yaml` 的 `auditConfig.ignoreGhsas` 与 CI 的 `--ignore` 参数中。所有 job 均设置 `timeout-minutes`，Android 模拟器步骤单独限时 40 分钟；Actions 继续固定到提交 SHA。
 
 检查器职责：Biome 负责格式和 Tailwind 类顺序；Oxlint 负责通用及类型静态规则；ESLint 负责 React、导入排序、i18n 和日志项目规则，已有 Oxlint 规则映射关闭重复项。`pnpm lint` 为开发者主动修复入口，不作为只读 CI 检查。
 
@@ -46,6 +46,6 @@ pnpm build:windows:arm64
 pnpm tauri:build:android
 ```
 
-`electron.vite.config.ts` 仍构建前端与兼容源码，Tauri 读取 `out/renderer` 打包。`.github/workflows/release-build.yml` 手动运行且 version 留空时只生成制品；只有标签或显式版本输入才发布。
+`vite.config.ts` 仅构建 React 主窗口和快捷助手，Tauri 读取 `out/renderer` 打包。`.github/workflows/release-build.yml` 手动运行且 version 留空时只生成制品；只有标签或显式版本输入才发布。
 
 工作流 Action 固定提交，Node／pnpm 与本地共用版本源，原生依赖使用 Cargo.lock。平台 SDK 和签名环境也影响产物，不能把构建输入固定等同于不同机器逐字节相同。

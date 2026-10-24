@@ -3,14 +3,14 @@ import db from '@renderer/databases'
 import i18n from '@renderer/i18n'
 import store from '@renderer/store'
 import type { FileMetadata } from '@renderer/types'
+import type { OpenDialogOptions } from '@renderer/types/fileDialog'
 import { getFileDirectory } from '@renderer/utils'
-import { isTauri } from '@tauri-apps/api/core'
 import dayjs from 'dayjs'
 
 const logger = loggerService.withContext('FileManager')
 
 class FileManager {
-  static async selectFiles(options?: Electron.OpenDialogOptions): Promise<FileMetadata[] | null> {
+  static async selectFiles(options?: OpenDialogOptions): Promise<FileMetadata[] | null> {
     return await window.api.file.select(options)
   }
 
@@ -149,12 +149,8 @@ class FileManager {
   }
 
   static async resolvePreviewUrl(file: FileMetadata): Promise<string> {
-    if (isTauri() || this.isMemoryFile(file)) {
-      const imageData = await window.api.file.base64Image(file.id + file.ext)
-      return imageData.data
-    }
-
-    return 'file://' + this.getSafePath(file)
+    const imageData = await window.api.file.base64Image(file.id + file.ext)
+    return imageData.data
   }
 
   static getFileUrl(file: FileMetadata) {

@@ -2,8 +2,6 @@ import { platformRequestHeaders } from './cliIdentity'
 import { emptyCatalogExclusions, mergeCatalogModels } from './modelCatalog/merge'
 import { bundledModelCatalogs } from './modelCatalog/runtime'
 import { assistantModelSelection } from './modelProviderSelection'
-import { normalizeModelTestConcurrency } from './modelTestOptions'
-import { initialModelTestSelection } from './modelTestSelection'
 import {
   catalogModel,
   createPlatformModels,
@@ -12,15 +10,13 @@ import {
   PROVIDER_PLATFORMS,
   storedProvider
 } from './platforms'
-import { normalizeProviderEndpoint } from './providerImport'
+import { normalizeProviderEndpoint } from './providerEndpoint'
 import { normalizeReasoningEffort } from './reasoning'
 
 export const PROVIDER_RESET_VERSION = 216
 export const PLATFORM_MIGRATION_VERSION = 217
 export const SEARCH_REMOVAL_VERSION = 218
-export const MODEL_TEST_SELECTION_VERSION = 219
 export const ASSISTANT_SELECTION_VERSION = 220
-export const MODEL_TEST_CONCURRENCY_VERSION = 221
 export const MODEL_CATALOG_VERSION = 222
 export const CHAT_REQUEST_MODE_VERSION = 223
 
@@ -30,6 +26,10 @@ type State = Record<string, any>
 export function sanitizeState<T extends State>(state: T, resetProviders = false): T {
   delete state.mcp
   delete state.websearch
+  if (state.llm) {
+    delete state.llm.modelTestSelection
+    delete state.llm.modelTestConcurrency
+  }
   if (resetProviders && state.llm) {
     state.llm.providers = []
     for (const key of ['defaultModel', 'topicNamingModel', 'quickModel', 'translateModel']) delete state.llm[key]
@@ -96,9 +96,7 @@ export function sanitizePersistedState(raw: string): string {
   }
   sanitizeState(decoded, (decoded._persist?.version ?? -1) < PROVIDER_RESET_VERSION)
   migratePlatformState(decoded)
-  migrateModelTestState(decoded)
   migrateAssistantSelectionState(decoded)
-  migrateModelTestConcurrencyState(decoded)
   migrateModelCatalogState(decoded)
   migrateChatRequestModeState(decoded)
   return JSON.stringify(Object.fromEntries(Object.entries(decoded).map(([key, value]) => [key, JSON.stringify(value)])))
@@ -120,19 +118,6 @@ export function migrateChatRequestModeState<T extends State>(state: T): T {
   ]
   for (const assistant of entries) {
     if (assistant?.settings && typeof assistant.settings === 'object') delete assistant.settings.streamOutput
-  }
-  return state
-}
-
-export function migrateModelTestConcurrencyState<T extends State>(state: T): T {
-  if (state.llm) state.llm.modelTestConcurrency = normalizeModelTestConcurrency(state.llm.modelTestConcurrency)
-  return state
-}
-
-/** Add independent test preferences once; retain unavailable selections for explicit correction. */
-export function migrateModelTestState<T extends State>(state: T): T {
-  if (state.llm && state.llm.modelTestSelection === undefined) {
-    state.llm.modelTestSelection = initialModelTestSelection(state.llm)
   }
   return state
 }

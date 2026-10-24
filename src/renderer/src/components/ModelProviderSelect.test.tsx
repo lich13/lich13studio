@@ -100,7 +100,7 @@ it('uses native Android optgroups, keeps selections independent, and preserves s
   expect(selects()[0]).toBe(modelSelect)
   expect(selects()[1]).toBe(providerSelect)
   expect(resolveModelProviderSelection(selected, fixture.catalog as any).model).toBeUndefined()
-  expect(container.textContent).toContain('settings.modelTest.providerUnavailable')
+  expect(container.textContent).toContain('settings.modelSelection.providerUnavailable')
   expect(providerSelect.querySelector('option[value="two"]')?.getAttribute('disabled')).not.toBeNull()
   await act(async () => {
     providerSelect.value = 'two'

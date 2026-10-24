@@ -14,8 +14,6 @@ import { Search } from 'lucide-react'
 import type { FC } from 'react'
 import styled from 'styled-components'
 
-import UpdateAppButton from './components/UpdateAppButton'
-
 interface Props {
   activeAssistant: Assistant
   activeTopic: Topic
@@ -50,7 +48,6 @@ const HeaderNavbar: FC<Props> = () => {
         }}
         className="home-navbar-right">
         <HStack alignItems="center" gap={6}>
-          <UpdateAppButton />
           <Tooltip title={t('chat.assistant.search.placeholder')} mouseEnterDelay={0.8}>
             <NarrowIcon onClick={() => SearchPopup.show()}>
               <Search size={18} />

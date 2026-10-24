@@ -105,8 +105,7 @@ export async function transformMessagesAndFetch(
 }
 
 /**
- * The request mode is frozen at the start of this call. ModelTrace has its own
- * direct runner and does not pass through this setting.
+ * The chat request mode is frozen at the start of this call.
  */
 export async function fetchChatCompletion({
   messages,

@@ -8,7 +8,6 @@ import type { SourceFile } from 'ts-morph'
 import { Node, Project } from 'ts-morph'
 
 const RENDERER_DIR = path.join(__dirname, '../src/renderer/src')
-const MAIN_DIR = path.join(__dirname, '../src/main')
 const EXTENSIONS = ['.tsx', '.ts']
 const IGNORED_DIRS = ['__tests__', 'node_modules', 'i18n', 'locales', 'types', 'assets']
 const IGNORED_FILES = ['*.test.ts', '*.test.tsx', '*.d.ts', '*prompts*.ts']
@@ -38,7 +37,7 @@ interface Finding {
   line: number
   content: string
   type: 'chinese' | 'english'
-  source: 'renderer' | 'main'
+  source: 'renderer'
   nodeType: string
 }
 
@@ -67,7 +66,7 @@ function createFinding(
   node: Node,
   sourceFile: SourceFile,
   type: 'chinese' | 'english',
-  source: 'renderer' | 'main',
+  source: 'renderer',
   nodeType: string
 ): Finding {
   return {
@@ -216,7 +215,7 @@ class HardcodedStringDetector {
     })
   }
 
-  scanFile(filePath: string, source: 'renderer' | 'main'): Finding[] {
+  scanFile(filePath: string, source: 'renderer'): Finding[] {
     const findings: Finding[] = []
 
     try {
@@ -232,7 +231,7 @@ class HardcodedStringDetector {
     return findings
   }
 
-  private checkNode(node: Node, sourceFile: SourceFile, source: 'renderer' | 'main', findings: Finding[]): void {
+  private checkNode(node: Node, sourceFile: SourceFile, source: 'renderer', findings: Finding[]): void {
     if (shouldSkipNode(node)) return
 
     if (Node.isJsxText(node)) {
@@ -331,7 +330,7 @@ function shouldSkipFile(filePath: string, baseDir: string): boolean {
   return false
 }
 
-function scanDirectory(dir: string, source: 'renderer' | 'main', detector: HardcodedStringDetector): Finding[] {
+function scanDirectory(dir: string, source: 'renderer', detector: HardcodedStringDetector): Finding[] {
   const findings: Finding[] = []
 
   if (!fs.existsSync(dir)) {
@@ -348,7 +347,7 @@ function scanDirectory(dir: string, source: 'renderer' | 'main', detector: Hardc
         findings.push(...scanDirectory(fullPath, source, detector))
       }
     } else if (entry.isFile() && EXTENSIONS.some((ext) => entry.name.endsWith(ext))) {
-      if (!shouldSkipFile(fullPath, source === 'renderer' ? RENDERER_DIR : MAIN_DIR)) {
+      if (!shouldSkipFile(fullPath, RENDERER_DIR)) {
         findings.push(...detector.scanFile(fullPath, source))
       }
     }
@@ -363,7 +362,6 @@ function formatFindings(findings: Finding[]): string {
   }
 
   const rendererFindings = findings.filter((f) => f.source === 'renderer')
-  const mainFindings = findings.filter((f) => f.source === 'main')
   const chineseFindings = findings.filter((f) => f.type === 'chinese')
   const englishFindings = findings.filter((f) => f.type === 'english')
 
@@ -395,26 +393,9 @@ function formatFindings(findings: Finding[]): string {
     }
   }
 
-  if (mainFindings.length > 0) {
-    output += '\n📦 Main Process:\n'
-    output += '-'.repeat(50) + '\n'
-
-    const mainChinese = mainFindings.filter((f) => f.type === 'chinese')
-
-    if (mainChinese.length > 0) {
-      output += '\n⚠️ Hardcoded Chinese strings:\n'
-      mainChinese.forEach((f) => {
-        const relativePath = path.relative(MAIN_DIR, f.file)
-        output += `\n📍 ${relativePath}:${f.line} [${f.nodeType}]\n`
-        output += `   ${f.content}\n`
-      })
-    }
-  }
-
   output += '\n' + '='.repeat(50) + '\n'
   output += `Total: ${findings.length} potential issues found\n`
   output += `  - Renderer: ${rendererFindings.length} (Chinese: ${rendererFindings.filter((f) => f.type === 'chinese').length}, English: ${rendererFindings.filter((f) => f.type === 'english').length})\n`
-  output += `  - Main: ${mainFindings.length} (Chinese: ${mainFindings.length})\n`
   output += `  - Total Chinese: ${chineseFindings.length}\n`
   output += `  - Total English: ${englishFindings.length}\n`
 
@@ -427,8 +408,7 @@ export function main(): void {
   const detector = new HardcodedStringDetector()
 
   const rendererFindings = scanDirectory(RENDERER_DIR, 'renderer', detector)
-  const mainFindings = scanDirectory(MAIN_DIR, 'main', detector)
-  const findings = [...rendererFindings, ...mainFindings]
+  const findings = rendererFindings
 
   const output = formatFindings(findings)
   console.log(output)

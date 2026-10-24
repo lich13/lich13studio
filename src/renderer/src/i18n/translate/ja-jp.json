@@ -2489,8 +2489,7 @@
     "backgroundStopped": "[to be translated]:The background service stopped. The task was not sent again.",
     "chat": "[to be translated]:Chat",
     "navigation": "[to be translated]:Navigation",
-    "systemBudget": "[to be translated]:Android stopped this task after reaching its background time limit.",
-    "test": "[to be translated]:Test"
+    "systemBudget": "[to be translated]:Android stopped this task after reaching its background time limit."
   },
   "models": {
     "add_parameter": "パラメータを追加",
@@ -4067,6 +4066,7 @@
         "default_vault_placeholder": "デフォルトの Obsidian 保管庫を選択してください",
         "title": "Obsidian 設定"
       },
+      "obsolete_cache_cleanup_failed": "以前のテストデータを削除できませんでした。アプリの他のウィンドウを閉じて再起動してください。",
       "siyuan": {
         "api_url": "APIアドレス",
         "api_url_placeholder": "例：http://127.0.0.1:6806",
@@ -4444,79 +4444,13 @@
       "visible": "表示するミニアプリ"
     },
     "model": "デフォルトモデル",
-    "modelTest": {
-      "analyzeManual": "[to be translated]:Analyze pasted output",
-      "attempts": "Attempt {{count}} / {{max}}",
-      "backHome": "ホームに戻る",
-      "bank": "[to be translated]:Fingerprint bank",
-      "bankError": {
-        "cache": "[to be translated]:Unable to save the update. Using the current fingerprint bank.",
-        "incompatible": "[to be translated]:The upstream algorithm changed. Update the app.",
-        "invalid-data": "[to be translated]:Invalid update data. Using the current fingerprint bank.",
-        "network": "[to be translated]:Sync failed. Using the current fingerprint bank.",
-        "rate-limit": "[to be translated]:GitHub rate limit reached. Try again later.",
-        "timeout": "[to be translated]:The update request timed out. Using the current fingerprint bank."
-      },
-      "bankStatus": {
-        "up-to-date": "[to be translated]:Fingerprint bank is up to date.",
-        "updated": "[to be translated]:Fingerprint bank updated."
-      },
-      "byteUnit": "[to be translated]:bytes",
-      "challenge": "[to be translated]:Challenge {{index}} · {{count}} numbers",
-      "challenges": "[to be translated]:Number challenges",
-      "checkBank": "[to be translated]:Check for updates",
-      "checkedAt": "[to be translated]:Last checked: {{time}}",
-      "concurrency": "[to be translated]:Concurrency",
-      "count": "Numbers: {{actual}} / {{expected}}",
-      "familyResult": "[to be translated]:Model family: {{family}} ({{probability}}%)",
-      "integerUnit": "[to be translated]:integers",
-      "issue": {
-        "empty": "No answer text received.",
-        "format": "Answer contains non-numeric text or unsupported formatting.",
-        "insufficient": "使用可能な整数が80個未満です。",
-        "reasoning-tag": "Incomplete or mismatched thinking tags."
-      },
+    "modelSelection": {
       "modelLabel": "モデル",
       "modelUnavailable": "プラットフォームの一覧から有効なモデルを選択してください。",
-      "noSamples": "完了しましたが、解析可能なサンプルはありません",
-      "noUsableSamples": "解析可能なサンプルはありません",
-      "outputLimit": "[to be translated]:Output protection reached: item {{actual}} exceeds {{maximum}} {{unit}}. Retrying.",
-      "pastePlaceholder": "[to be translated]:Paste the complete model response here",
       "providerLabel": "プロバイダー",
       "providerPlaceholder": "プロバイダーを選択",
       "providerUnavailable": "このモデルのプラットフォームで有効なプロバイダーを選択してください。選択は自動変更されません。",
-      "regenerate": "[to be translated]:New challenges",
-      "restoreView": "テスト画面を復元",
-      "result": "[to be translated]:Attribution result",
-      "resultPending": "テスト結果を待機中",
-      "resultRunning": "テスト実行中",
-      "retryFailed": "Retry failed challenges only",
-      "retryStop": {
-        "auth": "認証に失敗しました。認証情報を確認してください。",
-        "cancelled": "ユーザーにより停止されました。自動再試行は行いません。",
-        "exhausted": "3 回の試行を使い切りました。失敗したグループのみ再試行できます。",
-        "invalidRequest": "リクエストのパラメーターまたはアドレスが無効です。自動再試行を停止しました。",
-        "model": "モデルが見つかりません。モデル ID を確認してください。",
-        "quota": "残高またはクォータが不足しています。自動再試行を停止しました。"
-      },
-      "retryWaiting": "{{seconds}} 秒後に自動で再試行",
-      "run": "Start three challenges",
-      "runTarget": "今回の対象：{{provider}} · モデル ID：{{model}}",
-      "samples": "使用可能：{{usable}} 個 · 除外：{{excluded}} 個",
-      "status": {
-        "aborted": "Stopped",
-        "completed": "完了",
-        "error": "Request failed",
-        "pending": "Pending",
-        "retrying": "Waiting to retry",
-        "running": "Receiving"
-      },
-      "stop": "[to be translated]:Stop test",
-      "target": "Provider: {{provider}} · Model ID: {{model}}",
-      "title": "[to be translated]:Model Test",
-      "unavailable": "利用不可",
-      "usedOutputs": "解析したグループ：{{count}}",
-      "viewError": "テスト画面でエラーが発生しました。セッションは保持されています。画面を復元すると進捗と結果を確認できます。"
+      "unavailable": "利用不可"
     },
     "models": {
       "add": {
@@ -4569,10 +4503,6 @@
         "remove_whole_group": "グループ全体を削除"
       },
       "provider_id": "プロバイダー ID",
-      "provider_key_add_confirm": "{{provider}} の API キーを追加しますか？",
-      "provider_key_add_failed_by_empty_data": "{{provider}} の API キーを追加できませんでした。データが空です。",
-      "provider_key_add_failed_by_invalid_data": "{{provider}} の API キーを追加できませんでした。データ形式が無効です。",
-      "provider_key_added": "{{provider}} の API キーを追加しました",
       "provider_key_already_exists": "{{provider}} には同じ API キーがすでに存在します。追加しません。",
       "provider_key_confirm_title": "{{provider}} の API キーを追加",
       "provider_key_no_change": "{{provider}} の API キーは変更されませんでした",
@@ -4841,10 +4771,6 @@
       },
       "filter_agent": "フィルターエージェント対応プロバイダー",
       "get_api_key": "APIキーを取得",
-      "import_duplicate": "[to be translated]:This provider is already imported.",
-      "import_invalid": "[to be translated]:Import failed. Use a valid Responses or Anthropic provider link.",
-      "import_success": "[to be translated]:Provider imported.",
-      "import_too_large": "[to be translated]:Import link is too large or too many imports are pending. Nothing was imported; check the link and try again.",
       "misc": "その他",
       "notes": {
         "markdown_editor_default_value": "プレビュー領域",

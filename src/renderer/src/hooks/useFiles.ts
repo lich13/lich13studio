@@ -1,4 +1,5 @@
 import type { FileMetadata } from '@renderer/types'
+import type { OpenDialogOptions } from '@renderer/types/fileDialog'
 import { filterSupportedFiles } from '@renderer/utils'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -38,7 +39,7 @@ export const useFiles = (props?: Props) => {
         return []
       }
 
-      const selectProps: Electron.OpenDialogOptions['properties'] = multipleSelections
+      const selectProps: OpenDialogOptions['properties'] = multipleSelections
         ? ['openFile', 'multiSelections']
         : ['openFile']
 

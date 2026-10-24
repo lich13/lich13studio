@@ -8,7 +8,6 @@ import { ChevronRight } from 'lucide-react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import ModelTestButton from '../../ModelTestButton'
 import SelectModelButton from '../../SelectModelButton'
 import Tools from '../Tools'
 
@@ -45,7 +44,6 @@ const TopicContent = ({ assistant }: TopicContentProps) => {
 
           {/* Model Button */}
           <SelectModelButton assistant={assistant} />
-          {!runtimeCapabilities.android && <ModelTestButton />}
         </div>
       </ControlsContainer>
       {!runtimeCapabilities.android && <Tools assistant={assistant} />}

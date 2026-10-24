@@ -11,6 +11,10 @@
       }
     ]
   },
-  "bundle": { "targets": [], "android": { "minSdkVersion": 31 } },
-  "plugins": { "deep-link": { "mobile": [{ "scheme": ["ccswitch"], "appLink": false }] } }
+  "bundle": {
+    "targets": [],
+    "android": {
+      "minSdkVersion": 31
+    }
+  }
 }

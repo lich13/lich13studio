@@ -1,10 +1,8 @@
 import { isMac } from '@renderer/config/constant'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import { useFullscreen } from '@renderer/hooks/useFullscreen'
-import { useMinappPopup } from '@renderer/hooks/useMinappPopup'
-import { useMinapps } from '@renderer/hooks/useMinapps'
 import useNavBackgroundColor from '@renderer/hooks/useNavBackgroundColor'
-import { modelGenerating, useRuntime } from '@renderer/hooks/useRuntime'
+import { modelGenerating } from '@renderer/hooks/useRuntime'
 import { useSettings } from '@renderer/hooks/useSettings'
 import { getSidebarIconLabel } from '@renderer/i18n/label'
 import type { SidebarIcon } from '@renderer/types'
@@ -25,54 +23,32 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import styled from 'styled-components'
 
 import { OpenClawSidebarIcon } from '../Icons/SVGIcon'
-import { SidebarOpenedMinappTabs, SidebarPinnedApps } from './PinnedMinapps'
 
 const Sidebar: FC = () => {
-  const { hideMinappPopup } = useMinappPopup()
-  const { minappShow } = useRuntime()
-  const { sidebarIcons } = useSettings()
-  const { pinned } = useMinapps()
-
   const backgroundColor = useNavBackgroundColor()
-
-  const showPinnedApps = pinned.length > 0 && sidebarIcons.visible.includes('minapp')
 
   const isFullscreen = useFullscreen()
 
   return (
-    <Container
-      $isFullscreen={isFullscreen}
-      id="app-sidebar"
-      style={{ backgroundColor, zIndex: minappShow ? 10000 : 'initial' }}>
+    <Container $isFullscreen={isFullscreen} id="app-sidebar" style={{ backgroundColor }}>
       <MainMenusContainer>
-        <Menus onClick={hideMinappPopup}>
+        <Menus>
           <MainMenus />
         </Menus>
-        <SidebarOpenedMinappTabs />
-        {showPinnedApps && (
-          <AppsContainer>
-            <Divider />
-            <Menus>
-              <SidebarPinnedApps />
-            </Menus>
-          </AppsContainer>
-        )}
       </MainMenusContainer>
     </Container>
   )
 }
 
 const MainMenus: FC = () => {
-  const { hideMinappPopup } = useMinappPopup()
   const { pathname } = useLocation()
   const { sidebarIcons, defaultPaintingProvider } = useSettings()
-  const { minappShow } = useRuntime()
   const navigate = useNavigate()
   const { theme } = useTheme()
   const { t } = useTranslation()
 
-  const isRoute = (path: string): string => (pathname === path && !minappShow ? 'active' : '')
-  const isRoutes = (path: string): string => (pathname.startsWith(path) && path !== '/' && !minappShow ? 'active' : '')
+  const isRoute = (path: string): string => (pathname === path ? 'active' : '')
+  const isRoutes = (path: string): string => (pathname.startsWith(path) && path !== '/' ? 'active' : '')
 
   type SidebarMenuItem = SidebarIcon | 'settings'
 
@@ -121,7 +97,7 @@ const MainMenus: FC = () => {
     }
     const isActive =
       icon === 'settings'
-        ? pathname.startsWith('/settings') && !minappShow
+        ? pathname.startsWith('/settings')
           ? 'active'
           : ''
         : path === '/'
@@ -133,7 +109,6 @@ const MainMenus: FC = () => {
       <Tooltip key={icon} title={title} mouseEnterDelay={0.8} placement="right">
         <StyledLink
           onClick={async () => {
-            hideMinappPopup()
             await modelGenerating()
             navigate(path)
           }}>
@@ -237,26 +212,6 @@ const StyledLink = styled.div`
   &* {
     user-select: none;
   }
-`
-
-const AppsContainer = styled.div`
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  align-items: center;
-  overflow-y: auto;
-  overflow-x: hidden;
-  margin-bottom: 10px;
-  -webkit-app-region: none;
-  &::-webkit-scrollbar {
-    display: none;
-  }
-`
-
-const Divider = styled.div`
-  width: 50%;
-  margin: 8px 0;
-  border-bottom: 0.5px solid var(--color-border);
 `
 
 export default Sidebar

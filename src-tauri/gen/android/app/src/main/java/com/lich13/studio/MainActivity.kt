@@ -1,6 +1,5 @@
 package com.lich13.studio
 
-import android.content.Intent
 import android.os.Bundle
 import android.webkit.WebView
 import android.view.ViewGroup
@@ -15,12 +14,6 @@ class MainActivity : TauriActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-    }
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        // The deep-link plugin has received the Intent; don't retain its Key.
-        intent.data = null
-        setIntent(Intent(this, MainActivity::class.java))
     }
     override fun onWebViewCreate(webView: WebView) {
         super.onWebViewCreate(webView)

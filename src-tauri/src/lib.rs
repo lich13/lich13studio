@@ -2009,7 +2009,6 @@ fn system_hostname() -> String {
         .unwrap_or_else(|| String::from("unknown"))
 }
 
-/// Keep in sync with ALLOWED_EXTERNAL_PROTOCOLS in src/main/services/security.ts.
 const EXTERNAL_URL_SCHEMES: [&str; 4] = ["http", "https", "mailto", "tel"];
 
 fn normalize_external_url(value: &str) -> Result<String, String> {
@@ -3044,76 +3043,6 @@ fn set_mini_window_pin(is_pinned: bool) -> Result<(), String> {
     Ok(())
 }
 
-// Keep import credentials only in memory until the main renderer can receive them.
-// Caps mirror packages/shared/providerImport.ts so hostile links cannot grow the queue.
-const PROVIDER_IMPORT_MAX_LINK_LENGTH: usize = 8192;
-const PROVIDER_IMPORT_MAX_QUEUE: usize = 8;
-const PROVIDER_IMPORT_REJECTED_MARKER: &str = "ccswitch://v1/import?lich13studioRejected=limit";
-
-#[derive(Default)]
-struct PendingProviderImports(Mutex<PendingProviderImportQueue>);
-
-#[derive(Default)]
-struct PendingProviderImportQueue {
-    urls: Vec<String>,
-    rejected: bool,
-}
-
-impl PendingProviderImports {
-    #[cfg(not(target_os = "android"))]
-    fn has_pending(&self) -> bool {
-        let pending = self.0.lock().unwrap();
-        !pending.urls.is_empty() || pending.rejected
-    }
-
-    fn enqueue(&self, urls: &[Url]) {
-        let mut pending = self.0.lock().unwrap();
-        for url in urls.iter().filter(|url| url.scheme() == "ccswitch") {
-            let value = url.as_str();
-            if pending.urls.iter().any(|existing| existing == value) {
-                continue;
-            }
-            // Over-limit links are dropped without logging or retaining their contents.
-            if value.len() > PROVIDER_IMPORT_MAX_LINK_LENGTH
-                || pending.urls.len() >= PROVIDER_IMPORT_MAX_QUEUE
-            {
-                pending.rejected = true;
-                continue;
-            }
-            pending.urls.push(value.to_owned());
-        }
-    }
-
-    fn take(&self, window_label: &str) -> Vec<String> {
-        if window_label != "main" {
-            return Vec::new();
-        }
-        let mut pending = self.0.lock().unwrap();
-        let mut urls = std::mem::take(&mut pending.urls);
-        if std::mem::take(&mut pending.rejected) {
-            urls.push(PROVIDER_IMPORT_REJECTED_MARKER.to_owned());
-        }
-        urls
-    }
-}
-
-#[tauri::command]
-fn take_pending_provider_imports(
-    app: AppHandle,
-    window: Window,
-    pending: tauri::State<PendingProviderImports>,
-) -> Vec<String> {
-    #[cfg(target_os = "android")]
-    {
-        let app = app.clone();
-        tauri::async_runtime::spawn(async move {
-            let _ = mobile::mobile_command(app, "consumeImportIntent".into(), None).await;
-        });
-    }
-    let _ = app;
-    pending.take(window.label())
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let context = tauri::generate_context!();
@@ -3133,7 +3062,7 @@ pub fn run() {
         }
         context
     };
-    let builder = tauri::Builder::default().manage(PendingProviderImports::default());
+    let builder = tauri::Builder::default();
     #[cfg(not(target_os = "android"))]
     let builder = builder.plugin(tauri_plugin_single_instance::init(|app, args, _| {
         let reason = startup::launch_show_reason(&args, None);
@@ -3153,7 +3082,6 @@ pub fn run() {
             }
         });
     let app = builder
-        .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_notification::init())
         .setup(|app| {
             #[cfg(target_os = "android")]
@@ -3202,19 +3130,6 @@ pub fn run() {
                     WebviewWindowBuilder::from_config(app.handle(), config)?.build()?;
                 }
             }
-            use tauri_plugin_deep_link::DeepLinkExt;
-            let import_app = app.handle().clone();
-            if let Ok(Some(urls)) = app.deep_link().get_current() {
-                app.state::<PendingProviderImports>().enqueue(&urls);
-            }
-            app.deep_link().on_open_url(move |event| {
-                import_app
-                    .state::<PendingProviderImports>()
-                    .enqueue(&event.urls());
-                let _ = import_app.emit_to("main", "provider-import-pending", ());
-                #[cfg(not(target_os = "android"))]
-                let _ = show_and_focus_main_window(&import_app);
-            });
             #[cfg(not(target_os = "android"))]
             {
                 if let Some(main_window) = app.get_webview_window("main") {
@@ -3246,9 +3161,6 @@ pub fn run() {
                 }
 
                 setup_tray(app)?;
-                if app.state::<PendingProviderImports>().has_pending() {
-                    let _ = show_and_focus_main_window(app.handle());
-                }
             }
 
             Ok(())
@@ -3269,7 +3181,6 @@ pub fn run() {
             backup_crypto::encrypt_backup,
             backup_crypto::decrypt_backup,
             app_info,
-            take_pending_provider_imports,
             secure_store::read_secure_credentials,
             secure_store::write_secure_credentials,
             secure_store::clear_secure_credentials,
@@ -3390,46 +3301,6 @@ mod tests {
         assert!(!data.join("original.txt").exists());
         assert_eq!(fs::read_dir(&root).unwrap().count(), 1);
         fs::remove_dir_all(root).unwrap();
-    }
-
-    #[test]
-    fn queues_provider_imports_until_main_renderer_is_ready() {
-        let pending = PendingProviderImports::default();
-        let first = Url::parse("ccswitch://v1/import?app=codex").unwrap();
-        let second = Url::parse("ccswitch://v1/import?app=claude").unwrap();
-        pending.enqueue(&[first.clone(), Url::parse("cherrystudio://ignored").unwrap()]);
-        pending.enqueue(&[first.clone(), second.clone()]);
-        assert!(pending.take("mini").is_empty());
-        assert_eq!(
-            pending.take("main"),
-            vec![first.to_string(), second.to_string()]
-        );
-        assert!(pending.take("main").is_empty());
-        pending.enqueue(std::slice::from_ref(&first));
-        assert_eq!(pending.take("main"), vec![first.to_string()]);
-    }
-
-    #[test]
-    fn caps_provider_import_link_length_and_queue_depth() {
-        let pending = PendingProviderImports::default();
-        let long = Url::parse(&format!(
-            "ccswitch://v1/import?apiKey={}",
-            "k".repeat(PROVIDER_IMPORT_MAX_LINK_LENGTH)
-        ))
-        .unwrap();
-        pending.enqueue(&[long]);
-        assert_eq!(
-            pending.take("main"),
-            vec![PROVIDER_IMPORT_REJECTED_MARKER.to_owned()]
-        );
-        let flood: Vec<Url> = (0..PROVIDER_IMPORT_MAX_QUEUE + 3)
-            .map(|i| Url::parse(&format!("ccswitch://v1/import?n={i}")).unwrap())
-            .collect();
-        pending.enqueue(&flood);
-        let taken = pending.take("main");
-        assert_eq!(taken.len(), PROVIDER_IMPORT_MAX_QUEUE + 1);
-        assert_eq!(taken.last().unwrap(), PROVIDER_IMPORT_REJECTED_MARKER);
-        assert!(pending.take("main").is_empty());
     }
 
     #[test]

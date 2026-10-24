@@ -238,22 +238,7 @@ fn repeated_login_launches_stay_silent_but_manual_launch_can_show() {
 }
 
 #[test]
-fn launch_show_reason_routes_provider_imports_to_user_and_preserves_other_launches() {
-    let login_args_with_import = vec![
-        LOGIN_STARTUP_ARG.to_string(),
-        "ccswitch://v1/import?app=codex".to_string(),
-    ];
-    assert_eq!(
-        launch_show_reason(&login_args_with_import, None),
-        ShowReason::User
-    );
-
-    let ccswitch_args = vec!["ccswitch://v1/import?app=claude".to_string()];
-    let ccswitch_reason = launch_show_reason(&ccswitch_args, Some(login_item_event()));
-    assert_eq!(ccswitch_reason, ShowReason::User);
-    let mut ccswitch_visibility = StartupVisibility::new(StartupSource::MacOSLoginItem, true);
-    assert!(ccswitch_visibility.request_show(ccswitch_reason, true));
-
+fn launch_show_reason_preserves_login_and_normal_launches() {
     let login_args = vec![LOGIN_STARTUP_ARG.to_string()];
     assert_eq!(
         launch_show_reason(&login_args, None),
@@ -264,12 +249,8 @@ fn launch_show_reason_routes_provider_imports_to_user_and_preserves_other_launch
         ShowReason::Launch(StartupSource::MacOSLoginItem)
     );
 
-    // A different URL scheme and an ordinary reopen do not become imports.
     assert_eq!(
-        launch_show_reason(
-            &["https://example.invalid/ccswitch-content".to_string()],
-            None
-        ),
+        launch_show_reason(&["https://example.invalid/content".to_string()], None),
         ShowReason::Launch(StartupSource::Normal)
     );
     assert_eq!(

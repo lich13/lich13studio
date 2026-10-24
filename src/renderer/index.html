@@ -61,18 +61,6 @@
             }
           }
         )
-      window.electron =
-        window.electron ||
-        ({
-          process: { platform: navigator.userAgent.includes('Mac') ? 'darwin' : navigator.userAgent.includes('Windows') ? 'win32' : 'linux', env: { NODE_ENV: 'production' } },
-          ipcRenderer: {
-            on: () => () => {},
-            once: () => () => {},
-            invoke: async () => null,
-            send: () => undefined,
-            removeAllListeners: () => undefined
-          }
-        })
       window.api =
         window.api || createCallableProxy('api')
       window.api.file = window.api.file || createCallableProxy('api.file')

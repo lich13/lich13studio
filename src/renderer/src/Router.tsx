@@ -8,14 +8,11 @@ import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import MobileNavigation from './components/app/MobileNavigation'
 import Sidebar from './components/app/Sidebar'
 import { ErrorBoundary } from './components/ErrorBoundary'
-import ProviderImportHandler from './components/ProviderImportHandler'
 import NavigationHandler from './handler/NavigationHandler'
 import { useOnboardingState } from './hooks/useOnboardingState'
 import HomePage from './pages/home/HomePage'
-import ModelTestPage from './pages/model-test/ModelTestPage'
 import { OnboardingPage } from './pages/onboarding'
 import SettingsPage from './pages/settings/SettingsPage'
-import { LEGACY_MODEL_TEST_PATH, MODEL_TEST_PATH } from './services/modelTrace/routes'
 
 const Router: FC = () => {
   const { onboardingCompleted, completeOnboarding } = useOnboardingState()
@@ -25,8 +22,6 @@ const Router: FC = () => {
       <ErrorBoundary>
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path={MODEL_TEST_PATH} element={<ModelTestPage />} />
-          <Route path={LEGACY_MODEL_TEST_PATH} element={<Navigate to={MODEL_TEST_PATH} replace />} />
           <Route path="/settings/*" element={<SettingsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
@@ -38,7 +33,6 @@ const Router: FC = () => {
     return (
       <HashRouter>
         <OnboardingPage onComplete={completeOnboarding} />
-        <ProviderImportHandler />
       </HashRouter>
     )
   }
@@ -49,7 +43,6 @@ const Router: FC = () => {
       {routes}
       {runtimeCapabilities.android && <MobileNavigation />}
       <NavigationHandler />
-      <ProviderImportHandler />
     </HashRouter>
   )
 }

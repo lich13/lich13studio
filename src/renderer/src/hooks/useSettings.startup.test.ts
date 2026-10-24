@@ -55,7 +55,7 @@ describe('useSettings startup/background sync helpers', () => {
     expect(isMainProcessSettingKey('proxyUrl')).toBe(false)
   })
 
-  it('can be applied through the preload config API', async () => {
+  it('can be applied through the native config API', async () => {
     const set = vi.fn(async () => undefined)
     for (const [key, value] of getMainProcessSettingUpdates({ launchToTray: true, trayOnClose: true })) {
       await set(key, value, true)

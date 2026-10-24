@@ -1,5 +1,4 @@
 // import { loggerService } from '@logger'
-import TopViewMinappContainer from '@renderer/components/MinApp/TopViewMinappContainer'
 import { useAppInit } from '@renderer/hooks/useAppInit'
 import { useShortcuts } from '@renderer/hooks/useShortcuts'
 import { runLegacyLocalMigrationIfNeeded } from '@renderer/services/LegacyLocalMigrationService'
@@ -103,7 +102,6 @@ const TopViewContainer: React.FC<Props> = ({ children }) => {
       {children}
       {messageContextHolder}
       {modalContextHolder}
-      <TopViewMinappContainer />
       {elements.map(({ element: Element, id }) => (
         <FullScreenContainer key={`TOPVIEW_${id}`}>
           {typeof Element === 'function' ? <Element /> : Element}

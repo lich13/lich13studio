@@ -26,8 +26,6 @@ import {
   recordCatalogEdits
 } from '@shared/modelCatalog/merge'
 import type { PlatformModelCatalogSnapshot } from '@shared/modelCatalog/types'
-import { type ModelTestConcurrency, normalizeModelTestConcurrency } from '@shared/modelTestOptions'
-import type { ModelTestSelection } from '@shared/modelTestSelection'
 import {
   catalogModel,
   createPlatformModels,
@@ -38,7 +36,7 @@ import {
   type StoredProvider,
   storedProvider
 } from '@shared/platforms'
-import { normalizeProviderEndpoint } from '@shared/providerImport'
+import { normalizeProviderEndpoint } from '@shared/providerEndpoint'
 
 type LlmSettings = {
   ollama: {
@@ -77,8 +75,6 @@ export interface LlmState {
   platformModels: PlatformModels
   cliVersions: CliVersions
   defaultModel?: Model
-  modelTestSelection?: ModelTestSelection
-  modelTestConcurrency: ModelTestConcurrency
   /** @deprecated */
   topicNamingModel?: Model
   quickModel?: Model
@@ -97,7 +93,6 @@ export const initialState: LlmState = {
   platformModels: createPlatformModels(),
   modelCatalogExclusions: emptyCatalogExclusions(),
   cliVersions: {},
-  modelTestConcurrency: 1,
   settings: {
     ollama: {
       keepAliveTime: 0
@@ -191,26 +186,6 @@ const llmSlice = createSlice({
     setCliVersion: (state, action: PayloadAction<{ platform: ProviderPlatform; cache: CliVersionCache }>) => {
       state.cliVersions[action.payload.platform] = action.payload.cache
     },
-    importPlatformProvider: (
-      state,
-      action: PayloadAction<{ provider: Provider; models: string[]; primaryModel?: string }>
-    ) => {
-      const { provider, models, primaryModel } = action.payload
-      const platform = inferProviderPlatform(provider)
-      const catalog = state.platformModels[platform]
-      state.modelCatalogExclusions ??= emptyCatalogExclusions()
-      state.modelCatalogExclusions[platform] = state.modelCatalogExclusions[platform].filter(
-        (id) => !models.includes(id)
-      )
-      for (const id of models)
-        if (!catalog.some((model) => model.id === id)) catalog.push({ id, name: id, group: platform })
-      if (!state.providers.some((existing) => existing.id === provider.id))
-        state.providers.unshift(storedProvider(provider))
-      if (!state.defaultModel?.id) {
-        const selected = catalog.find((model) => model.id === primaryModel) ?? catalog[0]
-        if (selected) state.defaultModel = { ...selected, provider: provider.id }
-      }
-    },
     addModel: (state, action: PayloadAction<{ providerId: string; model: Model }>) => {
       const provider = state.providers.find((p) => p.id === action.payload.providerId)
       if (!provider) return
@@ -236,12 +211,6 @@ const llmSlice = createSlice({
     },
     setDefaultModel: (state, action: PayloadAction<{ model: Model }>) => {
       state.defaultModel = action.payload.model
-    },
-    setModelTestSelection: (state, action: PayloadAction<ModelTestSelection>) => {
-      state.modelTestSelection = { ...state.modelTestSelection, ...action.payload }
-    },
-    setModelTestConcurrency: (state, action: PayloadAction<ModelTestConcurrency>) => {
-      state.modelTestConcurrency = normalizeModelTestConcurrency(action.payload)
     },
     setQuickModel: (state, action: PayloadAction<{ model: Model }>) => {
       state.quickModel = action.payload.model
@@ -328,11 +297,8 @@ const llmSlice = createSlice({
 
 export const {
   applyPlatformCatalog,
-  setModelTestConcurrency,
-  setModelTestSelection,
   setPlatformModels,
   setCliVersion,
-  importPlatformProvider,
   updateProvider,
   updateProviders,
   addProvider,

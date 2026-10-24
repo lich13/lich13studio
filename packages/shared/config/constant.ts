@@ -484,7 +484,6 @@ export const MACOS_TERMINALS_WITH_COMMANDS: TerminalConfigWithCommand[] = [
   }
 ]
 
-// resources/scripts should be maintained manually
 export const HOME_CHERRY_DIR = '.lich13studio'
 
 // Git Bash path configuration types
@@ -493,14 +492,6 @@ export type GitBashPathSource = 'manual' | 'auto'
 export interface GitBashPathInfo {
   path: string | null
   source: GitBashPathSource | null
-}
-
-// CherryIN OAuth configuration
-export const CHERRYIN_CONFIG = {
-  CLIENT_ID: '2a348c87-bae1-4756-a62f-b2e97200fd6d',
-  ALLOWED_HOSTS: ['https://open.cherryin.ai', 'https://open.cherryin.dev'],
-  REDIRECT_URI: 'lich13studio://oauth/callback',
-  SCOPES: 'openid profile email offline_access balance:read usage:read tokens:read tokens:write'
 }
 
 export const APP_NAME = 'lich13studio'

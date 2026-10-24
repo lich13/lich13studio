@@ -2489,8 +2489,7 @@
     "backgroundStopped": "背景服務已停止，工作未重新傳送。",
     "chat": "聊天",
     "navigation": "導覽",
-    "systemBudget": "已達到 Android 背景執行時限，工作已停止。",
-    "test": "測試"
+    "systemBudget": "已達到 Android 背景執行時限，工作已停止。"
   },
   "models": {
     "add_parameter": "新增參數",
@@ -4067,6 +4066,7 @@
         "default_vault_placeholder": "請選擇預設 Obsidian 倉庫",
         "title": "Obsidian 設定"
       },
+      "obsolete_cache_cleanup_failed": "舊版測試快取清理未完成，請關閉其他應用程式視窗後重新啟動。",
       "siyuan": {
         "api_url": "思源筆記 API URL",
         "api_url_placeholder": "例如：http://127.0.0.1:6806",
@@ -4444,81 +4444,13 @@
       "visible": "顯示的小程式"
     },
     "model": "預設模型",
-    "modelTest": {
-      "analyzeManual": "分析貼上結果",
-      "attempts": "嘗試 {{count}} / {{max}}",
-      "backHome": "返回首頁",
-      "bank": "指紋庫",
-      "bankError": {
-        "cache": "無法儲存更新，繼續使用目前指紋庫",
-        "incompatible": "上游演算法已變更，請升級應用程式",
-        "invalid-data": "更新資料驗證失敗，繼續使用目前指紋庫",
-        "network": "同步失敗，繼續使用目前指紋庫",
-        "rate-limit": "[to be translated]:GitHub rate limit reached. Try again later.",
-        "timeout": "[to be translated]:The update request timed out. Using the current fingerprint bank."
-      },
-      "bankStatus": {
-        "up-to-date": "[to be translated]:Fingerprint bank is up to date.",
-        "updated": "[to be translated]:Fingerprint bank updated."
-      },
-      "byteUnit": "位元組",
-      "challenge": "挑戰 {{index}} · 目標 {{count}} 個數字",
-      "challenges": "數字挑戰",
-      "checkBank": "檢查更新",
-      "checkedAt": "上次檢查：{{time}}",
-      "concurrency": "並行數",
-      "count": "數字數量：{{actual}} / {{expected}}",
-      "earlyCompleted": "已提前完成",
-      "familyResult": "模型家族：{{family}}（{{probability}}%）",
-      "integerUnit": "個整數",
-      "issue": {
-        "empty": "沒有收到回答正文。",
-        "format": "回答混有非數字文字或不支援的格式。",
-        "insufficient": "可用樣本不足 80 個。",
-        "reasoning-tag": "思考標籤不完整或不匹配。"
-      },
+    "modelSelection": {
       "modelLabel": "模型",
       "modelUnavailable": "請選擇平台目錄中有效的模型。",
-      "noSamples": "已完成，暫無可分析樣本",
-      "noUsableSamples": "暫無可分析樣本",
-      "outputLimit": "輸出超限：{{actual}} / {{maximum}} {{unit}}，本次嘗試不參與分析。",
-      "pastePlaceholder": "將模型完整回答貼到這裡",
       "providerLabel": "供應商",
       "providerPlaceholder": "請選擇供應商",
       "providerUnavailable": "請選擇該模型平台下已啟用的供應商。目前選擇不會自動替換。",
-      "regenerate": "換一組挑戰",
-      "restoreView": "恢復測試畫面",
-      "result": "歸因結果",
-      "resultPending": "等待測試結果",
-      "resultRunning": "測試進行中",
-      "retryFailed": "僅重試失敗組",
-      "retryStop": {
-        "auth": "驗證失敗，請檢查憑證後重試。",
-        "cancelled": "已停止，不再自動重試。",
-        "exhausted": "已達 3 次嘗試上限，可僅重試失敗組。",
-        "invalidRequest": "請求參數或位址無效，已停止自動重試。",
-        "model": "模型不存在，請檢查模型 ID。",
-        "quota": "餘額或額度不足，已停止自動重試。"
-      },
-      "retryWaiting": "{{seconds}} 秒後自動重試",
-      "run": "開始測試",
-      "runTarget": "本輪目標：{{provider}} · 模型 ID：{{model}}",
-      "samples": "可用 {{usable}} 個 · 排除 {{excluded}} 個",
-      "status": {
-        "aborted": "已停止",
-        "completed": "已完成",
-        "error": "請求失敗",
-        "pending": "待測試",
-        "retrying": "等待重試",
-        "running": "接收中",
-        "skipped": "無需繼續"
-      },
-      "stop": "停止測試",
-      "target": "服務商：{{provider}} · 模型 ID：{{model}}",
-      "title": "模型測試",
-      "unavailable": "無法使用",
-      "usedOutputs": "參與分析：{{count}} 組",
-      "viewError": "測試畫面顯示異常，工作階段已保留。恢復畫面即可查看進度和結果。"
+      "unavailable": "無法使用"
     },
     "models": {
       "add": {
@@ -4571,10 +4503,6 @@
         "remove_whole_group": "移除整個分組"
       },
       "provider_id": "提供者 ID",
-      "provider_key_add_confirm": "是否要為 {{provider}} 新增 API 金鑰？",
-      "provider_key_add_failed_by_empty_data": "新增提供者 API 金鑰失敗，資料為空",
-      "provider_key_add_failed_by_invalid_data": "新增提供者 API 金鑰失敗，資料格式錯誤",
-      "provider_key_added": "成功為 {{provider}} 新增 API 金鑰",
       "provider_key_already_exists": "{{provider}} 已存在相同 API 金鑰，不會重複新增",
       "provider_key_confirm_title": "為{{provider}}新增 API 金鑰",
       "provider_key_no_change": "{{provider}} 的 API 金鑰沒有變化",
@@ -4843,10 +4771,6 @@
       },
       "filter_agent": "篩選支援 Agent 的服務商",
       "get_api_key": "點選這裡取得金鑰",
-      "import_duplicate": "此服务商已导入",
-      "import_invalid": "导入失败：仅支持有效的 Responses 或 Anthropic 服务商链接。",
-      "import_success": "服务商已导入",
-      "import_too_large": "導入連結過長或待處理的導入過多，已拒絕且未導入任何內容。請檢查連結後重試。",
       "misc": "其他",
       "notes": {
         "markdown_editor_default_value": "預覽區域",

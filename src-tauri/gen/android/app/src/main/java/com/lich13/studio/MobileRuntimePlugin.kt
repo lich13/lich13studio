@@ -100,7 +100,6 @@ class MobileRuntimePlugin(private val activity: Activity) : Plugin(activity) {
     }
     @Command fun endTask(invoke: Invoke) { BackgroundService.end(activity, invoke.parseArgs(MobileArgs::class.java).id); invoke.resolve() }
     @Command fun stopTasks(invoke: Invoke) { BackgroundService.stopAll(activity, "user-stop"); invoke.resolve() }
-    @Command fun consumeImportIntent(invoke: Invoke) { activity.runOnUiThread { activity.intent?.data = null; invoke.resolve() } }
     @Command fun taskState(invoke: Invoke) { invoke.resolve(JSObject().put("stoppedReason", BackgroundService.stoppedReason)) }
     @Command fun background(invoke: Invoke) { activity.runOnUiThread { activity.moveTaskToBack(true); invoke.resolve() } }
     @Command fun openUrl(invoke: Invoke) {

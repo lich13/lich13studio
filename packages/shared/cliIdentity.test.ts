@@ -10,8 +10,8 @@ import {
   platformRequestHeaders,
   releaseVersion
 } from './cliIdentity'
+import { normalizeProviderEndpoint, providerRequestBase } from './providerEndpoint'
 import { providerFetch } from './providerFetch'
-import { normalizeProviderEndpoint, providerRequestBase } from './providerImport'
 
 describe('official stable CLI identity', () => {
   it('filters unrelated, draft, prerelease and malformed tags', () => {

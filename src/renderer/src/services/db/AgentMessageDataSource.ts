@@ -620,12 +620,6 @@ export class AgentMessageDataSource implements MessageDataSource {
     // In a full implementation, you would call a backend endpoint to clear session
     // For now, we'll just log the attempt
     logger.info(`Clear messages requested for agent session ${sessionId}`)
-
-    // You might want to implement:
-    // await window.electron.ipcRenderer.invoke(
-    //   IpcChannel.AgentMessage_ClearSession,
-    //   { sessionId }
-    // )
   }
 
   async topicExists(topicId: string): Promise<boolean> {

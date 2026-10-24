@@ -2489,8 +2489,7 @@
     "backgroundStopped": "[to be translated]:The background service stopped. The task was not sent again.",
     "chat": "[to be translated]:Chat",
     "navigation": "[to be translated]:Navigation",
-    "systemBudget": "[to be translated]:Android stopped this task after reaching its background time limit.",
-    "test": "[to be translated]:Test"
+    "systemBudget": "[to be translated]:Android stopped this task after reaching its background time limit."
   },
   "models": {
     "add_parameter": "Добавить параметр",
@@ -4067,6 +4066,7 @@
         "default_vault_placeholder": "Выберите хранилище Obsidian по умолчанию",
         "title": "Настройки Obsidian"
       },
+      "obsolete_cache_cleanup_failed": "Не удалось удалить старые данные тестирования. Закройте другие окна приложения и перезапустите его.",
       "siyuan": {
         "api_url": "API адрес",
         "api_url_placeholder": "Например: http://127.0.0.1:6806",
@@ -4444,79 +4444,13 @@
       "visible": "Отображаемые мини-приложения"
     },
     "model": "Модель по умолчанию",
-    "modelTest": {
-      "analyzeManual": "[to be translated]:Analyze pasted output",
-      "attempts": "Attempt {{count}} / {{max}}",
-      "backHome": "На главную",
-      "bank": "[to be translated]:Fingerprint bank",
-      "bankError": {
-        "cache": "[to be translated]:Unable to save the update. Using the current fingerprint bank.",
-        "incompatible": "[to be translated]:The upstream algorithm changed. Update the app.",
-        "invalid-data": "[to be translated]:Invalid update data. Using the current fingerprint bank.",
-        "network": "[to be translated]:Sync failed. Using the current fingerprint bank.",
-        "rate-limit": "[to be translated]:GitHub rate limit reached. Try again later.",
-        "timeout": "[to be translated]:The update request timed out. Using the current fingerprint bank."
-      },
-      "bankStatus": {
-        "up-to-date": "[to be translated]:Fingerprint bank is up to date.",
-        "updated": "[to be translated]:Fingerprint bank updated."
-      },
-      "byteUnit": "[to be translated]:bytes",
-      "challenge": "[to be translated]:Challenge {{index}} · {{count}} numbers",
-      "challenges": "[to be translated]:Number challenges",
-      "checkBank": "[to be translated]:Check for updates",
-      "checkedAt": "[to be translated]:Last checked: {{time}}",
-      "concurrency": "[to be translated]:Concurrency",
-      "count": "Numbers: {{actual}} / {{expected}}",
-      "familyResult": "[to be translated]:Model family: {{family}} ({{probability}}%)",
-      "integerUnit": "[to be translated]:integers",
-      "issue": {
-        "empty": "No answer text received.",
-        "format": "Answer contains non-numeric text or unsupported formatting.",
-        "insufficient": "Менее 80 пригодных целых чисел.",
-        "reasoning-tag": "Incomplete or mismatched thinking tags."
-      },
+    "modelSelection": {
       "modelLabel": "Модель",
       "modelUnavailable": "Выберите доступную модель из каталога платформы.",
-      "noSamples": "Завершено; нет данных для анализа",
-      "noUsableSamples": "Нет данных для анализа",
-      "outputLimit": "[to be translated]:Output protection reached: item {{actual}} exceeds {{maximum}} {{unit}}. Retrying.",
-      "pastePlaceholder": "[to be translated]:Paste the complete model response here",
       "providerLabel": "Провайдер",
       "providerPlaceholder": "Выберите провайдера",
       "providerUnavailable": "Выберите включённого провайдера для этой платформы. Выбор не будет заменён автоматически.",
-      "regenerate": "[to be translated]:New challenges",
-      "restoreView": "Восстановить экран теста",
-      "result": "[to be translated]:Attribution result",
-      "resultPending": "Ожидание результатов",
-      "resultRunning": "Тест выполняется",
-      "retryFailed": "Retry failed challenges only",
-      "retryStop": {
-        "auth": "Ошибка аутентификации. Проверьте учётные данные.",
-        "cancelled": "Остановлено вами. Автоматических повторов больше не будет.",
-        "exhausted": "Использованы все 3 попытки. Можно повторить только неудачные группы.",
-        "invalidRequest": "Неверные параметры или адрес запроса. Автоматические повторы остановлены.",
-        "model": "Модель не найдена. Проверьте ID модели.",
-        "quota": "Недостаточно средств или квоты. Автоматические повторы остановлены."
-      },
-      "retryWaiting": "Автоматический повтор через {{seconds}} сек.",
-      "run": "Start three challenges",
-      "runTarget": "Цель: {{provider}} · ID модели: {{model}}",
-      "samples": "Пригодных: {{usable}} · Исключено: {{excluded}}",
-      "status": {
-        "aborted": "Stopped",
-        "completed": "Завершено",
-        "error": "Request failed",
-        "pending": "Pending",
-        "retrying": "Waiting to retry",
-        "running": "Receiving"
-      },
-      "stop": "[to be translated]:Stop test",
-      "target": "Provider: {{provider}} · Model ID: {{model}}",
-      "title": "[to be translated]:Model Test",
-      "unavailable": "Недоступно",
-      "usedOutputs": "Проанализировано групп: {{count}}",
-      "viewError": "Произошла ошибка экрана теста. Сеанс сохранён; восстановите экран, чтобы увидеть ход выполнения и результаты."
+      "unavailable": "Недоступно"
     },
     "models": {
       "add": {
@@ -4569,10 +4503,6 @@
         "remove_whole_group": "Удалить всю группу"
       },
       "provider_id": "ID провайдера",
-      "provider_key_add_confirm": "Добавить API ключ для {{provider}}?",
-      "provider_key_add_failed_by_empty_data": "Не удалось добавить API ключ для {{provider}}, данные пусты",
-      "provider_key_add_failed_by_invalid_data": "Не удалось добавить API ключ для {{provider}}, данные имеют неверный формат",
-      "provider_key_added": "API ключ для {{provider}} успешно добавлен",
       "provider_key_already_exists": "{{provider}} уже существует один и тот же API ключ, не будет добавлен",
       "provider_key_confirm_title": "Добавить API ключ для {{provider}}",
       "provider_key_no_change": "API ключ для {{provider}} не изменился",
@@ -4841,10 +4771,6 @@
       },
       "filter_agent": "Поддерживаемые поставщики агента фильтрации",
       "get_api_key": "Получить ключ API",
-      "import_duplicate": "[to be translated]:This provider is already imported.",
-      "import_invalid": "[to be translated]:Import failed. Use a valid Responses or Anthropic provider link.",
-      "import_success": "[to be translated]:Provider imported.",
-      "import_too_large": "[to be translated]:Import link is too large or too many imports are pending. Nothing was imported; check the link and try again.",
       "misc": "другие",
       "notes": {
         "markdown_editor_default_value": "Область предварительного просмотра",

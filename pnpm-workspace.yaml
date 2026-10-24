@@ -66,7 +66,6 @@ overrides:
   "source-map-js@>=1.0.0 <1.2.2": "^1.2.2"
   "proxy-addr@>=2.0.0 <2.0.8": "^2.0.8"
   "@modelcontextprotocol/sdk@>=1.0.0 <1.31.0": "^1.31.0"
-  "builder-util-runtime@>=9.0.0 <9.7.0": "^9.7.0"
   "@smithy/types": "4.7.1"
   "@codemirror/state": "6.5.4"
   "@codemirror/view": "6.39.16"
@@ -74,31 +73,18 @@ overrides:
   "@codemirror/lint": "6.9.5"
   "@lezer/common": "1.5.1"
   "esbuild": "^0.25.0"
-  "node-abi": "4.24.0"
   "openai": "npm:@cherrystudio/openai@6.15.0"
   "tar-fs": "^2.1.4"
   "undici": "6.28.1"
   "vite": "npm:rolldown-vite@7.3.1"
-  "@img/sharp-darwin-arm64": "0.34.5"
-  "@img/sharp-darwin-x64": "0.34.5"
-  "@img/sharp-linux-arm": "0.34.5"
-  "@img/sharp-linux-arm64": "0.34.5"
-  "@img/sharp-linux-x64": "0.34.5"
-  "@img/sharp-win32-x64": "0.34.5"
   "@napi-rs/canvas": "0.1.97"
   "@ai-sdk/provider-utils": "4.0.33"
   "@ai-sdk/openai": "3.0.53"
   "@ai-sdk/anthropic": "3.0.64"
 
 patchedDependencies:
-  "@napi-rs/system-ocr@1.0.2": "patches/@napi-rs-system-ocr-npm-1.0.2-59e7a78e8b.patch"
-  "tesseract.js@6.0.1": "patches/tesseract.js-npm-6.0.1-2562a7e46d.patch"
   "@tiptap/extension-drag-handle@3.2.0": "patches/@tiptap-extension-drag-handle-npm-3.2.0-5a9ebff7c9.patch"
   "antd@5.27.0": "patches/antd-npm-5.27.0-aa91c36546.patch"
-  "electron-updater@6.7.0": "patches/electron-updater-npm-6.7.0-47b11bb0d4.patch"
-  "atomically@1.7.0": "patches/atomically-npm-1.7.0-e742e5293b.patch"
-  "file-stream-rotator@0.6.1": "patches/file-stream-rotator-npm-0.6.1-eab45fb13d.patch"
-  "libsql@0.4.7": "patches/libsql-npm-0.4.7-444e260fb1.patch"
   "ollama-ai-provider-v2@3.3.1": "patches/ollama-ai-provider-v2@3.3.1.patch"
   "@openrouter/ai-sdk-provider": "patches/@openrouter__ai-sdk-provider.patch"
   "@opeoginni/github-copilot-openai-compatible@1.0.0": "patches/@opeoginni__github-copilot-openai-compatible@1.0.0.patch"
@@ -111,36 +97,18 @@ allowBuilds:
   "core-js": false
   "@j178/prek": true
   "@kangfenmao/keyv-storage": true
-  "@paymoapp/electron-shutdown-handler": true
   "@scarf/scarf": false
   "@swc/core": true
-  "electron": true
   "esbuild": true
   "msw": true
   "protobufjs": true
-  "registry-js": true
-  "selection-hook": true
-  "sharp": true
-  "tesseract.js": true
-  "zipfile": true
 
 # 仅限无法通过补丁/次版本升级修复的高危告警（见 docs/zh/guides/development.md）
 auditConfig:
   ignoreGhsas:
-    - GHSA-xcpc-8h2w-3j85 # adm-zip
-    - GHSA-7q85-xj36-vmfc # adm-zip
-    - GHSA-rcw4-f5rp-g42v # adm-zip
-    - GHSA-j5f4-cc29-5x44 # adm-zip
-    - GHSA-8238-w5pm-2374 # adm-zip
     - GHSA-c475-qrg2-pj4r # basic-ftp
     - GHSA-mp2f-45pm-3cg9 # decompress
     - GHSA-hrh2-vp3x-79xf # decompress
-    - GHSA-gpj5-g38j-94v9 # drizzle-orm
-    - GHSA-9f4c-93c8-jc8g # electron
-    - GHSA-hq2x-r82h-9wj4 # electron
-    - GHSA-gr2m-v5gq-v685 # electron
-    - GHSA-j84w-jfhq-vhvj # electron
-    - GHSA-9qh4-3jw8-366w # electron
     - GHSA-22p9-wv53-3rq4 # linkify-it
     - GHSA-v245-v573-v5vm # linkify-it
     - GHSA-35jh-r3h4-6jhm # lodash
@@ -148,6 +116,3 @@ auditConfig:
     - GHSA-jf85-cpcp-j695 # lodash
     - GHSA-p6mc-m468-83gw # lodash
     - GHSA-c8x8-7fp4-3x9w # prosemirror-view
-    - GHSA-f88m-g3jw-g9cj # sharp
-    - GHSA-rgj7-g3m4-5g8c # sharp
-    - GHSA-wq5f-xc86-pv6w # sharp

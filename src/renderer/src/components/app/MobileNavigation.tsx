@@ -1,7 +1,7 @@
 import { handleMobileBack } from '@renderer/services/mobile/back'
 import { mobileCommand } from '@renderer/services/mobile/runtime'
 import { onBackButtonPress } from '@tauri-apps/api/app'
-import { FlaskConical, MessageSquare, Settings } from 'lucide-react'
+import { MessageSquare, Settings } from 'lucide-react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -44,7 +44,6 @@ export default function MobileNavigation() {
   }, [pathname, navigate])
   const tabs = [
     { path: '/', label: t('mobile.chat'), icon: MessageSquare },
-    { path: '/model-test', label: t('mobile.test'), icon: FlaskConical },
     { path: '/settings/provider', label: t('settings.title'), icon: Settings }
   ]
   return (

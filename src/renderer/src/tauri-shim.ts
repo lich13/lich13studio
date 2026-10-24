@@ -16,7 +16,6 @@ import {
   stripCredentials
 } from './services/mobile/credentials'
 import { mobileCommand, runtimeCapabilities } from './services/mobile/runtime'
-import { startProviderImportListener } from './services/ProviderImportQueue'
 import { attachmentMime, managedAttachmentId } from './utils/attachmentMime'
 
 type AnyRecord = Record<string, any>
@@ -311,15 +310,8 @@ type ProgressPayload = {
   total: number
 }
 
-type ProtocolPayload = {
-  url: string
-  params: Record<string, string>
-}
-
 const backupProgressListeners = new Set<(data: ProgressPayload) => void>()
 const restoreProgressListeners = new Set<(data: ProgressPayload) => void>()
-const protocolListeners = new Set<(data: ProtocolPayload) => void>()
-let deepLinkUnlistenPromise: Promise<unknown> | null = null
 
 const createId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
@@ -368,62 +360,6 @@ const waitForNextFrame = async () =>
       setTimeout(resolve, 0)
     })
   })
-
-const toProtocolPayload = (url: string): ProtocolPayload => {
-  try {
-    const parsed = new URL(url)
-    return {
-      url,
-      params: Object.fromEntries(parsed.searchParams.entries())
-    }
-  } catch {
-    return {
-      url,
-      params: {}
-    }
-  }
-}
-
-const emitProtocolPayload = (url: string) => {
-  const payload = toProtocolPayload(url)
-  protocolListeners.forEach((listener) => {
-    try {
-      listener(payload)
-    } catch (error) {
-      logger.error('Protocol listener failed', error as Error)
-    }
-  })
-}
-
-const ensureDeepLinkListener = () => {
-  if (deepLinkUnlistenPromise) {
-    return
-  }
-
-  const deepLink = (tauri as AnyRecord)?.deepLink
-  const onOpenUrl = deepLink?.onOpenUrl
-
-  if (typeof onOpenUrl !== 'function') {
-    return
-  }
-
-  deepLinkUnlistenPromise = Promise.resolve(
-    onOpenUrl((urlsOrPayload: string[] | { urls?: string[]; url?: string }) => {
-      const urls = Array.isArray(urlsOrPayload)
-        ? urlsOrPayload
-        : Array.isArray(urlsOrPayload?.urls)
-          ? urlsOrPayload.urls
-          : urlsOrPayload?.url
-            ? [urlsOrPayload.url]
-            : []
-
-      urls.forEach((url) => emitProtocolPayload(url))
-    })
-  ).catch((error) => {
-    logger.warn('Failed to register deep-link listener', error)
-    deepLinkUnlistenPromise = null
-  })
-}
 
 const mapWebdavConfig = (webdavConfig: AnyRecord) => ({
   url: `${String(webdavConfig.webdavHost || '').replace(/\/$/, '')}${webdavConfig.webdavPath || ''}`,
@@ -836,8 +772,6 @@ const api = {
   reload: async () => location.reload(),
   quit: async () => getCurrentWindow?.()?.close?.(),
   setProxy: noOpAsync,
-  checkForUpdate: async () => ({ updateInfo: null }),
-  quitAndInstall: noOpAsync,
   setLanguage: async (lang: string) => {
     localStorage.setItem('tauri:language', lang)
   },
@@ -1507,30 +1441,10 @@ const api = {
       }
       return Boolean(webdavConfig?.webdavHost)
     }
-  },
-  protocol: {
-    onReceiveData: (callback: (data: ProtocolPayload) => void) => {
-      protocolListeners.add(callback)
-      ensureDeepLinkListener()
-      return () => {
-        protocolListeners.delete(callback)
-      }
-    }
   }
 } as AnyRecord
 
 if (isTauriRuntime) {
-  globalWindow.electron = globalWindow.electron || {
-    process: { platform },
-    ipcRenderer: {
-      on: () => createCleanup(),
-      once: () => createCleanup(),
-      invoke: async () => null,
-      send: () => undefined,
-      removeAllListeners: () => undefined
-    }
-  }
-
   globalWindow.api = new Proxy(api, {
     get(target, prop: string) {
       if (typeof prop === 'string' && prop.startsWith('on') && !(prop in target)) {
@@ -1545,4 +1459,3 @@ if (isTauriRuntime) {
 }
 
 for (const key of ['config:mcpServers', 'config:mcp', 'mcpServers', 'mcp']) localStorage.removeItem(key)
-startProviderImportListener()

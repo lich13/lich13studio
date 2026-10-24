@@ -2489,8 +2489,7 @@
     "backgroundStopped": "[to be translated]:The background service stopped. The task was not sent again.",
     "chat": "[to be translated]:Chat",
     "navigation": "[to be translated]:Navigation",
-    "systemBudget": "[to be translated]:Android stopped this task after reaching its background time limit.",
-    "test": "[to be translated]:Test"
+    "systemBudget": "[to be translated]:Android stopped this task after reaching its background time limit."
   },
   "models": {
     "add_parameter": "Προσθήκη παραμέτρων",
@@ -4067,6 +4066,7 @@
         "default_vault_placeholder": "Επιλέξτε προεπιλεγμένο αποθετήριο Obsidian",
         "title": "Ρύθμιση του Obsidian"
       },
+      "obsolete_cache_cleanup_failed": "Δεν ήταν δυνατή η διαγραφή των παλιών δεδομένων δοκιμής. Κλείστε τα άλλα παράθυρα της εφαρμογής και επανεκκινήστε.",
       "siyuan": {
         "api_url": "Διεύθυνση API",
         "api_url_placeholder": "Παράδειγμα: http://127.0.0.1:6806",
@@ -4444,79 +4444,13 @@
       "visible": "Εμφανιζόμενα μικροπρογράμματα"
     },
     "model": "Πρόεδρος Υπηρεσίας",
-    "modelTest": {
-      "analyzeManual": "[to be translated]:Analyze pasted output",
-      "attempts": "Attempt {{count}} / {{max}}",
-      "backHome": "Επιστροφή στην αρχική",
-      "bank": "[to be translated]:Fingerprint bank",
-      "bankError": {
-        "cache": "[to be translated]:Unable to save the update. Using the current fingerprint bank.",
-        "incompatible": "[to be translated]:The upstream algorithm changed. Update the app.",
-        "invalid-data": "[to be translated]:Invalid update data. Using the current fingerprint bank.",
-        "network": "[to be translated]:Sync failed. Using the current fingerprint bank.",
-        "rate-limit": "[to be translated]:GitHub rate limit reached. Try again later.",
-        "timeout": "[to be translated]:The update request timed out. Using the current fingerprint bank."
-      },
-      "bankStatus": {
-        "up-to-date": "[to be translated]:Fingerprint bank is up to date.",
-        "updated": "[to be translated]:Fingerprint bank updated."
-      },
-      "byteUnit": "[to be translated]:bytes",
-      "challenge": "[to be translated]:Challenge {{index}} · {{count}} numbers",
-      "challenges": "[to be translated]:Number challenges",
-      "checkBank": "[to be translated]:Check for updates",
-      "checkedAt": "[to be translated]:Last checked: {{time}}",
-      "concurrency": "[to be translated]:Concurrency",
-      "count": "Numbers: {{actual}} / {{expected}}",
-      "familyResult": "[to be translated]:Model family: {{family}} ({{probability}}%)",
-      "integerUnit": "[to be translated]:integers",
-      "issue": {
-        "empty": "No answer text received.",
-        "format": "Answer contains non-numeric text or unsupported formatting.",
-        "insufficient": "Λιγότεροι από 80 χρήσιμοι ακέραιοι.",
-        "reasoning-tag": "Incomplete or mismatched thinking tags."
-      },
+    "modelSelection": {
       "modelLabel": "Μοντέλο",
       "modelUnavailable": "Επιλέξτε έγκυρο μοντέλο από τον κατάλογο της πλατφόρμας.",
-      "noSamples": "Ολοκληρώθηκε· δεν υπάρχουν δείγματα για ανάλυση",
-      "noUsableSamples": "Δεν υπάρχουν δείγματα για ανάλυση",
-      "outputLimit": "[to be translated]:Output protection reached: item {{actual}} exceeds {{maximum}} {{unit}}. Retrying.",
-      "pastePlaceholder": "[to be translated]:Paste the complete model response here",
       "providerLabel": "Πάροχος",
       "providerPlaceholder": "Επιλέξτε πάροχο",
       "providerUnavailable": "Επιλέξτε ενεργό πάροχο για αυτή την πλατφόρμα. Η επιλογή δεν αντικαθίσταται αυτόματα.",
-      "regenerate": "[to be translated]:New challenges",
-      "restoreView": "Επαναφορά προβολής δοκιμής",
-      "result": "[to be translated]:Attribution result",
-      "resultPending": "Αναμονή αποτελεσμάτων",
-      "resultRunning": "Η δοκιμή εκτελείται",
-      "retryFailed": "Retry failed challenges only",
-      "retryStop": {
-        "auth": "Αποτυχία ταυτοποίησης. Ελέγξτε τα διαπιστευτήριά σας.",
-        "cancelled": "Διακοπή από εσάς. Δεν θα γίνουν άλλες αυτόματες προσπάθειες.",
-        "exhausted": "Εξαντλήθηκαν οι 3 προσπάθειες. Μπορείτε να επαναλάβετε μόνο τις αποτυχημένες ομάδες.",
-        "invalidRequest": "Μη έγκυρες παράμετροι ή διεύθυνση. Οι αυτόματες προσπάθειες σταμάτησαν.",
-        "model": "Το μοντέλο δεν βρέθηκε. Ελέγξτε το αναγνωριστικό μοντέλου.",
-        "quota": "Ανεπαρκές υπόλοιπο ή όριο. Οι αυτόματες προσπάθειες σταμάτησαν."
-      },
-      "retryWaiting": "Αυτόματη επανάληψη σε {{seconds}} δευτερόλεπτα",
-      "run": "Start three challenges",
-      "runTarget": "Στόχος: {{provider}} · ID μοντέλου: {{model}}",
-      "samples": "Χρήσιμα: {{usable}} · Εξαιρέθηκαν: {{excluded}}",
-      "status": {
-        "aborted": "Stopped",
-        "completed": "Ολοκληρώθηκε",
-        "error": "Request failed",
-        "pending": "Pending",
-        "retrying": "Waiting to retry",
-        "running": "Receiving"
-      },
-      "stop": "[to be translated]:Stop test",
-      "target": "Provider: {{provider}} · Model ID: {{model}}",
-      "title": "[to be translated]:Model Test",
-      "unavailable": "Μη διαθέσιμο",
-      "usedOutputs": "Ομάδες που αναλύθηκαν: {{count}}",
-      "viewError": "Η προβολή δοκιμής παρουσίασε σφάλμα. Η συνεδρία διατηρείται· επαναφέρετε την προβολή για την πρόοδο και τα αποτελέσματα."
+      "unavailable": "Μη διαθέσιμο"
     },
     "models": {
       "add": {
@@ -4569,10 +4503,6 @@
         "remove_whole_group": "Αφαίρεση ολόκληρης ομάδας"
       },
       "provider_id": "Αναγνωριστικό Παρόχου",
-      "provider_key_add_confirm": "Θέλετε να προσθέσετε κλειδί API για τον {{provider}};",
-      "provider_key_add_failed_by_empty_data": "Η προσθήκη κλειδιού API παρόχου απέτυχε, τα δεδομένα είναι κενά",
-      "provider_key_add_failed_by_invalid_data": "Η προσθήκη κλειδιού API παρόχου απέτυχε, λάθος μορφή δεδομένων",
-      "provider_key_added": "Επιτυχής προσθήκη κλειδιού API για τον {{provider}}",
       "provider_key_already_exists": "Το κλειδί API για τον {{provider}} υπάρχει ήδη, δεν θα προστεθεί ξανά",
       "provider_key_confirm_title": "Προσθήκη κλειδιού API για τον {{provider}}",
       "provider_key_no_change": "Το κλειδί API του {{provider}} δεν άλλαξε",
@@ -4841,10 +4771,6 @@
       },
       "filter_agent": "Υποστηριζόμενοι Πάροχοι του Φίλτρου Πράκτορα",
       "get_api_key": "Κάντε κλικ εδώ για να πάρετε κλειδί",
-      "import_duplicate": "[to be translated]:This provider is already imported.",
-      "import_invalid": "[to be translated]:Import failed. Use a valid Responses or Anthropic provider link.",
-      "import_success": "[to be translated]:Provider imported.",
-      "import_too_large": "[to be translated]:Import link is too large or too many imports are pending. Nothing was imported; check the link and try again.",
       "misc": "Άλλο",
       "notes": {
         "markdown_editor_default_value": "Περιοχή Προεπισκόπησης",

@@ -27,7 +27,6 @@ vi.mock('./services/mobile/runtime', () => ({
   mobileCommand: vi.fn(),
   runtimeCapabilities: { android: false }
 }))
-vi.mock('./services/ProviderImportQueue', () => ({ startProviderImportListener: vi.fn() }))
 vi.mock('./utils/attachmentMime', () => ({
   attachmentMime: (_name: string, mime: string) => mime || 'application/octet-stream',
   managedAttachmentId: () => undefined
@@ -73,7 +72,6 @@ describe('Tauri portable backup restore', () => {
 
   afterEach(() => {
     delete (window as any).api
-    delete (window as any).electron
     delete (window as any).__TAURI__
     localStorage.clear()
     vi.unstubAllGlobals()

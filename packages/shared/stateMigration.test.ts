@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest'
 import {
   migrateAssistantSelectionState,
   migrateChatRequestModeState,
-  migrateModelTestState,
   migratePlatformState,
   sanitizePersistedState,
   sanitizeState
@@ -36,33 +35,26 @@ const encode = (state: object) =>
 const decode = (raw: string) =>
   Object.fromEntries(Object.entries(JSON.parse(raw)).map(([k, v]) => [k, JSON.parse(v as string)]))
 
-describe('219 model-test preferences', () => {
-  it('initializes from 218 defaults without changing providers, assistants or chat records', () => {
-    const state = { ...fixture(218), topics: [{ id: 't', messages: ['original'] }] }
-    const before = structuredClone(state)
-    const next = migrateModelTestState(state) as any
-    expect(next.llm.modelTestSelection).toEqual({ platform: 'openai', modelId: 'gpt-test', providerId: 'new' })
-    expect(next.llm.providers).toEqual(before.llm.providers)
-    expect(next.assistants).toEqual(before.assistants)
-    expect(next.topics).toEqual(before.topics)
-    expect(migrateModelTestState(structuredClone(next))).toEqual(next)
-  })
-
-  it('preserves the last test choice through restart and current backup restore', () => {
-    const state: any = fixture(219)
-    state.llm.modelTestSelection = { platform: 'grok', modelId: 'missing-model', providerId: 'removed-provider' }
+describe('removed model-test preferences', () => {
+  it.each([218, 219, 221, 223])('cleans version %i on restore without losing business data', (version) => {
+    const state: any = decode(sanitizePersistedState(encode(fixture(version))))
+    state.topics = [{ id: 't', messages: [{ content: 'Original', modelTestSelection: 'historical text' }] }]
+    const expected = structuredClone(state)
+    state.llm.modelTestSelection = { platform: 'openai', modelId: 'gpt-test', providerId: 'new' }
+    state.llm.modelTestConcurrency = 3
     const restored = decode(sanitizePersistedState(encode(state)))
-    expect(restored.llm.modelTestSelection).toEqual(state.llm.modelTestSelection)
-    expect(migrateModelTestState(restored).llm.modelTestSelection).toEqual(state.llm.modelTestSelection)
+    expect(restored).toEqual(expected)
+    expect(sanitizeState(state)).toEqual(expected)
+    expect(decode(sanitizePersistedState(encode(restored)))).toEqual(expected)
   })
 
-  it('initializes restored 218 backups, and does not resurrect providers from pre-216 backups', () => {
-    expect(decode(sanitizePersistedState(encode(fixture(218)))).llm.modelTestSelection).toEqual({
-      platform: 'openai',
-      modelId: 'gpt-test',
-      providerId: 'new'
-    })
-    expect(decode(sanitizePersistedState(encode(fixture(215)))).llm.modelTestSelection).toEqual({})
+  it('does not initialize removed preferences for fresh or older state', () => {
+    for (const version of [215, 218, 219, 221, 223]) {
+      const restored = decode(sanitizePersistedState(encode(fixture(version))))
+      expect(restored.llm).not.toHaveProperty('modelTestSelection')
+      expect(restored.llm).not.toHaveProperty('modelTestConcurrency')
+    }
+    expect(sanitizeState({})).toEqual({})
   })
 })
 
@@ -121,7 +113,7 @@ describe('217 shared catalog migration', () => {
           {
             ...provider,
             models: [{ id: 'gpt-6-sol', provider: 'new', name: 'My edited name' }],
-            apiHost: 'https://happycodeai.com//v1/v1',
+            apiHost: 'https://example.invalid//v1/v1',
             userAgent: 'old',
             extra_headers: { 'uSeR-aGeNt': 'old', 'X-Custom': 'keep' },
             healthStatus: 'passed'
@@ -137,7 +129,7 @@ describe('217 shared catalog migration', () => {
     const next = migratePlatformState(state)
     expect(next.llm.providers.map((p: any) => p.platform)).toEqual(['openai', 'openai', 'grok', 'anthropic'])
     expect(next.llm.providers[0]).toMatchObject({
-      apiHost: 'https://happycodeai.com/v1',
+      apiHost: 'https://example.invalid/v1',
       apiKey: 'test-key',
       extra_headers: { 'X-Custom': 'keep' }
     })

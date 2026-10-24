@@ -2489,8 +2489,7 @@
     "backgroundStopped": "The background service stopped. The task was not sent again.",
     "chat": "Chat",
     "navigation": "Navigation",
-    "systemBudget": "Android stopped this task after reaching its background time limit.",
-    "test": "Test"
+    "systemBudget": "Android stopped this task after reaching its background time limit."
   },
   "models": {
     "add_parameter": "Add Parameter",
@@ -4067,6 +4066,7 @@
         "default_vault_placeholder": "Please select the default Obsidian vault",
         "title": "Obsidian Configuration"
       },
+      "obsolete_cache_cleanup_failed": "Old test data could not be cleared. Close the other app windows and restart.",
       "siyuan": {
         "api_url": "Siyuan Note API URL",
         "api_url_placeholder": "e.g.: http://127.0.0.1:6806",
@@ -4444,81 +4444,13 @@
       "visible": "Visible Mini Apps"
     },
     "model": "Default Model",
-    "modelTest": {
-      "analyzeManual": "Analyze pasted output",
-      "attempts": "Attempt {{count}} / {{max}}",
-      "backHome": "Back to home",
-      "bank": "Fingerprint bank",
-      "bankError": {
-        "cache": "Unable to save the update. Using the current fingerprint bank.",
-        "incompatible": "The upstream algorithm changed. Update the app.",
-        "invalid-data": "Invalid update data. Using the current fingerprint bank.",
-        "network": "Network connection failed. Using the current fingerprint bank.",
-        "rate-limit": "GitHub rate limit reached. Try again later.",
-        "timeout": "The update request timed out. Using the current fingerprint bank."
-      },
-      "bankStatus": {
-        "up-to-date": "Fingerprint bank is up to date.",
-        "updated": "Fingerprint bank updated."
-      },
-      "byteUnit": "bytes",
-      "challenge": "Challenge {{index}} · {{count}} numbers",
-      "challenges": "Number challenges",
-      "checkBank": "Check for updates",
-      "checkedAt": "Last checked: {{time}}",
-      "concurrency": "Concurrency",
-      "count": "Numbers: {{actual}} / {{expected}}",
-      "earlyCompleted": "Completed early",
-      "familyResult": "Model family: {{family}} ({{probability}}%)",
-      "integerUnit": "integers",
-      "issue": {
-        "empty": "No answer text received.",
-        "format": "Answer contains non-numeric text or unsupported formatting.",
-        "insufficient": "Fewer than 80 usable integers.",
-        "reasoning-tag": "Incomplete or mismatched thinking tags."
-      },
+    "modelSelection": {
       "modelLabel": "Model",
       "modelUnavailable": "Select a valid model from the platform catalog.",
-      "noSamples": "Completed; no samples available for analysis",
-      "noUsableSamples": "No samples available for analysis",
-      "outputLimit": "Output protection reached: item {{actual}} exceeds {{maximum}} {{unit}}. Retrying.",
-      "pastePlaceholder": "Paste the complete model response here",
       "providerLabel": "Provider",
       "providerPlaceholder": "Select a provider",
       "providerUnavailable": "Select an enabled provider for this model platform. Your selection will not be replaced automatically.",
-      "regenerate": "New challenges",
-      "restoreView": "Restore test view",
-      "result": "Attribution result",
-      "resultPending": "Waiting for test results",
-      "resultRunning": "Test in progress",
-      "retryFailed": "Retry failed challenges only",
-      "retryStop": {
-        "auth": "Authentication failed. Check your credentials before retrying.",
-        "cancelled": "Stopped. No further automatic retries.",
-        "exhausted": "All 3 attempts used. You can retry only the failed groups.",
-        "invalidRequest": "Invalid request parameters or address. Automatic retries stopped.",
-        "model": "Model not found. Check the model ID.",
-        "quota": "Insufficient balance or quota. Automatic retries stopped."
-      },
-      "retryWaiting": "Retrying automatically in {{seconds}} seconds",
-      "run": "Start test",
-      "runTarget": "Run target: {{provider}} · Model ID: {{model}}",
-      "samples": "Usable: {{usable}} · Excluded: {{excluded}}",
-      "status": {
-        "aborted": "Stopped",
-        "completed": "Completed",
-        "error": "Request failed",
-        "pending": "Pending",
-        "retrying": "Waiting to retry",
-        "running": "Receiving",
-        "skipped": "Not needed"
-      },
-      "stop": "Stop test",
-      "target": "Provider: {{provider}} · Model ID: {{model}}",
-      "title": "Model Test",
-      "unavailable": "Unavailable",
-      "usedOutputs": "Groups analyzed: {{count}}",
-      "viewError": "The test view encountered an error. Your session is retained; restore the view to see progress and results."
+      "unavailable": "Unavailable"
     },
     "models": {
       "add": {
@@ -4571,10 +4503,6 @@
         "remove_whole_group": "Remove the whole group"
       },
       "provider_id": "Provider ID",
-      "provider_key_add_confirm": "Do you want to add the API key for {{provider}}?",
-      "provider_key_add_failed_by_empty_data": "Failed to add provider API key, data is empty",
-      "provider_key_add_failed_by_invalid_data": "Failed to add provider API key, data format error",
-      "provider_key_added": "Successfully added API key for {{provider}}",
       "provider_key_already_exists": "{{provider}} already has an API key ({{existingKey}}). Do not add it again.",
       "provider_key_confirm_title": "Add Provider API Key",
       "provider_key_no_change": "API key for {{provider}} has not changed",
@@ -4843,10 +4771,6 @@
       },
       "filter_agent": "Filter Agent Supported Providers",
       "get_api_key": "Get API Key",
-      "import_duplicate": "This provider is already imported.",
-      "import_invalid": "Import failed. Use a valid Responses or Anthropic provider link.",
-      "import_success": "Provider imported.",
-      "import_too_large": "Import link is too large or too many imports are pending. Nothing was imported; check the link and try again.",
       "misc": "Other",
       "notes": {
         "markdown_editor_default_value": "Preview area",

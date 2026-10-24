@@ -6,15 +6,14 @@ sanitize_output() {
     import { readFileSync } from "node:fs";
     import { sanitizeLogText } from "./packages/shared/logSanitizer.ts";
     const output = sanitizeLogText(readFileSync(0, "utf8"))
-      .replace(/ci-only-model-key|modeltrace-fixture-key/g, "[fixture-key]");
+      .replace(/ci-only-model-key/g, "[fixture-key]");
     process.stdout.write(output);
   '
 }
 
 methods=(
-  importsUseConfirmationAndPrivateCredentials
+  providerSettingsKeepCredentialsPrivate
   nativeModelAndProviderSelectorsRemainStable
-  modelTraceEarlyFinishStopsAtOneResponseAndReleasesAndroidTask
   credentialsSurviveProcessRestart
 )
 

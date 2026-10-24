@@ -15,7 +15,6 @@
     ".yarn/**",
     ".gitignore",
     "scripts/cloudflare-worker.js",
-    "src/main/integration/cherryai/index.js",
     "src/renderer/src/ui/**",
     "packages/**/dist",
     "eslint.config.mjs"
@@ -28,7 +27,7 @@
       "env": {
         "node": true
       },
-      "files": ["src/main/**", "resources/scripts/**", "scripts/**", "playwright.config.ts", "electron.vite.config.ts"]
+      "files": ["resources/scripts/**", "scripts/**", "playwright.config.ts", "vite.config.ts"]
     },
     {
       "env": {
@@ -42,13 +41,6 @@
         "vitest": true
       },
       "files": ["**/__tests__/*.test.{ts,tsx}", "tests/**"]
-    },
-    {
-      "env": {
-        "browser": true,
-        "node": true
-      },
-      "files": ["src/preload/**"]
     },
     {
       "files": ["packages/ai-sdk-provider/**"],

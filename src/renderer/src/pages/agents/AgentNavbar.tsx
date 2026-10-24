@@ -11,8 +11,6 @@ import { Tooltip } from 'antd'
 import { t } from 'i18next'
 import { Search } from 'lucide-react'
 
-import UpdateAppButton from '../home/components/UpdateAppButton'
-
 const AgentNavbar = () => {
   const { narrowMode } = useSettings()
   const dispatch = useAppDispatch()
@@ -40,7 +38,6 @@ const AgentNavbar = () => {
         }}
         className="agent-navbar-right">
         <HStack alignItems="center" gap={6}>
-          <UpdateAppButton />
           <Tooltip title={t('chat.assistant.search.placeholder')} mouseEnterDelay={0.8}>
             <NavbarIcon className="max-[1000px]:hidden" onClick={() => SearchPopup.show()}>
               <Search size={18} />

@@ -12,7 +12,7 @@ import { useTimer } from '@renderer/hooks/useTimer'
 import ImageStorage from '@renderer/services/ImageStorage'
 import { useMobileBack } from '@renderer/services/mobile/back'
 import { runtimeCapabilities } from '@renderer/services/mobile/runtime'
-import type { Provider, ProviderType } from '@renderer/types'
+import type { Provider } from '@renderer/types'
 import { isSystemProvider } from '@renderer/types'
 import { getFancyProviderName, matchKeywordsInModel, matchKeywordsInProvider, uuid } from '@renderer/utils'
 import { isAnthropicSupportedProvider } from '@renderer/utils/provider'
@@ -31,7 +31,6 @@ import AddProviderPopup from './AddProviderPopup'
 import ModelNotesPopup from './ModelNotesPopup'
 import PlatformSettings from './PlatformSettings'
 import ProviderSetting from './ProviderSetting'
-import UrlSchemaInfoPopup from './UrlSchemaInfoPopup'
 
 const logger = loggerService.withContext('ProviderList')
 
@@ -143,56 +142,6 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
       setSearchParams(searchParams)
     }
   }, [providers, searchParams, setSearchParams, setSelectedProvider, setTimeoutTimer])
-
-  // Handle provider add key from URL schema
-  useEffect(() => {
-    const handleProviderAddKey = async (data: {
-      id: string
-      apiKey: string
-      baseUrl: string
-      type?: ProviderType
-      name?: string
-    }) => {
-      const { id } = data
-
-      const { updatedProvider, isNew, displayName } = await UrlSchemaInfoPopup.show(data)
-      window.navigate(`/settings/provider?id=${id}`)
-
-      if (!updatedProvider) {
-        return
-      }
-
-      if (isNew) {
-        addProvider(updatedProvider)
-      } else {
-        updateProvider(updatedProvider)
-      }
-
-      setSelectedProvider(updatedProvider)
-      window.toast.success(t('settings.models.provider_key_added', { provider: displayName }))
-    }
-
-    // 检查 URL 参数
-    const addProviderData = searchParams.get('addProviderData')
-    if (!addProviderData) {
-      return
-    }
-
-    try {
-      const { id, apiKey: newApiKey, baseUrl, type, name } = JSON.parse(addProviderData)
-      if (!id || !newApiKey || !baseUrl) {
-        window.toast.error(t('settings.models.provider_key_add_failed_by_invalid_data'))
-        window.navigate('/settings/provider')
-        return
-      }
-
-      void handleProviderAddKey({ id, apiKey: newApiKey, baseUrl, type, name })
-    } catch (error) {
-      window.toast.error(t('settings.models.provider_key_add_failed_by_invalid_data'))
-      window.navigate('/settings/provider')
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams])
 
   const onAddProvider = async () => {
     const {
