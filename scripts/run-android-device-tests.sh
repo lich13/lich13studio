@@ -32,7 +32,7 @@ for method in "${methods[@]}"; do
     echo 'Android crash diagnostics:'
     adb logcat -b crash -d -v brief | sanitize_output
     echo 'Android WebView diagnostics:'
-    adb logcat -d -v brief chromium:V WebViewFactory:I '*:S' | sanitize_output
+    adb logcat -d -v brief 'Tauri/Console:V' Tauri:W chromium:V WebViewFactory:I '*:S' | sanitize_output
     exit 1
   fi
 done

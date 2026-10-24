@@ -42,6 +42,8 @@ class MobileSmokeTest {
               return JSON.stringify({
                 ready: document.readyState,
                 rootChildren: document.getElementById('root')?.childElementCount,
+                startupLogo: !!document.querySelector('#root img[alt=lich13studio]'),
+                startupError: !!document.querySelector('#root > main > button'),
                 onboarding: !!document.querySelector('button.ant-btn-text'),
                 home: !!document.querySelector('#home-page'),
                 focused: document.activeElement?.tagName,
@@ -100,13 +102,18 @@ class MobileSmokeTest {
               const input = document.querySelector($selector);
               if (!input) return false;
               input.focus();
+              input.addEventListener('focusout', () => input.dataset.blurred = 'true', { once: true });
               Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, $literal);
               input.dispatchEvent(new Event('input', { bubbles: true }));
+              // The value property changes before React commits the controlled input.
+              // Mark a later frame so blur cannot use the previous render's handler.
+              requestAnimationFrame(() => requestAnimationFrame(() => input.dataset.committed = 'true'));
               return true;
             })()
         """.trimIndent()))
-        waitFor("input value committed") { js("document.querySelector($selector)?.value === $literal") == true }
+        waitFor("input value committed") { js("document.querySelector($selector)?.value === $literal && document.querySelector($selector)?.dataset.committed === 'true'") == true }
         js("document.querySelector($selector).blur()")
+        waitFor("input blur delivered") { js("document.querySelector($selector)?.dataset.blurred === 'true'") == true }
     }
 
     @Test fun providerSettingsKeepCredentialsPrivate() {

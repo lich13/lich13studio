@@ -2212,8 +2212,8 @@ fn release_page_url(tag_name: Option<&str>, html_url: Option<&str>) -> String {
         && parts
             .iter()
             .all(|part| !part.is_empty() && part.chars().all(|c| c.is_ascii_digit()))
-        && build.map_or(true, valid_suffix)
-        && prerelease.map_or(true, valid_suffix);
+        && build.is_none_or(valid_suffix)
+        && prerelease.is_none_or(valid_suffix);
     if !valid_tag {
         return GITHUB_RELEASES_URL.to_string();
     }

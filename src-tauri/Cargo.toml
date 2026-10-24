@@ -4,7 +4,7 @@ version = "0.1.38"
 description = "lich13studio Tauri Lite runtime"
 authors = ["lich13studio"]
 edition = "2021"
-rust-version = "1.77.2"
+rust-version = "1.88"
 
 [lib]
 name = "lich13studio_lib"
@@ -32,7 +32,7 @@ tokio = { version = "1", features = ["process", "time", "macros"] }
 url = "2"
 uuid = { version = "1", features = ["v4"] }
 walkdir = "2"
-zip = { version = "2.2.0", default-features = false, features = ["deflate"] }
+zip = { version = "9.0.0", default-features = false, features = ["deflate"] }
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
 auto-launch = "0.5"
