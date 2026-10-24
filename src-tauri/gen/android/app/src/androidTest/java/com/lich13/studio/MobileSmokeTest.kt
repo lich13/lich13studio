@@ -1,8 +1,6 @@
 package com.lich13.studio
 
 import android.content.Intent
-import android.content.Context
-import android.webkit.WebView
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
@@ -31,7 +29,31 @@ class MobileSmokeTest {
             if (condition()) return
             Thread.sleep(100)
         }
-        fail("Timed out: $label")
+        // Report only readiness flags and fixture comparisons, never saved values.
+        val state = js("""
+            (() => {
+              let provider;
+              try {
+                const state = JSON.parse(localStorage.getItem('persist:cherry-studio'));
+                provider = JSON.parse(state.llm).providers.find(p => p.name === 'Android CI provider');
+              } catch {}
+              const input = document.querySelector('input[name=apiHost]');
+              const expected = 'http://127.0.0.1:18765/v1';
+              return JSON.stringify({
+                ready: document.readyState,
+                rootChildren: document.getElementById('root')?.childElementCount,
+                onboarding: !!document.querySelector('button.ant-btn-text'),
+                home: !!document.querySelector('#home-page'),
+                focused: document.activeElement?.tagName,
+                providerSaved: !!provider,
+                addressSaved: provider?.apiHost === expected,
+                addressInput: !!input,
+                addressNormalized: input?.value === expected,
+                addressMatchesSaved: !!provider && input?.value === provider.apiHost
+              });
+            })()
+        """.trimIndent())
+        fail("Timed out: $label; renderer=$state")
     }
     private fun js(source: String): Any? {
         val latch = CountDownLatch(1)

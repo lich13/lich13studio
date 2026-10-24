@@ -31,6 +31,8 @@ for method in "${methods[@]}"; do
   if [[ "$status" -ne 0 ]] || ! grep -q 'OK (1 test)' <<< "$output"; then
     echo 'Android crash diagnostics:'
     adb logcat -b crash -d -v brief | sanitize_output
+    echo 'Android WebView diagnostics:'
+    adb logcat -d -v brief chromium:V WebViewFactory:I '*:S' | sanitize_output
     exit 1
   fi
 done
