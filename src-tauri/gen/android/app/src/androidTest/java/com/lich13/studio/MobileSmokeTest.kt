@@ -174,35 +174,47 @@ class MobileSmokeTest {
         assertEquals("select", js("$modelSelector.tagName").toString().lowercase())
         assertEquals("select", js("$providerSelector.tagName").toString().lowercase())
         assertEquals(true, js("$modelSelector.options.length > 1"))
-        assertEquals(true, js("$providerSelector.options.length > 1"))
         assertEquals(true, js("$modelSelector.closest('.model-provider-fields').getBoundingClientRect().width > 0"))
 
         // Keep a node reference while React commits the controlled selection. The native
         // control must survive the redraw instead of closing an Android system picker.
         js("window.__nativeModelSelector=$modelSelector; window.__nativeProviderSelector=$providerSelector")
-        val modelChanged = js("""
+        assertEquals(true, js("""
             (() => {
               const select=$modelSelector;
-              const next=Array.from(select.options).find(option => !option.disabled && option.value && option.value !== select.value);
-              if (next) { select.value=next.value; select.dispatchEvent(new Event('change', {bubbles:true})); return true; }
-              return false;
+              const candidates=Array.from(select.options).filter(option => !option.disabled && option.value && JSON.parse(option.value)[0] === 'openai');
+              const next=candidates.find(option => option.value !== select.value) || candidates[0];
+              if (!next) return false;
+              window.__expectedModel=next.value;
+              select.value=next.value;
+              select.dispatchEvent(new Event('change', {bubbles:true}));
+              return true;
             })()
-        """.trimIndent())
-        if (modelChanged == true) {
-            waitFor("model selection commit") { js("$modelSelector.value === window.__nativeModelSelector.value") == true }
+        """.trimIndent()))
+        waitFor("model selection commit") {
+            js("$modelSelector.value === window.__expectedModel && $modelSelector.title === JSON.parse(window.__expectedModel)[1]") == true
         }
-        js("""
+        // Ordinary provider creation does not select a chat model. Providers become
+        // available after choosing a model from the fixture provider's platform.
+        waitFor("provider available for selected model") { js("$providerSelector.options.length > 1 && !$providerSelector.disabled") == true }
+        assertEquals(true, js("""
             (() => {
               const select=$providerSelector;
-              const next=Array.from(select.options).find(option => !option.disabled && option.value);
-              if (next) { select.value=next.value; select.dispatchEvent(new Event('change', {bubbles:true})); }
+              const next=Array.from(select.options).find(option => !option.disabled && option.value && option.textContent === 'Android CI provider');
+              if (!next) return false;
+              window.__expectedProvider=next.value;
+              select.value=next.value;
+              select.dispatchEvent(new Event('change', {bubbles:true}));
+              return true;
             })()
-        """.trimIndent())
-        waitFor("provider selection commit") { js("$providerSelector.value === window.__nativeProviderSelector.value") == true }
+        """.trimIndent()))
+        waitFor("provider selection commit") {
+            js("$providerSelector.value === window.__expectedProvider && $providerSelector.title === 'Android CI provider'") == true
+        }
         assertEquals(true, js("window.__nativeModelSelector === $modelSelector"))
         assertEquals(true, js("window.__nativeProviderSelector === $providerSelector"))
         assertEquals(true, js("document.documentElement.scrollWidth <= innerWidth + 1"))
-        js("delete window.__nativeModelSelector; delete window.__nativeProviderSelector")
+        js("delete window.__nativeModelSelector; delete window.__nativeProviderSelector; delete window.__expectedModel; delete window.__expectedProvider")
     }
 
     /** Run in a second instrumentation process after force-stopping the first. */

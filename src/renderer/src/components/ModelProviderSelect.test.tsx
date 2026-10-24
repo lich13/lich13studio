@@ -128,6 +128,42 @@ it('uses native Android optgroups, keeps selections independent, and preserves s
   await act(async () => root.unmount())
 })
 
+it('offers a newly created provider after choosing a model on its platform', async () => {
+  const { default: ModelProviderSelect } = await loadAndroidComponent()
+  const originalProviders = fixture.catalog.providers
+  fixture.catalog.providers = [{ id: 'fixture', name: 'Android CI provider', platform: 'openai', enabled: true }]
+  vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
+  const container = document.createElement('div')
+  const root = createRoot(container)
+  function View() {
+    const [selection, setSelection] = useState<ModelProviderSelection>({
+      platform: 'anthropic',
+      modelId: 'claude-opus-4-7'
+    })
+    return createElement(ModelProviderSelect, { selection, onChange: setSelection })
+  }
+  try {
+    await act(async () => root.render(createElement(View)))
+    const [model, provider] = [...container.querySelectorAll('select')]
+    expect(provider.options).toHaveLength(1)
+    await act(async () => {
+      model.value = JSON.stringify(['openai', 'gpt-6-sol'])
+      model.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+    expect(model.title).toBe('gpt-6-sol')
+    expect([...provider.options].map((option) => option.value)).toEqual(['', 'fixture'])
+    await act(async () => {
+      provider.value = 'fixture'
+      provider.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+    expect(provider.title).toBe('Android CI provider')
+    expect([...container.querySelectorAll('select')]).toEqual([model, provider])
+  } finally {
+    await act(async () => root.unmount())
+    fixture.catalog.providers = originalProviders
+  }
+})
+
 it('rejects malformed, null, unknown-platform, empty, and wrong-shape selection values', async () => {
   const { parseModelProviderSelectionValue } = await loadAndroidComponent()
   expect(parseModelProviderSelectionValue(JSON.stringify(['openai', 'gpt-6-sol']))).toEqual(['openai', 'gpt-6-sol'])
