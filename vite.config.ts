@@ -58,6 +58,8 @@ export default defineConfig({
     outDir: resolve(__dirname, 'out/renderer'),
     emptyOutDir: true,
     target: 'chrome91',
+    // The minifier drops RegExp feature probes inside try/catch, breaking older WebViews.
+    minify: false,
     rollupOptions: {
       input: {
         index: resolve(__dirname, 'src/renderer/index.html'),

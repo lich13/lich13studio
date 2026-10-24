@@ -112,7 +112,15 @@ class MobileSmokeTest {
             })()
         """.trimIndent()))
         waitFor("input value committed") { js("document.querySelector($selector)?.value === $literal && document.querySelector($selector)?.dataset.committed === 'true'") == true }
-        js("document.querySelector($selector).blur()")
+        // Instrumentation can evaluate JS while the WebView lacks window focus.
+        // Deliver React's bubbling blur event explicitly if native blur did not fire.
+        js("""
+            (() => {
+              const input = document.querySelector($selector);
+              input.blur();
+              if (input.dataset.blurred !== 'true') input.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
+            })()
+        """.trimIndent())
         waitFor("input blur delivered") { js("document.querySelector($selector)?.dataset.blurred === 'true'") == true }
     }
 
