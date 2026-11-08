@@ -18,9 +18,11 @@ require(testAbi == null || testAbi == "x86_64")
 require(testAbi == null || gradle.startParameter.taskNames.none { it.contains("release", ignoreCase = true) })
 
 android {
-    compileSdk = 36
-    buildToolsVersion = "36.0.0"
-    ndkVersion = "28.2.13676358"
+    compileSdk {
+        version = release(37) { minorApiLevel = 2 }
+    }
+    buildToolsVersion = "37.0.0"
+    ndkVersion = "30.0.16248370"
     namespace = "com.lich13.studio"
     defaultConfig {
         manifestPlaceholders["usesCleartextTraffic"] = "false"
@@ -65,8 +67,9 @@ android {
             )
         }
     }
-    kotlinOptions {
-        jvmTarget = "1.8"
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
     }
     buildFeatures {
         buildConfig = true
@@ -90,3 +93,9 @@ dependencies {
 }
 
 apply(from = "tauri.build.gradle.kts")
+
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_1_8
+    }
+}

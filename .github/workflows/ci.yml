@@ -24,11 +24,14 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+        with:
+          version: latest
 
       - name: Setup Node.js
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
-          node-version-file: .nvmrc
+          node-version: node
+          check-latest: true
           cache: pnpm
 
       - name: Install dependencies
@@ -50,9 +53,12 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+        with:
+          version: latest
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
-          node-version-file: .nvmrc
+          node-version: node
+          check-latest: true
       - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable
         with:
           toolchain: stable
@@ -75,9 +81,12 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+        with:
+          version: latest
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
-          node-version-file: .nvmrc
+          node-version: node
+          check-latest: true
       - name: Check JavaScript advisories
         # High/critical findings block; documented exceptions live in pnpm-workspace.yaml auditConfig.
         run: pnpm audit --audit-level high
@@ -107,11 +116,12 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
-          node-version-file: .nvmrc
+          node-version: node
+          check-latest: true
       - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: '27'
       - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3.2.2
         with:
           packages: platform-tools
@@ -128,11 +138,11 @@ jobs:
           path: out
       - name: Install Android toolchain
         run: |
-          sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;28.2.13676358'
-          cargo install tauri-cli --version 2.10.1 --locked
+          sdkmanager 'platforms;android-37.2' 'platforms;android-36' 'build-tools;37.0.0' 'ndk;30.0.16248370'
+          cargo install tauri-cli --locked
       - name: Build Android and isolated device tests
         run: |
-          export NDK_HOME="$ANDROID_HOME/ndk/28.2.13676358"
+          export NDK_HOME="$ANDROID_HOME/ndk/30.0.16248370"
           cargo tauri android build --debug --target x86_64 --apk --ci
           cd src-tauri/gen/android
           ./gradlew :app:assembleUniversalDebugAndroidTest -x :app:rustBuildUniversalDebug -PabiList=x86_64 -ParchList=x86_64 -PtargetList=x86_64 --console=plain

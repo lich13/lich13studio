@@ -2,7 +2,7 @@
 
 ## 环境
 
-Node 使用根目录 `.nvmrc`（当前 24.21.0），pnpm 使用 `package.json` 的 `packageManager`（当前 12.11.2）。Rust 至少需要 1.88，使用本机已安装的 stable，不为常规检查更换工具链。原生应用需要 Tauri 2 的平台构建依赖；Android 另见 [Android](../../android.md)。
+Node 与 pnpm 使用本机当前稳定版；项目不固定运行时或包管理器版本。Rust 至少需要 1.88，使用本机已安装的 stable，不为常规检查更换工具链。原生应用需要 Tauri 2 的平台构建依赖；Android 另见 [Android](../../android.md)。
 
 Windows 需 Visual Studio C++ 工具与 Windows SDK；脚本 `run-in-vsdevcmd.mjs` 负责对应架构环境。macOS 需要 Xcode Command Line Tools。Linux CI 安装 WebKitGTK 4.1、Ayatana AppIndicator、librsvg、libdbus（系统凭据库 Secret Service）与 patchelf。
 

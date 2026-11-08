@@ -1,6 +1,6 @@
 # Development
 
-The maintained build and check instructions are in the [development guide](../../zh/guides/development.md). Node is selected by `.nvmrc`, pnpm by `package.json#packageManager`, and native checks use the installed Rust stable toolchain.
+The maintained build and check instructions are in the [development guide](../../zh/guides/development.md). Use the current stable Node.js, pnpm and Rust toolchains with the committed dependency lockfiles.
 
 ```sh
 pnpm install --frozen-lockfile

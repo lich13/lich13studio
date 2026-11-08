@@ -83,6 +83,5 @@
     "build": "tsdown",
     "lint": "biome format ./src/ --write && eslint --fix ./src/",
     "prepublishOnly": "pnpm build"
-  },
-  "packageManager": "pnpm@12.11.2"
+  }
 }

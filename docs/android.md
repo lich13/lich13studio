@@ -2,9 +2,11 @@
 
 支持 Android 12（API 31）以上、ARM64。发布目标为 API 36，制品验证包含 16 KiB 内存页兼容。
 
+Tauri Android 库仍需要 SDK 36，并使用 `kotlin-android`，AGP 9 暂时设置 `android.builtInKotlin=false` 和 `android.newDsl=false`；升级 AGP 10 前需等依赖支持内置 Kotlin 后移除这两项。JVM 字节码目标与构建时使用的 JDK 版本独立。
+
 ## 环境与构建
 
-Node 与 pnpm 版本分别取 `.nvmrc`、`package.json#packageManager`。使用 Rust stable 及 `aarch64-linux-android` target、Tauri CLI 2.10.1、JDK 21、SDK 36／build-tools 36.0.0、NDK 28.2.13676358。按实际安装位置配置 `JAVA_HOME`、`ANDROID_HOME`、`NDK_HOME`。
+Node、pnpm 和 Rust 使用当前稳定版；Rust 需要 `aarch64-linux-android` target。Android 使用 JDK 27、SDK 37.2、Build Tools 37.0.0、NDK 30.0.16248370、Gradle 9.9.0、AGP 9.5.1、Kotlin 2.4.21。按实际安装位置配置 `JAVA_HOME`、`ANDROID_HOME`、`NDK_HOME`；后续通过官方工具成组更新这些 Android 版本记录。
 
 ```sh
 pnpm install --frozen-lockfile

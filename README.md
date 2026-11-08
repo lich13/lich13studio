@@ -20,7 +20,7 @@ Android 使用 Keystore 保护凭据；桌面使用系统凭据库，安全写�
 
 ## 构建与检查
 
-Node 版本以 [`.nvmrc`](.nvmrc) 为准，pnpm 版本以 [`package.json`](package.json) 的 `packageManager` 为准。使用已安装的 Rust stable，原生依赖与 Android 环境见开发文档。
+Node 与 pnpm 使用本机当前稳定版，应用依赖沿用提交的锁文件。使用已安装的 Rust stable，原生依赖与 Android 环境见开发文档。
 
 ```sh
 pnpm install --frozen-lockfile
