@@ -36,6 +36,7 @@ const ALLOWED_ELEMENTS =
   /<(style|p|div|span|b|i|strong|em|ul|ol|li|table|tr|td|th|thead|tbody|h[1-6]|blockquote|pre|code|br|hr|svg|path|circle|rect|line|polyline|polygon|text|g|defs|title|desc|tspan|sub|sup|details|summary)/i
 const DISALLOWED_ELEMENTS = ['iframe', 'script']
 const STYLE_ELEMENT_REGEX = /<style\b[^>]*>/i
+const HAS_MATH_SYNTAX_REGEX = /\$|(?:^|\n)\s*(?:`{3,}|~{3,})\s*math\b/i
 
 interface Props {
   block: MainTextMessageBlock | TranslationMessageBlock | ThinkingMessageBlock | CompactMessageBlock
@@ -45,6 +46,7 @@ interface Props {
 let cachedKatexPlugin: Pluggable | null = null
 let katexLoadPromise: Promise<Pluggable> | null = null
 let cachedMathjaxPlugin: Pluggable | null = null
+let mathjaxLoadPromise: Promise<Pluggable> | null = null
 
 function loadKatexPlugin(): Promise<Pluggable> {
   if (cachedKatexPlugin) {
@@ -56,13 +58,37 @@ function loadKatexPlugin(): Promise<Pluggable> {
       import('katex/contrib/copy-tex'),
       import('katex/contrib/mhchem'),
       import('rehype-katex')
-    ]).then(([, , , mod]) => {
-      const resolved = (mod.default ?? mod) as Pluggable
-      cachedKatexPlugin = resolved
-      return resolved
-    })
+    ])
+      .then(([, , , mod]) => {
+        const resolved = (mod.default ?? mod) as Pluggable
+        cachedKatexPlugin = resolved
+        return resolved
+      })
+      .catch((error) => {
+        katexLoadPromise = null
+        throw error
+      })
   }
   return katexLoadPromise
+}
+
+function loadMathjaxPlugin(): Promise<Pluggable> {
+  if (cachedMathjaxPlugin) {
+    return Promise.resolve(cachedMathjaxPlugin)
+  }
+  if (!mathjaxLoadPromise) {
+    mathjaxLoadPromise = import('rehype-mathjax')
+      .then((mod) => {
+        const resolved = (mod.default ?? mod) as Pluggable
+        cachedMathjaxPlugin = resolved
+        return resolved
+      })
+      .catch((error) => {
+        mathjaxLoadPromise = null
+        throw error
+      })
+  }
+  return mathjaxLoadPromise
 }
 
 const Markdown: FC<Props> = ({ block, postProcess }) => {
@@ -70,23 +96,6 @@ const Markdown: FC<Props> = ({ block, postProcess }) => {
   const { mathEngine, mathEnableSingleDollar } = useSettings()
   const [katexPlugin, setKatexPlugin] = useState<Pluggable | null>(() => cachedKatexPlugin)
   const [mathjaxPlugin, setMathjaxPlugin] = useState<Pluggable | null>(() => cachedMathjaxPlugin)
-
-  useEffect(() => {
-    if (mathEngine !== 'MathJax' || mathjaxPlugin) {
-      return
-    }
-    let cancelled = false
-    void import('rehype-mathjax').then((mod) => {
-      const resolved = (mod.default ?? mod) as Pluggable
-      cachedMathjaxPlugin = resolved
-      if (!cancelled) {
-        setMathjaxPlugin(() => resolved)
-      }
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [mathEngine, mathjaxPlugin])
 
   const isTrulyDone = 'status' in block && block.status === 'success'
   const [displayedContent, setDisplayedContent] = useState(postProcess ? postProcess(block.content) : block.content)
@@ -138,7 +147,7 @@ const Markdown: FC<Props> = ({ block, postProcess }) => {
   }, [block, displayedContent, t])
 
   const hasMathSyntax = useMemo(
-    () => mathEngine !== 'none' && messageContent.includes('$'),
+    () => mathEngine !== 'none' && HAS_MATH_SYNTAX_REGEX.test(messageContent),
     [mathEngine, messageContent]
   )
 
@@ -147,15 +156,43 @@ const Markdown: FC<Props> = ({ block, postProcess }) => {
       return
     }
     let cancelled = false
-    void loadKatexPlugin().then((resolved) => {
-      if (!cancelled) {
-        setKatexPlugin(() => resolved)
-      }
-    })
+    void loadKatexPlugin()
+      .then((resolved) => {
+        if (!cancelled) {
+          setKatexPlugin(() => resolved)
+        }
+      })
+      .catch(() => {})
     return () => {
       cancelled = true
     }
   }, [hasMathSyntax, mathEngine, katexPlugin])
+
+  useEffect(() => {
+    if (!hasMathSyntax || mathEngine !== 'MathJax' || mathjaxPlugin) {
+      return
+    }
+    let cancelled = false
+    void loadMathjaxPlugin()
+      .then((resolved) => {
+        if (!cancelled) {
+          setMathjaxPlugin(() => resolved)
+        }
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [hasMathSyntax, mathEngine, mathjaxPlugin])
+
+  const activeMathPlugin =
+    !hasMathSyntax || mathEngine === 'none'
+      ? null
+      : mathEngine === 'KaTeX'
+        ? katexPlugin
+        : mathEngine === 'MathJax'
+          ? mathjaxPlugin
+          : null
 
   const remarkPlugins = useMemo(() => {
     const plugins = [
@@ -165,11 +202,11 @@ const Markdown: FC<Props> = ({ block, postProcess }) => {
       remarkCjkAutolinkLiteral,
       remarkDisableConstructs(['codeIndented'])
     ]
-    if (hasMathSyntax) {
+    if (activeMathPlugin) {
       plugins.push([remarkMath, { singleDollarTextMath: mathEnableSingleDollar }])
     }
     return plugins
-  }, [hasMathSyntax, mathEnableSingleDollar])
+  }, [activeMathPlugin, mathEnableSingleDollar])
 
   const hasRawElements = useMemo(() => ALLOWED_ELEMENTS.test(messageContent), [messageContent])
   const hasStyleElement = useMemo(() => STYLE_ELEMENT_REGEX.test(messageContent), [messageContent])
@@ -180,13 +217,11 @@ const Markdown: FC<Props> = ({ block, postProcess }) => {
       plugins.push(rehypeRaw, rehypeScalableSvg)
     }
     plugins.push([rehypeHeadingIds, { prefix: `heading-${block.id}` }])
-    if (hasMathSyntax && mathEngine === 'KaTeX' && katexPlugin) {
-      plugins.push(katexPlugin)
-    } else if (hasMathSyntax && mathEngine === 'MathJax' && mathjaxPlugin) {
-      plugins.push(mathjaxPlugin)
+    if (activeMathPlugin) {
+      plugins.push(activeMathPlugin)
     }
     return plugins
-  }, [hasMathSyntax, mathEngine, katexPlugin, mathjaxPlugin, hasRawElements, block.id])
+  }, [activeMathPlugin, hasRawElements, block.id])
 
   const baseComponents = useMemo(() => {
     return {

@@ -852,12 +852,20 @@ const api = {
   setStopQuitApp: noOpAsync,
   flushAppData: noOpAsync,
   isNotEmptyDir: async () => false,
-  relaunchApp: async () => location.reload(),
+  relaunchApp: async () => {
+    if (!previewMode && invoke && !runtimeCapabilities.android) {
+      await invoke('close_mini_window').catch(() => {})
+    }
+    location.reload()
+  },
   resetData: async () => {
     clearFileCache()
     pendingFileRegistrations.clear()
     cachedAppInfo = null
     if (!previewMode && invoke) {
+      if (!runtimeCapabilities.android) {
+        await invoke('close_mini_window').catch(() => {})
+      }
       await invoke('clear_attachments')
     }
     if (credentialStorageEnabled) await mobilePersistStorage.removeItem('persist:cherry-studio')
@@ -1125,6 +1133,12 @@ const api = {
       return invoke('get_obsidian_files', { vaultName })
     }
   },
+  pdf: {
+    extractText: async (data: Uint8Array | ArrayBuffer | string | URL) => {
+      const { extractPdfText } = await import('@shared/utils/pdf')
+      return extractPdfText(data)
+    }
+  },
   file: {
     select: async (options?: AnyRecord) =>
       pickFiles(Boolean(options?.properties?.includes?.('multiSelections')), options?.filters),
@@ -1152,11 +1166,16 @@ const api = {
     moveDir: async () => true,
     rename: async () => true,
     renameDir: async () => true,
-    read: async (fileId: string) => {
+    read: async (fileId: string, forceTextExtract?: boolean) => {
       const cached = await getCachedFile(fileId)
       if (!cached) {
         const stored = localStorage.getItem(`file:${fileId}`)
         return stored ?? (fileId === 'custom-minapps.json' ? '[]' : '')
+      }
+      if (forceTextExtract && /\.pdf$/i.test(cached.fileName || fileId)) {
+        const { extractPdfText } = await import('@shared/utils/pdf')
+        cached.text = cached.text ?? (await extractPdfText(await readBlobAsUint8Array(cached.blob)))
+        return cached.text
       }
       cached.text = cached.text ?? (await readBlobAsText(cached.blob))
       return cached.text

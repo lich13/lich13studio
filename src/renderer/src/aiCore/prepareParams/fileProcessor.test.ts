@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { FILE_TYPE, type Model } from '@renderer/types'
 import { type FileMessageBlock, MessageBlockStatus, MessageBlockType } from '@renderer/types/newMessage'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -7,7 +8,8 @@ const mocks = vi.hoisted(() => ({
   getAiSdkProviderId: vi.fn(),
   getFileSizeLimit: vi.fn(),
   supportsImageInput: vi.fn(),
-  supportsLargeFileUpload: vi.fn()
+  supportsLargeFileUpload: vi.fn(),
+  extractPdfText: vi.fn()
 }))
 
 vi.mock('@logger', () => ({
@@ -21,7 +23,16 @@ vi.mock('@logger', () => ({
   }
 }))
 
+vi.mock('@renderer/utils/messageUtils/find', () => ({
+  findFileBlocks: vi.fn(() => [])
+}))
+
+vi.mock('@shared/utils/pdf', () => ({
+  extractPdfText: mocks.extractPdfText
+}))
+
 vi.mock('@renderer/services/AssistantService', () => ({
+  getDefaultAssistant: () => ({ id: 'default', name: 'Default', prompt: '', topics: [], type: 'assistant' }),
   getProviderByModel: mocks.getProviderByModel
 }))
 
@@ -35,6 +46,7 @@ vi.mock('./modelCapabilities', () => ({
   supportsLargeFileUpload: mocks.supportsLargeFileUpload
 }))
 
+import { createPdfCompatibilityPlugin } from '../plugins/pdfCompatibilityPlugin'
 import { convertFileBlockToFilePart } from './fileProcessor'
 
 const fixtureModel: Model = {
@@ -80,7 +92,7 @@ describe('convertFileBlockToFilePart', () => {
     mocks.getProviderByModel.mockReset().mockReturnValue({ id: 'anthropic', type: 'anthropic' })
     mocks.getAiSdkProviderId.mockReset().mockReturnValue('anthropic')
 
-    vi.stubGlobal('window', {
+    Object.assign(window, {
       api: {
         file: {
           base64File,
@@ -92,7 +104,7 @@ describe('convertFileBlockToFilePart', () => {
   })
 
   afterEach(() => {
-    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
   })
 
   it('builds a multimodal FilePart from structured base64File output for PDF attachments', async () => {
@@ -157,5 +169,49 @@ describe('convertFileBlockToFilePart', () => {
       mediaType: 'image/jpeg',
       filename: 'photo.jpg'
     })
+  })
+
+  it('extracts PDF text directly in pdfCompatibilityPlugin for models without native fileInput (e.g. Grok)', async () => {
+    mocks.extractPdfText.mockReset().mockResolvedValue('Parsed report body')
+    const grokProvider = {
+      id: 'grok',
+      name: 'Grok',
+      type: 'openai-response',
+      apiKey: '',
+      apiHost: 'https://api.x.ai'
+    } as any
+    const grokModel: Model = {
+      id: 'grok-4.7',
+      provider: 'grok',
+      name: 'grok-4.7',
+      group: 'grok'
+    }
+
+    const plugin = createPdfCompatibilityPlugin(grokProvider, grokModel)
+    const context: any = { middlewares: [] }
+    plugin.configureContext!(context)
+
+    const encodedPdf = btoa('%PDF-1.4 grok payload')
+    const transformed = await context.middlewares[0].transformParams({
+      params: {
+        prompt: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'file',
+                mediaType: 'application/pdf',
+                filename: 'spec.pdf',
+                data: encodedPdf
+              }
+            ]
+          }
+        ]
+      }
+    })
+
+    expect(mocks.extractPdfText).toHaveBeenCalledWith(encodedPdf)
+    expect(transformed.prompt[0].content).toEqual([{ type: 'text', text: 'spec.pdf\nParsed report body' }])
+    expect(warning).not.toHaveBeenCalled()
   })
 })

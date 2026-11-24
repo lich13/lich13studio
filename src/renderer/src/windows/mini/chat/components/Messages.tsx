@@ -4,11 +4,13 @@ import { useTopicMessages } from '@renderer/hooks/useMessageOperations'
 import type { Assistant, Topic } from '@renderer/types'
 import { Sparkles } from 'lucide-react'
 import type { FC } from 'react'
+import { lazy, Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
 import { shouldShowMiniWindowEmptyState, shouldShowMiniWindowPendingSpinner } from '../../home/miniWindowHelpers'
-import MessageItem from './Message'
+
+const MessageItem = lazy(() => import('./Message'))
 
 interface Props {
   assistant: Assistant
@@ -43,9 +45,13 @@ const Messages: FC<Props> = ({ assistant, topic, isOutputted, isLoading, hasErro
         </EmptyState>
       )}
       {showPendingSpinner && <PendingSpinner style={{ fontSize: 15 }} spin />}
-      {[...messages].reverse().map((message) => (
-        <MessageItem key={message.id} message={message} />
-      ))}
+      {messages.length > 0 && (
+        <Suspense fallback={null}>
+          {[...messages].reverse().map((message) => (
+            <MessageItem key={message.id} message={message} />
+          ))}
+        </Suspense>
+      )}
     </Container>
   )
 }

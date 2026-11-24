@@ -20,6 +20,7 @@ import styled from 'styled-components'
 const { Text, Title } = Typography
 
 export type SearchResult = {
+  blockId: string
   message: Message
   topic: Topic
   snippet: string
@@ -328,6 +329,7 @@ export async function selectAndHydrateTopSearchResults({
     }
     const candidate = topCandidates[index]
     results.push({
+      blockId: candidate.blockId,
       message: candidate.message,
       topic: candidate.topic,
       snippet: buildSearchSnippet(block.content, terms, matchMode)
@@ -349,10 +351,11 @@ const SearchResults: FC<Props> = ({ keywords, onMessageClick, onTopicClick, ...p
   sortOrderRef.current = sortOrder
   const [searchTerms, setSearchTerms] = useState<string[]>(() => splitKeywordsToTerms(keywords))
   const [matchedCandidates, setMatchedCandidates] = useState<{
+    seq: number
     candidates: SearchMatchCandidate[]
     terms: string[]
     matchMode: KeywordMatchMode
-  }>({ candidates: [], terms: [], matchMode: 'whole-word' })
+  }>({ seq: 0, candidates: [], terms: [], matchMode: 'whole-word' })
 
   // FIXME: db 中没有 topic.name 等信息，只能从 store 获取
   const storeTopicsMap = useSelector(selectTopicsMap)
@@ -367,12 +370,15 @@ const SearchResults: FC<Props> = ({ keywords, onMessageClick, onTopicClick, ...p
     const trimmedKeywords = keywords.trim()
 
     if (trimmedKeywords.length === 0) {
-      setMatchedCandidates({ candidates: [], terms: [], matchMode })
+      setMatchedCandidates({ seq, candidates: [], terms: [], matchMode })
       setSearchResults([])
       setSearchStats({ count: 0, time: 0 })
       setSearchTerms([])
       setIsLoading(false)
-      return
+      return () => {
+        searchSeqRef.current += 1
+        hydrateSeqRef.current += 1
+      }
     }
 
     setIsLoading(true)
@@ -393,7 +399,7 @@ const SearchResults: FC<Props> = ({ keywords, onMessageClick, onTopicClick, ...p
         }
 
         if (scanned.terms.length === 0) {
-          setMatchedCandidates({ candidates: [], terms: [], matchMode })
+          setMatchedCandidates({ seq, candidates: [], terms: [], matchMode })
           setSearchResults([])
           setSearchStats({ count: 0, time: 0 })
           setSearchTerms([])
@@ -415,6 +421,7 @@ const SearchResults: FC<Props> = ({ keywords, onMessageClick, onTopicClick, ...p
 
         const endTime = performance.now()
         setMatchedCandidates({
+          seq,
           candidates: scanned.candidates,
           terms: scanned.terms,
           matchMode
@@ -435,16 +442,18 @@ const SearchResults: FC<Props> = ({ keywords, onMessageClick, onTopicClick, ...p
 
     return () => {
       window.clearTimeout(timer)
+      searchSeqRef.current += 1
+      hydrateSeqRef.current += 1
     }
   }, [keywords, matchMode, storeTopicsMap])
 
   const handleSortOrderChange = (nextOrder: ResultSortOrder) => {
     setSortOrder(nextOrder)
-    if (matchedCandidates.candidates.length === 0) {
+    if (matchedCandidates.candidates.length === 0 || matchedCandidates.seq !== searchSeqRef.current) {
       return
     }
     const hydrateSeq = ++hydrateSeqRef.current
-    const activeSearchSeq = searchSeqRef.current
+    const activeSearchSeq = matchedCandidates.seq
     void selectAndHydrateTopSearchResults({
       database: db,
       candidates: matchedCandidates.candidates,
@@ -452,24 +461,39 @@ const SearchResults: FC<Props> = ({ keywords, onMessageClick, onTopicClick, ...p
       matchMode: matchedCandidates.matchMode,
       sortOrder: nextOrder,
       isCancelled: () => hydrateSeq !== hydrateSeqRef.current || activeSearchSeq !== searchSeqRef.current
-    }).then((results) => {
-      if (results && hydrateSeq === hydrateSeqRef.current && activeSearchSeq === searchSeqRef.current) {
-        setSearchResults(results)
-      }
     })
+      .then((results) => {
+        if (results && hydrateSeq === hydrateSeqRef.current && activeSearchSeq === searchSeqRef.current) {
+          setSearchResults(results)
+        }
+      })
+      .catch(() => {})
   }
 
   const highlightText = (text: string) => {
-    // Escape HTML entities to prevent XSS from LLM response content
-    const escapeHtml = (s: string) =>
-      s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-    const safeText = escapeHtml(text)
     const highlightRegex = buildKeywordUnionRegex(searchTerms, { matchMode, flags: 'gi' })
     if (!highlightRegex) {
-      return <span dangerouslySetInnerHTML={{ __html: safeText }} />
+      return <span>{text}</span>
     }
-    const highlightedText = safeText.replace(highlightRegex, (match) => `<mark>${match}</mark>`)
-    return <span dangerouslySetInnerHTML={{ __html: highlightedText }} />
+
+    const parts: React.ReactNode[] = []
+    let lastIndex = 0
+    let match: RegExpExecArray | null
+    while ((match = highlightRegex.exec(text)) !== null) {
+      if (match[0].length === 0) {
+        highlightRegex.lastIndex += 1
+        continue
+      }
+      if (match.index > lastIndex) {
+        parts.push(text.slice(lastIndex, match.index))
+      }
+      parts.push(<mark key={match.index}>{match[0]}</mark>)
+      lastIndex = match.index + match[0].length
+    }
+    if (lastIndex < text.length) {
+      parts.push(text.slice(lastIndex))
+    }
+    return <span>{parts.length > 0 ? parts : text}</span>
   }
 
   useEffect(() => {
@@ -511,6 +535,7 @@ const SearchResults: FC<Props> = ({ keywords, onMessageClick, onTopicClick, ...p
         )}
         <List
           itemLayout="vertical"
+          rowKey={(item) => item.blockId}
           dataSource={searchResults}
           pagination={{
             pageSize: 10,

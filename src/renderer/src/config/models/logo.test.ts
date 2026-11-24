@@ -25,6 +25,7 @@ describe('model logo resolution', () => {
     expect(getModelLogoById('mygpt-6-unknown')).toBeUndefined()
     expect(getModelLogoById('cohere-command-r')).toBeUndefined()
     expect(getModelLogoById('deepseek-chat')).toBeUndefined()
+    expect(getModelLogoById('my-grokking-model')).toBeUndefined()
   })
 
   it('resolves OpenAI o-series, Anthropic Claude, and Grok logos in light and dark themes', () => {
@@ -32,9 +33,13 @@ describe('model logo resolution', () => {
     expect(getModelLogoById('o4-mini', 'dark')).toBe(OpenAIDark)
     expect(getModelLogoById('claude-sonnet-4-6', 'light')).toBeTruthy()
     expect(getModelLogoById('claude-sonnet-4-6', 'dark')).toBeTruthy()
+    expect(getModelLogoById('us.anthropic.claude-3-7-sonnet', 'light')).toBe(
+      getModelLogoById('claude-sonnet-4-6', 'light')
+    )
     expect(getModelLogoById('claude-sonnet-4-6', 'light')).not.toBe(getModelLogoById('claude-sonnet-4-6', 'dark'))
     expect(getModelLogoById('grok-4.7', 'light')).toBeTruthy()
     expect(getModelLogoById('grok-4.7', 'dark')).toBeTruthy()
+    expect(getModelLogoById('x-ai/grok-4.7', 'dark')).toBe(getModelLogoById('grok-4.7', 'dark'))
     expect(getModelLogoById('grok-4.7', 'light')).not.toBe(getModelLogoById('grok-4.7', 'dark'))
   })
 })

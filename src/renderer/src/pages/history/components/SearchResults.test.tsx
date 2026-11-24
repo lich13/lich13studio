@@ -338,4 +338,108 @@ describe('SearchResults global scan, sorting, and top-K snippet hydration', () =
     })
     expect(cancelled).toBeNull()
   })
+
+  it('cancels in-flight scan on unmount and highlights terms without HTML entity corruption', async () => {
+    vi.useFakeTimers()
+    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
+
+    const topic: Topic = {
+      id: 'topic-entity',
+      assistantId: 'assistant-1',
+      name: 'Entity Topic',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      messages: []
+    }
+    mocks.storeTopicsMap = new Map([['topic-entity', topic]])
+
+    const message: Message = {
+      id: 'msg-entity',
+      role: 'assistant',
+      assistantId: 'assistant-1',
+      topicId: 'topic-entity',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      status: 'success' as any,
+      blocks: ['blk-entity']
+    }
+    const block: MessageBlock = {
+      id: 'blk-entity',
+      messageId: 'msg-entity',
+      type: MessageBlockType.MAIN_TEXT,
+      content: 'Say "hello" & check quot token in a&b',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      status: MessageBlockStatus.SUCCESS
+    } as MessageBlock
+
+    const { database } = createFakeSearchDb([block], [{ id: 'topic-entity', messages: [message] }])
+    mocks.db = database
+
+    const container = document.createElement('div')
+    const root = createRoot(container)
+
+    await act(async () => {
+      root.render(
+        createElement(SearchResults, {
+          keywords: 'quot',
+          onMessageClick: vi.fn(),
+          onTopicClick: vi.fn()
+        })
+      )
+    })
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(250)
+    })
+
+    const marks = Array.from(container.querySelectorAll('mark')).map((el) => el.textContent)
+    expect(marks).toEqual(['quot'])
+    expect(container.textContent).toContain('Say "hello" & check quot token in a&b')
+
+    let scanObservedCancelled = false
+    mocks.db = {
+      message_blocks: {
+        toCollection: () => ({
+          until: (stopPredicate: () => boolean) => ({
+            each: () =>
+              new Promise<void>((resolve) => {
+                setTimeout(() => {
+                  scanObservedCancelled = stopPredicate()
+                  resolve()
+                }, 50)
+              })
+          })
+        }),
+        bulkGet: vi.fn(async () => [])
+      },
+      topics: {
+        toCollection: () => ({
+          until: () => ({ each: async () => {} })
+        })
+      }
+    }
+
+    await act(async () => {
+      root.render(
+        createElement(SearchResults, {
+          keywords: 'slow-query',
+          onMessageClick: vi.fn(),
+          onTopicClick: vi.fn()
+        })
+      )
+    })
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(210)
+    })
+
+    await act(async () => {
+      root.unmount()
+    })
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60)
+    })
+
+    expect(scanObservedCancelled).toBe(true)
+  })
 })

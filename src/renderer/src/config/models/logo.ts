@@ -8,8 +8,8 @@ import type { Model } from '@renderer/types'
 
 const OPENAI_MODEL_REGEX =
   /(^|[/:])(?:gpt(?:[-.\d]|s$)|codex(?:[-/:]|$)|o[134](?:[-.\d]|$)|chatgpt|dall-?e|sora[-_]|omni-|text-(?:embedding|moderation)|davinci-|babbage-|tts-1|whisper-)/
-const ANTHROPIC_MODEL_REGEX = /(?:^|[/:]|-)(?:claude|anthropic-)/
-const GROK_MODEL_REGEX = /(?:^|[/:]|-)grok/
+const ANTHROPIC_MODEL_REGEX = /(?:^|[/:.-])(?:claude(?:[-.\d/:]|$)|anthropic-)/
+const GROK_MODEL_REGEX = /(?:^|[/:.-])grok(?:[-.\d/:]|$)/
 
 export function normalizeModelLogoKey(modelId: string): string {
   return modelId.trim().toLowerCase().replace(/_/g, '-')

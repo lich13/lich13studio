@@ -47,10 +47,11 @@ import { cloneDeep, isEmpty } from 'lodash'
 import { last } from 'lodash'
 import { Image as ImageIcon, MessageSquareDiff, X } from 'lucide-react'
 import type { FC } from 'react'
-import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
+import ChatWindow from '../chat/ChatWindow'
 import CapturePanel from './components/CapturePanel'
 import ClipboardPreview from './components/ClipboardPreview'
 import Footer from './components/Footer'
@@ -71,7 +72,6 @@ import {
   type MiniWindowCaptureNotice
 } from './miniWindowHelpers'
 
-const ChatWindow = lazy(() => import('../chat/ChatWindow'))
 const logger = loggerService.withContext('HomeWindow')
 
 const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
@@ -884,17 +884,13 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
       {attachments}
       <ClipboardPreview referenceText={clipboardText} clearClipboard={clearClipboard} t={t} />
       <ContentArea>
-        {(!isFirstMessage || isLoading || isOutputted) && (
-          <Suspense fallback={null}>
-            <ChatWindow
-              assistant={currentAssistant}
-              topic={activeTopic}
-              isOutputted={isOutputted}
-              isLoading={isLoading}
-              hasError={Boolean(error)}
-            />
-          </Suspense>
-        )}
+        <ChatWindow
+          assistant={currentAssistant}
+          topic={activeTopic}
+          isOutputted={isOutputted}
+          isLoading={isLoading}
+          hasError={Boolean(error)}
+        />
         {error && <ErrorMsg>{error}</ErrorMsg>}
       </ContentArea>
       <Footer key="footer" {...baseFooterProps} onCopy={handleCopy} />

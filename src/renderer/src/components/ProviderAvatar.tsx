@@ -3,7 +3,7 @@ import { getProviderLogo } from '@renderer/config/providers'
 import type { Provider } from '@renderer/types'
 import { generateColorFromChar, getFirstCharacter, getForegroundColor } from '@renderer/utils'
 import { Avatar } from 'antd'
-import React from 'react'
+import React, { useState } from 'react'
 import styled from 'styled-components'
 
 interface ProviderAvatarPrimitiveProps {
@@ -53,6 +53,8 @@ export const ProviderAvatarPrimitive: React.FC<ProviderAvatarPrimitiveProps> = (
   className,
   style
 }) => {
+  const [failedLogoSrc, setFailedLogoSrc] = useState<string | null>(null)
+
   if (providerId === 'poe') {
     return (
       <ProviderSvgLogo className={className} style={style}>
@@ -61,9 +63,20 @@ export const ProviderAvatarPrimitive: React.FC<ProviderAvatarPrimitiveProps> = (
     )
   }
 
-  if (logoSrc) {
+  if (logoSrc && logoSrc !== failedLogoSrc) {
     return (
-      <ProviderLogo draggable="false" shape="circle" src={logoSrc} className={className} style={style} size={size} />
+      <ProviderLogo
+        draggable="false"
+        shape="circle"
+        src={logoSrc}
+        onError={() => {
+          setFailedLogoSrc(logoSrc)
+          return false
+        }}
+        className={className}
+        style={style}
+        size={size}
+      />
     )
   }
 

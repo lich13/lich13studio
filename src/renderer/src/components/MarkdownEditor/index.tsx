@@ -35,30 +35,33 @@ const MarkdownEditor: FC<MarkdownEditorProps> = ({
   }, [value])
 
   const previewContent = inputValue || t('settings.provider.notes.markdown_editor_default_value')
-  const hasMath = previewContent.includes('$')
+  const hasMath = /\$|(?:^|\n)\s*(?:`{3,}|~{3,})\s*math\b/i.test(previewContent)
 
   useEffect(() => {
     if (!hasMath || katexPlugin) return
     let cancelled = false
-    void Promise.all([import('katex/dist/katex.min.css'), import('rehype-katex')]).then(([, mod]) => {
-      const resolved = (mod.default ?? mod) as Pluggable
-      cachedEditorKatexPlugin = resolved
-      if (!cancelled) {
-        setKatexPlugin(() => resolved)
-      }
-    })
+    void Promise.all([import('katex/dist/katex.min.css'), import('rehype-katex')])
+      .then(([, mod]) => {
+        const resolved = (mod.default ?? mod) as Pluggable
+        cachedEditorKatexPlugin = resolved
+        if (!cancelled) {
+          setKatexPlugin(() => resolved)
+        }
+      })
+      .catch(() => {})
     return () => {
       cancelled = true
     }
   }, [hasMath, katexPlugin])
 
+  const activeKatexPlugin = hasMath ? katexPlugin : null
   const remarkPlugins = useMemo(
-    () => (hasMath ? [remarkGfm, remarkCjkFriendly, remarkMath] : [remarkGfm, remarkCjkFriendly]),
-    [hasMath]
+    () => (activeKatexPlugin ? [remarkGfm, remarkCjkFriendly, remarkMath] : [remarkGfm, remarkCjkFriendly]),
+    [activeKatexPlugin]
   )
   const rehypePlugins = useMemo(
-    () => (hasMath && katexPlugin ? [rehypeRaw, katexPlugin] : [rehypeRaw]),
-    [hasMath, katexPlugin]
+    () => (activeKatexPlugin ? [rehypeRaw, activeKatexPlugin] : [rehypeRaw]),
+    [activeKatexPlugin]
   )
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {

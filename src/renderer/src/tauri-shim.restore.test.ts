@@ -5,7 +5,12 @@ const mocks = vi.hoisted(() => ({
   invoke: vi.fn(),
   decryptPortableBackup: vi.fn(),
   credentialStorageEnabled: false,
-  removePersistedCredentials: vi.fn()
+  removePersistedCredentials: vi.fn(),
+  extractPdfText: vi.fn(async () => 'Extracted PDF text')
+}))
+
+vi.mock('@shared/utils/pdf', () => ({
+  extractPdfText: mocks.extractPdfText
 }))
 
 vi.mock('./services/mobile/webviewCompatibility', () => ({}))
@@ -188,10 +193,27 @@ describe('Tauri portable backup restore', () => {
 
     await (window as any).api.resetData()
 
+    expect(mocks.invoke).toHaveBeenCalledWith('close_mini_window')
     expect(mocks.invoke).toHaveBeenCalledWith('clear_attachments')
     expect(mocks.removePersistedCredentials).toHaveBeenCalledWith('persist:cherry-studio')
     expect(localStorage.length).toBe(0)
     expect(await (window as any).api.getCacheSize()).toBe('0 B')
     expect(reloadSpy).toHaveBeenCalledTimes(1)
+
+    mocks.invoke.mockClear()
+    await (window as any).api.relaunchApp()
+    expect(mocks.invoke).toHaveBeenCalledWith('close_mini_window')
+    expect(reloadSpy).toHaveBeenCalledTimes(2)
+  })
+
+  it('extracts PDF text lazily via api.pdf.extractText and api.file.read(..., true)', async () => {
+    mocks.extractPdfText.mockClear()
+    const base64Pdf = btoa('%PDF-1.4 test')
+    await expect((window as any).api.pdf.extractText(base64Pdf)).resolves.toBe('Extracted PDF text')
+    expect(mocks.extractPdfText).toHaveBeenCalledWith(base64Pdf)
+
+    await (window as any).api.file.write('memory://pdf/doc.pdf', new TextEncoder().encode('%PDF-1.4 bytes'))
+    await expect((window as any).api.file.read('memory://pdf/doc.pdf', true)).resolves.toBe('Extracted PDF text')
+    expect(mocks.extractPdfText).toHaveBeenCalledTimes(2)
   })
 })

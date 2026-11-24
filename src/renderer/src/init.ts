@@ -15,9 +15,13 @@ function initAutoSync() {
   setTimeout(() => {
     const { webdavAutoSync, localBackupAutoSync } = store.getState().settings
     if (webdavAutoSync || localBackupAutoSync) {
-      void import('./services/BackupService').then(({ startAutoSync }) => {
-        startAutoSync()
-      })
+      void import('./services/BackupService')
+        .then(({ startAutoSync }) => {
+          startAutoSync()
+        })
+        .catch((error) => {
+          loggerService.withContext('Init').error('Failed to load BackupService for auto sync:', error as Error)
+        })
     }
   }, 8000)
 }
