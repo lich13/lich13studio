@@ -3,6 +3,7 @@ import { loggerService } from '@logger'
 import { backgroundTasks } from '@renderer/services/mobile/BackgroundTaskService'
 
 const logger = loggerService.withContext('TauriNativeFetch')
+const textEncoder = new TextEncoder()
 
 type TauriListenEvent = {
   payload: NativeHttpChunkEvent
@@ -32,14 +33,103 @@ type NativeHttpResponseStart = {
 type NativeHttpChunkEvent = {
   sequence?: number
   requestId: string
-  chunk: number[]
+  chunk: string | number[]
   done: boolean
   error?: string | null
 }
 
 const NATIVE_HTTP_CHUNK_EVENT = 'native_http_chunk'
 
-function getTauriApis() {
+type TauriApis = {
+  invoke: (cmd: string, args?: Record<string, unknown>) => Promise<any>
+  listen: (event: string, handler: (event: TauriListenEvent) => void) => Promise<() => void>
+}
+
+const activeChunkReceivers = new Map<string, (payload: NativeHttpChunkEvent) => void>()
+let sharedListenFn: TauriApis['listen'] | null = null
+let sharedUnlisten: (() => void) | null = null
+let sharedListenPromise: Promise<void> | null = null
+
+function resetSharedListener() {
+  if (sharedUnlisten) {
+    const unlisten = sharedUnlisten
+    sharedUnlisten = null
+    unlisten()
+  }
+  sharedListenPromise = null
+  sharedListenFn = null
+}
+
+async function registerChunkReceiver(
+  apis: TauriApis,
+  requestId: string,
+  receiver: (payload: NativeHttpChunkEvent) => void
+): Promise<() => void> {
+  if (sharedListenFn && sharedListenFn !== apis.listen) {
+    resetSharedListener()
+    activeChunkReceivers.clear()
+  }
+
+  activeChunkReceivers.set(requestId, receiver)
+
+  try {
+    if (!sharedUnlisten) {
+      if (!sharedListenPromise) {
+        const targetListen = apis.listen
+        sharedListenFn = targetListen
+        sharedListenPromise = targetListen(NATIVE_HTTP_CHUNK_EVENT, (event) => {
+          const payload = event.payload
+          const handler = payload?.requestId ? activeChunkReceivers.get(payload.requestId) : undefined
+          handler?.(payload)
+        })
+          .then((unlisten) => {
+            if (activeChunkReceivers.size === 0 || sharedListenFn !== targetListen) {
+              unlisten()
+              return
+            }
+            sharedUnlisten = unlisten
+          })
+          .finally(() => {
+            sharedListenPromise = null
+          })
+      }
+      await sharedListenPromise
+    }
+  } catch (error) {
+    activeChunkReceivers.delete(requestId)
+    if (activeChunkReceivers.size === 0) {
+      resetSharedListener()
+    }
+    throw error
+  }
+
+  let removed = false
+  return () => {
+    if (removed) return
+    removed = true
+    activeChunkReceivers.delete(requestId)
+    if (activeChunkReceivers.size === 0) {
+      resetSharedListener()
+    }
+  }
+}
+
+function decodeChunkBytes(chunk: string | number[] | undefined): Uint8Array | null {
+  if (!chunk || chunk.length === 0) {
+    return null
+  }
+  if (typeof chunk === 'string') {
+    const binary = atob(chunk)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i += 1) {
+      bytes[i] = binary.charCodeAt(i)
+    }
+    return bytes
+  }
+  return Uint8Array.from(chunk)
+}
+
+function getTauriApis(): TauriApis | null {
   const tauri = (window as any).__TAURI__
   const invoke = tauri?.core?.invoke
   const listen = tauri?.event?.listen
@@ -49,8 +139,8 @@ function getTauriApis() {
   }
 
   return {
-    invoke: invoke as (cmd: string, args?: Record<string, unknown>) => Promise<any>,
-    listen: listen as (event: string, handler: (event: TauriListenEvent) => void) => Promise<() => void>
+    invoke: invoke as TauriApis['invoke'],
+    listen: listen as TauriApis['listen']
   }
 }
 
@@ -82,7 +172,7 @@ async function tauriNativeFetch(input: RequestInfo | URL, init?: RequestInit): P
   let pendingChunks: Uint8Array[] = []
   let pendingError: Error | DOMException | null = null
   let pendingDone = false
-  let unlisten: (() => void) | null = null
+  let unregisterReceiver: (() => void) | null = null
   let aborting = false
   let consumedSequence = 0
   let replaying = false
@@ -109,9 +199,9 @@ async function tauriNativeFetch(input: RequestInfo | URL, init?: RequestInit): P
   }
 
   const cleanup = () => {
-    if (unlisten) {
-      unlisten()
-      unlisten = null
+    if (unregisterReceiver) {
+      unregisterReceiver()
+      unregisterReceiver = null
     }
     request.signal.removeEventListener('abort', onAbort)
     document.removeEventListener('visibilitychange', resumeDelivery)
@@ -141,7 +231,8 @@ async function tauriNativeFetch(input: RequestInfo | URL, init?: RequestInit): P
 
   const consume = (payload: NativeHttpChunkEvent) => {
     if (streamClosed || aborting) return
-    if (payload.chunk?.length) pendingChunks.push(Uint8Array.from(payload.chunk))
+    const decoded = decodeChunkBytes(payload.chunk)
+    if (decoded && decoded.byteLength > 0) pendingChunks.push(decoded)
     if (payload.error) pendingError = new Error(payload.error)
     if (payload.done) {
       pendingDone = true
@@ -149,6 +240,7 @@ async function tauriNativeFetch(input: RequestInfo | URL, init?: RequestInit): P
     }
     flushPending()
   }
+
   const receive = (payload: NativeHttpChunkEvent) => {
     if (payload.requestId !== requestId || aborting || streamClosed) return
     if (!payload.sequence) {
@@ -165,6 +257,7 @@ async function tauriNativeFetch(input: RequestInfo | URL, init?: RequestInit): P
     void apis.invoke('acknowledge_http_chunks', { requestId, sequence: consumedSequence }).catch(() => {})
     if (orderedChunks.size) void replay().catch(() => {})
   }
+
   const replay = async () => {
     if (replaying || aborting || streamClosed) return
     replaying = true
@@ -174,15 +267,22 @@ async function tauriNativeFetch(input: RequestInfo | URL, init?: RequestInit): P
       replaying = false
     }
   }
+
   const resumeDelivery = () => {
     if (!document.hidden) void replay().catch(() => {})
   }
+
   document.addEventListener('visibilitychange', resumeDelivery)
   let bodyBuffer: Uint8Array | undefined
   try {
-    unlisten = await apis.listen(NATIVE_HTTP_CHUNK_EVENT, (event) => receive(event.payload))
-    bodyBuffer =
-      request.method === 'GET' || request.method === 'HEAD' ? undefined : new Uint8Array(await request.arrayBuffer())
+    unregisterReceiver = await registerChunkReceiver(apis, requestId, receive)
+    if (request.method !== 'GET' && request.method !== 'HEAD') {
+      if (!(input instanceof Request) && typeof init?.body === 'string') {
+        bodyBuffer = textEncoder.encode(init.body)
+      } else {
+        bodyBuffer = new Uint8Array(await request.arrayBuffer())
+      }
+    }
   } catch (error) {
     cleanup()
     throw error

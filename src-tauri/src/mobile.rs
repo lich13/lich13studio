@@ -11,11 +11,7 @@ pub extern "system" fn Java_com_lich13_studio_BackgroundService_cancelNativeTask
     _class: *mut std::ffi::c_void,
 ) {
     TASK_EPOCH.fetch_add(1, Ordering::SeqCst);
-    if let Ok(registry) = crate::native_http_abort_registry().lock() {
-        for flag in registry.values() {
-            flag.store(true, Ordering::SeqCst);
-        }
-    }
+    crate::cancel_all_http_requests();
 }
 use tauri::AppHandle;
 #[cfg(target_os = "android")]

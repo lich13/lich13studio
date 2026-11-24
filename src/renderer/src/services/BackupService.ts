@@ -176,15 +176,19 @@ export async function restore() {
   })
 
   if (file) {
+    let archiveExtracted = false
+    let handedOffToHandleData = false
     try {
       // zip backup file
       if (/\.(zip|lich13backup)$/i.test(file.fileName)) {
         const restoreData = await window.api.backup.restore(file.filePath)
+        archiveExtracted = true
 
         // Direct backup format returns void (app needs to relaunch)
         // Legacy format returns JSON string that needs to be processed
         if (restoreData !== undefined && restoreData !== null) {
           const data = JSON.parse(restoreData)
+          handedOffToHandleData = true
           await handleData(data)
         } else {
           // Direct backup was restored, app will relaunch
@@ -204,6 +208,7 @@ export async function restore() {
       } else {
         // Legacy .bak format
         const data = JSON.parse(await window.api.zip.decompress(file.content))
+        handedOffToHandleData = true
         await handleData(data)
       }
 
@@ -218,6 +223,9 @@ export async function restore() {
         channel: 'system'
       })
     } catch (error) {
+      if (archiveExtracted && !handedOffToHandleData && (window as any).__TAURI__) {
+        await invoke('finish_backup_restore', { commit: false }).catch(() => {})
+      }
       if (error instanceof Error && error.name === 'AbortError') return
       logger.error('restore: Error restoring backup file:', error as Error)
       window.modal.error({
@@ -457,9 +465,15 @@ export async function restoreFromWebdav(fileName?: string) {
   }
 
   // Legacy backup format (version <= 5) returns JSON string
+  let handedOffToHandleData = false
   try {
-    await handleData(JSON.parse(data))
+    const parsed = JSON.parse(data)
+    handedOffToHandleData = true
+    await handleData(parsed)
   } catch (error) {
+    if (!handedOffToHandleData && (window as any).__TAURI__) {
+      await invoke('finish_backup_restore', { commit: false }).catch(() => {})
+    }
     logger.error('[Backup] Error downloading file from WebDAV:', error as Error)
     window.toast.error(i18n.t('error.backup.file_format'))
   }
@@ -806,7 +820,9 @@ export async function handleData(data: Record<string, any>) {
     setTimeout(() => window.api.relaunchApp(), 1000)
   } catch (error) {
     if (stateWritten) await writeState(previousState)
-    await finishFiles(false)
+    await finishFiles(false).catch((rollbackError) =>
+      logger.error('Failed to roll back staged restore files:', rollbackError as Error)
+    )
     if (paused) persistor.persist()
     throw error
   }
@@ -974,10 +990,13 @@ export async function backupToLocal({
 }
 
 export async function restoreFromLocal(fileName: string) {
+  let archiveExtracted = false
+  let handedOffToHandleData = false
   try {
     const { localBackupDir: localBackupDirSetting } = store.getState().settings
     const localBackupDir = await window.api.resolvePath(localBackupDirSetting)
     const restoreData = await window.api.backup.restoreFromLocalBackup(fileName, localBackupDir)
+    archiveExtracted = true
 
     // Direct backup format (version 6+) returns undefined - app needs to relaunch
     if (!restoreData) {
@@ -987,10 +1006,17 @@ export async function restoreFromLocal(fileName: string) {
 
     // Legacy backup format (version <= 5) returns JSON string
     const data = JSON.parse(restoreData)
+    handedOffToHandleData = true
     await handleData(data)
 
     return true
   } catch (error) {
+    if (archiveExtracted && !handedOffToHandleData && (window as any).__TAURI__) {
+      await invoke('finish_backup_restore', { commit: false }).catch(() => {})
+    }
+    if (error instanceof Error && error.name === 'AbortError') {
+      return false
+    }
     logger.error('[LocalBackup] Restore failed:', error as Error)
     window.toast.error(i18n.t('error.backup.file_format'))
     throw error

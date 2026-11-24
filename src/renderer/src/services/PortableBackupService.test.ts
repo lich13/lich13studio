@@ -6,11 +6,19 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('@tauri-apps/api/core', () => ({ invoke: mocks.invoke }))
+vi.mock('@renderer/tauri-shim', () => ({
+  buildBackupSnapshot: vi.fn(async (includeCredentials: boolean) => ({
+    version: 5,
+    includeCredentials,
+    localStorage: { 'persist:cherry-studio': '{}' },
+    indexedDB: {}
+  }))
+}))
 vi.mock('@renderer/components/Popups/BackupPasswordPopup', () => ({
   requestBackupPassword: mocks.requestPassword
 }))
 
-import { decryptPortableBackup } from './PortableBackupService'
+import { decryptPortableBackup, exportPortableBackup } from './PortableBackupService'
 
 describe('decryptPortableBackup', () => {
   beforeEach(() => {
@@ -23,5 +31,23 @@ describe('decryptPortableBackup', () => {
 
     expect(mocks.requestPassword).toHaveBeenCalledOnce()
     expect(mocks.invoke).not.toHaveBeenCalled()
+  })
+
+  it('exports encrypted portable backups via single one-shot native command', async () => {
+    mocks.invoke.mockResolvedValueOnce('/tmp/lich13studio.lich13backup')
+
+    const saved = await exportPortableBackup('lich13studio.20261125.zip', false, {
+      includeCredentials: true,
+      password: 'fixture-password'
+    })
+
+    expect(saved).toBe('/tmp/lich13studio.lich13backup')
+    expect(mocks.invoke).toHaveBeenCalledTimes(1)
+    expect(mocks.invoke).toHaveBeenCalledWith('export_portable_backup_archive', {
+      fileName: 'lich13studio.20261125.lich13backup',
+      state: expect.objectContaining({ version: 5, includeCredentials: true }),
+      includeFiles: true,
+      password: 'fixture-password'
+    })
   })
 })

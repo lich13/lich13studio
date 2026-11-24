@@ -22,7 +22,7 @@ fn cipher(password: &str, salt: &[u8]) -> Result<Aes256Gcm, String> {
         .map_err(|_| "Backup cipher initialization failed".into())
 }
 
-fn encrypt(bytes: &[u8], password: &str) -> Result<Vec<u8>, String> {
+pub(crate) fn encrypt(bytes: &[u8], password: &str) -> Result<Vec<u8>, String> {
     let mut salt = [0u8; SALT_LEN];
     OsRng.fill_bytes(&mut salt);
     let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
@@ -42,7 +42,7 @@ fn encrypt(bytes: &[u8], password: &str) -> Result<Vec<u8>, String> {
     Ok(header)
 }
 
-fn decrypt(bytes: &[u8], password: &str) -> Result<Vec<u8>, String> {
+pub(crate) fn decrypt(bytes: &[u8], password: &str) -> Result<Vec<u8>, String> {
     let header_len = MAGIC.len() + SALT_LEN + NONCE_LEN;
     if bytes.len() < header_len + 16 || !bytes.starts_with(MAGIC) {
         return Err("Invalid encrypted backup".into());

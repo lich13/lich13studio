@@ -25,7 +25,7 @@ type ResponseStart = {
   statusText: string
   headers: { name: string; value: string }[]
 }
-type Chunk = { requestId: string; sequence: number; chunk: number[]; done: boolean; error?: string }
+type Chunk = { requestId: string; sequence: number; chunk: string | number[]; done: boolean; error?: string }
 type Listener = (event: { payload: Chunk }) => void
 
 function deferred<T>() {
@@ -331,5 +331,17 @@ describe('Tauri native fetch delivery', () => {
     expect(getTauriNativeFetch()).toBeUndefined()
     expect(invoke).not.toHaveBeenCalled()
     expect(listen).not.toHaveBeenCalled()
+  })
+
+  it('decodes Base64-serialized chunks and shares a single event listener across concurrent requests', async () => {
+    const [first, second] = await Promise.all([nativeFetch(), nativeFetch()])
+    expect(listen).toHaveBeenCalledTimes(1)
+    const [firstId, secondId] = requests.map(({ requestId }) => requestId)
+    emit({ requestId: firstId, sequence: 1, chunk: btoa('hello '), done: false })
+    emit({ requestId: secondId, sequence: 1, chunk: btoa('world'), done: true })
+    emit({ requestId: firstId, sequence: 2, chunk: btoa('base64'), done: true })
+    expect(await first.text()).toBe('hello base64')
+    expect(await second.text()).toBe('world')
+    expect(activeListeners.size).toBe(0)
   })
 })

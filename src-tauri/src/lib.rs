@@ -26,9 +26,9 @@ use std::ffi::OsStr;
 use std::fs;
 use std::fs::File;
 use std::io::{Cursor, Read, Write};
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::process::Command as StdCommand;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 #[cfg(not(target_os = "android"))]
@@ -183,6 +183,8 @@ struct NativeHttpRequest {
     headers: Vec<NativeHttpHeader>,
     body: Option<Vec<u8>>,
     #[serde(default)]
+    body_text: Option<String>,
+    #[serde(default)]
     task_epoch: Option<u64>,
 }
 
@@ -195,14 +197,26 @@ struct NativeHttpResponseStart {
     headers: Vec<NativeHttpHeader>,
 }
 
+fn serialize_bytes_as_base64<S>(bytes: &[u8], serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    if bytes.is_empty() {
+        serializer.serialize_str("")
+    } else {
+        serializer.serialize_str(&general_purpose::STANDARD.encode(bytes))
+    }
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct NativeHttpChunkEvent {
-    sequence: Option<u64>,
-    request_id: String,
-    chunk: Vec<u8>,
-    done: bool,
-    error: Option<String>,
+    pub(crate) sequence: Option<u64>,
+    pub(crate) request_id: String,
+    #[serde(serialize_with = "serialize_bytes_as_base64")]
+    pub(crate) chunk: Vec<u8>,
+    pub(crate) done: bool,
+    pub(crate) error: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -322,11 +336,52 @@ struct AutoLaunchConfig {
 const NATIVE_HTTP_CHUNK_EVENT: &str = "native_http_chunk";
 const FOCUS_CHAT_INPUT_EVENT: &str = "focus_chat_input";
 
-static HTTP_REQUEST_ABORTS: OnceLock<Mutex<HashMap<String, Arc<AtomicBool>>>> = OnceLock::new();
+pub(crate) struct HttpAbortHandle {
+    flag: AtomicBool,
+    notify: tokio::sync::Notify,
+}
+
+impl HttpAbortHandle {
+    pub(crate) fn new() -> Self {
+        Self {
+            flag: AtomicBool::new(false),
+            notify: tokio::sync::Notify::new(),
+        }
+    }
+
+    pub(crate) fn is_aborted(&self) -> bool {
+        self.flag.load(Ordering::SeqCst)
+    }
+
+    pub(crate) fn cancel(&self) {
+        self.flag.store(true, Ordering::SeqCst);
+        self.notify.notify_waiters();
+    }
+
+    pub(crate) async fn cancelled(&self) {
+        loop {
+            let notified = self.notify.notified();
+            tokio::pin!(notified);
+            notified.as_mut().enable();
+            if self.is_aborted() {
+                return;
+            }
+            notified.await;
+        }
+    }
+}
+
+static HTTP_REQUEST_ABORTS: OnceLock<Mutex<HashMap<String, Arc<HttpAbortHandle>>>> =
+    OnceLock::new();
 #[cfg(not(target_os = "android"))]
 static STARTUP_VISIBILITY: OnceLock<Mutex<StartupVisibility>> = OnceLock::new();
 #[cfg(not(target_os = "android"))]
 static DEFERRED_MAIN_WINDOW_MODE: OnceLock<Mutex<RestoredWindowMode>> = OnceLock::new();
+#[cfg(not(target_os = "android"))]
+static PENDING_WINDOW_STATES: OnceLock<Mutex<HashMap<String, PersistedWindowState>>> =
+    OnceLock::new();
+#[cfg(not(target_os = "android"))]
+static WINDOW_STATE_SAVE_EPOCH: AtomicU64 = AtomicU64::new(0);
 static MINI_WINDOW_PINNED: AtomicBool = AtomicBool::new(false);
 static STARTED_SILENTLY: AtomicBool = AtomicBool::new(false);
 static RUNTIME_SETTINGS: OnceLock<Mutex<RuntimeSettings>> = OnceLock::new();
@@ -356,8 +411,18 @@ fn hidden_command<S: AsRef<OsStr>>(program: S) -> Command {
     Command::new(program)
 }
 
-fn native_http_abort_registry() -> &'static Mutex<HashMap<String, Arc<AtomicBool>>> {
+fn native_http_abort_registry() -> &'static Mutex<HashMap<String, Arc<HttpAbortHandle>>> {
     HTTP_REQUEST_ABORTS.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+#[cfg_attr(not(any(target_os = "android", test)), allow(dead_code))]
+pub(crate) fn cancel_all_http_requests() {
+    http_delivery::clear();
+    if let Ok(registry) = native_http_abort_registry().lock() {
+        for handle in registry.values() {
+            handle.cancel();
+        }
+    }
 }
 
 fn runtime_settings_lock() -> &'static Mutex<RuntimeSettings> {
@@ -932,12 +997,12 @@ fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn register_native_http_abort(request_id: &str) -> Arc<AtomicBool> {
-    let flag = Arc::new(AtomicBool::new(false));
+fn register_native_http_abort(request_id: &str) -> Arc<HttpAbortHandle> {
+    let handle = Arc::new(HttpAbortHandle::new());
     if let Ok(mut registry) = native_http_abort_registry().lock() {
-        registry.insert(request_id.to_string(), flag.clone());
+        registry.insert(request_id.to_string(), handle.clone());
     }
-    flag
+    handle
 }
 
 fn remove_native_http_abort(request_id: &str) {
@@ -962,13 +1027,13 @@ async fn emit_native_http_chunk(
     };
     #[cfg(target_os = "android")]
     {
-        let flag = native_http_abort_registry()
+        let abort = native_http_abort_registry()
             .lock()
             .unwrap()
             .get(request_id)
             .cloned();
-        if let Some(flag) = flag {
-            http_delivery::emit(window, payload, &flag).await;
+        if let Some(abort) = abort {
+            http_delivery::emit(window, payload, &abort).await;
         }
     }
     #[cfg(not(target_os = "android"))]
@@ -1025,43 +1090,23 @@ fn load_window_state(label: &str) -> Result<Option<PersistedWindowState>, String
 }
 
 #[cfg(not(target_os = "android"))]
-fn persist_window_state(window: &Window) -> Result<(), String> {
-    // Geometry changes during hidden startup must not overwrite the saved
-    // fullscreen/maximized mode that is waiting for the first explicit show.
-    if window.label() == "main"
-        && !STARTUP_VISIBILITY
-            .get()
-            .and_then(|visibility| {
-                visibility
-                    .lock()
-                    .ok()
-                    .map(|visibility| visibility.has_presented())
-            })
-            .unwrap_or(false)
-    {
-        return Ok(());
-    }
-    let label = window.label().to_string();
+fn pending_window_states() -> &'static Mutex<HashMap<String, PersistedWindowState>> {
+    PENDING_WINDOW_STATES.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+#[cfg(not(target_os = "android"))]
+fn flush_pending_window_states() -> Result<(), String> {
+    let pending_entries = {
+        let mut guard = pending_window_states()
+            .lock()
+            .map_err(|_| String::from("window state cache lock poisoned"))?;
+        if guard.is_empty() {
+            return Ok(());
+        }
+        std::mem::take(&mut *guard)
+    };
+
     let mut state = load_state_file().unwrap_or_else(|_| json!({}));
-    let mut persisted_state = load_window_state(&label)?.unwrap_or_default();
-    let is_maximized = window.is_maximized().map_err(|error| error.to_string())?;
-    let is_fullscreen = window.is_fullscreen().map_err(|error| error.to_string())?;
-
-    persisted_state.maximized = is_maximized;
-    persisted_state.fullscreen = is_fullscreen;
-
-    if !is_maximized && !is_fullscreen {
-        if let Ok(position) = window.outer_position() {
-            persisted_state.x = Some(position.x);
-            persisted_state.y = Some(position.y);
-        }
-
-        if let Ok(size) = window.outer_size() {
-            persisted_state.width = Some(size.width);
-            persisted_state.height = Some(size.height);
-        }
-    }
-
     if !state.is_object() {
         state = json!({});
     }
@@ -1082,23 +1127,83 @@ fn persist_window_state(window: &Window) -> Result<(), String> {
         .as_object_mut()
         .ok_or_else(|| String::from("Invalid state payload: windowState must be an object"))?;
 
-    window_state_map.insert(
-        label,
-        serde_json::to_value(persisted_state).map_err(|error| error.to_string())?,
-    );
+    for (label, persisted_state) in pending_entries {
+        window_state_map.insert(
+            label,
+            serde_json::to_value(persisted_state).map_err(|error| error.to_string())?,
+        );
+    }
 
     save_state_file(&state)?;
     Ok(())
 }
 
-fn should_persist_window_event(event: &WindowEvent) -> bool {
-    matches!(
-        event,
-        WindowEvent::Resized(_)
-            | WindowEvent::Moved(_)
-            | WindowEvent::CloseRequested { .. }
-            | WindowEvent::Destroyed
-    )
+#[cfg(not(target_os = "android"))]
+fn persist_window_state(window: &Window, immediate: bool) -> Result<(), String> {
+    // Geometry changes during hidden startup must not overwrite the saved
+    // fullscreen/maximized mode that is waiting for the first explicit show.
+    if window.label() == "main"
+        && !STARTUP_VISIBILITY
+            .get()
+            .and_then(|visibility| {
+                visibility
+                    .lock()
+                    .ok()
+                    .map(|visibility| visibility.has_presented())
+            })
+            .unwrap_or(false)
+    {
+        return Ok(());
+    }
+    let label = window.label().to_string();
+    let mut persisted_state = pending_window_states()
+        .lock()
+        .ok()
+        .and_then(|guard| guard.get(&label).cloned())
+        .or_else(|| load_window_state(&label).ok().flatten())
+        .unwrap_or_default();
+    let is_maximized = window.is_maximized().map_err(|error| error.to_string())?;
+    let is_fullscreen = window.is_fullscreen().map_err(|error| error.to_string())?;
+
+    persisted_state.maximized = is_maximized;
+    persisted_state.fullscreen = is_fullscreen;
+
+    if !is_maximized && !is_fullscreen {
+        if let Ok(position) = window.outer_position() {
+            persisted_state.x = Some(position.x);
+            persisted_state.y = Some(position.y);
+        }
+
+        if let Ok(size) = window.outer_size() {
+            persisted_state.width = Some(size.width);
+            persisted_state.height = Some(size.height);
+        }
+    }
+
+    if let Ok(mut guard) = pending_window_states().lock() {
+        guard.insert(label, persisted_state);
+    }
+
+    let epoch = WINDOW_STATE_SAVE_EPOCH.fetch_add(1, Ordering::SeqCst) + 1;
+    if immediate {
+        return flush_pending_window_states();
+    }
+
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(Duration::from_millis(300)).await;
+        if WINDOW_STATE_SAVE_EPOCH.load(Ordering::SeqCst) == epoch {
+            let _ = flush_pending_window_states();
+        }
+    });
+    Ok(())
+}
+
+fn should_persist_window_event(event: &WindowEvent) -> Option<bool> {
+    match event {
+        WindowEvent::Resized(_) | WindowEvent::Moved(_) => Some(false),
+        WindowEvent::CloseRequested { .. } | WindowEvent::Destroyed => Some(true),
+        _ => None,
+    }
 }
 
 #[cfg(not(target_os = "android"))]
@@ -1111,7 +1216,7 @@ fn handle_main_window_close(_window: &Window, _event: &WindowEvent) {
             }
 
             api.prevent_close();
-            let _ = persist_window_state(_window);
+            let _ = persist_window_state(_window, true);
             match main_window_close_action(current_runtime_settings()) {
                 MainWindowCloseAction::KeepBackground => {
                     let _ = _window.hide();
@@ -1176,16 +1281,8 @@ fn downloads_dir() -> Result<PathBuf, String> {
     Ok(path)
 }
 
-fn timestamp_tag() -> String {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|duration| duration.as_secs().to_string())
-        .unwrap_or_else(|_| String::from("0"))
-}
-
-#[tauri::command]
 #[cfg(not(target_os = "android"))]
-async fn save_file(file_name: String, bytes: Vec<u8>) -> Result<String, String> {
+async fn save_file_bytes(file_name: String, bytes: Vec<u8>) -> Result<String, String> {
     let handle = rfd::AsyncFileDialog::new()
         .set_file_name(file_name.as_str())
         .save_file()
@@ -1198,6 +1295,12 @@ async fn save_file(file_name: String, bytes: Vec<u8>) -> Result<String, String> 
     let file_path = file_handle.path().to_path_buf();
     fs::write(&file_path, bytes).map_err(|error| error.to_string())?;
     Ok(file_path.display().to_string())
+}
+
+#[tauri::command]
+#[cfg(not(target_os = "android"))]
+async fn save_file(file_name: String, bytes: Vec<u8>) -> Result<String, String> {
+    save_file_bytes(file_name, bytes).await
 }
 
 #[tauri::command]
@@ -1407,12 +1510,6 @@ fn obsidian_files(vault_name: &str) -> Result<Vec<ObsidianFileInfo>, String> {
     Ok(results)
 }
 
-async fn wait_for_http_abort(flag: &AtomicBool) {
-    while !flag.load(Ordering::Relaxed) {
-        tokio::time::sleep(Duration::from_millis(25)).await;
-    }
-}
-
 #[tauri::command]
 async fn start_http_request(
     window: Window,
@@ -1446,16 +1543,15 @@ async fn start_http_request(
         id: request_id.clone(),
         armed: true,
     };
-    let abort_flag = register_native_http_abort(&request_id);
+    let abort_handle = register_native_http_abort(&request_id);
     #[cfg(target_os = "android")]
     http_delivery::register(&request_id);
     let (target, client) = tokio::select! {
-      result = net_policy::guarded_client(&request.url, net_policy::HostPolicy::User) => result?,
-      _ = wait_for_http_abort(&abort_flag) => {
+      result = net_policy::guarded_http_client(&request.url, net_policy::HostPolicy::User) => result?,
+      _ = abort_handle.cancelled() => {
         return Err(String::from("Request was aborted"));
       }
     };
-    let client = client.build().map_err(|error| error.to_string())?;
 
     let method =
         Method::from_bytes(request.method.as_bytes()).map_err(|error| error.to_string())?;
@@ -1472,11 +1568,13 @@ async fn start_http_request(
         builder = builder.header(header_name, header_value);
     }
 
-    if let Some(body) = request.body.clone().filter(|bytes| !bytes.is_empty()) {
+    if let Some(body_text) = request.body_text.filter(|text| !text.is_empty()) {
+        builder = builder.body(body_text);
+    } else if let Some(body) = request.body.filter(|bytes| !bytes.is_empty()) {
         builder = builder.body(body);
     }
 
-    if abort_flag.load(Ordering::Relaxed) {
+    if abort_handle.is_aborted() {
         remove_native_http_abort(&request_id);
         return Err(String::from("Request was aborted"));
     }
@@ -1486,7 +1584,7 @@ async fn start_http_request(
         remove_native_http_abort(&request_id);
         error.to_string()
       })?,
-      _ = wait_for_http_abort(&abort_flag) => {
+      _ = abort_handle.cancelled() => {
         remove_native_http_abort(&request_id);
         return Err(String::from("Request was aborted"));
       }
@@ -1522,13 +1620,13 @@ async fn start_http_request(
         loop {
             let chunk = tokio::select! {
               chunk = stream.next() => chunk,
-              _ = wait_for_http_abort(&abort_flag) => None,
+              _ = abort_handle.cancelled() => None,
             };
             let Some(chunk) = chunk else { break };
             match chunk {
                 Ok(bytes) => {
                     for part in bytes.chunks(16 * 1024) {
-                        if abort_flag.load(Ordering::Relaxed) {
+                        if abort_handle.is_aborted() {
                             break;
                         }
                         emit_native_http_chunk(
@@ -1561,8 +1659,8 @@ async fn start_http_request(
             &task_request_id,
             Vec::new(),
             true,
-            abort_flag
-                .load(Ordering::Relaxed)
+            abort_handle
+                .is_aborted()
                 .then(|| "Request was aborted".into()),
         )
         .await;
@@ -1577,8 +1675,8 @@ async fn start_http_request(
 async fn abort_http_request(request_id: String) -> Result<bool, String> {
     http_delivery::remove(&request_id);
     if let Ok(registry) = native_http_abort_registry().lock() {
-        if let Some(flag) = registry.get(&request_id) {
-            flag.store(true, Ordering::Relaxed);
+        if let Some(handle) = registry.get(&request_id) {
+            handle.cancel();
             return Ok(true);
         }
     }
@@ -1587,9 +1685,9 @@ async fn abort_http_request(request_id: String) -> Result<bool, String> {
 }
 
 async fn webdav_client(config: &BackupWebDavConfig) -> Result<Client, String> {
-    let (_, builder) =
-        net_policy::guarded_client(&config.url, net_policy::HostPolicy::User).await?;
-    builder.build().map_err(|error| error.to_string())
+    let (_, client) =
+        net_policy::guarded_http_client(&config.url, net_policy::HostPolicy::User).await?;
+    Ok(client)
 }
 
 async fn upload_webdav(config: &BackupWebDavConfig, payload: Vec<u8>) -> Result<String, String> {
@@ -1830,9 +1928,27 @@ async fn create_webdav_folder(config: &BackupWebDavConfig, dir_path: &str) -> Re
     Ok(true)
 }
 
+fn validate_safe_backup_file_name(file_name: &str) -> Result<&str, String> {
+    let trimmed = file_name.trim();
+    if trimmed.is_empty()
+        || trimmed == "."
+        || trimmed == ".."
+        || trimmed.contains(['/', '\\', ':'])
+        || trimmed.chars().any(char::is_control)
+    {
+        return Err(String::from("Invalid backup file name"));
+    }
+    let mut components = Path::new(trimmed).components();
+    match (components.next(), components.next()) {
+        (Some(Component::Normal(_)), None) => Ok(trimmed),
+        _ => Err(String::from("Invalid backup file name")),
+    }
+}
+
 async fn delete_webdav(config: &BackupWebDavConfig, file_name: &str) -> Result<bool, String> {
+    let safe_name = validate_safe_backup_file_name(file_name)?;
     let client = webdav_client(config).await?;
-    let target = format!("{}/{}", normalize_base_url(&config.url), file_name);
+    let target = format!("{}/{}", normalize_base_url(&config.url), safe_name);
 
     let mut request = client
         .delete(target)
@@ -1862,9 +1978,7 @@ fn format_system_time(time: SystemTime) -> String {
 }
 
 fn config_dir() -> Result<PathBuf, String> {
-    let path = app_data_dir()?.join("config");
-    fs::create_dir_all(&path).map_err(|error| error.to_string())?;
-    Ok(path)
+    Ok(app_data_dir()?.join("config"))
 }
 
 fn files_dir() -> Result<PathBuf, String> {
@@ -1874,15 +1988,11 @@ fn files_dir() -> Result<PathBuf, String> {
 }
 
 fn notes_dir() -> Result<PathBuf, String> {
-    let path = app_data_dir()?.join("Data").join("Notes");
-    fs::create_dir_all(&path).map_err(|error| error.to_string())?;
-    Ok(path)
+    Ok(app_data_dir()?.join("Data").join("Notes"))
 }
 
 fn logs_dir() -> Result<PathBuf, String> {
-    let path = app_data_dir()?.join("Logs");
-    fs::create_dir_all(&path).map_err(|error| error.to_string())?;
-    Ok(path)
+    Ok(app_data_dir()?.join("Logs"))
 }
 
 fn extension_from_mime_type(mime_type: Option<&str>) -> &'static str {
@@ -2271,11 +2381,9 @@ async fn fetch_latest_update_info(
     platform: &str,
 ) -> Result<AppUpdateInfo, String> {
     let (target, client) =
-        net_policy::guarded_client(GITHUB_LATEST_RELEASE_API_URL, net_policy::HostPolicy::App)
+        net_policy::guarded_http_client(GITHUB_LATEST_RELEASE_API_URL, net_policy::HostPolicy::App)
             .await?;
     let release = client
-        .build()
-        .map_err(|error| error.to_string())?
         .get(target)
         .header(USER_AGENT, "lich13studio")
         .send()
@@ -2374,8 +2482,8 @@ fn add_directory_to_zip(
 
         zip.start_file(archive_path, zip_file_options())
             .map_err(|error| error.to_string())?;
-        let bytes = fs::read(path).map_err(|error| error.to_string())?;
-        zip.write_all(&bytes).map_err(|error| error.to_string())?;
+        let mut file = File::open(path).map_err(|error| error.to_string())?;
+        std::io::copy(&mut file, zip).map_err(|error| error.to_string())?;
     }
 
     Ok(())
@@ -2398,8 +2506,7 @@ fn create_backup_archive_bytes(state: &Value, include_files: bool) -> Result<Vec
     Ok(cursor.into_inner())
 }
 
-fn validate_backup_payload(payload: &str) -> Result<(), String> {
-    let data: Value = serde_json::from_str(payload).map_err(|_| "Invalid backup JSON")?;
+fn validate_backup_value(data: &Value) -> Result<(), String> {
     let version = data["version"].as_u64().ok_or("Missing backup version")?;
     if !(1..=5).contains(&version)
         || !data["localStorage"].is_object()
@@ -2420,6 +2527,11 @@ fn validate_backup_payload(payload: &str) -> Result<(), String> {
         }
     }
     Ok(())
+}
+
+fn validate_backup_payload(payload: &str) -> Result<(), String> {
+    let data: Value = serde_json::from_str(payload).map_err(|_| "Invalid backup JSON")?;
+    validate_backup_value(&data)
 }
 
 static PENDING_BACKUP_RESTORE: OnceLock<Mutex<Option<(PathBuf, PathBuf, bool)>>> = OnceLock::new();
@@ -2533,8 +2645,67 @@ fn extract_backup_archive_to(bytes: &[u8], data_root: &Path) -> Result<String, S
 
 #[tauri::command]
 fn create_portable_backup(state: Value, include_files: bool) -> Result<Vec<u8>, String> {
-    validate_backup_payload(&state.to_string())?;
+    validate_backup_value(&state)?;
     create_backup_archive_bytes(&state, include_files)
+}
+
+#[tauri::command]
+async fn export_portable_backup_archive(
+    app: AppHandle,
+    file_name: String,
+    state: Value,
+    include_files: bool,
+    password: Option<String>,
+) -> Result<String, String> {
+    let safe_name = validate_safe_backup_file_name(&file_name)?.to_string();
+    let bytes = tauri::async_runtime::spawn_blocking(move || -> Result<Vec<u8>, String> {
+        validate_backup_value(&state)?;
+        let archive = create_backup_archive_bytes(&state, include_files)?;
+        if let Some(secret) = password {
+            let zeroized = zeroize::Zeroizing::new(secret);
+            backup_crypto::encrypt(&archive, &zeroized)
+        } else {
+            Ok(archive)
+        }
+    })
+    .await
+    .map_err(|_| String::from("Backup archive task failed"))??;
+
+    #[cfg(target_os = "android")]
+    {
+        mobile::save_file(app, safe_name, bytes).await
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = app;
+        save_file_bytes(safe_name, bytes).await
+    }
+}
+
+fn resolve_attachment_in_root(root: &Path, name: &str) -> Result<PathBuf, String> {
+    let canonical_root = root
+        .canonicalize()
+        .map_err(|_| String::from("Attachment directory unavailable"))?;
+    let trimmed = name.trim();
+    if trimmed.is_empty() || trimmed.chars().any(char::is_control) {
+        return Err(String::from("Invalid attachment name"));
+    }
+    let clean = trimmed.strip_prefix("file://").unwrap_or(trimmed);
+    let candidate = if Path::new(clean).is_absolute() {
+        PathBuf::from(clean)
+    } else {
+        if clean.contains(['/', '\\']) || clean == "." || clean == ".." {
+            return Err(String::from("Invalid attachment name"));
+        }
+        canonical_root.join(clean)
+    };
+    let canonical = candidate
+        .canonicalize()
+        .map_err(|_| String::from("Attachment not found"))?;
+    if !canonical.starts_with(&canonical_root) || canonical == canonical_root {
+        return Err(String::from("Attachment is outside application storage"));
+    }
+    Ok(canonical)
 }
 
 #[tauri::command]
@@ -2549,20 +2720,52 @@ fn persist_attachment(name: String, bytes: Vec<u8>) -> Result<String, String> {
 
 #[tauri::command]
 fn read_attachment(name: String) -> Result<Vec<u8>, String> {
-    let root = files_dir()?
-        .canonicalize()
-        .map_err(|_| "Attachment directory unavailable")?;
-    let name = name.strip_prefix("file://").unwrap_or(&name);
-    let path = if Path::new(name).is_absolute() {
-        PathBuf::from(name)
-    } else {
-        root.join(name)
-    };
-    let path = path.canonicalize().map_err(|_| "Attachment not found")?;
-    if !path.starts_with(root) {
-        return Err("Attachment is outside application storage".into());
-    }
+    let root = files_dir()?;
+    let path = resolve_attachment_in_root(&root, &name)?;
     fs::read(path).map_err(|_| "Could not read attachment".into())
+}
+
+fn delete_attachment_in_root(root: &Path, name: &str) -> Result<bool, String> {
+    match resolve_attachment_in_root(root, name) {
+        Ok(path) => {
+            if !path.is_file() {
+                return Err(String::from("Attachment is not a regular file"));
+            }
+            fs::remove_file(path).map_err(|_| String::from("Could not delete attachment"))?;
+            Ok(true)
+        }
+        Err(err) if err == "Attachment not found" => Ok(false),
+        Err(err) => Err(err),
+    }
+}
+
+fn clear_attachments_in_root(root: &Path) -> Result<u64, String> {
+    if !root.exists() {
+        return Ok(0);
+    }
+    let canonical_root = root
+        .canonicalize()
+        .map_err(|_| String::from("Attachment directory unavailable"))?;
+    let mut removed = 0u64;
+    for entry in fs::read_dir(&canonical_root).map_err(|error| error.to_string())? {
+        let entry = entry.map_err(|error| error.to_string())?;
+        let file_type = entry.file_type().map_err(|error| error.to_string())?;
+        if file_type.is_file() {
+            fs::remove_file(entry.path()).map_err(|error| error.to_string())?;
+            removed += 1;
+        }
+    }
+    Ok(removed)
+}
+
+#[tauri::command]
+fn delete_attachment(name: String) -> Result<bool, String> {
+    delete_attachment_in_root(&files_dir()?, &name)
+}
+
+#[tauri::command]
+fn clear_attachments() -> Result<u64, String> {
+    clear_attachments_in_root(&files_dir()?)
 }
 
 fn encode_png(image: image::RgbaImage) -> Result<Vec<u8>, String> {
@@ -2700,16 +2903,6 @@ fn get_hostname() -> String {
 }
 
 #[tauri::command]
-fn load_state() -> Result<Value, String> {
-    load_state_file()
-}
-
-#[tauri::command]
-fn save_state(state: Value) -> Result<String, String> {
-    save_state_file(&state)
-}
-
-#[tauri::command]
 fn set_runtime_setting(key: String, value: bool) -> Result<RuntimeSettings, String> {
     let mut settings = current_runtime_settings();
     apply_runtime_setting(&mut settings, &key, value)?;
@@ -2742,15 +2935,8 @@ fn is_startup_silent() -> bool {
 }
 
 #[tauri::command]
-fn export_backup(state: Value) -> Result<String, String> {
-    let path = downloads_dir()?.join(format!("lich13studio-backup-{}.zip", timestamp_tag()));
-    let payload = create_backup_archive_bytes(&state, true)?;
-    fs::write(&path, payload).map_err(|error| error.to_string())?;
-    Ok(path.display().to_string())
-}
-
-#[tauri::command]
 async fn webdav_backup(state: Value, config: BackupWebDavConfig) -> Result<String, String> {
+    validate_backup_value(&state)?;
     let payload = create_backup_archive_bytes(&state, !config.skip_backup_file.unwrap_or(false))?;
     upload_webdav(&config, payload).await
 }
@@ -2853,13 +3039,16 @@ async fn backup_to_local_dir(
     payload: String,
     skip_backup_file: Option<bool>,
 ) -> Result<bool, String> {
+    let safe_name = validate_safe_backup_file_name(&file_name)?;
     let base_dir = local_backup_dir
+        .filter(|dir| !dir.trim().is_empty())
         .map(PathBuf::from)
         .unwrap_or(downloads_dir()?);
 
     fs::create_dir_all(&base_dir).map_err(|error| error.to_string())?;
-    let file_path = base_dir.join(file_name);
+    let file_path = base_dir.join(safe_name);
     let state: Value = serde_json::from_str(&payload).map_err(|error| error.to_string())?;
+    validate_backup_value(&state)?;
     let bytes = create_backup_archive_bytes(&state, !skip_backup_file.unwrap_or(false))?;
     fs::write(file_path, bytes).map_err(|error| error.to_string())?;
     Ok(true)
@@ -2869,21 +3058,34 @@ async fn backup_to_local_dir(
 async fn restore_from_local_backup(
     file_name: String,
     local_backup_dir: Option<String>,
+    password: Option<String>,
 ) -> Result<String, String> {
+    let safe_name = validate_safe_backup_file_name(&file_name)?.to_string();
     let base_dir = local_backup_dir
+        .filter(|dir| !dir.trim().is_empty())
         .map(PathBuf::from)
         .unwrap_or(downloads_dir()?);
-    let file_path = base_dir.join(file_name);
-    if file_path
-        .extension()
-        .and_then(|ext| ext.to_str())
-        .is_some_and(|ext| ext.eq_ignore_ascii_case("zip"))
-    {
-        let bytes = fs::read(file_path).map_err(|error| error.to_string())?;
+    let file_path = base_dir.join(&safe_name);
+    let lower_name = safe_name.to_ascii_lowercase();
+    if lower_name.ends_with(".lich13backup") {
+        let encrypted = fs::read(&file_path).map_err(|error| error.to_string())?;
+        let secret = password.ok_or_else(|| String::from("Backup password is required"))?;
+        let decrypted = tauri::async_runtime::spawn_blocking(move || {
+            let zeroized = zeroize::Zeroizing::new(secret);
+            backup_crypto::decrypt(&encrypted, &zeroized)
+        })
+        .await
+        .map_err(|_| String::from("Backup decryption task failed"))??;
+        return extract_backup_archive(&decrypted);
+    }
+    if lower_name.ends_with(".zip") {
+        let bytes = fs::read(&file_path).map_err(|error| error.to_string())?;
         return extract_backup_archive(&bytes);
     }
 
-    fs::read_to_string(file_path).map_err(|error| error.to_string())
+    let raw = fs::read_to_string(&file_path).map_err(|error| error.to_string())?;
+    validate_backup_payload(&raw)?;
+    Ok(raw)
 }
 
 #[tauri::command]
@@ -2952,10 +3154,12 @@ async fn delete_local_backup_file(
     file_name: String,
     local_backup_dir: Option<String>,
 ) -> Result<bool, String> {
+    let safe_name = validate_safe_backup_file_name(&file_name)?;
     let base_dir = local_backup_dir
+        .filter(|dir| !dir.trim().is_empty())
         .map(PathBuf::from)
         .unwrap_or(downloads_dir()?);
-    let file_path = base_dir.join(file_name);
+    let file_path = base_dir.join(safe_name);
     if file_path.exists() {
         fs::remove_file(file_path).map_err(|error| error.to_string())?;
     }
@@ -3170,8 +3374,8 @@ pub fn run() {
             {
                 handle_main_window_close(window, event);
                 handle_mini_window_focus(window, event);
-                if should_persist_window_event(event) {
-                    let _ = persist_window_state(window);
+                if let Some(immediate) = should_persist_window_event(event) {
+                    let _ = persist_window_state(window, immediate);
                 }
             }
             let _ = (window, event);
@@ -3186,17 +3390,17 @@ pub fn run() {
             secure_store::clear_secure_credentials,
             get_device_type,
             get_hostname,
-            load_state,
-            save_state,
             set_runtime_setting,
             set_launch_on_boot,
             is_launch_on_boot_enabled,
             is_startup_silent,
             create_portable_backup,
+            export_portable_backup_archive,
             finish_backup_restore,
             persist_attachment,
             read_attachment,
-            export_backup,
+            delete_attachment,
+            clear_attachments,
             save_file,
             save_base64_image,
             pick_folder,
@@ -3253,20 +3457,90 @@ mod tests {
 
     #[tokio::test]
     async fn cancels_http_while_waiting_for_headers_or_stream_data() {
-        let flag = Arc::new(AtomicBool::new(false));
-        let trigger = flag.clone();
+        let handle = Arc::new(HttpAbortHandle::new());
+        let trigger = handle.clone();
         tokio::spawn(async move {
-            tokio::time::sleep(Duration::from_millis(20)).await;
-            trigger.store(true, Ordering::Relaxed);
+            tokio::time::sleep(Duration::from_millis(5)).await;
+            trigger.cancel();
         });
         let result = tokio::time::timeout(Duration::from_secs(1), async {
             tokio::select! {
               _ = std::future::pending::<()>() => false,
-              _ = wait_for_http_abort(&flag) => true,
+              _ = handle.cancelled() => true,
             }
         })
         .await;
         assert!(result.unwrap());
+        let handle = register_native_http_abort("bulk-cancel-test");
+        http_delivery::register("bulk-cancel-test");
+        cancel_all_http_requests();
+        assert!(handle.is_aborted());
+        assert!(http_delivery::replay_http_chunks("bulk-cancel-test".into()).is_empty());
+        remove_native_http_abort("bulk-cancel-test");
+    }
+
+    #[test]
+    fn serializes_native_http_chunks_as_base64_strings() {
+        let event = NativeHttpChunkEvent {
+            sequence: Some(3),
+            request_id: "req-1".into(),
+            chunk: b"hello\n".to_vec(),
+            done: false,
+            error: None,
+        };
+        let serialized = serde_json::to_value(&event).unwrap();
+        assert_eq!(serialized["chunk"], "aGVsbG8K");
+    }
+
+    #[test]
+    fn backup_file_name_validator_rejects_traversal_and_separators() {
+        for invalid in [
+            "",
+            "   ",
+            ".",
+            "..",
+            "../backup.zip",
+            "nested/backup.zip",
+            "nested\\backup.zip",
+            "C:backup.zip",
+            "backup\0.zip",
+        ] {
+            assert!(
+                validate_safe_backup_file_name(invalid).is_err(),
+                "{invalid:?} should be rejected"
+            );
+        }
+        assert_eq!(
+            validate_safe_backup_file_name("lich13studio.20261125.lich13backup").unwrap(),
+            "lich13studio.20261125.lich13backup"
+        );
+    }
+
+    #[test]
+    fn attachment_delete_and_clear_enforce_storage_boundaries() {
+        let root = std::env::temp_dir().join(format!("lich13-attach-test-{}", Uuid::new_v4()));
+        let files = root.join("Data").join("Files");
+        fs::create_dir_all(&files).unwrap();
+        let outside = root.join("outside.txt");
+        fs::write(&outside, b"keep").unwrap();
+        let inside = files.join("file-1.pdf");
+        fs::write(&inside, b"%PDF-1.4").unwrap();
+
+        assert!(delete_attachment_in_root(&files, "../outside.txt").is_err());
+        assert!(delete_attachment_in_root(&files, outside.to_str().unwrap()).is_err());
+        assert!(outside.exists());
+
+        assert!(!delete_attachment_in_root(&files, "missing.pdf").unwrap());
+        assert!(delete_attachment_in_root(&files, "file-1.pdf").unwrap());
+        assert!(!inside.exists());
+
+        fs::write(files.join("a.txt"), b"1").unwrap();
+        fs::write(files.join("b.txt"), b"2").unwrap();
+        assert_eq!(clear_attachments_in_root(&files).unwrap(), 2);
+        assert_eq!(fs::read_dir(&files).unwrap().count(), 0);
+        assert!(outside.exists());
+
+        fs::remove_dir_all(root).unwrap();
     }
 
     #[test]

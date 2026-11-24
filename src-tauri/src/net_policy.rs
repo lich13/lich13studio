@@ -8,17 +8,41 @@
 //!   pinned so the connection uses exactly what was checked.
 
 use reqwest::header::HeaderName;
-use reqwest::redirect;
-use reqwest::ClientBuilder;
+use reqwest::{redirect, Client, ClientBuilder};
+use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs};
+use std::sync::{Mutex, OnceLock};
+use std::time::{Duration, Instant};
 use url::{Host, Url};
 
 const MAX_REDIRECTS: usize = 10;
+const CLIENT_CACHE_TTL: Duration = Duration::from_secs(60);
+const CLIENT_CACHE_MAX_ENTRIES: usize = 32;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum HostPolicy {
     App,
     User,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct ClientCacheKey {
+    policy: HostPolicy,
+    scheme: String,
+    host: String,
+    port: u16,
+    addrs: Vec<SocketAddr>,
+}
+
+struct CachedClient {
+    client: Client,
+    created_at: Instant,
+}
+
+static CLIENT_POOL: OnceLock<Mutex<HashMap<ClientCacheKey, CachedClient>>> = OnceLock::new();
+
+fn client_pool() -> &'static Mutex<HashMap<ClientCacheKey, CachedClient>> {
+    CLIENT_POOL.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
 pub fn validate_url(raw: &str) -> Result<Url, String> {
@@ -142,15 +166,11 @@ fn check_url_blocking(url: &Url, policy: HostPolicy) -> Result<Vec<SocketAddr>, 
     Ok(addrs)
 }
 
-/// Validate the URL, resolve once, check every address and return a client builder
-/// pinned to those addresses with a redirect policy that re-applies the checks.
-pub async fn guarded_client(raw: &str, policy: HostPolicy) -> Result<(Url, ClientBuilder), String> {
-    let url = validate_url(raw)?;
-    let check_target = url.clone();
-    let addrs =
-        tauri::async_runtime::spawn_blocking(move || check_url_blocking(&check_target, policy))
-            .await
-            .map_err(|_| String::from("Request host did not resolve"))??;
+fn build_pinned_client_builder(
+    url: &Url,
+    policy: HostPolicy,
+    addrs: &[SocketAddr],
+) -> ClientBuilder {
     let mut builder = ClientBuilder::new().redirect(redirect::Policy::custom(move |attempt| {
         if attempt.previous().len() >= MAX_REDIRECTS {
             return attempt.error("Too many redirects");
@@ -163,9 +183,74 @@ pub async fn guarded_client(raw: &str, policy: HostPolicy) -> Result<(Url, Clien
         }
     }));
     if let (Some(domain), false) = (url.host_str(), addrs.is_empty()) {
-        builder = builder.resolve_to_addrs(domain, &addrs);
+        builder = builder.resolve_to_addrs(domain, addrs);
     }
-    Ok((url, builder))
+    builder
+}
+
+fn get_or_build_cached_client(
+    url: &Url,
+    policy: HostPolicy,
+    addrs: &[SocketAddr],
+) -> Result<Client, String> {
+    let mut sorted_addrs = addrs.to_vec();
+    sorted_addrs.sort_unstable();
+    sorted_addrs.dedup();
+
+    let key = ClientCacheKey {
+        policy,
+        scheme: url.scheme().to_ascii_lowercase(),
+        host: url.host_str().unwrap_or_default().to_ascii_lowercase(),
+        port: url.port_or_known_default().unwrap_or(443),
+        addrs: sorted_addrs,
+    };
+
+    let now = Instant::now();
+    if let Ok(mut pool) = client_pool().lock() {
+        pool.retain(|_, entry| now.duration_since(entry.created_at) < CLIENT_CACHE_TTL);
+        if let Some(entry) = pool.get(&key) {
+            return Ok(entry.client.clone());
+        }
+    }
+
+    let client = build_pinned_client_builder(url, policy, addrs)
+        .build()
+        .map_err(|error| error.to_string())?;
+
+    if let Ok(mut pool) = client_pool().lock() {
+        if pool.len() >= CLIENT_CACHE_MAX_ENTRIES {
+            if let Some(oldest_key) = pool
+                .iter()
+                .min_by_key(|(_, entry)| entry.created_at)
+                .map(|(k, _)| k.clone())
+            {
+                pool.remove(&oldest_key);
+            }
+        }
+        pool.insert(
+            key,
+            CachedClient {
+                client: client.clone(),
+                created_at: now,
+            },
+        );
+    }
+
+    Ok(client)
+}
+
+/// Validate the URL, resolve and check every address on each call (preserving DNS
+/// rebinding defense), and return a short-TTL cached `Client` pinned to the checked
+/// addresses so warm TLS sessions and HTTP/2 pools are reused across turns.
+pub async fn guarded_http_client(raw: &str, policy: HostPolicy) -> Result<(Url, Client), String> {
+    let url = validate_url(raw)?;
+    let check_target = url.clone();
+    let addrs =
+        tauri::async_runtime::spawn_blocking(move || check_url_blocking(&check_target, policy))
+            .await
+            .map_err(|_| String::from("Request host did not resolve"))??;
+    let client = get_or_build_cached_client(&url, policy, &addrs)?;
+    Ok((url, client))
 }
 
 /// Headers the transport owns. Renderer-supplied overrides are dropped.
@@ -260,6 +345,26 @@ mod tests {
         assert!(check_url_blocking(&url, HostPolicy::User)
             .unwrap()
             .is_empty());
+    }
+
+    #[test]
+    fn cached_client_pool_partitions_by_policy_and_pinned_addrs() {
+        client_pool().lock().unwrap().clear();
+        let url = Url::parse("https://api.example.invalid/v1").unwrap();
+        let addr_a = [SocketAddr::new(ip("93.184.216.34"), 443)];
+        let addr_b = [SocketAddr::new(ip("93.184.216.35"), 443)];
+
+        let _first = get_or_build_cached_client(&url, HostPolicy::User, &addr_a).unwrap();
+        assert_eq!(client_pool().lock().unwrap().len(), 1);
+
+        let _reused = get_or_build_cached_client(&url, HostPolicy::User, &addr_a).unwrap();
+        assert_eq!(client_pool().lock().unwrap().len(), 1);
+
+        let _rotated_dns = get_or_build_cached_client(&url, HostPolicy::User, &addr_b).unwrap();
+        assert_eq!(client_pool().lock().unwrap().len(), 2);
+
+        let _app_policy = get_or_build_cached_client(&url, HostPolicy::App, &addr_a).unwrap();
+        assert_eq!(client_pool().lock().unwrap().len(), 3);
     }
 
     #[test]

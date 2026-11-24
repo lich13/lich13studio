@@ -300,10 +300,51 @@ if (systemThemeMediaQuery) {
   }
 }
 
-const fileCache = new Map<string, { fileName: string; ext: string; blob: Blob; text?: string }>()
+type CachedFileEntry = { fileName: string; ext: string; blob: Blob; text?: string }
+const MAX_FILE_CACHE_ENTRIES = 64
+const MAX_FILE_CACHE_BYTES = 64 * 1024 * 1024
+const fileCache = new Map<string, CachedFileEntry>()
+let fileCacheTotalBytes = 0
 const fileObjectMap = new WeakMap<File, string>()
 const pendingFileRegistrations = new Map<string, Promise<AnyRecord>>()
 let cachedAppInfo: AnyRecord | null = null
+
+const deleteCachedFileEntry = (key: string) => {
+  const existing = fileCache.get(key)
+  if (!existing) return
+  fileCache.delete(key)
+  fileCacheTotalBytes = Math.max(0, fileCacheTotalBytes - existing.blob.size)
+}
+
+const clearFileCache = () => {
+  fileCache.clear()
+  fileCacheTotalBytes = 0
+}
+
+const touchCachedFileEntry = (key: string): CachedFileEntry | undefined => {
+  const entry = fileCache.get(key)
+  if (!entry) return undefined
+  fileCache.delete(key)
+  fileCache.set(key, entry)
+  return entry
+}
+
+const setCachedFileEntry = (key: string, entry: CachedFileEntry) => {
+  deleteCachedFileEntry(key)
+  if (entry.blob.size > MAX_FILE_CACHE_BYTES && !key.startsWith('memory://')) {
+    return
+  }
+  while (
+    fileCache.size >= MAX_FILE_CACHE_ENTRIES ||
+    (fileCache.size > 0 && fileCacheTotalBytes + entry.blob.size > MAX_FILE_CACHE_BYTES)
+  ) {
+    const oldestKey = fileCache.keys().next().value
+    if (oldestKey === undefined) break
+    deleteCachedFileEntry(oldestKey)
+  }
+  fileCache.set(key, entry)
+  fileCacheTotalBytes += entry.blob.size
+}
 type ProgressPayload = {
   stage: string
   progress: number
@@ -462,8 +503,8 @@ const registerBlob = async (blob: Blob, fileName: string, explicitPath?: string)
     const path = await invoke('persist_attachment', { name: `${id}${ext}`, bytes: Array.from(bytes) })
     if (typeof path === 'string') cacheKey = path
   }
-  fileCache.set(cacheKey, { fileName, ext, blob })
-  fileCache.set(`${id}${ext}`, { fileName, ext, blob })
+  setCachedFileEntry(cacheKey, { fileName, ext, blob })
+  setCachedFileEntry(`${id}${ext}`, { fileName, ext, blob })
 
   return {
     id,
@@ -497,13 +538,13 @@ const registerBrowserFile = async (file: File) => {
 }
 
 const getCachedFile = async (fileIdOrPath: string) => {
-  const direct = fileCache.get(fileIdOrPath)
+  const direct = touchCachedFileEntry(fileIdOrPath)
   if (direct) {
     return direct
   }
-  for (const [key, value] of fileCache.entries()) {
+  for (const [key] of fileCache.entries()) {
     if (key.endsWith(`/${fileIdOrPath}`)) {
-      return value
+      return touchCachedFileEntry(key)
     }
   }
   if (invoke && fileIdOrPath && !/^(?:https?:|memory:)/i.test(fileIdOrPath)) {
@@ -518,7 +559,7 @@ const getCachedFile = async (fileIdOrPath: string) => {
         blob: new Blob([new Uint8Array(bytes)], { type: mime }),
         text: undefined as string | undefined
       }
-      fileCache.set(fileIdOrPath, cached)
+      setCachedFileEntry(fileIdOrPath, cached)
       return cached
     } catch {
       return undefined
@@ -659,7 +700,7 @@ const pickFiles = async (multiple = true, filters?: Array<{ name: string; extens
             : (await registerBlob(file, file.name, `memory://${createId('backup')}/${file.name}`)).path
           const meta = await getCachedFile(path)
           const ext = normalizeExt(file.name)
-          const content = new Uint8Array(await file.arrayBuffer())
+          const content = persist ? undefined : new Uint8Array(await file.arrayBuffer())
           return {
             id: managedAttachmentId(path, ext) || createId('file'),
             name: file.name.replace(ext, ''),
@@ -676,7 +717,7 @@ const pickFiles = async (multiple = true, filters?: Array<{ name: string; extens
                 : 'document',
             created_at: new Date().toISOString(),
             count: 1,
-            content
+            ...(content ? { content } : {})
           }
         })
       )
@@ -716,7 +757,7 @@ const formatBytes = (bytes: number) => {
     return `${(bytes / 1024).toFixed(1)} KB`
   }
 
-  return `${(bytes / (1024 * 1024)).toFixed(2)}`
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
 }
 
 const getAppInfo = async () => {
@@ -843,7 +884,7 @@ const api = {
   },
   getCacheSize: async () => formatBytes(computeCacheSizeBytes()),
   clearCache: async () => {
-    fileCache.clear()
+    clearFileCache()
   },
   logToMain: noOpAsync,
   onThemeUpdated: (callback: (theme: 'light' | 'dark') => void) => {
@@ -957,7 +998,17 @@ const api = {
     compress: async (text: string) => new TextEncoder().encode(text),
     decompress: async (input: Uint8Array | ArrayBuffer | string) => {
       if (typeof input === 'string') return input
-      return new TextDecoder().decode(input instanceof Uint8Array ? input : new Uint8Array(input))
+      const bytes = input instanceof Uint8Array ? input : new Uint8Array(input)
+      if (
+        bytes.byteLength >= 2 &&
+        bytes[0] === 0x1f &&
+        bytes[1] === 0x8b &&
+        typeof DecompressionStream === 'function'
+      ) {
+        const stream = new Blob([toBlobPart(bytes)]).stream().pipeThrough(new DecompressionStream('gzip'))
+        return await new Response(stream).text()
+      }
+      return new TextDecoder().decode(bytes)
     }
   },
   storeSync: {
@@ -1042,16 +1093,6 @@ const api = {
       return raw ? JSON.parse(raw) : null
     }
   },
-  trace: {
-    saveData: noOpAsync,
-    saveEntity: noOpAsync,
-    tokenUsage: noOpAsync,
-    addStreamMessage: noOpAsync,
-    cleanHistory: noOpAsync,
-    cleanLocalData: noOpAsync,
-    openWindow: noOpAsync,
-    getData: async () => []
-  },
   export: {
     toWord: async (markdown: string, fileName: string) => {
       const [{ Document, Packer, Paragraph }, { markdownToPlainText }] = await Promise.all([
@@ -1099,7 +1140,15 @@ const api = {
     },
     upload: async (file: AnyRecord) => file,
     delete: async (fileId: string) => {
-      fileCache.delete(fileId)
+      deleteCachedFileEntry(fileId)
+      for (const key of Array.from(fileCache.keys())) {
+        if (key.endsWith(`/${fileId}`)) {
+          deleteCachedFileEntry(key)
+        }
+      }
+      if (!previewMode && invoke && fileId && !/^(?:https?:|memory:)/i.test(fileId)) {
+        await invoke('delete_attachment', { name: fileId })
+      }
       return true
     },
     deleteDir: async () => true,
@@ -1125,7 +1174,10 @@ const api = {
       return cached.text
     },
     clear: async () => {
-      fileCache.clear()
+      clearFileCache()
+      if (!previewMode && invoke) {
+        await invoke('clear_attachments')
+      }
     },
     get: async (filePath: string) => {
       const pending = pendingFileRegistrations.get(filePath)
@@ -1137,14 +1189,14 @@ const api = {
     },
     createTempFile: async (fileName: string) => {
       const path = `memory://temp/${createId('tmp')}/${fileName}`
-      fileCache.set(path, { fileName, ext: normalizeExt(fileName), blob: new Blob([]), text: '' })
+      setCachedFileEntry(path, { fileName, ext: normalizeExt(fileName), blob: new Blob([]), text: '' })
       return path
     },
     mkdir: async () => true,
     write: async (filePath: string, data: Uint8Array | string) => {
       const blob = typeof data === 'string' ? new Blob([data], { type: 'text/plain' }) : new Blob([toBlobPart(data)])
       const current = fileCache.get(filePath)
-      fileCache.set(filePath, {
+      setCachedFileEntry(filePath, {
         fileName: current?.fileName || filePath.split('/').pop() || 'file.txt',
         ext: current?.ext || normalizeExt(filePath),
         blob
@@ -1190,8 +1242,13 @@ const api = {
     },
     binaryImage: async (fileId: string) => {
       const cached = await getCachedFile(fileId)
-      if (!cached) return new Uint8Array()
-      return readBlobAsUint8Array(cached.blob)
+      if (!cached) {
+        return { mime: 'application/octet-stream', data: new Uint8Array() }
+      }
+      return {
+        mime: cached.blob.type || 'application/octet-stream',
+        data: await readBlobAsUint8Array(cached.blob)
+      }
     },
     base64Image: async (fileId: string) => {
       const cached = await getCachedFile(fileId)
@@ -1231,8 +1288,16 @@ const api = {
     copy: async () => true,
     base64File: async (fileId: string) => {
       const cached = await getCachedFile(fileId)
-      if (!cached) return ''
-      return readBlobAsDataUrl(cached.blob)
+      if (!cached) {
+        return { mime: 'application/octet-stream', base64: '', data: '' }
+      }
+      const dataUrl = await readBlobAsDataUrl(cached.blob)
+      const base64 = dataUrl.split(',')[1] || ''
+      return {
+        mime: cached.blob.type || 'application/octet-stream',
+        base64,
+        data: base64
+      }
     },
     pdfInfo: async () => null,
     getPathForFile: (file: File) => {
@@ -1240,10 +1305,14 @@ const api = {
       if (existing) return existing
       const pseudoPath = `memory://${createId('file')}/${file.name}`
       fileObjectMap.set(file, pseudoPath)
-      const registration = registerBlob(file, file.name).then((meta) => {
-        fileObjectMap.set(file, meta.path)
-        return meta
-      })
+      const registration = registerBlob(file, file.name)
+        .then((meta) => {
+          fileObjectMap.set(file, meta.path)
+          return meta
+        })
+        .finally(() => {
+          pendingFileRegistrations.delete(pseudoPath)
+        })
       pendingFileRegistrations.set(pseudoPath, registration)
       void registration.catch(() => {}) // The awaiting file.get caller handles the error.
       return pseudoPath
@@ -1302,8 +1371,8 @@ const api = {
         emitRestoreProgress({ stage: 'completed', progress: 100, total: 100 })
         throw error
       } finally {
-        fileCache.delete(filePath)
-        fileCache.delete(`${managedAttachmentId(filePath, cached.ext)}${cached.ext}`)
+        deleteCachedFileEntry(filePath)
+        deleteCachedFileEntry(`${managedAttachmentId(filePath, cached.ext)}${cached.ext}`)
       }
     },
     backup: async (fileName: string, destinationPath?: string, skipBackupFile: boolean = false) => {
@@ -1413,8 +1482,20 @@ const api = {
       if (!invoke) return undefined
       try {
         emitRestoreProgress({ stage: 'preparing', progress: 5, total: 100 })
+        let password: string | null = null
+        if (fileName.toLowerCase().endsWith('.lich13backup')) {
+          const { requestBackupPassword } = await import('./components/Popups/BackupPasswordPopup')
+          password = await requestBackupPassword()
+          if (password === null) {
+            throw new DOMException('Request was aborted', 'AbortError')
+          }
+        }
         emitRestoreProgress({ stage: 'extracting', progress: 40, total: 100 })
-        const result = await invoke('restore_from_local_backup', { fileName, localBackupDir: localBackupDir || null })
+        const result = await invoke('restore_from_local_backup', {
+          fileName,
+          localBackupDir: localBackupDir || null,
+          password
+        })
         emitRestoreProgress({ stage: 'completed', progress: 100, total: 100 })
         return result
       } catch (error) {

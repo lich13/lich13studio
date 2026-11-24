@@ -95,4 +95,48 @@ describe('Tauri portable backup restore', () => {
     for (const [key, value] of Object.entries(storageBefore)) expect(localStorage.getItem(key)).toBe(value)
     expect((indexedDB as any).open).not.toHaveBeenCalled()
   })
+
+  it('returns structured base64File and binaryImage objects, formats MB cache size, and forwards delete_attachment', async () => {
+    mocks.invoke.mockImplementation(async (command: string) => {
+      if (command === 'read_attachment') {
+        return Array.from(new TextEncoder().encode('%PDF-1.4 fixture'))
+      }
+      return true
+    })
+
+    vi.stubGlobal(
+      'FileReader',
+      class {
+        result: string | null = null
+        onload: (() => void) | null = null
+        onerror: (() => void) | null = null
+        readAsDataURL(blob: { arrayBuffer: () => Promise<ArrayBuffer>; type: string }) {
+          void blob.arrayBuffer().then((buf) => {
+            const bytes = new Uint8Array(buf)
+            let bin = ''
+            for (const byte of bytes) bin += String.fromCharCode(byte)
+            this.result = `data:${blob.type || 'application/pdf'};base64,${btoa(bin)}`
+            this.onload?.()
+          })
+        }
+      }
+    )
+
+    const base64Pdf = await (window as any).api.file.base64File('pdf-1.pdf')
+    expect(base64Pdf).toEqual({
+      mime: 'application/octet-stream',
+      base64: btoa('%PDF-1.4 fixture'),
+      data: btoa('%PDF-1.4 fixture')
+    })
+
+    const binary = await (window as any).api.file.binaryImage('pdf-1.pdf')
+    expect(binary.mime).toBe('application/octet-stream')
+    expect(Array.from(binary.data)).toEqual(Array.from(new TextEncoder().encode('%PDF-1.4 fixture')))
+
+    await (window as any).api.file.write('memory://large/cache.bin', new Uint8Array(2 * 1024 * 1024))
+    expect(await (window as any).api.getCacheSize()).toMatch(/ MB$/)
+
+    await (window as any).api.file.delete('pdf-1.pdf')
+    expect(mocks.invoke).toHaveBeenCalledWith('delete_attachment', { name: 'pdf-1.pdf' })
+  })
 })

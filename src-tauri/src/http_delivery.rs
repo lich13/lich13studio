@@ -1,10 +1,10 @@
 //! Android WebView delivery with acknowledgements and bounded backpressure.
+#[cfg(any(target_os = "android", test))]
+use crate::HttpAbortHandle;
 use crate::NativeHttpChunkEvent;
 #[cfg(target_os = "android")]
 use crate::NATIVE_HTTP_CHUNK_EVENT;
 use std::collections::{BTreeMap, HashMap};
-#[cfg(any(target_os = "android", test))]
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 #[cfg(target_os = "android")]
 use tauri::{Emitter, Window};
@@ -35,7 +35,19 @@ pub fn register(id: &str) {
 }
 pub fn remove(id: &str) {
     if let Some(entry) = deliveries().lock().unwrap().remove(id) {
-        entry.consumed.notify_one();
+        entry.consumed.notify_waiters();
+    }
+}
+#[cfg_attr(not(any(target_os = "android", test)), allow(dead_code))]
+pub fn clear() {
+    let entries: Vec<Arc<Delivery>> = deliveries()
+        .lock()
+        .unwrap()
+        .drain()
+        .map(|(_, entry)| entry)
+        .collect();
+    for entry in entries {
+        entry.consumed.notify_waiters();
     }
 }
 
@@ -44,16 +56,18 @@ impl Delivery {
     async fn enqueue(
         &self,
         mut event: NativeHttpChunkEvent,
-        abort: &AtomicBool,
+        abort: &HttpAbortHandle,
     ) -> Option<NativeHttpChunkEvent> {
         loop {
-            if abort.load(Ordering::Relaxed) && !event.done {
+            if abort.is_aborted() && !event.done {
                 return None;
             }
             let notified = self.consumed.notified();
+            tokio::pin!(notified);
+            notified.as_mut().enable();
             {
                 let mut pending = self.pending.lock().unwrap();
-                if (abort.load(Ordering::Relaxed) && event.done)
+                if (abort.is_aborted() && event.done)
                     || (pending.bytes + event.chunk.len() <= 256 * 1024
                         && pending.events.len() < 128)
                 {
@@ -65,13 +79,16 @@ impl Delivery {
                     return Some(event);
                 }
             }
-            tokio::select! { _ = notified => {}, _ = crate::wait_for_http_abort(abort) => {} }
+            tokio::select! {
+                _ = notified => {},
+                _ = abort.cancelled() => {},
+            }
         }
     }
 }
 
 #[cfg(target_os = "android")]
-pub async fn emit(window: &Window, event: NativeHttpChunkEvent, abort: &AtomicBool) {
+pub async fn emit(window: &Window, event: NativeHttpChunkEvent, abort: &HttpAbortHandle) {
     let Some(delivery) = deliveries().lock().unwrap().get(&event.request_id).cloned() else {
         return;
     };
@@ -98,7 +115,7 @@ pub fn acknowledge_http_chunks(request_id: String, sequence: u64) {
             }
         }
         drop(pending);
-        entry.consumed.notify_one();
+        entry.consumed.notify_waiters();
         if terminal {
             remove(&request_id);
         }
@@ -141,7 +158,7 @@ mod tests {
         let id = "bounded-test";
         register(id);
         let delivery = deliveries().lock().unwrap()[id].clone();
-        let abort = Arc::new(AtomicBool::new(false));
+        let abort = Arc::new(HttpAbortHandle::new());
         for index in 1..=16 {
             assert_eq!(
                 delivery
@@ -172,7 +189,7 @@ mod tests {
     #[tokio::test]
     async fn cancellation_unblocks_a_full_delivery_without_accepting_late_content() {
         let delivery = Arc::new(Delivery::default());
-        let abort = Arc::new(AtomicBool::new(false));
+        let abort = Arc::new(HttpAbortHandle::new());
         for _ in 0..128 {
             delivery
                 .enqueue(event("cancel-test", 1, false), &abort)
@@ -190,7 +207,7 @@ mod tests {
         };
         tokio::task::yield_now().await;
         assert!(!task.is_finished());
-        abort.store(true, Ordering::SeqCst);
+        abort.cancel();
         assert!(task.await.unwrap().is_none());
         assert_eq!(delivery.pending.lock().unwrap().events.len(), 128);
         assert!(
@@ -200,5 +217,19 @@ mod tests {
                 .unwrap()
                 .done
         );
+    }
+    #[tokio::test]
+    async fn clear_drains_all_registered_deliveries() {
+        let id = "clear-leak-test";
+        register(id);
+        let delivery = deliveries().lock().unwrap()[id].clone();
+        let abort = Arc::new(HttpAbortHandle::new());
+        delivery
+            .enqueue(event(id, 1024, false), &abort)
+            .await
+            .unwrap();
+        assert_eq!(replay_http_chunks(id.into()).len(), 1);
+        clear();
+        assert!(replay_http_chunks(id.into()).is_empty());
     }
 }

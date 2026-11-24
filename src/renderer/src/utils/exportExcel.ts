@@ -76,23 +76,13 @@ export async function exportTableToExcel(markdown: string): Promise<boolean> {
   // 生成默认文件名
   const fileName = `table_${dayjs().format('YYYY-MM-DD_HHmmss')}.xlsx`
 
-  // 让用户选择保存位置
-  const savePath = await window.api.file.selectFolder({
-    title: 'Select folder to save Excel file'
-  })
-
-  if (!savePath) {
-    return false
-  }
-
-  // 写入文件到用户选择的目录
-  const filePath = `${savePath}/${fileName}`
-
   try {
-    await window.api.file.write(filePath, uint8Array)
+    await window.api.file.save(fileName, uint8Array)
+    return true
   } catch (error) {
-    throw new Error(`Failed to write Excel file to ${filePath}: ${error}`)
+    if (error instanceof Error && /cancel/i.test(error.message)) {
+      return false
+    }
+    throw new Error(`Failed to save Excel file ${fileName}: ${error}`)
   }
-
-  return true
 }
