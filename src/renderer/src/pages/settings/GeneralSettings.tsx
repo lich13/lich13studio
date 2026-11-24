@@ -1,5 +1,4 @@
-import { GithubOutlined, InfoCircleOutlined, ReloadOutlined } from '@ant-design/icons'
-import Selector from '@renderer/components/Selector'
+import { GithubOutlined, ReloadOutlined } from '@ant-design/icons'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import { useSettings } from '@renderer/hooks/useSettings'
 import {
@@ -10,16 +9,9 @@ import {
 } from '@renderer/services/appUpdate'
 import { runtimeCapabilities } from '@renderer/services/mobile/runtime'
 import { useAppDispatch } from '@renderer/store'
-import {
-  setNotificationSettings,
-  setProxyBypassRules as _setProxyBypassRules,
-  setProxyMode,
-  setProxyUrl as _setProxyUrl
-} from '@renderer/store/settings'
+import { setNotificationSettings } from '@renderer/store/settings'
 import type { AppInfo } from '@renderer/types'
-import { isValidProxyUrl } from '@renderer/utils'
-import { defaultByPassRules } from '@shared/config/constant'
-import { Button, Input, Space, Switch, Tooltip, Typography } from 'antd'
+import { Button, Space, Switch, Typography } from 'antd'
 import type { FC } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -28,8 +20,6 @@ import { SettingContainer, SettingDivider, SettingGroup, SettingRow, SettingRowT
 
 const GeneralSettings: FC = () => {
   const {
-    proxyUrl: storeProxyUrl,
-    proxyBypassRules: storeProxyBypassRules,
     setLaunch,
     setAutoCheckUpdate,
     setTray,
@@ -37,11 +27,8 @@ const GeneralSettings: FC = () => {
     launchOnBoot,
     launchToTray,
     notification,
-    proxyMode: storeProxyMode,
     trayOnClose
   } = useSettings()
-  const [proxyUrl, setProxyUrl] = useState<string | undefined>(storeProxyUrl)
-  const [proxyBypassRules, setProxyBypassRules] = useState<string | undefined>(storeProxyBypassRules)
   const [appInfo, setAppInfo] = useState<AppInfo>()
   const [checkingUpdate, setCheckingUpdate] = useState(false)
   const updateInFlight = useRef(false)
@@ -71,29 +58,6 @@ const GeneralSettings: FC = () => {
 
   const updateAutoCheckUpdate = (isAutoCheckUpdate: boolean) => {
     setAutoCheckUpdate(isAutoCheckUpdate)
-  }
-
-  const onSetProxyUrl = () => {
-    if (proxyUrl && !isValidProxyUrl(proxyUrl)) {
-      window.toast.error(t('message.error.invalid.proxy.url'))
-      return
-    }
-
-    dispatch(_setProxyUrl(proxyUrl))
-  }
-
-  const onSetProxyBypassRules = () => {
-    dispatch(_setProxyBypassRules(proxyBypassRules))
-  }
-
-  const proxyModeOptions: { value: 'system' | 'custom' | 'none'; label: string }[] = [
-    { value: 'system', label: t('settings.proxy.mode.system') },
-    { value: 'custom', label: t('settings.proxy.mode.custom') },
-    { value: 'none', label: t('settings.proxy.mode.none') }
-  ]
-
-  const onProxyModeChange = (mode: 'system' | 'custom' | 'none') => {
-    dispatch(setProxyMode(mode))
   }
 
   const handleNotificationChange = (value: boolean) => {
@@ -139,50 +103,6 @@ const GeneralSettings: FC = () => {
 
   return (
     <SettingContainer theme={theme}>
-      {!runtimeCapabilities.android && (
-        <SettingGroup theme={theme}>
-          <SettingTitle>{t('settings.general.title')}</SettingTitle>
-          <SettingDivider />
-          <SettingRow>
-            <SettingRowTitle>{t('settings.proxy.mode.title')}</SettingRowTitle>
-            <Selector value={storeProxyMode} onChange={onProxyModeChange} options={proxyModeOptions} />
-          </SettingRow>
-          {storeProxyMode === 'custom' && (
-            <>
-              <SettingDivider />
-              <SettingRow>
-                <SettingRowTitle>{t('settings.proxy.address')}</SettingRowTitle>
-                <Input
-                  spellCheck={false}
-                  placeholder="socks5://127.0.0.1:6153"
-                  value={proxyUrl}
-                  onChange={(e) => setProxyUrl(e.target.value)}
-                  style={{ width: 180 }}
-                  onBlur={onSetProxyUrl}
-                  type="url"
-                />
-              </SettingRow>
-              <SettingDivider />
-              <SettingRow>
-                <SettingRowTitle style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <span>{t('settings.proxy.bypass')}</span>
-                  <Tooltip title={t('settings.proxy.tip')} placement="right">
-                    <InfoCircleOutlined style={{ cursor: 'pointer' }} />
-                  </Tooltip>
-                </SettingRowTitle>
-                <Input
-                  spellCheck={false}
-                  placeholder={defaultByPassRules}
-                  value={proxyBypassRules}
-                  onChange={(e) => setProxyBypassRules(e.target.value)}
-                  style={{ width: 180 }}
-                  onBlur={onSetProxyBypassRules}
-                />
-              </SettingRow>
-            </>
-          )}
-        </SettingGroup>
-      )}
       <SettingGroup theme={theme}>
         <SettingTitle>{t('settings.notification.title')}</SettingTitle>
         <SettingDivider />

@@ -153,16 +153,24 @@ export async function estimateMessagesUsage({
   assistant: Assistant
   messages: Message[]
 }): Promise<Usage> {
-  const outputMessage = messages.pop()!
+  const outputMessage = messages.at(-1)
+  if (!outputMessage) {
+    return {
+      prompt_tokens: 0,
+      completion_tokens: 0,
+      total_tokens: 0
+    }
+  }
 
-  const prompt_tokens = await estimateHistoryTokens(assistant, messages)
+  const historyMessages = messages.slice(0, -1)
+  const prompt_tokens = await estimateHistoryTokens(assistant, historyMessages)
   const { completion_tokens } = await estimateMessageUsage(outputMessage)
 
   return {
     prompt_tokens,
     completion_tokens,
     total_tokens: prompt_tokens + completion_tokens
-  } as Usage
+  }
 }
 
 export async function estimateHistoryTokens(assistant: Assistant, msgs: Message[]) {

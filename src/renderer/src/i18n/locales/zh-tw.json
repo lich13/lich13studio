@@ -1863,6 +1863,7 @@
       },
       "messages": "搜尋所有訊息",
       "placeholder": "搜尋話題或訊息...",
+      "results_stats": "找到 {{count}} 筆結果（耗時 {{time}} 秒）",
       "sort": {
         "newest": "最新優先",
         "oldest": "最早優先"

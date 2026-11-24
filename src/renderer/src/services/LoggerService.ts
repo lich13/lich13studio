@@ -91,21 +91,6 @@ class LoggerService {
    * @param data - Additional data to log
    */
   private processLog(level: LogLevel, message: string, data: any[]): void {
-    const safeMessage = sanitizeLogText(message)
-    const forceLogToMain = data.length > 0 && data[data.length - 1]?.logToMain === true
-    const dataForLog = forceLogToMain ? data.slice(0, -1) : data
-    const safeData = dataForLog.map((value) => sanitizeLogValue(value))
-
-    let windowSource = this.window
-    if (!this.window) {
-      if ((window as any).__LICH13_TAURI_SHIM__) {
-        windowSource = 'mainWindow'
-      } else {
-        console.error('[LoggerService] window source not initialized, please initialize window source first')
-        windowSource = 'UNKNOWN'
-      }
-    }
-
     const currentLevel = LEVEL_MAP[level]
 
     // if in dev mode, check if the env variables are set and use the env level and show modules to skip logs
@@ -121,6 +106,23 @@ class LoggerService {
     // skip log if level is lower than default level
     if (currentLevel < LEVEL_MAP[this.level]) {
       return
+    }
+
+    const safeMessage = sanitizeLogText(message)
+    const forceLogToMain = data.length > 0 && data[data.length - 1]?.logToMain === true
+    const dataForLog = forceLogToMain ? data.slice(0, -1) : data
+    const safeData = dataForLog.map((value) => sanitizeLogValue(value))
+
+    let windowSource = this.window
+    if (!this.window) {
+      if (!IS_WORKER && (window as any).__LICH13_TAURI_SHIM__) {
+        windowSource = 'mainWindow'
+      } else if (IS_WORKER) {
+        windowSource = 'worker'
+      } else {
+        console.error('[LoggerService] window source not initialized, please initialize window source first')
+        windowSource = 'UNKNOWN'
+      }
     }
 
     const logMessage = this.module ? `[${this.module}] ${safeMessage}` : safeMessage

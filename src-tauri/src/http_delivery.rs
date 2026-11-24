@@ -38,9 +38,8 @@ pub fn remove(id: &str) {
         entry.consumed.notify_waiters();
     }
 }
-#[cfg_attr(not(any(target_os = "android", test)), allow(dead_code))]
-pub fn clear() {
-    let entries: Vec<Arc<Delivery>> = deliveries()
+fn clear_entries(map: &Mutex<HashMap<String, Arc<Delivery>>>) {
+    let entries: Vec<Arc<Delivery>> = map
         .lock()
         .unwrap()
         .drain()
@@ -49,6 +48,10 @@ pub fn clear() {
     for entry in entries {
         entry.consumed.notify_waiters();
     }
+}
+#[cfg_attr(not(target_os = "android"), allow(dead_code))]
+pub fn clear() {
+    clear_entries(deliveries());
 }
 
 #[cfg(any(target_os = "android", test))]
@@ -220,16 +223,23 @@ mod tests {
     }
     #[tokio::test]
     async fn clear_drains_all_registered_deliveries() {
-        let id = "clear-leak-test";
-        register(id);
-        let delivery = deliveries().lock().unwrap()[id].clone();
+        let map: Mutex<HashMap<String, Arc<Delivery>>> = Mutex::new(HashMap::new());
+        let delivery = Arc::new(Delivery::default());
+        map.lock()
+            .unwrap()
+            .insert("clear-leak-test".into(), delivery.clone());
         let abort = Arc::new(HttpAbortHandle::new());
         delivery
-            .enqueue(event(id, 1024, false), &abort)
+            .enqueue(event("clear-leak-test", 1024, false), &abort)
             .await
             .unwrap();
-        assert_eq!(replay_http_chunks(id.into()).len(), 1);
-        clear();
-        assert!(replay_http_chunks(id.into()).is_empty());
+        let notified = delivery.consumed.notified();
+        tokio::pin!(notified);
+        notified.as_mut().enable();
+        clear_entries(&map);
+        assert!(map.lock().unwrap().is_empty());
+        tokio::time::timeout(std::time::Duration::from_millis(200), notified)
+            .await
+            .expect("clearing delivery entries should wake blocked waiters");
     }
 }

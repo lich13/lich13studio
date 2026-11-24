@@ -1863,6 +1863,7 @@
       },
       "messages": "搜索所有消息",
       "placeholder": "搜索话题或消息...",
+      "results_stats": "找到 {{count}} 条结果（用时 {{time}} 秒）",
       "sort": {
         "newest": "最新优先",
         "oldest": "最早优先"

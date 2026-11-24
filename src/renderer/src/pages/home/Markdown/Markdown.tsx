@@ -76,6 +76,8 @@ const Markdown: FC<Props> = ({ block, postProcess }) => {
 
   const prevContentRef = useRef(block.content)
   const prevBlockIdRef = useRef(block.id)
+  const contentLength = block.content?.length ?? 0
+  const streamMinDelay = block.status !== 'streaming' ? 10 : contentLength > 8000 ? 48 : contentLength > 3000 ? 32 : 12
 
   const { addChunk, reset } = useSmoothStream({
     onUpdate: (rawText) => {
@@ -83,6 +85,7 @@ const Markdown: FC<Props> = ({ block, postProcess }) => {
       setDisplayedContent(finalText)
     },
     streamDone: isStreamDone,
+    minDelay: streamMinDelay,
     initialText: block.content
   })
 

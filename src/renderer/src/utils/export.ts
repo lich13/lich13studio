@@ -2,7 +2,6 @@ import { loggerService } from '@logger'
 import i18n from '@renderer/i18n'
 import { getProviderLabel } from '@renderer/i18n/label'
 import { getMessageTitle } from '@renderer/services/MessagesService'
-import { runtimeCapabilities } from '@renderer/services/mobile/runtime'
 import store from '@renderer/store'
 import { setExportState } from '@renderer/store/runtime'
 import type { Topic } from '@renderer/types'
@@ -10,7 +9,6 @@ import type { Message } from '@renderer/types/newMessage'
 import { removeSpecialCharactersForFileName } from '@renderer/utils/file'
 import { convertMathFormula, markdownToPlainText } from '@renderer/utils/markdown'
 import { getCitationContent, getMainTextContent, getThinkingContent } from '@renderer/utils/messageUtils/find'
-import dayjs from 'dayjs'
 import DOMPurify from 'dompurify'
 
 const logger = loggerService.withContext('Utils:export')
@@ -403,34 +401,18 @@ export const exportTopicAsMarkdown = async (
 
   setExportingState(true)
 
-  const markdownExportPath = runtimeCapabilities.android ? null : store.getState().settings.markdownExportPath
-  if (!markdownExportPath) {
-    try {
-      const fileName = removeSpecialCharactersForFileName(topic.name) + '.md'
-      const markdown = await topicToMarkdown(topic, exportReasoning, excludeCitations)
-      const result = await window.api.file.save(fileName, markdown)
-      if (result) {
-        window.toast.success(i18n.t('message.success.markdown.export.specified'))
-      }
-    } catch (error: any) {
-      window.toast.error(i18n.t('message.error.markdown.export.specified'))
-      logger.error('Failed to export topic as markdown:', error)
-    } finally {
-      setExportingState(false)
+  try {
+    const fileName = removeSpecialCharactersForFileName(topic.name) + '.md'
+    const markdown = await topicToMarkdown(topic, exportReasoning, excludeCitations)
+    const result = await window.api.file.save(fileName, markdown)
+    if (result) {
+      window.toast.success(i18n.t('message.success.markdown.export.specified'))
     }
-  } else {
-    try {
-      const timestamp = dayjs().format('YYYY-MM-DD-HH-mm-ss')
-      const fileName = removeSpecialCharactersForFileName(topic.name) + ` ${timestamp}.md`
-      const markdown = await topicToMarkdown(topic, exportReasoning, excludeCitations)
-      await window.api.file.write(markdownExportPath + '/' + fileName, markdown)
-      window.toast.success(i18n.t('message.success.markdown.export.preconf'))
-    } catch (error: any) {
-      window.toast.error(i18n.t('message.error.markdown.export.preconf'))
-      logger.error('Failed to export topic as markdown:', error)
-    } finally {
-      setExportingState(false)
-    }
+  } catch (error: any) {
+    window.toast.error(i18n.t('message.error.markdown.export.specified'))
+    logger.error('Failed to export topic as markdown:', error)
+  } finally {
+    setExportingState(false)
   }
 }
 
@@ -446,40 +428,21 @@ export const exportMessageAsMarkdown = async (
 
   setExportingState(true)
 
-  const markdownExportPath = runtimeCapabilities.android ? null : store.getState().settings.markdownExportPath
-  if (!markdownExportPath) {
-    try {
-      const title = await getMessageTitle(message)
-      const fileName = removeSpecialCharactersForFileName(title) + '.md'
-      const markdown = exportReasoning
-        ? messageToMarkdownWithReasoning(message, excludeCitations)
-        : messageToMarkdown(message, excludeCitations)
-      const result = await window.api.file.save(fileName, markdown)
-      if (result) {
-        window.toast.success(i18n.t('message.success.markdown.export.specified'))
-      }
-    } catch (error: any) {
-      window.toast.error(i18n.t('message.error.markdown.export.specified'))
-      logger.error('Failed to export message as markdown:', error)
-    } finally {
-      setExportingState(false)
+  try {
+    const title = await getMessageTitle(message)
+    const fileName = removeSpecialCharactersForFileName(title) + '.md'
+    const markdown = exportReasoning
+      ? messageToMarkdownWithReasoning(message, excludeCitations)
+      : messageToMarkdown(message, excludeCitations)
+    const result = await window.api.file.save(fileName, markdown)
+    if (result) {
+      window.toast.success(i18n.t('message.success.markdown.export.specified'))
     }
-  } else {
-    try {
-      const timestamp = dayjs().format('YYYY-MM-DD-HH-mm-ss')
-      const title = await getMessageTitle(message)
-      const fileName = removeSpecialCharactersForFileName(title) + ` ${timestamp}.md`
-      const markdown = exportReasoning
-        ? messageToMarkdownWithReasoning(message, excludeCitations)
-        : messageToMarkdown(message, excludeCitations)
-      await window.api.file.write(markdownExportPath + '/' + fileName, markdown)
-      window.toast.success(i18n.t('message.success.markdown.export.preconf'))
-    } catch (error: any) {
-      window.toast.error(i18n.t('message.error.markdown.export.preconf'))
-      logger.error('Failed to export message as markdown:', error)
-    } finally {
-      setExportingState(false)
-    }
+  } catch (error: any) {
+    window.toast.error(i18n.t('message.error.markdown.export.specified'))
+    logger.error('Failed to export message as markdown:', error)
+  } finally {
+    setExportingState(false)
   }
 }
 

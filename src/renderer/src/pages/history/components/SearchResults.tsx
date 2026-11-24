@@ -11,9 +11,8 @@ import {
   splitKeywordsToTerms
 } from '@renderer/utils/keywordSearch'
 import { List, Segmented, Spin, Typography } from 'antd'
-import { useLiveQuery } from 'dexie-react-hooks'
 import type { FC } from 'react'
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSelector } from 'react-redux'
 import styled from 'styled-components'
@@ -38,6 +37,8 @@ const SEARCH_SNIPPET_MAX_LINES = 12
 const SEARCH_SNIPPET_MAX_LINE_LENGTH = 160
 const SEARCH_SNIPPET_LINE_FRAGMENT_RADIUS = 40
 const SEARCH_SNIPPET_MAX_LINE_FRAGMENTS = 3
+const SEARCH_DEBOUNCE_MS = 200
+const MAX_SEARCH_RESULTS = 200
 
 type ResultSortOrder = 'newest' | 'oldest'
 
@@ -188,13 +189,12 @@ const buildSearchSnippet = (text: string, terms: string[], matchMode: KeywordMat
 const SearchResults: FC<Props> = ({ keywords, onMessageClick, onTopicClick, ...props }) => {
   const { t } = useTranslation()
   const { handleScroll, containerRef } = useScrollPosition('SearchResults')
-  const observerRef = useRef<MutationObserver | null>(null)
+  const searchSeqRef = useRef(0)
 
   const [matchMode, setMatchMode] = useState<KeywordMatchMode>('whole-word')
   const [sortOrder, setSortOrder] = useState<ResultSortOrder>('newest')
-  const [searchTerms, setSearchTerms] = useState<string[]>(splitKeywordsToTerms(keywords))
+  const [searchTerms, setSearchTerms] = useState<string[]>(() => splitKeywordsToTerms(keywords))
 
-  const topics = useLiveQuery(() => db.topics.toArray(), [])
   // FIXME: db 中没有 topic.name 等信息，只能从 store 获取
   const storeTopicsMap = useSelector(selectTopicsMap)
 
@@ -202,57 +202,123 @@ const SearchResults: FC<Props> = ({ keywords, onMessageClick, onTopicClick, ...p
   const [searchStats, setSearchStats] = useState({ count: 0, time: 0 })
   const [isLoading, setIsLoading] = useState(false)
 
-  const onSearch = useCallback(async () => {
-    setSearchResults([])
-    setIsLoading(true)
+  useEffect(() => {
+    const seq = ++searchSeqRef.current
+    const trimmedKeywords = keywords.trim()
 
-    if (keywords.length === 0) {
+    if (trimmedKeywords.length === 0) {
+      setSearchResults([])
       setSearchStats({ count: 0, time: 0 })
       setSearchTerms([])
       setIsLoading(false)
       return
     }
 
-    const startTime = performance.now()
-    const newSearchTerms = splitKeywordsToTerms(keywords)
-    const searchRegexes = buildKeywordRegexes(newSearchTerms, { matchMode, flags: 'i' })
+    setIsLoading(true)
 
-    const blocks = (await db.message_blocks.toArray())
-      .filter((block) => block.type === MessageBlockType.MAIN_TEXT)
-      .filter((block) => {
-        const searchableContent = stripMarkdownFormatting(block.content)
-        return searchRegexes.some((regex) => regex.test(searchableContent))
-      })
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        const startTime = performance.now()
+        const newSearchTerms = splitKeywordsToTerms(trimmedKeywords)
 
-    const messages = topics?.flatMap((topic) => topic.messages)
-
-    const results = await Promise.all(
-      blocks.map(async (block) => {
-        const message = messages?.find((message) => message.id === block.messageId)
-        if (message) {
-          const topic = storeTopicsMap.get(message.topicId)
-          if (topic) {
-            return {
-              message,
-              topic,
-              content: block.content,
-              snippet: buildSearchSnippet(block.content, newSearchTerms, matchMode)
-            }
+        if (newSearchTerms.length === 0) {
+          if (seq === searchSeqRef.current) {
+            setSearchResults([])
+            setSearchStats({ count: 0, time: 0 })
+            setSearchTerms([])
+            setIsLoading(false)
           }
+          return
         }
-        return null
-      })
-    ).then((results) => results.filter(Boolean) as SearchResult[])
 
-    const endTime = performance.now()
-    setSearchResults(results)
-    setSearchStats({
-      count: results.length,
-      time: (endTime - startTime) / 1000
-    })
-    setSearchTerms(newSearchTerms)
-    setIsLoading(false)
-  }, [keywords, matchMode, storeTopicsMap, topics])
+        const searchRegexes = buildKeywordRegexes(newSearchTerms, { matchMode, flags: 'i' })
+        const matchedBlocks: Array<{ messageId: string; content: string }> = []
+        const neededMessageIds = new Set<string>()
+
+        await db.message_blocks
+          .toCollection()
+          .until(() => seq !== searchSeqRef.current || matchedBlocks.length >= MAX_SEARCH_RESULTS)
+          .each((block) => {
+            if (block.type !== MessageBlockType.MAIN_TEXT || typeof block.content !== 'string') {
+              return
+            }
+            const searchableContent = stripMarkdownFormatting(block.content)
+            const isMatched = searchRegexes.some((regex) => {
+              regex.lastIndex = 0
+              return regex.test(searchableContent)
+            })
+            if (isMatched) {
+              matchedBlocks.push({ messageId: block.messageId, content: block.content })
+              neededMessageIds.add(block.messageId)
+            }
+          })
+
+        if (seq !== searchSeqRef.current) {
+          return
+        }
+
+        const matchedMessages = new Map<string, Message>()
+        if (neededMessageIds.size > 0) {
+          await db.topics
+            .toCollection()
+            .until(() => seq !== searchSeqRef.current || neededMessageIds.size === 0)
+            .each((topicRow) => {
+              if (!storeTopicsMap.has(topicRow.id) || !Array.isArray(topicRow.messages)) {
+                return
+              }
+              for (const message of topicRow.messages) {
+                if (neededMessageIds.has(message.id)) {
+                  matchedMessages.set(message.id, message)
+                  neededMessageIds.delete(message.id)
+                  if (neededMessageIds.size === 0) {
+                    break
+                  }
+                }
+              }
+            })
+        }
+
+        if (seq !== searchSeqRef.current) {
+          return
+        }
+
+        const results: SearchResult[] = []
+        for (const block of matchedBlocks) {
+          const message = matchedMessages.get(block.messageId)
+          if (!message) {
+            continue
+          }
+          const topic = storeTopicsMap.get(message.topicId)
+          if (!topic) {
+            continue
+          }
+          results.push({
+            message,
+            topic,
+            content: block.content,
+            snippet: buildSearchSnippet(block.content, newSearchTerms, matchMode)
+          })
+        }
+
+        const endTime = performance.now()
+        setSearchResults(results)
+        setSearchStats({
+          count: results.length,
+          time: (endTime - startTime) / 1000
+        })
+        setSearchTerms(newSearchTerms)
+        setIsLoading(false)
+      })().catch(() => {
+        if (seq === searchSeqRef.current) {
+          setIsLoading(false)
+        }
+      })
+    }, SEARCH_DEBOUNCE_MS)
+
+    return () => {
+      window.clearTimeout(timer)
+    }
+  }, [keywords, matchMode, storeTopicsMap])
 
   const sortedSearchResults = useMemo(() => {
     const results = [...searchResults]
@@ -281,23 +347,8 @@ const SearchResults: FC<Props> = ({ keywords, onMessageClick, onTopicClick, ...p
   }
 
   useEffect(() => {
-    void onSearch()
-  }, [onSearch])
-
-  useEffect(() => {
-    if (!containerRef.current) return
-
-    observerRef.current = new MutationObserver(() => {
-      containerRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
-    })
-
-    observerRef.current.observe(containerRef.current, {
-      childList: true,
-      subtree: true
-    })
-
-    return () => observerRef.current?.disconnect()
-  }, [containerRef])
+    containerRef.current?.scrollTo({ top: 0 })
+  }, [sortedSearchResults, containerRef])
 
   return (
     <Container ref={containerRef} {...props} onScroll={handleScroll}>
@@ -326,7 +377,10 @@ const SearchResults: FC<Props> = ({ keywords, onMessageClick, onTopicClick, ...p
         </SearchToolbar>
         {sortedSearchResults.length > 0 && (
           <SearchStats>
-            Found {searchStats.count} results in {searchStats.time.toFixed(3)} seconds
+            {t('history.search.results_stats', {
+              count: searchStats.count,
+              time: searchStats.time.toFixed(3)
+            })}
           </SearchStats>
         )}
         <List
@@ -372,6 +426,7 @@ const Container = styled.div`
 const SearchStats = styled.div`
   font-size: 13px;
   color: var(--color-text-3);
+  font-variant-numeric: tabular-nums;
 `
 
 const SearchToolbar = styled.div`

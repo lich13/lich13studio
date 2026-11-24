@@ -1863,6 +1863,7 @@
       },
       "messages": "Search All Messages",
       "placeholder": "Search topics or messages...",
+      "results_stats": "Found {{count}} results in {{time}} seconds",
       "sort": {
         "newest": "Newest first",
         "oldest": "Oldest first"

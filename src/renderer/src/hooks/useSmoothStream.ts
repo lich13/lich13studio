@@ -11,86 +11,140 @@ const languages = ['en-US', 'de-DE', 'es-ES', 'zh-CN', 'zh-TW', 'ja-JP', 'ru-RU'
 const segmenter = new Intl.Segmenter(languages)
 
 export const useSmoothStream = ({ onUpdate, streamDone, minDelay = 10, initialText = '' }: UseSmoothStreamOptions) => {
-  const chunkQueueRef = useRef<string[]>([])
+  const segmentsRef = useRef<string[]>([])
+  const readIndexRef = useRef<number>(0)
   const animationFrameRef = useRef<number | null>(null)
   const displayedTextRef = useRef<string>(initialText)
   const lastUpdateTimeRef = useRef<number>(0)
 
-  const addChunk = useCallback((chunk: string) => {
-    const chars = Array.from(segmenter.segment(chunk)).map((s) => s.segment)
-    chunkQueueRef.current = [...chunkQueueRef.current, ...(chars || [])]
+  const onUpdateRef = useRef(onUpdate)
+  onUpdateRef.current = onUpdate
+
+  const minDelayRef = useRef(minDelay)
+  minDelayRef.current = minDelay
+
+  const streamDoneRef = useRef(streamDone)
+  streamDoneRef.current = streamDone
+
+  const prevStreamDoneRef = useRef(streamDone)
+
+  const cancelLoop = useCallback(() => {
+    if (animationFrameRef.current !== null) {
+      cancelAnimationFrame(animationFrameRef.current)
+      animationFrameRef.current = null
+    }
   }, [])
+
+  const flushRemaining = useCallback((forceEmit = false) => {
+    const segments = segmentsRef.current
+    const remaining = segments.length - readIndexRef.current
+    if (remaining > 0) {
+      let delta = ''
+      for (let i = readIndexRef.current; i < segments.length; i++) {
+        delta += segments[i]
+      }
+      segments.length = 0
+      readIndexRef.current = 0
+      displayedTextRef.current += delta
+      onUpdateRef.current(displayedTextRef.current)
+      return
+    }
+
+    segments.length = 0
+    readIndexRef.current = 0
+    if (forceEmit) {
+      onUpdateRef.current(displayedTextRef.current)
+    }
+  }, [])
+
+  const renderLoop = useCallback((currentTime: number) => {
+    animationFrameRef.current = null
+    const segments = segmentsRef.current
+    const remaining = segments.length - readIndexRef.current
+
+    if (remaining <= 0) {
+      segments.length = 0
+      readIndexRef.current = 0
+      return
+    }
+
+    if (!streamDoneRef.current && currentTime - lastUpdateTimeRef.current < minDelayRef.current) {
+      animationFrameRef.current = requestAnimationFrame(renderLoop)
+      return
+    }
+    lastUpdateTimeRef.current = currentTime
+
+    const charsToRenderCount = streamDoneRef.current ? remaining : Math.max(1, Math.floor(remaining / 5))
+    const endIndex = readIndexRef.current + charsToRenderCount
+    let delta = ''
+    for (let i = readIndexRef.current; i < endIndex; i++) {
+      delta += segments[i]
+    }
+    readIndexRef.current = endIndex
+
+    if (readIndexRef.current >= segments.length) {
+      segments.length = 0
+      readIndexRef.current = 0
+    } else if (readIndexRef.current > 1024 && readIndexRef.current * 2 >= segments.length) {
+      segmentsRef.current = segments.slice(readIndexRef.current)
+      readIndexRef.current = 0
+    }
+
+    displayedTextRef.current += delta
+    onUpdateRef.current(displayedTextRef.current)
+
+    if (segmentsRef.current.length - readIndexRef.current > 0) {
+      animationFrameRef.current = requestAnimationFrame(renderLoop)
+    }
+  }, [])
+
+  const addChunk = useCallback(
+    (chunk: string) => {
+      if (!chunk) {
+        return
+      }
+      for (const item of segmenter.segment(chunk)) {
+        segmentsRef.current.push(item.segment)
+      }
+      if (streamDoneRef.current) {
+        cancelLoop()
+        flushRemaining(false)
+        return
+      }
+      if (animationFrameRef.current === null && segmentsRef.current.length > readIndexRef.current) {
+        animationFrameRef.current = requestAnimationFrame(renderLoop)
+      }
+    },
+    [cancelLoop, flushRemaining, renderLoop]
+  )
 
   const reset = useCallback(
     (newText = '') => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current)
-      }
-      chunkQueueRef.current = []
+      cancelLoop()
+      segmentsRef.current.length = 0
+      readIndexRef.current = 0
+      lastUpdateTimeRef.current = 0
       displayedTextRef.current = newText
-      onUpdate(newText)
+      onUpdateRef.current(newText)
     },
-    [onUpdate]
-  )
-
-  const renderLoop = useCallback(
-    (currentTime: number) => {
-      // 1. 如果队列为空
-      if (chunkQueueRef.current.length === 0) {
-        // 如果流已结束，确保显示最终状态并停止循环
-        if (streamDone) {
-          const finalText = displayedTextRef.current
-          onUpdate(finalText)
-          return
-        }
-        // 如果流还没结束但队列空了，等待下一帧
-        animationFrameRef.current = requestAnimationFrame(renderLoop)
-        return
-      }
-
-      // 2. 时间控制，确保最小延迟
-      if (currentTime - lastUpdateTimeRef.current < minDelay) {
-        animationFrameRef.current = requestAnimationFrame(renderLoop)
-        return
-      }
-      lastUpdateTimeRef.current = currentTime
-
-      // 3. 动态计算本次渲染的字符数
-      let charsToRenderCount = Math.max(1, Math.floor(chunkQueueRef.current.length / 5))
-
-      // 如果流已结束，一次性渲染所有剩余字符
-      if (streamDone) {
-        charsToRenderCount = chunkQueueRef.current.length
-      }
-
-      const charsToRender = chunkQueueRef.current.slice(0, charsToRenderCount)
-      displayedTextRef.current += charsToRender.join('')
-
-      // 4. 立即更新UI
-      onUpdate(displayedTextRef.current)
-
-      // 5. 更新队列
-      chunkQueueRef.current = chunkQueueRef.current.slice(charsToRenderCount)
-
-      // 6. 如果还有内容需要渲染，继续下一帧
-      if (chunkQueueRef.current.length > 0) {
-        animationFrameRef.current = requestAnimationFrame(renderLoop)
-      }
-    },
-    [streamDone, onUpdate, minDelay]
+    [cancelLoop]
   )
 
   useEffect(() => {
-    // 启动渲染循环
-    animationFrameRef.current = requestAnimationFrame(renderLoop)
+    const transitionedToDone = !prevStreamDoneRef.current && streamDone
+    prevStreamDoneRef.current = streamDone
 
-    // 组件卸载时清理
-    return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current)
-      }
+    if (streamDone) {
+      cancelLoop()
+      flushRemaining(transitionedToDone)
     }
-  }, [renderLoop])
+  }, [streamDone, cancelLoop, flushRemaining])
+
+  useEffect(() => {
+    return () => {
+      cancelLoop()
+    }
+  }, [cancelLoop])
 
   return { addChunk, reset }
 }

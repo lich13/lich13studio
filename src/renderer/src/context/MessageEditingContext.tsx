@@ -1,5 +1,6 @@
+import { EVENT_NAMES, EventEmitter } from '@renderer/services/EventService'
 import type { ReactNode } from 'react'
-import { createContext, use, useState } from 'react'
+import { createContext, use, useCallback, useEffect, useMemo, useState } from 'react'
 
 interface MessageEditingContextType {
   editingMessageId: string | null
@@ -12,17 +13,28 @@ const MessageEditingContext = createContext<MessageEditingContextType | null>(nu
 export function MessageEditingProvider({ children }: { children: ReactNode }) {
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
 
-  const startEditing = (messageId: string) => {
+  const startEditing = useCallback((messageId: string) => {
     setEditingMessageId(messageId)
-  }
+  }, [])
 
-  const stopEditing = () => {
+  const stopEditing = useCallback(() => {
     setEditingMessageId(null)
-  }
+  }, [])
 
-  return (
-    <MessageEditingContext value={{ editingMessageId, startEditing, stopEditing }}>{children}</MessageEditingContext>
+  useEffect(() => {
+    return EventEmitter.on(EVENT_NAMES.EDIT_MESSAGE, (targetId: string) => {
+      if (typeof targetId === 'string' && targetId) {
+        setEditingMessageId(targetId)
+      }
+    })
+  }, [])
+
+  const value = useMemo(
+    () => ({ editingMessageId, startEditing, stopEditing }),
+    [editingMessageId, startEditing, stopEditing]
   )
+
+  return <MessageEditingContext value={value}>{children}</MessageEditingContext>
 }
 
 export function useMessageEditing() {

@@ -132,21 +132,43 @@ const Chat: FC<Props> = (props) => {
     })
   }
 
-  let firstUpdateCompleted = false
-  const firstUpdateOrNoFirstUpdateHandler = debounce(() => {
-    contentSearchRef.current?.silentSearch()
-  }, 10)
+  const firstUpdateCompletedRef = React.useRef(false)
+  const prevTopicIdRef = React.useRef(props.activeTopic.id)
+  if (prevTopicIdRef.current !== props.activeTopic.id) {
+    prevTopicIdRef.current = props.activeTopic.id
+    firstUpdateCompletedRef.current = false
+  }
 
-  const messagesComponentUpdateHandler = () => {
-    if (firstUpdateCompleted) {
+  const firstUpdateOrNoFirstUpdateHandler = React.useMemo(
+    () =>
+      debounce(() => {
+        contentSearchRef.current?.silentSearch()
+      }, 10),
+    []
+  )
+
+  React.useEffect(() => {
+    return () => {
+      firstUpdateOrNoFirstUpdateHandler.cancel()
+    }
+  }, [firstUpdateOrNoFirstUpdateHandler])
+
+  const messagesComponentUpdateHandler = React.useCallback(() => {
+    if (firstUpdateCompletedRef.current) {
       firstUpdateOrNoFirstUpdateHandler()
     }
-  }
+  }, [firstUpdateOrNoFirstUpdateHandler])
 
-  const messagesComponentFirstUpdateHandler = () => {
-    setTimeoutTimer('messagesComponentFirstUpdateHandler', () => (firstUpdateCompleted = true), 300)
+  const messagesComponentFirstUpdateHandler = React.useCallback(() => {
+    setTimeoutTimer(
+      'messagesComponentFirstUpdateHandler',
+      () => {
+        firstUpdateCompletedRef.current = true
+      },
+      300
+    )
     firstUpdateOrNoFirstUpdateHandler()
-  }
+  }, [firstUpdateOrNoFirstUpdateHandler, setTimeoutTimer])
 
   const mainHeight = isTopNavbar
     ? 'calc(var(--app-viewport-height) - 6px)'
@@ -197,7 +219,12 @@ const Chat: FC<Props> = (props) => {
                   onIncludeUserChange={userOutlinedItemClickHandler}
                 />
                 {messageNavigation === 'buttons' && <ChatNavigation containerId="messages" />}
-                <Inputbar assistant={assistant} setActiveTopic={props.setActiveTopic} topic={props.activeTopic} />
+                <Inputbar
+                  key={props.activeTopic.id}
+                  assistant={assistant}
+                  setActiveTopic={props.setActiveTopic}
+                  topic={props.activeTopic}
+                />
                 {isMultiSelectMode && <MultiSelectActionPopup topic={props.activeTopic} />}
               </div>
             </QuickPanelProvider>

@@ -13,12 +13,12 @@ import type { RootState } from '@renderer/store'
 import { scrollIntoView } from '@renderer/utils/dom'
 import { Button, Drawer, Tooltip } from 'antd'
 import type { FC } from 'react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSelector } from 'react-redux'
 import styled from 'styled-components'
 
-import ChatFlowHistory from './ChatFlowHistory'
+const LazyChatFlowHistory = lazy(() => import('./ChatFlowHistory'))
 
 // Exclude some areas from the navigation
 const EXCLUDED_SELECTORS = [
@@ -411,7 +411,11 @@ const ChatNavigation: FC<ChatNavigationProps> = ({ containerId }) => {
             height: 'calc(100% - 55px)'
           }
         }}>
-        <ChatFlowHistory conversationId={currentTopicId || undefined} />
+        {showChatHistory && (
+          <Suspense fallback={null}>
+            <LazyChatFlowHistory conversationId={currentTopicId || undefined} />
+          </Suspense>
+        )}
       </Drawer>
     </>
   )

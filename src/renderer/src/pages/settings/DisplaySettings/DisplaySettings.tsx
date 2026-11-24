@@ -1,6 +1,5 @@
 import { ResetIcon } from '@renderer/components/Icons'
 import { HStack } from '@renderer/components/Layout'
-import TextBadge from '@renderer/components/TextBadge'
 import { isLinux, isMac, THEME_COLOR_PRESETS } from '@renderer/config/constant'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import { useSettings } from '@renderer/hooks/useSettings'
@@ -295,9 +294,7 @@ const DisplaySettings: FC = () => {
         </SettingRow>
       </SettingGroup>
       <SettingGroup theme={theme}>
-        <SettingTitle style={{ justifyContent: 'flex-start', gap: 5 }}>
-          {t('settings.display.font.title')} <TextBadge text="New" />
-        </SettingTitle>
+        <SettingTitle>{t('settings.display.font.title')}</SettingTitle>
         <SettingDivider />
         <SettingRow>
           <SettingRowTitle>{t('settings.display.font.global')}</SettingRowTitle>
@@ -307,11 +304,7 @@ const DisplaySettings: FC = () => {
               placeholder={t('settings.display.font.select')}
               options={[
                 {
-                  label: (
-                    <span style={{ fontFamily: 'Ubuntu, -apple-system, system-ui, Arial, sans-serif' }}>
-                      {t('settings.display.font.default')}
-                    </span>
-                  ),
+                  label: <span style={{ fontFamily: 'var(--font-family)' }}>{t('settings.display.font.default')}</span>,
                   value: ''
                 },
                 ...fontList.map((font) => ({ label: renderFontOption(font), value: font }))
@@ -340,9 +333,7 @@ const DisplaySettings: FC = () => {
               options={[
                 {
                   label: (
-                    <span style={{ fontFamily: 'Ubuntu, -apple-system, system-ui, Arial, sans-serif' }}>
-                      {t('settings.display.font.default')}
-                    </span>
+                    <span style={{ fontFamily: 'var(--font-family-mono)' }}>{t('settings.display.font.default')}</span>
                   ),
                   value: ''
                 },

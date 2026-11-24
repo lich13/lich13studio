@@ -417,12 +417,22 @@ fn native_http_abort_registry() -> &'static Mutex<HashMap<String, Arc<HttpAbortH
 
 #[cfg_attr(not(any(target_os = "android", test)), allow(dead_code))]
 pub(crate) fn cancel_all_http_requests() {
-    http_delivery::clear();
-    if let Ok(registry) = native_http_abort_registry().lock() {
-        for handle in registry.values() {
-            handle.cancel();
-        }
+    let ids: Vec<String> = if let Ok(registry) = native_http_abort_registry().lock() {
+        registry
+            .iter()
+            .map(|(id, handle)| {
+                handle.cancel();
+                id.clone()
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
+    for id in &ids {
+        http_delivery::remove(id);
     }
+    #[cfg(target_os = "android")]
+    http_delivery::clear();
 }
 
 fn runtime_settings_lock() -> &'static Mutex<RuntimeSettings> {

@@ -34,6 +34,7 @@ import styled from 'styled-components'
 import MessageAnchorLine from './MessageAnchorLine'
 import MessageGroup from './MessageGroup'
 import NarrowLayout from './NarrowLayout'
+import { deriveTopicDisplayWindow } from './pagination'
 import { MessagesContainer, ScrollContainer } from './shared'
 
 interface MessagesProps {
@@ -50,8 +51,7 @@ const Messages: React.FC<MessagesProps> = ({ assistant, topic, setActiveTopic, o
   const { containerRef: scrollContainerRef, handleScroll: handleScrollPosition } = useScrollPosition(
     `topic-${topic.id}`
   )
-  const [displayMessages, setDisplayMessages] = useState<Message[]>([])
-  const [hasMore, setHasMore] = useState(false)
+  const [loadedExtraCount, setLoadedExtraCount] = useState(0)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [isProcessingContext, setIsProcessingContext] = useState(false)
 
@@ -67,6 +67,14 @@ const Messages: React.FC<MessagesProps> = ({ assistant, topic, setActiveTopic, o
 
   const messageElements = useRef<Map<string, HTMLElement>>(new Map())
   const messagesRef = useRef<Message[]>(messages)
+  const prevTopicIdRef = useRef(topic.id)
+
+  if (prevTopicIdRef.current !== topic.id) {
+    prevTopicIdRef.current = topic.id
+    if (loadedExtraCount !== 0) {
+      setLoadedExtraCount(0)
+    }
+  }
 
   useEffect(() => {
     messagesRef.current = messages
@@ -80,11 +88,11 @@ const Messages: React.FC<MessagesProps> = ({ assistant, topic, setActiveTopic, o
     }
   }, [])
 
-  useEffect(() => {
-    const newDisplayMessages = computeDisplayMessages(messages, 0, displayCount)
-    setDisplayMessages(newDisplayMessages)
-    setHasMore(messages.length > displayCount)
-  }, [messages, displayCount])
+  const effectiveDisplayCount = displayCount + loadedExtraCount
+  const { displayMessages, hasMore } = useMemo(
+    () => deriveTopicDisplayWindow(messages, effectiveDisplayCount),
+    [messages, effectiveDisplayCount]
+  )
 
   // NOTE: 如果设置为平滑滚动会导致滚动条无法跟随生成的新消息保持在底部位置
   const scrollToBottom = useCallback(() => {
@@ -105,7 +113,7 @@ const Messages: React.FC<MessagesProps> = ({ assistant, topic, setActiveTopic, o
       }
 
       await clearTopicMessages()
-      setDisplayMessages([])
+      setLoadedExtraCount(0)
     },
     [clearTopicMessages, topic.id]
   )
@@ -240,11 +248,7 @@ const Messages: React.FC<MessagesProps> = ({ assistant, topic, setActiveTopic, o
     setTimeoutTimer(
       'loadMoreMessages',
       () => {
-        const currentLength = displayMessages.length
-        const newMessages = computeDisplayMessages(messages, currentLength, LOAD_MORE_COUNT)
-
-        setDisplayMessages((prev) => [...newMessages, ...prev])
-        setHasMore(currentLength + LOAD_MORE_COUNT < messages.length)
+        setLoadedExtraCount((prev) => prev + LOAD_MORE_COUNT)
         setIsLoadingMore(false)
 
         requestAnimationFrame(() => {
@@ -259,7 +263,7 @@ const Messages: React.FC<MessagesProps> = ({ assistant, topic, setActiveTopic, o
       },
       300
     )
-  }, [displayMessages.length, hasMore, isLoadingMore, messages, scrollContainerRef, setTimeoutTimer])
+  }, [hasMore, isLoadingMore, scrollContainerRef, setTimeoutTimer])
 
   useShortcut('copy_last_message', () => {
     const lastMessage = last(messages) as Message | undefined
@@ -345,35 +349,6 @@ const Messages: React.FC<MessagesProps> = ({ assistant, topic, setActiveTopic, o
       />
     </MessagesContainer>
   )
-}
-
-const computeDisplayMessages = (messages: Message[], startIndex: number, displayCount: number) => {
-  const userIdSet = new Set() // 用户消息 id 集合
-  const assistantIdSet = new Set() // 助手消息 askId 集合
-  const displayMessages: Message[] = []
-
-  // 处理单条消息的函数
-  const processMessage = (message: Message) => {
-    if (!message) return
-
-    const idSet = message.role === 'user' ? userIdSet : assistantIdSet
-    const messageId = message.role === 'user' ? message.id : message.askId
-
-    if (!idSet.has(messageId)) {
-      idSet.add(messageId)
-      displayMessages.push(message)
-      return
-    }
-    // 如果是相同 askId 的助手消息，也要显示
-    displayMessages.push(message)
-  }
-
-  // 直接在原数组上倒序遍历，跳过前 startIndex 个，避免全量拷贝和 reverse()
-  for (let i = messages.length - 1 - startIndex; i >= 0 && userIdSet.size + assistantIdSet.size < displayCount; i--) {
-    processMessage(messages[i])
-  }
-
-  return displayMessages.toReversed()
 }
 
 const LoaderContainer = styled.div`

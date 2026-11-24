@@ -49,9 +49,9 @@ import TokenCount from './TokenCount'
 
 const logger = loggerService.withContext('Inputbar')
 
-const INPUTBAR_DRAFT_CACHE_KEY = 'inputbar-draft'
 const DRAFT_CACHE_TTL = 24 * 60 * 60 * 1000 // 24 hours
 
+const getDraftCacheKey = (topicId: string) => `inputbar-draft-${topicId}`
 const getMentionedModelsCacheKey = (assistantId: string) => `inputbar-mentioned-models-${assistantId}`
 
 const getValidatedCachedModels = (assistantId: string): Model[] => {
@@ -131,10 +131,21 @@ const InputbarInner: FC<InputbarInnerProps> = ({ assistant: initialAssistant, se
   const { setFiles, setMentionedModels } = useInputbarToolsDispatch()
   const { setCouldAddImageFile } = useInputbarToolsInternalDispatch()
 
+  const activeTopicIdRef = useRef(topic.id)
   const { text, setText } = useInputText({
-    initialValue: CacheService.get<string>(INPUTBAR_DRAFT_CACHE_KEY) ?? '',
-    onChange: (value) => CacheService.set(INPUTBAR_DRAFT_CACHE_KEY, value, DRAFT_CACHE_TTL)
+    initialValue: CacheService.get<string>(getDraftCacheKey(topic.id)) ?? '',
+    onChange: (value) => CacheService.set(getDraftCacheKey(activeTopicIdRef.current), value, DRAFT_CACHE_TTL)
   })
+
+  useEffect(() => {
+    if (activeTopicIdRef.current === topic.id) {
+      return
+    }
+    activeTopicIdRef.current = topic.id
+    const nextDraft = CacheService.get<string>(getDraftCacheKey(topic.id)) ?? ''
+    setText(nextDraft)
+    setFiles([])
+  }, [topic.id, setText, setFiles])
   const {
     textareaRef,
     resize: resizeTextArea,
@@ -257,7 +268,6 @@ const InputbarInner: FC<InputbarInnerProps> = ({ assistant: initialAssistant, se
 
       setText('')
       setFiles([])
-      setTimeoutTimer('sendMessage_1', () => setText(''), 500)
       setTimeoutTimer('sendMessage_2', () => resizeTextArea(), 0)
       // Restore focus to textarea after sending to maintain IME state (fcitx5 issue)
       focusTextarea()

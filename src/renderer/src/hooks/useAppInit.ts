@@ -21,17 +21,7 @@ const logger = loggerService.withContext('useAppInit')
 
 export function useAppInit() {
   const dispatch = useAppDispatch()
-  const {
-    proxyUrl,
-    proxyBypassRules,
-    language,
-    windowStyle,
-    autoCheckUpdate,
-    proxyMode,
-    launchToTray,
-    tray,
-    trayOnClose
-  } = useSettings()
+  const { language, windowStyle, autoCheckUpdate, launchToTray, tray, trayOnClose } = useSettings()
   const { isLeftNavbar } = useNavbarPosition()
   const { minappShow } = useRuntime()
   const { setDefaultModel, setQuickModel, setTranslateModel } = useDefaultModel()
@@ -40,14 +30,6 @@ export function useAppInit() {
 
   useEffect(() => {
     void import('@renderer/init')
-  }, [])
-
-  useEffect(() => {
-    void window.api.getDataPathFromArgs().then((dataPath) => {
-      if (dataPath) {
-        window.navigate('/settings/data', { replace: true })
-      }
-    })
   }, [])
 
   useEffect(() => {
@@ -90,17 +72,6 @@ export function useAppInit() {
 
     return () => window.clearTimeout(timer)
   }, [autoCheckUpdate])
-
-  useEffect(() => {
-    if (proxyMode === 'system') {
-      void window.api.setProxy('system', undefined)
-    } else if (proxyMode === 'custom') {
-      void (proxyUrl && window.api.setProxy(proxyUrl, proxyBypassRules))
-    } else {
-      // set proxy to none for direct mode
-      void window.api.setProxy('', undefined)
-    }
-  }, [proxyUrl, proxyMode, proxyBypassRules])
 
   useEffect(() => {
     const currentLanguage = 'zh-CN'
