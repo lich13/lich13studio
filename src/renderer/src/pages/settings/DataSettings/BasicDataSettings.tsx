@@ -419,7 +419,6 @@ const BasicDataSettings: React.FC = () => {
       onOk: async () => {
         try {
           await window.api.clearCache()
-          await window.api.trace.cleanLocalData()
           await window.api.getCacheSize().then(setCacheSize)
           window.toast.success(t('settings.data.clear_cache.success'))
         } catch (error) {

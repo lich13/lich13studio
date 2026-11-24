@@ -1,11 +1,9 @@
 import { MoreOutlined } from '@ant-design/icons'
-import { Icon } from '@iconify/react'
 import { useExternalApps } from '@renderer/hooks/useExternalApps'
 import { buildEditorUrl, getEditorIcon } from '@renderer/utils/editorUtils'
-import { getFileIconName } from '@renderer/utils/fileIconName'
 import type { ExternalAppInfo } from '@shared/externalApp/types'
 import { Dropdown, type MenuProps, Tooltip } from 'antd'
-import { FolderOpen } from 'lucide-react'
+import { FileText, FolderOpen } from 'lucide-react'
 import { memo, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -17,7 +15,6 @@ interface ClickableFilePathProps {
 export const ClickableFilePath = memo(function ClickableFilePath({ path, displayName }: ClickableFilePathProps) {
   const { t } = useTranslation()
   const { data: externalApps } = useExternalApps()
-  const iconName = useMemo(() => getFileIconName(path), [path])
 
   const availableEditors = useMemo(
     () => externalApps?.filter((app) => app.tags.includes('code-editor')) ?? [],
@@ -94,7 +91,7 @@ export const ClickableFilePath = memo(function ClickableFilePath({ path, display
           onKeyDown={handleKeyDown}
           className="inline-flex cursor-pointer items-center gap-1 hover:underline"
           style={{ color: 'var(--color-link)', wordBreak: 'break-all' }}>
-          <Icon icon={`material-icon-theme:${iconName}`} className="shrink-0" style={{ fontSize: '1.1em' }} />
+          <FileText size={14} className="shrink-0" />
           {displayName ?? path}
         </span>
       </Tooltip>

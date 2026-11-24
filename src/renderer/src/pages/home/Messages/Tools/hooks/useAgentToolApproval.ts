@@ -1,4 +1,3 @@
-import type { PermissionUpdate } from '@anthropic-ai/claude-agent-sdk'
 import { loggerService } from '@logger'
 import { useAppDispatch, useAppSelector } from '@renderer/store'
 import { selectPendingPermission, toolPermissionsActions } from '@renderer/store/toolPermissions'
@@ -45,7 +44,7 @@ export function useAgentToolApproval(
       behavior: 'allow' | 'deny',
       extra?: {
         updatedInput?: Record<string, unknown>
-        updatedPermissions?: PermissionUpdate[]
+        updatedPermissions?: unknown[]
         message?: string
       }
     ) => {

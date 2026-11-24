@@ -19,7 +19,7 @@
     "test:watch": "vitest",
     "prepublishOnly": "pnpm build"
   },
-  "keywords": ["ai", "sdk", "openai", "anthropic", "google", "cherry-studio", "vercel-ai-sdk"],
+  "keywords": ["ai", "sdk", "openai", "anthropic", "cherry-studio", "vercel-ai-sdk"],
   "author": "Cherry Studio",
   "license": "MIT",
   "repository": {
@@ -31,25 +31,17 @@
   },
   "homepage": "https://github.com/CherryHQ/cherry-studio#readme",
   "peerDependencies": {
-    "@ai-sdk/google": "^3.0.55",
     "@ai-sdk/openai": "^3.0.53",
     "ai": "^6.0.116"
   },
   "dependencies": {
-    "@cherrystudio/ai-sdk-provider": "workspace:*",
     "@ai-sdk/anthropic": "^3.0.58",
-    "@ai-sdk/azure": "^3.0.50",
-    "@ai-sdk/deepseek": "^2.0.24",
-    "@ai-sdk/openai-compatible": "^2.0.37",
-    "@openrouter/ai-sdk-provider": "^2.3.3",
     "@ai-sdk/provider": "^3.0.8",
     "@ai-sdk/provider-utils": "^4.0.19",
-    "@ai-sdk/xai": "^3.0.75",
     "lru-cache": "^11.2.4",
     "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@cherrystudio/ai-sdk-provider": "workspace:*",
     "biome": "^0.3.3",
     "oxlint": "^1.36.0",
     "tsdown": "^0.20.3",

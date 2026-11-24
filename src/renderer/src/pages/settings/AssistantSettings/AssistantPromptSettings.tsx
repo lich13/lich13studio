@@ -4,14 +4,13 @@ import { CloseCircleFilled } from '@ant-design/icons'
 import CodeEditor from '@renderer/components/CodeEditor'
 import EmojiPicker from '@renderer/components/EmojiPicker'
 import { Box, HSpaceBetweenStack, HStack } from '@renderer/components/Layout'
-import type { RichEditorRef } from '@renderer/components/RichEditor/types'
 import { usePromptProcessor } from '@renderer/hooks/usePromptProcessor'
 import { estimateTextTokens } from '@renderer/services/TokenService'
 import type { Assistant, AssistantSettings } from '@renderer/types'
 import { getLeadingEmoji } from '@renderer/utils'
 import { Button, Input, Popover } from 'antd'
 import { Edit, HelpCircle, Save } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ReactMarkdown from 'react-markdown'
 import styled from 'styled-components'
@@ -32,7 +31,6 @@ const AssistantPromptSettings: React.FC<Props> = ({ assistant, updateAssistant }
   const [showPreview, setShowPreview] = useState(assistant.prompt.length > 0)
   const [tokenCount, setTokenCount] = useState(0)
   const { t } = useTranslation()
-  const editorRef = useRef<RichEditorRef>(null)
 
   useEffect(() => {
     setTokenCount(estimateTextTokens(prompt))
@@ -120,9 +118,7 @@ const AssistantPromptSettings: React.FC<Props> = ({ assistant, updateAssistant }
           {showPreview ? (
             <MarkdownContainer
               onDoubleClick={() => {
-                const currentScrollTop = editorRef.current?.getScrollTop?.() || 0
                 setShowPreview(false)
-                requestAnimationFrame(() => editorRef.current?.setScrollTop?.(currentScrollTop))
               }}>
               <ReactMarkdown>{processedPrompt || prompt}</ReactMarkdown>
             </MarkdownContainer>
@@ -146,15 +142,12 @@ const AssistantPromptSettings: React.FC<Props> = ({ assistant, updateAssistant }
           type="primary"
           icon={showPreview ? <Edit size={14} /> : <Save size={14} />}
           onClick={() => {
-            const currentScrollTop = editorRef.current?.getScrollTop?.() || 0
             if (showPreview) {
               setShowPreview(false)
-              requestAnimationFrame(() => editorRef.current?.setScrollTop?.(currentScrollTop))
             } else {
               onUpdate()
               requestAnimationFrame(() => {
                 setShowPreview(true)
-                requestAnimationFrame(() => editorRef.current?.setScrollTop?.(currentScrollTop))
               })
             }
           }}>

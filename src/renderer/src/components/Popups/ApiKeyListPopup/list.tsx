@@ -1,6 +1,4 @@
-import { usePreprocessProvider } from '@renderer/hooks/usePreprocess'
 import { useProvider } from '@renderer/hooks/useProvider'
-import type { PreprocessProviderId } from '@renderer/types'
 import { Button, List } from 'antd'
 import { Plus } from 'lucide-react'
 import { useState } from 'react'
@@ -55,11 +53,8 @@ export function ApiKeyList({
     </>
   )
 }
+
 export function LlmApiKeyList({ providerId }: { providerId: string }) {
   const { provider, updateProvider } = useProvider(providerId)
-  return <ApiKeyList provider={provider} updateProvider={updateProvider} />
-}
-export function DocPreprocessApiKeyList({ providerId }: { providerId: PreprocessProviderId }) {
-  const { provider, updateProvider } = usePreprocessProvider(providerId)
   return <ApiKeyList provider={provider} updateProvider={updateProvider} />
 }

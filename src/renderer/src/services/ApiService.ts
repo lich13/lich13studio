@@ -395,15 +395,6 @@ export async function fetchMessagesSummary({
     enableUrlContext: false
   }
   try {
-    // 从 messages 中找到有 traceId 的助手消息，用于绑定现有 trace
-    const messageWithTrace = messages.find((m) => m.role === 'assistant' && m.traceId)
-
-    if (messageWithTrace && messageWithTrace.traceId) {
-      // 导入并调用 appendTrace 来绑定现有 trace，传入summary使用的模型名
-      const { appendTrace } = await import('@renderer/services/SpanManagerService')
-      await appendTrace({ topicId, traceId: messageWithTrace.traceId, model })
-    }
-
     const { getText } = await AI.completions(model.id, llmMessages, {
       ...middlewareConfig,
       assistant: summaryAssistant,
@@ -416,75 +407,6 @@ export async function fetchMessagesSummary({
     return result ? { text: result } : { text: null, error: i18n.t('error.no_response') }
   } catch (error: unknown) {
     return { text: null, error: getErrorMessage(error) }
-  }
-}
-
-export async function fetchNoteSummary({ content, assistant }: { content: string; assistant?: Assistant }) {
-  let prompt = getStoreSetting('topicNamingPrompt') || i18n.t('prompts.title')
-  const resolvedAssistant = assistant || getDefaultAssistant()
-  const model = getQuickModel() || resolvedAssistant.model || getDefaultModel()
-
-  if (prompt && containsSupportedVariables(prompt)) {
-    prompt = await replacePromptVariables(prompt, model.name)
-  }
-
-  const provider = getProviderByModel(model)
-
-  if (!hasApiKey(provider)) {
-    return null
-  }
-
-  // Apply API key rotation
-  // NOTE: Shallow copy is intentional. Provider objects are not mutated by downstream code.
-  // Nested properties (if any) are never modified after creation.
-  const providerWithRotatedKey = {
-    ...provider,
-    apiKey: getRotatedApiKey(provider)
-  }
-
-  const AI = new AiProvider(model, providerWithRotatedKey)
-
-  // only 2000 char and no images
-  const truncatedContent = content.substring(0, 2000)
-  const purifiedContent = purifyMarkdownImages(truncatedContent)
-
-  const summaryAssistant = {
-    ...resolvedAssistant,
-    settings: {
-      ...resolvedAssistant.settings,
-      reasoning_effort: 'max' as const,
-      qwenThinkMode: false
-    },
-    prompt,
-    model
-  }
-
-  const llmMessages = {
-    system: prompt,
-    prompt: purifiedContent
-  }
-
-  const middlewareConfig: AiSdkMiddlewareConfig = {
-    streamOutput: false,
-    chatRequestMode: 'non-stream',
-    enableReasoning: false,
-    isPromptToolUse: false,
-    isSupportedToolUse: false,
-    enableGenerateImage: false,
-    enableUrlContext: false
-  }
-
-  try {
-    const { getText } = await AI.completions(model.id, llmMessages, {
-      ...middlewareConfig,
-      assistant: summaryAssistant,
-      callType: 'summary'
-    })
-
-    const text = getText()
-    return removeSpecialCharactersForTopicName(text) || null
-  } catch (error: any) {
-    return null
   }
 }
 

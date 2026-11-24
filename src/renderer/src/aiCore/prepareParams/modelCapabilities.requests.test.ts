@@ -60,12 +60,8 @@ vi.mock('@renderer/services/AssistantService', () => ({
   }
 }))
 vi.mock('@renderer/services/CliVersionService', () => ({ getPlatformHeaders: () => ({}) }))
-vi.mock('@renderer/services/SpanManagerService', () => ({}))
 vi.mock('@renderer/services/ReasoningUsageService', () => ({
   reasoningUsage: { subscribe: () => () => {}, get: () => undefined, set: vi.fn() }
-}))
-vi.mock('@renderer/services/models/ModelAdapter', () => ({
-  normalizeGatewayModels: (_provider: Provider, models: Model[]) => models
 }))
 vi.mock('@renderer/utils/prompt', () => ({ replacePromptVariables: (text: string) => text }))
 vi.mock('@renderer/utils/provider', () => ({

@@ -12,7 +12,7 @@
       "project": [
         "src/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}",
         "scripts/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}",
-        "packages/{shared,trace}/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}"
+        "packages/shared/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}"
       ],
       "vitest": {
         "config": "vitest.renderer.config.ts"
@@ -23,21 +23,6 @@
     },
     "packages/aiCore": {
       "entry": ["src/index.ts", "src/core/plugins/built-in/index.ts", "src/core/providers/index.ts"],
-      "project": ["src/**/*.ts", "test_utils/**/*.ts"]
-    },
-    "packages/ai-sdk-provider": {
-      "entry": ["src/index.ts"],
-      "project": ["src/**/*.ts"]
-    },
-    "packages/extension-table-plus": {
-      "entry": [
-        "src/index.ts",
-        "src/table/index.ts",
-        "src/cell/index.ts",
-        "src/header/index.ts",
-        "src/kit/index.ts",
-        "src/row/index.ts"
-      ],
       "project": ["src/**/*.ts"]
     }
   }

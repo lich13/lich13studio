@@ -255,21 +255,4 @@ export class RuntimeExecutor<
       modelResolver
     })
   }
-
-  /**
-   * 创建OpenAI Compatible执行器
-   * ✅ Now accepts provider instance directly
-   */
-  static createOpenAICompatible(
-    provider: ProviderV3, // ✅ Accept provider instance
-    options: CoreProviderSettingsMap['openai-compatible'],
-    plugins: AiPlugin[] = []
-  ): RuntimeExecutor<CoreProviderSettingsMap, 'openai-compatible'> {
-    return new RuntimeExecutor<CoreProviderSettingsMap, 'openai-compatible'>({
-      providerId: 'openai-compatible',
-      provider, // ✅ Pass provider to config
-      providerSettings: options,
-      plugins
-    })
-  }
 }

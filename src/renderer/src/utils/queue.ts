@@ -1,4 +1,3 @@
-import { endTrace } from '@renderer/services/SpanManagerService'
 import { abortTopicStream } from '@renderer/services/StreamRegistry'
 import PQueue from 'p-queue'
 
@@ -13,9 +12,7 @@ const requestQueues: { [topicId: string]: PQueue } = {}
  */
 export const getTopicQueue = (topicId: string, options = {}): PQueue => {
   if (!requestQueues[topicId]) {
-    requestQueues[topicId] = new PQueue(options).addListener('idle', () => {
-      endTrace({ topicId })
-    })
+    requestQueues[topicId] = new PQueue(options)
   }
   return requestQueues[topicId]
 }

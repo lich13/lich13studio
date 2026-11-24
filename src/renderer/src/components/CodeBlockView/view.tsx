@@ -1,4 +1,3 @@
-import { Icon } from '@iconify/react'
 import { loggerService } from '@logger'
 import type { ActionTool } from '@renderer/components/ActionTools'
 import type { CodeEditorHandles } from '@renderer/components/CodeEditor'
@@ -8,28 +7,24 @@ import {
   useCopyTool,
   useDownloadTool,
   useExpandTool,
-  useRunTool,
   useSaveTool,
   useSplitViewTool,
   useViewSourceTool,
   useWrapTool
 } from '@renderer/components/CodeToolbar'
 import CodeViewer from '@renderer/components/CodeViewer'
-import ImageViewer from '@renderer/components/ImageViewer'
 import type { BasicPreviewHandles } from '@renderer/components/Preview'
 import { MAX_COLLAPSED_CODE_HEIGHT } from '@renderer/config/constant'
 import { useSettings } from '@renderer/hooks/useSettings'
-import { pyodideService } from '@renderer/services/PyodideService'
 import { getExtensionByLanguage } from '@renderer/utils/code-language'
-import { getFileIconName } from '@renderer/utils/fileIconName'
 import { extractHtmlTitle, getFileNameFromHtmlTitle } from '@renderer/utils/formats'
 import dayjs from 'dayjs'
+import { FileCode } from 'lucide-react'
 import React, { memo, startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled, { css } from 'styled-components'
 
 import { SPECIAL_VIEW_COMPONENTS, SPECIAL_VIEWS } from './constants'
-import StatusBar from './StatusBar'
 import type { ViewMode } from './types'
 
 const logger = loggerService.withContext('CodeBlockView')
@@ -58,7 +53,7 @@ interface Props {
  */
 export const CodeBlockView: React.FC<Props> = memo(({ children, language, onSave }) => {
   const { t } = useTranslation()
-  const { codeEditor, codeExecution, codeImageTools, codeCollapsible, codeWrappable } = useSettings()
+  const { codeEditor, codeImageTools, codeCollapsible, codeWrappable } = useSettings()
 
   const [viewState, setViewState] = useState({
     mode: 'special' as ViewMode,
@@ -84,14 +79,7 @@ export const CodeBlockView: React.FC<Props> = memo(({ children, language, onSave
     })
   }, [])
 
-  const [isRunning, setIsRunning] = useState(false)
-  const [executionResult, setExecutionResult] = useState<{ text: string; image?: string } | null>(null)
-
   const [tools, setTools] = useState<ActionTool[]>([])
-
-  const isExecutable = useMemo(() => {
-    return codeExecution.enabled && language === 'python'
-  }, [codeExecution.enabled, language])
 
   const sourceViewRef = useRef<CodeEditorHandles>(null)
   const specialViewRef = useRef<BasicPreviewHandles>(null)
@@ -160,26 +148,6 @@ export const CodeBlockView: React.FC<Props> = memo(({ children, language, onSave
     void window.api.file.save(`${fileName}${ext}`, children)
   }, [children, language])
 
-  const handleRunScript = useCallback(() => {
-    setIsRunning(true)
-    setExecutionResult(null)
-
-    pyodideService
-      .runScript(children, {}, codeExecution.timeoutMinutes * 60000)
-      .then((result) => {
-        setExecutionResult(result)
-      })
-      .catch((error) => {
-        logger.error('Unexpected error:', error)
-        setExecutionResult({
-          text: `Unexpected error: ${error.message || 'Unknown error'}`
-        })
-      })
-      .finally(() => {
-        setIsRunning(false)
-      })
-  }, [children, codeExecution.timeoutMinutes])
-
   const showPreviewTools = useMemo(() => {
     return viewMode !== 'source' && hasSpecialView
   }, [hasSpecialView, viewMode])
@@ -214,14 +182,6 @@ export const CodeBlockView: React.FC<Props> = memo(({ children, language, onSave
     enabled: hasSpecialView,
     viewMode,
     onToggleSplitView: toggleSplitView,
-    setTools
-  })
-
-  // 运行按钮
-  useRunTool({
-    enabled: isExecutable,
-    isRunning,
-    onRun: handleRunScript,
     setTools
   })
 
@@ -298,11 +258,9 @@ export const CodeBlockView: React.FC<Props> = memo(({ children, language, onSave
     if (isInSpecialView) {
       return <CodeHeader $isInSpecialView>{''}</CodeHeader>
     }
-    const ext = getExtensionByLanguage(language)
-    const iconName = getFileIconName(`file${ext}`)
     return (
       <CodeHeader $isInSpecialView={false}>
-        <Icon icon={`material-icon-theme:${iconName}`} style={{ fontSize: '1.1em', marginRight: 6 }} />
+        <FileCode size={15} style={{ marginRight: 6 }} />
         {language.charAt(0).toUpperCase() + language.slice(1)}
       </CodeHeader>
     )
@@ -329,14 +287,6 @@ export const CodeBlockView: React.FC<Props> = memo(({ children, language, onSave
       {renderHeader}
       <CodeToolbar tools={tools} />
       {renderContent}
-      {isExecutable && executionResult && (
-        <StatusBar>
-          {executionResult.text}
-          {executionResult.image && (
-            <ImageViewer src={executionResult.image} alt="Matplotlib plot" style={{ cursor: 'pointer' }} />
-          )}
-        </StatusBar>
-      )}
     </CodeBlockWrapper>
   )
 })

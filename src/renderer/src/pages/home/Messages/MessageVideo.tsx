@@ -1,74 +1,59 @@
 import { loggerService } from '@renderer/services/LoggerService'
 import type { VideoMessageBlock } from '@renderer/types/newMessage'
-import type { FC } from 'react'
-import { useRef } from 'react'
+import type { FC, SyntheticEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import ReactPlayer from 'react-player'
 import styled from 'styled-components'
 
 const logger = loggerService.withContext('MessageVideo')
+
 interface Props {
   block: VideoMessageBlock
 }
 
 const MessageVideo: FC<Props> = ({ block }) => {
-  const playerRef = useRef<HTMLVideoElement | null>(null)
   const { t } = useTranslation()
-
-  logger.debug(`MessageVideo: ${JSON.stringify(block)}`)
 
   if (!block.url && !block.filePath) {
     return null
   }
 
-  /**
-   * 渲染本地视频文件
-   */
   const renderLocalVideo = () => {
-    if (!block.filePath) {
-      logger.warn('Local video was requested but block.filePath is missing.')
+    const localPath = block.metadata?.video?.path ?? block.filePath
+    if (!localPath) {
+      logger.warn('Local video was requested but video path is missing.')
       return <div>{t('message.video.error.local_file_missing')}</div>
     }
 
-    const videoSrc = `file://${block.metadata?.video.path}`
-
-    const handleReady = () => {
+    const videoSrc = localPath.startsWith('file://') ? localPath : `file://${localPath}`
+    const handleLoadedMetadata = (event: SyntheticEvent<HTMLVideoElement>) => {
       const startTime = Math.floor(block.metadata?.startTime ?? 0)
-      if (playerRef.current) {
-        playerRef.current.currentTime = startTime
+      if (startTime > 0) {
+        event.currentTarget.currentTime = startTime
       }
     }
 
     return (
-      <ReactPlayer
-        ref={playerRef}
-        style={{
-          height: '100%',
-          width: '100%'
-        }}
-        src={videoSrc}
+      <video
         controls
-        onReady={handleReady}
+        preload="metadata"
+        style={{ height: '100%', width: '100%' }}
+        src={videoSrc}
+        onLoadedMetadata={handleLoadedMetadata}
       />
     )
   }
 
   const renderVideo = () => {
-    switch (block.metadata?.type) {
-      case 'video':
-        return renderLocalVideo()
-
-      default:
-        if (block.filePath) {
-          logger.warn(
-            `Unknown video type: ${block.metadata?.type}, but with filePath will try to render as local video.`
-          )
-          return renderLocalVideo()
-        }
-
-        logger.warn(`Unsupported video type: ${block.metadata?.type} or missing necessary data.`)
-        return <div>{t('message.video.error.unsupported_type')}</div>
+    if (block.metadata?.type === 'video' || block.filePath) {
+      return renderLocalVideo()
     }
+
+    if (block.url) {
+      return <video controls preload="metadata" style={{ height: '100%', width: '100%' }} src={block.url} />
+    }
+
+    logger.warn(`Unsupported video type: ${block.metadata?.type} or missing necessary data.`)
+    return <div>{t('message.video.error.unsupported_type')}</div>
   }
 
   return <Container>{renderVideo()}</Container>

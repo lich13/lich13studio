@@ -3,7 +3,6 @@ import i18n from '@renderer/i18n'
 import { getProviderLabel } from '@renderer/i18n/label'
 import { getMessageTitle } from '@renderer/services/MessagesService'
 import { runtimeCapabilities } from '@renderer/services/mobile/runtime'
-import { addNote } from '@renderer/services/NotesService'
 import store from '@renderer/store'
 import { setExportState } from '@renderer/store/runtime'
 import type { Topic } from '@renderer/types'
@@ -609,79 +608,4 @@ function transformObsidianFileName(fileName: string): string {
   }
 
   return sanitized
-}
-
-/**
- * 导出消息到笔记工作区
- * @returns 创建的笔记节点
- * @param title
- * @param content
- * @param folderPath
- */
-export const exportMessageToNotes = async (title: string, content: string, folderPath: string): Promise<void> => {
-  try {
-    const cleanedContent = content.replace(/^## 🤖 Assistant(\n|$)/m, '')
-    await addNote(title, cleanedContent, folderPath)
-
-    window.toast.success(i18n.t('message.success.notes.export'))
-  } catch (error) {
-    logger.error('导出到笔记失败:', error as Error)
-    window.toast.error(i18n.t('message.error.notes.export'))
-    throw error
-  }
-}
-
-/**
- * 导出话题到笔记工作区
- * @param topic 要导出的话题
- * @param folderPath
- * @returns 创建的笔记节点
- */
-export const exportTopicToNotes = async (topic: Topic, folderPath: string): Promise<void> => {
-  try {
-    const content = await topicToMarkdown(topic)
-    await addNote(topic.name, content, folderPath)
-
-    window.toast.success(i18n.t('message.success.notes.export'))
-  } catch (error) {
-    logger.error('导出到笔记失败:', error as Error)
-    window.toast.error(i18n.t('message.error.notes.export'))
-    throw error
-  }
-}
-
-const exportNoteAsMarkdown = async (noteName: string, content: string): Promise<void> => {
-  const markdown = `# ${noteName}\n\n${content}`
-  const fileName = removeSpecialCharactersForFileName(noteName) + '.md'
-  const result = await window.api.file.save(fileName, markdown)
-  if (result) {
-    window.toast.success(i18n.t('message.success.markdown.export.specified'))
-  }
-}
-
-interface NoteExportOptions {
-  node: { name: string; externalPath: string }
-  platform: 'markdown' | 'docx' | 'obsidian'
-}
-
-export const exportNote = async ({ node, platform }: NoteExportOptions): Promise<void> => {
-  try {
-    const content = await window.api.file.readExternal(node.externalPath)
-
-    switch (platform) {
-      case 'markdown':
-        return await exportNoteAsMarkdown(node.name, content)
-      case 'docx':
-        void window.api.export.toWord(`# ${node.name}\n\n${content}`, removeSpecialCharactersForFileName(node.name))
-        return
-      case 'obsidian': {
-        const { default: ObsidianExportPopup } = await import('@renderer/components/Popups/ObsidianExportPopup')
-        await ObsidianExportPopup.show({ title: node.name, processingMethod: '1', rawContent: content })
-        return
-      }
-    }
-  } catch (error) {
-    logger.error(`Failed to export note to ${platform}:`, error as Error)
-    throw error
-  }
 }

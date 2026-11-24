@@ -12,7 +12,6 @@ const previousLocalStorage = vi.hoisted(() => {
 })
 
 vi.mock('@renderer/services/AssistantService', () => ({ getProviderByModel: vi.fn() }))
-vi.mock('@renderer/services/SpanManagerService', () => ({}))
 vi.mock('@renderer/utils', () => ({
   getLowerBaseModelName: (id: string) => id.toLowerCase().split('/').pop() ?? ''
 }))

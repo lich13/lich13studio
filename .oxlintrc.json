@@ -33,7 +33,7 @@
       "env": {
         "browser": true
       },
-      "files": ["src/renderer/**/*.{ts,tsx}", "packages/aiCore/**", "packages/extension-table-plus/**"]
+      "files": ["src/renderer/**/*.{ts,tsx}", "packages/aiCore/**"]
     },
     {
       "env": {
@@ -41,12 +41,6 @@
         "vitest": true
       },
       "files": ["**/__tests__/*.test.{ts,tsx}", "tests/**"]
-    },
-    {
-      "files": ["packages/ai-sdk-provider/**"],
-      "globals": {
-        "fetch": "readonly"
-      }
     }
   ],
   "plugins": ["unicorn", "typescript", "oxc", "import"],

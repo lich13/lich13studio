@@ -1,7 +1,5 @@
-// import { InfoCircleOutlined } from '@ant-design/icons'
 import { loggerService } from '@logger'
 import { CopyIcon, DeleteIcon, EditIcon, RefreshIcon } from '@renderer/components/Icons'
-import InspectMessagePopup from '@renderer/components/Popups/InspectMessagePopup'
 import ObsidianExportPopup from '@renderer/components/Popups/ObsidianExportPopup'
 import { SelectChatModelPopup } from '@renderer/components/Popups/SelectModelPopup'
 import { isEmbeddingModel, isRerankModel, isVisionModel } from '@renderer/config/models'
@@ -10,8 +8,7 @@ import { DEFAULT_MESSAGE_MENUBAR_SCOPE, getMessageMenubarConfig } from '@rendere
 import { useMessageEditing } from '@renderer/context/MessageEditingContext'
 import { useChatContext } from '@renderer/hooks/useChatContext'
 import { useMessageOperations } from '@renderer/hooks/useMessageOperations'
-import { useNotesSettings } from '@renderer/hooks/useNotesSettings'
-import { useEnableDeveloperMode, useMessageStyle, useSettings } from '@renderer/hooks/useSettings'
+import { useMessageStyle, useSettings } from '@renderer/hooks/useSettings'
 import { useTemporaryValue } from '@renderer/hooks/useTemporaryValue'
 import { EVENT_NAMES, EventEmitter } from '@renderer/services/EventService'
 import { getMessageTitle } from '@renderer/services/MessagesService'
@@ -19,32 +16,18 @@ import type { RootState } from '@renderer/store'
 import store from '@renderer/store'
 import { messageBlocksSelectors } from '@renderer/store/messageBlock'
 import { selectMessagesForTopic } from '@renderer/store/newMessage'
-import { TraceIcon } from '@renderer/trace/pages/Component'
 import type { Assistant, Model, Topic } from '@renderer/types'
 import { type Message, MessageBlockType } from '@renderer/types/newMessage'
 import { classNames } from '@renderer/utils'
 import { copyMessageAsPlainText } from '@renderer/utils/copy'
-import { exportMessageAsMarkdown, exportMessageToNotes, messageToMarkdown } from '@renderer/utils/export'
-// import { withMessageThought } from '@renderer/utils/formats'
+import { exportMessageAsMarkdown, messageToMarkdown } from '@renderer/utils/export'
 import { removeTrailingDoubleSpaces } from '@renderer/utils/markdown'
 import { findMainTextBlocks, getMainTextContent } from '@renderer/utils/messageUtils/find'
 import type { MenuProps } from 'antd'
 import { Dropdown, Popconfirm, Tooltip } from 'antd'
 import dayjs from 'dayjs'
 import type { TFunction } from 'i18next'
-import {
-  AtSign,
-  Bug,
-  Check,
-  FilePenLine,
-  ListChecks,
-  Menu,
-  NotebookPen,
-  Save,
-  Split,
-  ThumbsUp,
-  Upload
-} from 'lucide-react'
+import { AtSign, Check, FilePenLine, ListChecks, Menu, Save, Split, ThumbsUp, Upload } from 'lucide-react'
 import type { Dispatch, FC, ReactNode, SetStateAction } from 'react'
 import { Fragment, memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -73,22 +56,18 @@ type MessageOperationsHandlers = ReturnType<typeof useMessageOperations>
 
 type MessageMenubarButtonContext = {
   assistant: Assistant
-  blockEntities: ReturnType<typeof messageBlocksSelectors.selectEntities>
   confirmDeleteMessage: boolean
   confirmRegenerateMessage: boolean
   copied: boolean
   deleteMessage: MessageOperationsHandlers['deleteMessage']
   dropdownItems: MenuProps['items']
-  enableDeveloperMode: boolean
   handleResendUserMessage: (messageUpdate?: Message) => Promise<void>
-  handleTraceUserMessage: () => void | Promise<void>
   isAssistantMessage: boolean
   isBubbleStyle: boolean
   isGrouped?: boolean
   isLastMessage: boolean
   isUserMessage: boolean
   message: Message
-  notesPath: string
   onCopy: (e: React.MouseEvent) => void
   onEdit: () => void | Promise<void>
   onMentionModel: (e: React.MouseEvent) => void | Promise<void>
@@ -106,7 +85,6 @@ const MessageMenubar: FC<Props> = (props) => {
   const { message, index, isGrouped, isLastMessage, isAssistantMessage, assistant, topic, model, onUpdateUseful } =
     props
   const { t } = useTranslation()
-  const { notesPath } = useNotesSettings()
   const { toggleMultiSelectMode } = useChatContext(props.topic)
   const [copied, setCopied] = useTemporaryValue(false, 2000)
   // remove confirm for regenerate; tooltip stays simple
@@ -116,7 +94,6 @@ const MessageMenubar: FC<Props> = (props) => {
     useMessageOperations(topic)
 
   const { isBubbleStyle } = useMessageStyle()
-  const { enableDeveloperMode } = useEnableDeveloperMode()
   const { confirmDeleteMessage, confirmRegenerateMessage } = useSettings()
 
   // const loading = useTopicLoading(topic)
@@ -178,19 +155,6 @@ const MessageMenubar: FC<Props> = (props) => {
   const onEdit = useCallback(async () => {
     startEditing(message.id)
   }, [message.id, startEditing])
-
-  const blockEntities = useSelector(messageBlocksSelectors.selectEntities)
-
-  const handleTraceUserMessage = useCallback(async () => {
-    if (message.traceId) {
-      void window.api.trace.openWindow(
-        message.topicId,
-        message.traceId,
-        true,
-        message.role === 'user' ? undefined : message.model?.name
-      )
-    }
-  }, [message])
 
   const menubarScope: MessageMenubarScope = topic?.type ?? DEFAULT_MESSAGE_MENUBAR_SCOPE
   const { buttonIds, dropdownRootAllowKeys } = getMessageMenubarConfig(menubarScope)
@@ -383,22 +347,18 @@ const MessageMenubar: FC<Props> = (props) => {
 
   const buttonContext: MessageMenubarButtonContext = {
     assistant,
-    blockEntities,
     confirmDeleteMessage,
     confirmRegenerateMessage,
     copied,
     deleteMessage,
     dropdownItems,
-    enableDeveloperMode,
     handleResendUserMessage,
-    handleTraceUserMessage,
     isAssistantMessage,
     isBubbleStyle,
     isGrouped,
     isLastMessage,
     isUserMessage,
     message,
-    notesPath,
     onCopy,
     onEdit,
     onMentionModel,
@@ -607,27 +567,6 @@ const buttonRenderers: Record<MessageMenubarButtonId, MessageMenubarButtonRender
       </Tooltip>
     )
   },
-  notes: ({ isAssistantMessage, softHoverBg, message, notesPath, t }) => {
-    if (!isAssistantMessage) {
-      return null
-    }
-
-    return (
-      <Tooltip title={t('notes.save')} mouseEnterDelay={0.8}>
-        <ActionButton
-          className="message-action-button"
-          onClick={async (e) => {
-            e.stopPropagation()
-            const title = await getMessageTitle(message)
-            const markdown = messageToMarkdown(message)
-            void exportMessageToNotes(title, markdown, notesPath)
-          }}
-          $softHoverBg={softHoverBg}>
-          <NotebookPen size={15} />
-        </ActionButton>
-      </Tooltip>
-    )
-  },
   delete: ({
     confirmDeleteMessage,
     deleteMessage,
@@ -648,7 +587,7 @@ const buttonRenderers: Record<MessageMenubarButtonId, MessageMenubarButtonRender
     )
 
     const handleDeleteMessage = async () => {
-      await deleteMessage(message.id, message.traceId, message.model?.name)
+      await deleteMessage(message.id)
     }
 
     if (confirmDeleteMessage) {
@@ -678,42 +617,6 @@ const buttonRenderers: Record<MessageMenubarButtonId, MessageMenubarButtonRender
         $softHoverBg={softHoverBg}>
         {deleteTooltip}
       </ActionButton>
-    )
-  },
-  trace: ({ enableDeveloperMode, message, handleTraceUserMessage, t }) => {
-    if (!enableDeveloperMode || !message.traceId) {
-      return null
-    }
-
-    return (
-      <Tooltip title={t('trace.label')} mouseEnterDelay={0.8}>
-        <ActionButton className="message-action-button" onClick={() => handleTraceUserMessage()}>
-          <TraceIcon size={16} className={'lucide lucide-trash'} />
-        </ActionButton>
-      </Tooltip>
-    )
-  },
-  'inspect-data': ({ message, blockEntities, enableDeveloperMode }) => {
-    if (!enableDeveloperMode) {
-      return null
-    }
-
-    const handleInspect = (e: React.MouseEvent) => {
-      e.stopPropagation()
-      const blocks = message.blocks.map((blockId) => blockEntities[blockId]).filter(Boolean)
-      void InspectMessagePopup.show({
-        title: `Message: ${message.id}`,
-        message,
-        blocks
-      })
-    }
-
-    return (
-      <Tooltip title="Inspect Data (Dev)" mouseEnterDelay={0.8}>
-        <ActionButton className="message-action-button" onClick={handleInspect}>
-          <Bug size={15} />
-        </ActionButton>
-      </Tooltip>
     )
   },
   'more-menu': ({ isUserMessage, dropdownItems, softHoverBg }) => {

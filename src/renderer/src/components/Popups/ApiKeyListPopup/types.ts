@@ -1,8 +1,5 @@
-import type { PreprocessProvider, Provider } from '@renderer/types'
+import type { Provider } from '@renderer/types'
 
-/**
- * API key 格式有效性
- */
 export type ApiKeyValidity =
   | {
       isValid: true
@@ -13,10 +10,8 @@ export type ApiKeyValidity =
       error: string
     }
 
-export type ApiProvider = Provider | PreprocessProvider
+export type ApiProvider = Provider
 
 export type UpdateProviderFunc = (p: Partial<Provider>) => void
 
-export type UpdatePreprocessProviderFunc = (p: Partial<PreprocessProvider>) => void
-
-export type UpdateApiProviderFunc = UpdateProviderFunc | UpdatePreprocessProviderFunc
+export type UpdateApiProviderFunc = UpdateProviderFunc

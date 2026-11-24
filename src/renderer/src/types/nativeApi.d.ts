@@ -1,9 +1,7 @@
-import type { PermissionUpdate } from '@anthropic-ai/claude-agent-sdk'
 import type { GitBashPathInfo, TerminalConfig, UpgradeChannel } from '@shared/config/constant'
 import type { LogLevel, LogSourceWithContext } from '@shared/config/logger'
 import type { CodeToolsRunResult, FileChangeEvent, OperationResult } from '@shared/config/types'
 import type { ExternalAppInfo } from '@shared/externalApp/types'
-import type { SpanEntity, TokenUsage } from '@trace/trace-core'
 import type { Notification } from '@types'
 import type {
   FileListResponse,
@@ -320,7 +318,7 @@ declare const api: {
       behavior: 'allow' | 'deny'
       updatedInput?: Record<string, unknown>
       message?: string
-      updatedPermissions?: PermissionUpdate[]
+      updatedPermissions?: unknown[]
     }) => Promise<any>
     onPermissionRequest: (callback: (payload: any) => void) => () => void
     onPermissionResult: (callback: (payload: any) => void) => () => void
@@ -408,23 +406,6 @@ declare const api: {
   quoteToMainWindow: (text: string) => Promise<any>
   onQuoteToMainWindow: (callback: (text: string) => void) => () => void
   setUseSystemTitleBar: (isActive: boolean) => Promise<any>
-  trace: {
-    saveData: (topicId: string) => Promise<any>
-    getData: (topicId: string, traceId: string, modelName?: string) => Promise<any>
-    saveEntity: (entity: SpanEntity) => Promise<any>
-    getEntity: (spanId: string) => Promise<any>
-    bindTopic: (topicId: string, traceId: string) => Promise<any>
-    tokenUsage: (spanId: string, usage: TokenUsage) => Promise<any>
-    cleanHistory: (topicId: string, traceId: string, modelName?: string) => Promise<any>
-    cleanTopic: (topicId: string, traceId?: string) => Promise<any>
-    openWindow: (topicId: string, traceId: string, autoOpen?: boolean, modelName?: string) => Promise<any>
-    setTraceWindowTitle: (title: string) => Promise<any>
-    addEndMessage: (spanId: string, modelName: string, context: string) => Promise<any>
-    cleanLocalData: () => Promise<any>
-    addStreamMessage: (spanId: string, modelName: string, context: string, message: any) => Promise<any>
-    onceSetTrace: (callback: (data: any) => void) => void
-    onceSetLanguage: (callback: (data: any) => void) => void
-  }
   anthropic_oauth: {
     startOAuthFlow: () => Promise<any>
     completeOAuthWithCode: (code: string) => Promise<any>

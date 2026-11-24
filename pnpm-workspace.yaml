@@ -77,20 +77,13 @@ overrides:
   "openai": "npm:@cherrystudio/openai@6.15.0"
   "tar-fs": "^2.1.4"
   "vite": "npm:rolldown-vite@7.3.1"
-  "@napi-rs/canvas": "0.1.97"
   "@ai-sdk/provider-utils": "4.0.33"
   "@ai-sdk/openai": "3.0.53"
   "@ai-sdk/anthropic": "3.0.64"
 
 patchedDependencies:
-  "@tiptap/extension-drag-handle@3.2.0": "patches/@tiptap-extension-drag-handle-npm-3.2.0-5a9ebff7c9.patch"
   "antd@5.27.0": "patches/antd-npm-5.27.0-aa91c36546.patch"
-  "ollama-ai-provider-v2@3.3.1": "patches/ollama-ai-provider-v2@3.3.1.patch"
-  "@openrouter/ai-sdk-provider": "patches/@openrouter__ai-sdk-provider.patch"
-  "@opeoginni/github-copilot-openai-compatible@1.0.0": "patches/@opeoginni__github-copilot-openai-compatible@1.0.0.patch"
-  "@ai-sdk/openai-compatible@2.0.37": "patches/@ai-sdk__openai-compatible@2.0.37.patch"
   "@ai-sdk/openai@3.0.53": "patches/@ai-sdk__openai@3.0.53.patch"
-  "@ai-sdk/google@3.0.55": "patches/@ai-sdk__google@3.0.55.patch"
   "@ai-sdk/anthropic@3.0.64": "patches/@ai-sdk__anthropic@3.0.64.patch"
 
 allowBuilds:

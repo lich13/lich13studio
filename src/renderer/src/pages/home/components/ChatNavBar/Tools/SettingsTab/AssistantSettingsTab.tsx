@@ -15,7 +15,6 @@ import { useAppDispatch } from '@renderer/store'
 import {
   setCodeCollapsible,
   setCodeEditor,
-  setCodeExecution,
   setCodeFancyBlock,
   setCodeImageTools,
   setCodeShowLineNumbers,
@@ -84,7 +83,6 @@ const AssistantSettingsTab = (props: Props) => {
     codeEditor,
     codeViewer,
     codeImageTools,
-    codeExecution,
     codeFancyBlock,
     mathEngine,
     mathEnableSingleDollar,
@@ -299,38 +297,6 @@ const AssistantSettingsTab = (props: Props) => {
               onChange={(checked) => dispatch(setCodeFancyBlock(checked))}
             />
           </SettingRow>
-          <SettingDivider />
-          <SettingRow>
-            <SettingRowTitleSmall>
-              {t('chat.settings.code_execution.title')}
-              <HelpTooltip title={t('chat.settings.code_execution.tip')} />
-            </SettingRowTitleSmall>
-            <Switch
-              size="small"
-              checked={codeExecution.enabled}
-              onChange={(checked) => dispatch(setCodeExecution({ enabled: checked }))}
-            />
-          </SettingRow>
-          {codeExecution.enabled && (
-            <>
-              <SettingDivider />
-              <SettingRow style={{ paddingLeft: 8 }}>
-                <SettingRowTitleSmall>
-                  {t('chat.settings.code_execution.timeout_minutes.label')}
-                  <HelpTooltip title={t('chat.settings.code_execution.timeout_minutes.tip')} />
-                </SettingRowTitleSmall>
-                <EditableNumber
-                  size="small"
-                  min={1}
-                  max={60}
-                  step={1}
-                  value={codeExecution.timeoutMinutes}
-                  onChange={(value) => dispatch(setCodeExecution({ timeoutMinutes: value ?? 1 }))}
-                  style={{ width: 80 }}
-                />
-              </SettingRow>
-            </>
-          )}
           <SettingDivider />
           <SettingRow>
             <SettingRowTitleSmall>{t('chat.settings.code_editor.title')}</SettingRowTitleSmall>

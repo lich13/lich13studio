@@ -28,7 +28,6 @@ import { CacheService } from '@renderer/services/CacheService'
 import { EVENT_NAMES, EventEmitter } from '@renderer/services/EventService'
 import FileManager from '@renderer/services/FileManager'
 import { checkRateLimit, getUserMessage } from '@renderer/services/MessagesService'
-import { spanManagerService } from '@renderer/services/SpanManagerService'
 import { estimateTextTokens as estimateTxtTokens, estimateUserPromptUsage } from '@renderer/services/TokenService'
 import { useAppDispatch, useAppSelector } from '@renderer/store'
 import { sendMessage as _sendMessage } from '@renderer/store/thunk/messageThunk'
@@ -237,11 +236,7 @@ const InputbarInner: FC<InputbarInnerProps> = ({ assistant: initialAssistant, se
 
     logger.info('Starting to send message')
 
-    const parent = spanManagerService.startTrace(
-      { topicId: topic.id, name: 'sendMessage', inputs: text },
-      mentionedModels.length > 0 ? mentionedModels : [assistant.model]
-    )
-    void EventEmitter.emit(EVENT_NAMES.SEND_MESSAGE, { topicId: topic.id, traceId: parent?.spanContext().traceId })
+    void EventEmitter.emit(EVENT_NAMES.SEND_MESSAGE, { topicId: topic.id })
 
     try {
       const uploadedFiles = await FileManager.uploadFiles(files)
@@ -257,7 +252,6 @@ const InputbarInner: FC<InputbarInnerProps> = ({ assistant: initialAssistant, se
       baseUserMessage.usage = await estimateUserPromptUsage(baseUserMessage)
 
       const { message, blocks } = getUserMessage(baseUserMessage)
-      message.traceId = parent?.spanContext().traceId
 
       void dispatch(_sendMessage(message, blocks, assistant, topic.id))
 
@@ -269,7 +263,6 @@ const InputbarInner: FC<InputbarInnerProps> = ({ assistant: initialAssistant, se
       focusTextarea()
     } catch (error) {
       logger.warn('Failed to send message:', error as Error)
-      parent?.recordException(error as Error)
     }
   }, [
     assistant,

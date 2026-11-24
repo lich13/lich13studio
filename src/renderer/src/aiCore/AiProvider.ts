@@ -1,29 +1,16 @@
 import { createExecutor } from '@cherrystudio/ai-core'
 import type { generateImageResult } from '@cherrystudio/ai-core/core/runtime/types'
-import { loggerService } from '@logger'
-import { getEnableDeveloperMode } from '@renderer/hooks/useSettings'
 import { requireCurrentModel } from '@renderer/services/AssistantService'
 import { backgroundTasks } from '@renderer/services/mobile/BackgroundTaskService'
 import { runtimeCapabilities } from '@renderer/services/mobile/runtime'
-import { normalizeGatewayModels } from '@renderer/services/models/ModelAdapter'
 import { reasoningUsage } from '@renderer/services/ReasoningUsageService'
-import { addSpan, endSpan } from '@renderer/services/SpanManagerService'
-import type { StartSpanParams } from '@renderer/trace/types/ModelSpanEntity'
-import {
-  type Assistant,
-  type EditImageParams,
-  type GenerateImageParams,
-  type Model,
-  type Provider,
-  SystemProviderIds
-} from '@renderer/types'
+import type { Assistant, EditImageParams, GenerateImageParams, Model, Provider } from '@renderer/types'
 import type { StreamTextParams } from '@renderer/types/aiCoreTypes'
 import type { Chunk } from '@renderer/types/chunk'
 import { ChunkType } from '@renderer/types/chunk'
 import { getLowerBaseModelName } from '@renderer/utils'
 import { buildClaudeCodeSystemModelMessage } from '@shared/anthropic'
 import { normalizeReasoningEffort } from '@shared/reasoning'
-import { gateway } from 'ai'
 
 import AiSdkToChunkAdapter from './chunk/AiSdkToChunkAdapter'
 import { buildPlugins } from './plugins/PluginBuilder'
@@ -32,8 +19,6 @@ import { listModels } from './services/listModels'
 import type { AppProviderSettingsMap, CompletionsResult, ProviderConfig } from './types'
 import type { AiSdkMiddlewareConfig } from './types/middlewareConfig'
 import { withReasoningFallback } from './utils/reasoningFallback'
-
-const logger = loggerService.withContext('AiProvider')
 
 export type AiProviderConfig = AiSdkMiddlewareConfig & {
   assistant: Assistant
@@ -161,106 +146,7 @@ export default class AiProvider {
       params.messages = [...claudeCodeSystemMessage, ...(params.messages || [])]
     }
 
-    if (middlewareConfig.topicId && getEnableDeveloperMode()) {
-      // TypeScript类型窄化：确保topicId是string类型
-      const traceConfig = {
-        ...middlewareConfig,
-        topicId: middlewareConfig.topicId
-      }
-      return await this._completionsForTrace(modelId, params, traceConfig, this.config)
-    } else {
-      return await this.modernCompletions(modelId, params, middlewareConfig, this.config)
-    }
-  }
-
-  /**
-   * 带trace支持的completions方法
-   * 类似于legacy的completionsForTrace，确保AI SDK spans在正确的trace上下文中
-   */
-  private async _completionsForTrace(
-    modelId: string,
-    params: StreamTextParams,
-    middlewareConfig: AiProviderConfig & { topicId: string },
-    providerConfig: ProviderConfig
-  ): Promise<CompletionsResult> {
-    const traceName = `${this.actualProvider.name}.${modelId}.${middlewareConfig.callType}`
-    const traceParams: StartSpanParams = {
-      name: traceName,
-      tag: 'LLM',
-      topicId: middlewareConfig.topicId,
-      modelName: middlewareConfig.assistant.model?.name, // 使用modelId而不是provider名称
-      inputs: {
-        messageCount: Array.isArray(params.messages) ? params.messages.length : 0,
-        hasPrompt: typeof params.prompt === 'string',
-        hasTools: !!params.tools && Object.keys(params.tools).length > 0,
-        hasSystem: params.system !== undefined,
-        modelId
-      }
-    }
-
-    logger.info('Starting AI SDK trace span', {
-      traceName,
-      topicId: middlewareConfig.topicId,
-      modelId,
-      hasTools: !!params.tools && Object.keys(params.tools).length > 0,
-      toolNames: params.tools ? Object.keys(params.tools) : []
-    })
-
-    const span = addSpan(traceParams)
-    if (!span) {
-      logger.warn('Failed to create span, falling back to regular completions', {
-        topicId: middlewareConfig.topicId,
-        modelId,
-        traceName
-      })
-      return await this.modernCompletions(modelId, params, middlewareConfig, providerConfig)
-    }
-
-    try {
-      logger.info('Created parent span, now calling completions', {
-        spanId: span.spanContext().spanId,
-        traceId: span.spanContext().traceId,
-        topicId: middlewareConfig.topicId,
-        modelId,
-        parentSpanCreated: true
-      })
-
-      const result = await this.modernCompletions(modelId, params, middlewareConfig, providerConfig)
-
-      logger.info('Completions finished, ending parent span', {
-        spanId: span.spanContext().spanId,
-        traceId: span.spanContext().traceId,
-        topicId: middlewareConfig.topicId,
-        modelId,
-        resultLength: result.getText().length
-      })
-
-      // 标记span完成
-      endSpan({
-        topicId: middlewareConfig.topicId,
-        outputs: result,
-        span,
-        modelName: modelId // 使用modelId保持一致性
-      })
-
-      return result
-    } catch (error) {
-      logger.error('Error in completionsForTrace, ending parent span with error', error as Error, {
-        spanId: span.spanContext().spanId,
-        traceId: span.spanContext().traceId,
-        topicId: middlewareConfig.topicId,
-        modelId
-      })
-
-      // 标记span出错
-      endSpan({
-        topicId: middlewareConfig.topicId,
-        error: error as Error,
-        span,
-        modelName: modelId // 使用modelId保持一致性
-      })
-      throw error
-    }
+    return await this.modernCompletions(modelId, params, middlewareConfig, this.config)
   }
 
   /**
@@ -436,13 +322,6 @@ export default class AiProvider {
    * 使用 ModelListService 统一处理各 Provider 的模型列表获取
    */
   public async models(): Promise<Model[]> {
-    // Gateway provider 使用 AI SDK 的 gateway API
-    if (this.actualProvider.id === SystemProviderIds.gateway) {
-      const gatewayModels = (await gateway.getAvailableModels()).models
-      return normalizeGatewayModels(this.actualProvider, gatewayModels)
-    }
-
-    // 使用新的 ModelListService
     return await listModels(this.actualProvider)
   }
 
