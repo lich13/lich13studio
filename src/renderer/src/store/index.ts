@@ -1,105 +1,90 @@
-/**
- * @deprecated Scheduled for removal in v2.0.0
- * --------------------------------------------------------------------------
- * ⚠️ NOTICE: V2 DATA&UI REFACTORING (by 0xfullex)
- * --------------------------------------------------------------------------
- * STOP: Feature PRs affecting this file are currently BLOCKED.
- * Only critical bug fixes are accepted during this migration phase.
- *
- * This file is being refactored to v2 standards.
- * Any non-critical changes will conflict with the ongoing work.
- *
- * 🔗 Context & Status:
- * - Contribution Hold: https://github.com/CherryHQ/cherry-studio/issues/10954
- * - v2 Refactor PR   : https://github.com/CherryHQ/cherry-studio/pull/10162
- * --------------------------------------------------------------------------
- */
 import { loggerService } from '@logger'
 import { combineReducers, configureStore } from '@reduxjs/toolkit'
 import { credentialStorageEnabled, mobilePersistStorage } from '@renderer/services/mobile/credentials'
 import { useDispatch, useSelector, useStore } from 'react-redux'
-import { FLUSH, PAUSE, PERSIST, persistReducer, persistStore, PURGE, REGISTER, REHYDRATE } from 'redux-persist'
+import {
+  FLUSH,
+  PAUSE,
+  PERSIST,
+  type PersistConfig,
+  persistReducer,
+  persistStore,
+  PURGE,
+  REGISTER,
+  REHYDRATE
+} from 'redux-persist'
+import autoMergeLevel1 from 'redux-persist/lib/stateReconciler/autoMergeLevel1'
 import storage from 'redux-persist/lib/storage'
 
 import storeSyncService from '../services/StoreSyncService'
 import assistants from './assistants'
 import backup from './backup'
-import codeTools from './codeTools'
-import copilot from './copilot'
 import inputToolsReducer from './inputTools'
 import llm from './llm'
 import messageBlocksReducer from './messageBlock'
 import migrate from './migrate'
-import minapps from './minapps'
 import { modelCatalogMiddleware } from './modelCatalogMiddleware'
 import newMessagesReducer from './newMessage'
-import { setNotesPath } from './note'
-import note from './note'
-import ocr from './ocr'
-import openclaw from './openclaw'
-import paintings from './paintings'
-import preprocess from './preprocess'
 import runtime from './runtime'
 import selectionStore from './selectionStore'
 import settings from './settings'
 import shortcuts from './shortcuts'
 import tabs from './tabs'
-import toolPermissions from './toolPermissions'
 
 const logger = loggerService.withContext('Store')
 
 const rootReducer = combineReducers({
   assistants,
   backup,
-  codeTools,
-  paintings,
   llm,
   settings,
   runtime,
   shortcuts,
-  minapps,
-  copilot,
-  openclaw,
   selectionStore,
   tabs,
-  preprocess,
   messages: newMessagesReducer,
   messageBlocks: messageBlocksReducer,
-  inputTools: inputToolsReducer,
-  ocr,
-  note,
-  toolPermissions
+  inputTools: inputToolsReducer
 })
 
-const persistedReducer = persistReducer(
+export type RootState = ReturnType<typeof rootReducer>
+
+export function reconcileActiveSlices<S extends Record<string, any>>(
+  inboundState: S,
+  originalState: S,
+  reducedState: S,
+  config: PersistConfig<S>
+): S {
+  if (!inboundState || typeof inboundState !== 'object') {
+    return autoMergeLevel1(inboundState, originalState, reducedState, config)
+  }
+  const allowedInbound = {} as S
+  for (const key of Object.keys(inboundState) as Array<keyof S>) {
+    if (Object.prototype.hasOwnProperty.call(originalState, key)) {
+      allowedInbound[key] = inboundState[key]
+    }
+  }
+  return autoMergeLevel1(allowedInbound, originalState, reducedState, config)
+}
+
+const persistedReducer = persistReducer<RootState>(
   {
     key: 'cherry-studio',
     storage: credentialStorageEnabled ? mobilePersistStorage : storage,
     version: 223,
-    blacklist: ['runtime', 'messages', 'messageBlocks', 'tabs', 'toolPermissions'],
+    blacklist: ['runtime', 'messages', 'messageBlocks', 'tabs'],
+    stateReconciler: reconcileActiveSlices,
     migrate
   },
   rootReducer
 )
 
-/**
- * Configures the store sync service to synchronize specific state slices across all windows.
- * For detailed implementation, see @renderer/services/StoreSyncService.ts
- *
- * Usage:
- * - 'xxxx/' - Synchronizes the entire state slice
- * - 'xxxx/sliceName' - Synchronizes a specific slice within the state
- *
- * To listen for store changes in a window:
- * Call storeSyncService.subscribe() in the window's entryPoint.tsx
- */
 storeSyncService.setOptions({
-  syncList: ['assistants/', 'settings/', 'llm/', 'selectionStore/', 'note/']
+  syncList: ['assistants/', 'settings/', 'llm/', 'selectionStore/']
 })
 
 const store = configureStore({
-  // @ts-ignore store type is unknown
-  reducer: persistedReducer as typeof rootReducer,
+  reducer: persistedReducer as unknown as typeof rootReducer,
   middleware: (getDefaultMiddleware) => {
     return getDefaultMiddleware({
       serializableCheck: {
@@ -107,33 +92,16 @@ const store = configureStore({
       }
     }).concat(modelCatalogMiddleware, storeSyncService.createMiddleware())
   },
-  devTools: true
+  devTools: import.meta.env.DEV
 })
 
-export type RootState = ReturnType<typeof rootReducer>
 export type AppDispatch = typeof store.dispatch
 
 export const persistor = persistStore(store, undefined, () => {
   void import('@renderer/services/PlatformModelCatalogService').then(({ platformModelCatalogService }) =>
     platformModelCatalogService.initialize()
   )
-  // Initialize notes path after rehydration if empty
-  const state = store.getState()
-  if (!state.note.notesPath) {
-    // Use setTimeout to ensure this runs after the store is fully initialized
-    setTimeout(async () => {
-      try {
-        const info = await window.api.getAppInfo()
-        store.dispatch(setNotesPath(info.notesPath))
-        logger.info('Initialized notes path on startup:', info.notesPath)
-      } catch (error) {
-        logger.error('Failed to initialize notes path on startup:', error as Error)
-      }
-    }, 0)
-  }
-
-  // Notify main process that Redux store is ready
-  void window.api.notifyReduxStoreReady()
+  void window.api?.notifyReduxStoreReady?.()
   logger.info('Redux store ready, notified main process')
 })
 

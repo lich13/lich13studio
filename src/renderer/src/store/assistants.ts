@@ -18,7 +18,6 @@
 import type { PayloadAction } from '@reduxjs/toolkit'
 import { createSelector, createSlice } from '@reduxjs/toolkit'
 import { DEFAULT_CONTEXTCOUNT, DEFAULT_TEMPERATURE } from '@renderer/config/constant'
-import { TopicManager } from '@renderer/hooks/useTopic'
 import { DEFAULT_ASSISTANT_SETTINGS, getDefaultAssistant, getDefaultTopic } from '@renderer/services/AssistantService'
 import type { Assistant, AssistantPreset, AssistantSettings, Model, Topic } from '@renderer/types'
 import { isEmpty, uniqBy } from 'lodash'
@@ -177,7 +176,12 @@ const assistantsSlice = createSlice({
     removeAllTopics: (state, action: PayloadAction<{ assistantId: string }>) => {
       state.assistants = state.assistants.map((assistant) => {
         if (assistant.id === action.payload.assistantId) {
-          normalizeTopics(assistant.topics).forEach((topic) => TopicManager.removeTopic(topic.id))
+          const topicIds = normalizeTopics(assistant.topics).map((topic) => topic.id)
+          if (topicIds.length > 0) {
+            void import('@renderer/hooks/useTopic').then(({ TopicManager }) => {
+              topicIds.forEach((id) => void TopicManager.removeTopic(id))
+            })
+          }
           return {
             ...assistant,
             topics: [getDefaultTopic(assistant.id)]

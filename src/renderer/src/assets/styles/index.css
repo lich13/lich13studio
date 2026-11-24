@@ -5,10 +5,8 @@
 @import './scrollbar.css';
 @import './container.css';
 @import './animation.css';
-@import './richtext.css';
 @import './responsive.css';
 @import '../fonts/icon-fonts/iconfont.css';
-@import '../fonts/ubuntu/ubuntu.css';
 @import '../fonts/country-flag-fonts/flag.css';
 
 @layer base {

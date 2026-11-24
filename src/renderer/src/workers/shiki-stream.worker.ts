@@ -2,22 +2,21 @@
 
 import { loggerService } from '@logger'
 import { LRUCache } from 'lru-cache'
-import type { HighlighterCore, SpecialLanguage, ThemedToken } from 'shiki/core'
+import type { HighlighterGeneric, SpecialLanguage, ThemedToken } from 'shiki/core'
 
-// 注意保持 ShikiStreamTokenizer 依赖简单，避免打包出问题
 import type { ShikiStreamTokenizerOptions } from '../services/ShikiStreamTokenizer'
 import { ShikiStreamTokenizer } from '../services/ShikiStreamTokenizer'
 
 const logger = loggerService.initWindowSource('Worker').withContext('ShikiStream')
 
-// Worker 消息类型
-type WorkerMessageType = 'init' | 'highlight' | 'cleanup' | 'dispose'
+type WorkerMessageType = 'init' | 'highlight' | 'pre-properties' | 'code-to-html' | 'cleanup' | 'dispose'
 
 interface WorkerRequest {
   id: number
   type: WorkerMessageType
   callerId?: string
   chunk?: string
+  code?: string
   language?: string
   theme?: string
   languages?: string[]
@@ -27,7 +26,7 @@ interface WorkerRequest {
 interface WorkerResponse {
   id: number
   type: string
-  result?: any
+  result?: unknown
   error?: string
 }
 
@@ -36,29 +35,25 @@ interface HighlightChunkResult {
   recall: number
 }
 
-// Worker 全局变量
-let highlighter: HighlighterCore | null = null
+let highlighter: HighlighterGeneric<any, any> | null = null
 
-// 保存以 callerId-language-theme 为键的 tokenizer map
 const tokenizerMap = new LRUCache<string, ShikiStreamTokenizer>({
-  max: 100, // 最大缓存数量
-  ttl: 1000 * 60 * 15, // 15分钟过期时间
+  max: 100,
+  ttl: 1000 * 60 * 15,
   updateAgeOnGet: true,
   dispose: (value) => {
     if (value) value.clear()
   }
 })
 
-// 初始化高亮器
 async function initHighlighter(themes: string[], languages: string[]): Promise<void> {
-  const { createHighlighter } = await import('shiki')
+  const { createHighlighter } = await import('shiki/bundle/web')
   highlighter = await createHighlighter({
-    langs: languages,
-    themes: themes
+    langs: languages as any,
+    themes: themes as any
   })
 }
 
-// 确保语言和主题已加载
 async function ensureLanguageAndThemeLoaded(
   language: string,
   theme: string
@@ -67,38 +62,38 @@ async function ensureLanguageAndThemeLoaded(
     throw new Error('Highlighter not initialized')
   }
 
+  const { bundledLanguages, bundledThemes } = await import('shiki/bundle/web')
   let actualLanguage = language
   let actualTheme = theme
 
-  // 加载语言
   if (!highlighter.getLoadedLanguages().includes(language)) {
     try {
       if (['text', 'ansi'].includes(language)) {
         await highlighter.loadLanguage(language as SpecialLanguage)
       } else {
-        const { bundledLanguages } = await import('shiki')
-        const languageImportFn = bundledLanguages[language]
+        const languageImportFn = bundledLanguages[language as keyof typeof bundledLanguages]
+        if (!languageImportFn) {
+          throw new Error(`Unsupported web bundle language: ${language}`)
+        }
         const langData = await languageImportFn()
         await highlighter.loadLanguage(langData)
       }
-    } catch (error) {
-      // 回退到 text
+    } catch {
       await highlighter.loadLanguage('text')
       actualLanguage = 'text'
     }
   }
 
-  // 加载主题
   if (!highlighter.getLoadedThemes().includes(theme)) {
     try {
-      const { bundledThemes } = await import('shiki')
-      const themeImportFn = bundledThemes[theme]
+      const themeImportFn = bundledThemes[theme as keyof typeof bundledThemes]
+      if (!themeImportFn) {
+        throw new Error(`Unsupported web bundle theme: ${theme}`)
+      }
       const themeData = await themeImportFn()
       await highlighter.loadTheme(themeData)
     } catch (error) {
-      // 回退到 one-light
       logger.debug(`Worker: Failed to load theme '${theme}', falling back to 'one-light':`, error as Error)
-      const { bundledThemes } = await import('shiki')
       const oneLightTheme = await bundledThemes['one-light']()
       await highlighter.loadTheme(oneLightTheme)
       actualTheme = 'one-light'
@@ -108,12 +103,8 @@ async function ensureLanguageAndThemeLoaded(
   return { actualLanguage, actualTheme }
 }
 
-// 获取或创建 tokenizer
 async function getStreamTokenizer(callerId: string, language: string, theme: string): Promise<ShikiStreamTokenizer> {
-  // 创建复合键
   const cacheKey = `${callerId}-${language}-${theme}`
-
-  // 如果已存在，直接返回
   if (tokenizerMap.has(cacheKey)) {
     return tokenizerMap.get(cacheKey)!
   }
@@ -122,10 +113,7 @@ async function getStreamTokenizer(callerId: string, language: string, theme: str
     throw new Error('Highlighter not initialized')
   }
 
-  // 确保语言和主题已加载
   const { actualLanguage, actualTheme } = await ensureLanguageAndThemeLoaded(language, theme)
-
-  // 创建新的 tokenizer
   const options: ShikiStreamTokenizerOptions = {
     highlighter,
     lang: actualLanguage,
@@ -134,11 +122,9 @@ async function getStreamTokenizer(callerId: string, language: string, theme: str
 
   const tokenizer = new ShikiStreamTokenizer(options)
   tokenizerMap.set(cacheKey, tokenizer)
-
   return tokenizer
 }
 
-// 高亮代码 chunk
 async function highlightCodeChunk(
   callerId: string,
   chunk: string,
@@ -146,32 +132,50 @@ async function highlightCodeChunk(
   theme: string
 ): Promise<HighlightChunkResult> {
   try {
-    // 获取 tokenizer
     const tokenizer = await getStreamTokenizer(callerId, language, theme)
-
-    // 处理代码 chunk
     const result = await tokenizer.enqueue(chunk)
-
-    // 返回结果
     return {
       lines: [...result.stable, ...result.unstable],
       recall: result.recall
     }
   } catch (error) {
     logger.error('Worker failed to highlight code chunk:', error as Error)
-
-    // 提供简单的 fallback
-    const fallbackToken: ThemedToken = { content: chunk || '', color: '#000000', offset: 0 }
     return {
-      lines: [[fallbackToken]],
+      lines: (chunk || '').split('\n').map((line) => [{ content: line, offset: 0 }]),
       recall: 0
     }
   }
 }
 
-// 清理特定调用者的 tokenizer
+async function getPreProperties(language: string, theme: string) {
+  if (!highlighter) {
+    throw new Error('Highlighter not initialized')
+  }
+  const { actualLanguage, actualTheme } = await ensureLanguageAndThemeLoaded(language, theme)
+  const hast = highlighter.codeToHast('1', {
+    lang: actualLanguage,
+    theme: actualTheme
+  })
+  const firstChild = hast.children[0] as { properties?: Record<string, unknown> } | undefined
+  return (firstChild?.properties ?? { class: 'shiki', style: '', tabindex: 0 }) as {
+    class: string
+    style: string
+    tabindex: number
+  }
+}
+
+async function renderCodeToHtml(code: string, language: string, theme: string): Promise<string> {
+  if (!highlighter) {
+    throw new Error('Highlighter not initialized')
+  }
+  const { actualLanguage, actualTheme } = await ensureLanguageAndThemeLoaded(language, theme)
+  return highlighter.codeToHtml(code, {
+    lang: actualLanguage,
+    theme: actualTheme
+  })
+}
+
 function cleanupTokenizer(callerId: string): void {
-  // 清理所有以callerId开头的缓存
   for (const key of tokenizerMap.keys()) {
     if (key.startsWith(`${callerId}-`)) {
       tokenizerMap.delete(key)
@@ -179,10 +183,8 @@ function cleanupTokenizer(callerId: string): void {
   }
 }
 
-// 定义 worker 上下文类型
 declare const self: DedicatedWorkerGlobalScope
 
-// 监听消息
 self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
   const { id, type } = e.data
 
@@ -201,12 +203,35 @@ self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
         if (!highlighter) {
           throw new Error('Highlighter not initialized')
         }
-
-        if (e.data.callerId && e.data.chunk && e.data.language && e.data.theme) {
+        if (e.data.callerId && e.data.chunk !== undefined && e.data.language && e.data.theme) {
           const result = await highlightCodeChunk(e.data.callerId, e.data.chunk, e.data.language, e.data.theme)
           self.postMessage({ id, type: 'highlight-result', result } as WorkerResponse)
         } else {
           throw new Error('Missing required highlight parameters')
+        }
+        break
+
+      case 'pre-properties':
+        if (!highlighter) {
+          throw new Error('Highlighter not initialized')
+        }
+        if (e.data.language && e.data.theme) {
+          const result = await getPreProperties(e.data.language, e.data.theme)
+          self.postMessage({ id, type: 'pre-properties-result', result } as WorkerResponse)
+        } else {
+          throw new Error('Missing required pre-properties parameters')
+        }
+        break
+
+      case 'code-to-html':
+        if (!highlighter) {
+          throw new Error('Highlighter not initialized')
+        }
+        if (e.data.code !== undefined && e.data.language && e.data.theme) {
+          const result = await renderCodeToHtml(e.data.code, e.data.language, e.data.theme)
+          self.postMessage({ id, type: 'code-to-html-result', result } as WorkerResponse)
+        } else {
+          throw new Error('Missing required code-to-html parameters')
         }
         break
 

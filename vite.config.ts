@@ -53,8 +53,8 @@ export default defineConfig({
     outDir: resolve(__dirname, 'out/renderer'),
     emptyOutDir: true,
     target: 'chrome91',
-    // The minifier drops RegExp feature probes inside try/catch, breaking older WebViews.
-    minify: false,
+    // Use esbuild instead of oxc so RegExp Unicode-set feature probes inside try/catch are preserved.
+    minify: 'esbuild',
     rollupOptions: {
       input: {
         index: resolve(__dirname, 'src/renderer/index.html'),

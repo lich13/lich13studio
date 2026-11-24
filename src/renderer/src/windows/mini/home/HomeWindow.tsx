@@ -172,7 +172,7 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
   }, [files])
 
   useEffect(() => {
-    void i18n.changeLanguage(language || navigator.language || defaultLanguage)
+    void i18n.changeLanguage(defaultLanguage)
   }, [language])
 
   const focusInput = useCallback(() => {

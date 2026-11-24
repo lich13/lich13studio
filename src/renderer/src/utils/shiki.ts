@@ -1,111 +1,130 @@
-import { loggerService } from '@logger'
-import type { BundledLanguage, BundledTheme } from 'shiki/bundle/web'
-import type { SpecialLanguage, ThemedToken } from 'shiki/core'
-import { getTokenStyleObject, type HighlighterGeneric } from 'shiki/core'
-
-import { AsyncInitializer } from './asyncInitializer'
+import { getTokenStyleObject, type ThemedToken } from 'shiki/core'
 
 export const DEFAULT_LANGUAGES = ['text', 'javascript', 'typescript', 'python', 'java', 'markdown', 'json']
 export const DEFAULT_THEMES = ['one-light', 'material-theme-darker']
 
-const logger = loggerService.withContext('Shiki')
-
-/**
- * shiki 初始化器，避免并发问题
- */
-const shikiInitializer = new AsyncInitializer(async () => {
-  const shiki = await import('shiki')
-  return shiki
-})
-
-/**
- * 获取 shiki package
- */
-export async function getShiki() {
-  return shikiInitializer.get()
+export interface ShikiThemeMetadata {
+  id: string
+  type: 'light' | 'dark'
 }
 
-/**
- * shiki highlighter 初始化器，避免并发问题
- */
-const highlighterInitializer = new AsyncInitializer(async (langs?: string[], themes?: string[]) => {
-  const shiki = await getShiki()
-  return shiki.createHighlighter({
-    langs: langs || DEFAULT_LANGUAGES,
-    themes: themes || DEFAULT_THEMES
-  })
-})
+export const SHIKI_WEB_THEMES: readonly ShikiThemeMetadata[] = [
+  { id: 'andromeeda', type: 'dark' },
+  { id: 'aurora-x', type: 'dark' },
+  { id: 'ayu-dark', type: 'dark' },
+  { id: 'catppuccin-frappe', type: 'dark' },
+  { id: 'catppuccin-latte', type: 'light' },
+  { id: 'catppuccin-macchiato', type: 'dark' },
+  { id: 'catppuccin-mocha', type: 'dark' },
+  { id: 'dark-plus', type: 'dark' },
+  { id: 'dracula', type: 'dark' },
+  { id: 'dracula-soft', type: 'dark' },
+  { id: 'everforest-dark', type: 'dark' },
+  { id: 'everforest-light', type: 'light' },
+  { id: 'github-dark', type: 'dark' },
+  { id: 'github-dark-default', type: 'dark' },
+  { id: 'github-dark-dimmed', type: 'dark' },
+  { id: 'github-dark-high-contrast', type: 'dark' },
+  { id: 'github-light', type: 'light' },
+  { id: 'github-light-default', type: 'light' },
+  { id: 'github-light-high-contrast', type: 'light' },
+  { id: 'gruvbox-dark-hard', type: 'dark' },
+  { id: 'gruvbox-dark-medium', type: 'dark' },
+  { id: 'gruvbox-dark-soft', type: 'dark' },
+  { id: 'gruvbox-light-hard', type: 'light' },
+  { id: 'gruvbox-light-medium', type: 'light' },
+  { id: 'gruvbox-light-soft', type: 'light' },
+  { id: 'houston', type: 'dark' },
+  { id: 'kanagawa-dragon', type: 'dark' },
+  { id: 'kanagawa-lotus', type: 'light' },
+  { id: 'kanagawa-wave', type: 'dark' },
+  { id: 'laserwave', type: 'dark' },
+  { id: 'light-plus', type: 'light' },
+  { id: 'material-theme', type: 'dark' },
+  { id: 'material-theme-darker', type: 'dark' },
+  { id: 'material-theme-lighter', type: 'light' },
+  { id: 'material-theme-ocean', type: 'dark' },
+  { id: 'material-theme-palenight', type: 'dark' },
+  { id: 'min-dark', type: 'dark' },
+  { id: 'min-light', type: 'light' },
+  { id: 'monokai', type: 'dark' },
+  { id: 'night-owl', type: 'dark' },
+  { id: 'nord', type: 'dark' },
+  { id: 'one-dark-pro', type: 'dark' },
+  { id: 'one-light', type: 'light' },
+  { id: 'plastic', type: 'dark' },
+  { id: 'poimandres', type: 'dark' },
+  { id: 'red', type: 'dark' },
+  { id: 'rose-pine', type: 'dark' },
+  { id: 'rose-pine-dawn', type: 'light' },
+  { id: 'rose-pine-moon', type: 'dark' },
+  { id: 'slack-dark', type: 'dark' },
+  { id: 'slack-ochin', type: 'light' },
+  { id: 'snazzy-light', type: 'light' },
+  { id: 'solarized-dark', type: 'dark' },
+  { id: 'solarized-light', type: 'light' },
+  { id: 'synthwave-84', type: 'dark' },
+  { id: 'tokyo-night', type: 'dark' },
+  { id: 'vesper', type: 'dark' },
+  { id: 'vitesse-black', type: 'dark' },
+  { id: 'vitesse-dark', type: 'dark' },
+  { id: 'vitesse-light', type: 'light' }
+]
+
+export const CM_THEME_NAMES: readonly string[] = [
+  'auto',
+  'light',
+  'dark',
+  'abcdef',
+  'abyss',
+  'androidstudio',
+  'andromeda',
+  'atomone',
+  'aura',
+  'basicDark',
+  'basicLight',
+  'bbedit',
+  'bespin',
+  'consoleDark',
+  'consoleLight',
+  'copilot',
+  'darcula',
+  'dracula',
+  'duotoneDark',
+  'duotoneLight',
+  'eclipse',
+  'githubDark',
+  'githubLight',
+  'gruvboxDark',
+  'gruvboxLight',
+  'kimbie',
+  'material',
+  'materialDark',
+  'materialLight',
+  'monokai',
+  'monokaiDimmed',
+  'noctisLilac',
+  'nord',
+  'okaidia',
+  'quietlight',
+  'red',
+  'solarizedDark',
+  'solarizedLight',
+  'sublime',
+  'tokyoNight',
+  'tokyoNightDay',
+  'tokyoNightStorm',
+  'tomorrowNightBlue',
+  'vscodeDark',
+  'vscodeLight',
+  'whiteDark',
+  'whiteLight',
+  'xcodeDark',
+  'xcodeLight'
+]
 
 /**
- * 获取 shiki highlighter
- */
-export async function getHighlighter(langs?: string[], themes?: string[]) {
-  return highlighterInitializer.get(langs, themes)
-}
-
-/**
- * 加载语言
- * @param highlighter - shiki highlighter
- * @param language - 语言
- * @returns 实际加载的语言
- */
-export async function loadLanguageIfNeeded(
-  highlighter: HighlighterGeneric<any, any>,
-  language: string
-): Promise<string> {
-  const shiki = await getShiki()
-
-  let loadedLanguage = language
-  if (!highlighter.getLoadedLanguages().includes(language)) {
-    try {
-      if (['text', 'ansi'].includes(language)) {
-        await highlighter.loadLanguage(language as SpecialLanguage)
-      } else {
-        const languageImportFn = shiki.bundledLanguages[language]
-        const langData = await languageImportFn()
-        await highlighter.loadLanguage(langData)
-      }
-    } catch (error) {
-      await highlighter.loadLanguage('text')
-      loadedLanguage = 'text'
-    }
-  }
-
-  return loadedLanguage
-}
-
-/**
- * 加载主题
- * @param highlighter - shiki highlighter
- * @param theme - 主题
- * @returns 实际加载的主题
- */
-export async function loadThemeIfNeeded(highlighter: HighlighterGeneric<any, any>, theme: string): Promise<string> {
-  const shiki = await getShiki()
-
-  let loadedTheme = theme
-  if (!highlighter.getLoadedThemes().includes(theme)) {
-    try {
-      const themeImportFn = shiki.bundledThemes[theme]
-      const themeData = await themeImportFn()
-      await highlighter.loadTheme(themeData)
-    } catch (error) {
-      // 回退到 one-light
-      logger.debug(`Failed to load theme '${theme}', falling back to 'one-light':`, error as Error)
-      const oneLightTheme = await shiki.bundledThemes['one-light']()
-      await highlighter.loadTheme(oneLightTheme)
-      loadedTheme = 'one-light'
-    }
-  }
-
-  return loadedTheme
-}
-
-/**
- * Shiki token 样式转换为 React 样式对象
- *
- * @param token Shiki themed token
- * @returns React 样式对象
+ * Convert a Shiki ThemedToken into a React inline style object.
  */
 export function getReactStyleFromToken(token: ThemedToken): Record<string, string> {
   const style = token.htmlStyle || getTokenStyleObject(token)
@@ -129,70 +148,4 @@ export function getReactStyleFromToken(token: ThemedToken): Record<string, strin
     }
   }
   return reactStyle
-}
-
-/**
- * 获取 markdown-it，避免并发问题
- */
-const mdInitializer = new AsyncInitializer(async () => {
-  const md = await import('markdown-it')
-  return md.default({
-    linkify: true, // 自动转换 URL 为链接
-    typographer: true // 启用印刷格式优化
-  })
-})
-
-/**
- * 获取 markdown-it 渲染器
- * @param theme - 主题
- * @param markdown
- */
-export async function getMarkdownIt(theme: string, markdown: string) {
-  const highlighter = await getHighlighter()
-  await loadMarkdownLanguage(markdown, highlighter)
-  const md = await mdInitializer.get()
-  const { fromHighlighter } = await import('@shikijs/markdown-it/core')
-
-  let actualTheme = theme
-  try {
-    actualTheme = await loadThemeIfNeeded(highlighter, theme)
-  } catch (error) {
-    logger.debug(`Failed to load theme '${theme}', using 'one-light' as fallback:`, error as Error)
-    actualTheme = 'one-light'
-  }
-
-  const themes: Record<string, string> = {
-    'one-light': 'one-light',
-    'material-theme-darker': 'material-theme-darker'
-  }
-
-  if (actualTheme !== 'one-light' && actualTheme !== 'material-theme-darker') {
-    themes[actualTheme] = actualTheme
-  }
-
-  md.use(
-    fromHighlighter(highlighter, {
-      themes,
-      defaultColor: actualTheme,
-      defaultLanguage: 'json',
-      fallbackLanguage: 'json'
-    })
-  )
-
-  return md
-}
-
-/**
- * 加载markdown中所有代码块语言类型
- * @param markdown
- * @param highlighter
- */
-async function loadMarkdownLanguage(markdown: string, highlighter: HighlighterGeneric<BundledLanguage, BundledTheme>) {
-  const codeBlockRegex = /```(\w+)?/g
-  let match: string[] | null
-  while ((match = codeBlockRegex.exec(markdown)) !== null) {
-    if (match[1]) {
-      await loadLanguageIfNeeded(highlighter, match[1])
-    }
-  }
 }

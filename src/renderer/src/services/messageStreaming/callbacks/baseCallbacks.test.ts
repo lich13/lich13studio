@@ -55,12 +55,6 @@ vi.mock('@renderer/store/newMessage', () => ({
   selectMessagesForTopic: vi.fn(() => [])
 }))
 
-vi.mock('@renderer/store/toolPermissions', () => ({
-  toolPermissionsActions: {
-    clearRequest: (payload: unknown) => ({ type: 'toolPermissions/clearRequest', payload })
-  }
-}))
-
 vi.mock('@renderer/utils/messageUtils/find', () => ({
   findAllBlocks: () => [],
   getMainTextContent: () => ''

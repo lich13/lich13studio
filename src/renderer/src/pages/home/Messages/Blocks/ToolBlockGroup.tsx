@@ -1,6 +1,4 @@
 import { ErrorBoundary } from '@renderer/components/ErrorBoundary'
-import { useAppSelector } from '@renderer/store'
-import type { ToolPermissionEntry } from '@renderer/store/toolPermissions'
 import type { ToolResponseStatus } from '@renderer/types'
 import type { ToolMessageBlock } from '@renderer/types/newMessage'
 import { Collapse, type CollapseProps } from 'antd'
@@ -117,30 +115,11 @@ function isCompletedStatus(status: ToolResponseStatus | undefined): boolean {
   return status === 'done' || status === 'error' || status === 'cancelled'
 }
 
-// Calculate actual waiting state for a block (not depending on hooks)
-function getBlockIsWaiting(block: ToolMessageBlock, agentPermissions: Record<string, ToolPermissionEntry>): boolean {
-  const toolResponse = block.metadata?.rawMcpToolResponse
-  if (!toolResponse || toolResponse.status !== 'pending') return false
-
-  const tool = toolResponse.tool
-  if (tool?.type === 'mcp' || tool?.name.startsWith('mcp__')) {
-    return false
-  } else {
-    // Agent tools: check Redux store for pending permission
-    const permission = Object.values(agentPermissions).find((p) => p.toolCallId === toolResponse.toolCallId)
-    return permission?.status === 'pending'
-  }
-}
-
 // Get effective UI status for a block
-function getBlockEffectiveStatus(
-  block: ToolMessageBlock,
-  agentPermissions: Record<string, ToolPermissionEntry>
-): ToolStatus {
+function getBlockEffectiveStatus(block: ToolMessageBlock): ToolStatus {
   const toolResponse = block.metadata?.rawMcpToolResponse
   if (isHistoricalBlock(block)) return 'done'
-  const isWaiting = getBlockIsWaiting(block, agentPermissions)
-  return getEffectiveStatus(toolResponse?.status, isWaiting)
+  return getEffectiveStatus(toolResponse?.status, false)
 }
 
 // Animation variants for smooth header transitions
@@ -178,7 +157,6 @@ interface GroupHeaderContentProps {
 
 const GroupHeaderContent = React.memo(({ blocks, allCompleted }: GroupHeaderContentProps) => {
   const { t } = useTranslation()
-  const agentPermissions = useAppSelector((state) => state.toolPermissions.requests)
 
   if (allCompleted) {
     return (
@@ -190,7 +168,7 @@ const GroupHeaderContent = React.memo(({ blocks, allCompleted }: GroupHeaderCont
   }
 
   // Find blocks actually waiting for approval (using effective status)
-  const waitingBlocks = blocks.filter((block) => getBlockEffectiveStatus(block, agentPermissions) === 'waiting')
+  const waitingBlocks = blocks.filter((block) => getBlockEffectiveStatus(block) === 'waiting')
 
   // Prioritize showing waiting blocks that need approval
   const lastWaitingBlock = waitingBlocks[waitingBlocks.length - 1]
@@ -211,7 +189,7 @@ const GroupHeaderContent = React.memo(({ blocks, allCompleted }: GroupHeaderCont
 
   // Find running blocks (invoking or streaming)
   const runningBlocks = blocks.filter((block) => {
-    const status = getBlockEffectiveStatus(block, agentPermissions)
+    const status = getBlockEffectiveStatus(block)
     return status === 'invoking' || status === 'streaming'
   })
 

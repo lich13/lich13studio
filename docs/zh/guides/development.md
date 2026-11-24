@@ -48,6 +48,6 @@ pnpm tauri:build:android
 
 `vite.config.ts` 仅构建 React 主窗口和快捷助手，Tauri 读取 `out/renderer` 打包。`.github/workflows/release-build.yml` 手动运行且 version 留空时只生成制品；只有标签或显式版本输入才发布。
 
-前端保留 Chrome 91 构建目标并关闭压缩；当前压缩器会错误消除正则能力检测，导致旧版 Android WebView 启动失败。`legacyWebviewBuild.test.ts` 覆盖该构建行为。
+前端保留 Chrome 91 构建目标并显式使用 `esbuild` 压缩，避免默认压缩器消除正则能力检测导致旧版 Android WebView 启动失败。`legacyWebviewBuild.test.ts` 覆盖该构建行为。
 
 工作流 Action 固定提交，Node／pnpm 与本地共用版本源，原生依赖使用 Cargo.lock。平台 SDK 和签名环境也影响产物，不能把构建输入固定等同于不同机器逐字节相同。

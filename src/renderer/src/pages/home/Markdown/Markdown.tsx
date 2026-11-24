@@ -20,8 +20,6 @@ import { type FC, memo, useCallback, useEffect, useMemo, useRef, useState } from
 import { useTranslation } from 'react-i18next'
 import ReactMarkdown, { type Components, defaultUrlTransform } from 'react-markdown'
 import rehypeKatex from 'rehype-katex'
-// @ts-ignore rehype-mathjax is not typed
-import rehypeMathjax from 'rehype-mathjax'
 import rehypeRaw from 'rehype-raw'
 import remarkCjkFriendly from 'remark-cjk-friendly'
 import remarkGfm from 'remark-gfm'
@@ -41,17 +39,36 @@ import Table from './Table'
 const ALLOWED_ELEMENTS =
   /<(style|p|div|span|b|i|strong|em|ul|ol|li|table|tr|td|th|thead|tbody|h[1-6]|blockquote|pre|code|br|hr|svg|path|circle|rect|line|polyline|polygon|text|g|defs|title|desc|tspan|sub|sup|details|summary)/i
 const DISALLOWED_ELEMENTS = ['iframe', 'script']
+const STYLE_ELEMENT_REGEX = /<style\b[^>]*>/i
 
 interface Props {
-  // message: Message & { content: string }
   block: MainTextMessageBlock | TranslationMessageBlock | ThinkingMessageBlock | CompactMessageBlock
-  // 可选的后处理函数，用于在流式渲染过程中处理文本（如引用标签转换）
   postProcess?: (text: string) => string
 }
+
+let cachedMathjaxPlugin: Pluggable | null = null
 
 const Markdown: FC<Props> = ({ block, postProcess }) => {
   const { t } = useTranslation()
   const { mathEngine, mathEnableSingleDollar } = useSettings()
+  const [mathjaxPlugin, setMathjaxPlugin] = useState<Pluggable | null>(() => cachedMathjaxPlugin)
+
+  useEffect(() => {
+    if (mathEngine !== 'MathJax' || mathjaxPlugin) {
+      return
+    }
+    let cancelled = false
+    void import('rehype-mathjax').then((mod) => {
+      const resolved = (mod.default ?? mod) as Pluggable
+      cachedMathjaxPlugin = resolved
+      if (!cancelled) {
+        setMathjaxPlugin(() => resolved)
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [mathEngine, mathjaxPlugin])
 
   const isTrulyDone = 'status' in block && block.status === 'success'
   const [displayedContent, setDisplayedContent] = useState(postProcess ? postProcess(block.content) : block.content)
@@ -62,7 +79,6 @@ const Markdown: FC<Props> = ({ block, postProcess }) => {
 
   const { addChunk, reset } = useSmoothStream({
     onUpdate: (rawText) => {
-      // 如果提供了后处理函数就调用，否则直接使用原始文本
       const finalText = postProcess ? postProcess(rawText) : rawText
       setDisplayedContent(finalText)
     },
@@ -75,7 +91,6 @@ const Markdown: FC<Props> = ({ block, postProcess }) => {
     const oldContent = prevContentRef.current || ''
 
     const isDifferentBlock = block.id !== prevBlockIdRef.current
-
     const isContentReset = oldContent && newContent && !newContent.startsWith(oldContent)
 
     if (isDifferentBlock || isContentReset) {
@@ -90,7 +105,6 @@ const Markdown: FC<Props> = ({ block, postProcess }) => {
     prevContentRef.current = newContent
     prevBlockIdRef.current = block.id
 
-    // 更新 stream 状态
     const isStreaming = block.status === 'streaming'
     setIsStreamDone(!isStreaming)
   }, [block.content, block.id, block.status, addChunk, reset])
@@ -116,21 +130,24 @@ const Markdown: FC<Props> = ({ block, postProcess }) => {
     return removeSvgEmptyLines(processLatexBrackets(displayedContent))
   }, [block, displayedContent, t])
 
+  const hasRawElements = useMemo(() => ALLOWED_ELEMENTS.test(messageContent), [messageContent])
+  const hasStyleElement = useMemo(() => STYLE_ELEMENT_REGEX.test(messageContent), [messageContent])
+
   const rehypePlugins = useMemo(() => {
     const plugins: Pluggable[] = []
-    if (ALLOWED_ELEMENTS.test(messageContent)) {
+    if (hasRawElements) {
       plugins.push(rehypeRaw, rehypeScalableSvg)
     }
     plugins.push([rehypeHeadingIds, { prefix: `heading-${block.id}` }])
     if (mathEngine === 'KaTeX') {
       plugins.push(rehypeKatex)
-    } else if (mathEngine === 'MathJax') {
-      plugins.push(rehypeMathjax)
+    } else if (mathEngine === 'MathJax' && mathjaxPlugin) {
+      plugins.push(mathjaxPlugin)
     }
     return plugins
-  }, [mathEngine, messageContent, block.id])
+  }, [mathEngine, mathjaxPlugin, hasRawElements, block.id])
 
-  const components = useMemo(() => {
+  const baseComponents = useMemo(() => {
     return {
       a: (props: any) => <Link {...props} />,
       code: (props: any) => <CodeBlock {...props} blockId={block.id} />,
@@ -146,9 +163,10 @@ const Markdown: FC<Props> = ({ block, postProcess }) => {
     } as Partial<Components>
   }, [block.id])
 
-  if (/<style\b[^>]*>/i.test(messageContent)) {
-    components.style = MarkdownShadowDOMRenderer as any
-  }
+  const components = useMemo(
+    () => (hasStyleElement ? { ...baseComponents, style: MarkdownShadowDOMRenderer as any } : baseComponents),
+    [baseComponents, hasStyleElement]
+  )
 
   const urlTransform = useCallback((value: string) => {
     if (value.startsWith('data:image/png') || value.startsWith('data:image/jpeg')) return value

@@ -5,7 +5,7 @@
     <meta name="viewport" content="initial-scale=1, width=device-width" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; connect-src blob: data: *; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' *; font-src 'self' data: *; img-src 'self' data: file: * blob:; media-src 'self' file:; frame-src * file:" />
+      content="default-src 'self'; connect-src blob: data: *; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' *; font-src 'self' data: *; img-src 'self' data: file: * blob:; media-src 'self' file:; frame-src * file:" />
     <title>lich13studio</title>
     <link rel="icon" href="/src/assets/images/logo.png" />
 
@@ -37,40 +37,6 @@
     <div id="spinner">
       <img src="/src/assets/images/logo.png" />
     </div>
-    <script>
-      console.time('init')
-      const createCleanup = () => () => {}
-      const createCallableProxy = (path = 'api') =>
-        new Proxy(
-          function () {
-            return Promise.resolve(undefined)
-          },
-          {
-            get(_target, prop) {
-              if (prop === 'then') return undefined
-              if (prop === 'toJSON') {
-                return () => path
-              }
-              if (typeof prop === 'string' && prop.startsWith('on')) {
-                return () => createCleanup()
-              }
-              return createCallableProxy(`${path}.${String(prop)}`)
-            },
-            apply() {
-              return Promise.resolve(undefined)
-            }
-          }
-        )
-      window.api =
-        window.api || createCallableProxy('api')
-      window.api.file = window.api.file || createCallableProxy('api.file')
-      window.api.file.read = async (id) => localStorage.getItem(`file:${id}`) || '[]'
-      window.api.file.writeWithId = async (id, content) => {
-        localStorage.setItem(`file:${id}`, content)
-        return true
-      }
-
-    </script>
     <script type="module" src="/src/tauri-shim.ts"></script>
     <script type="module" src="/src/entryPoint.tsx"></script>
   </body>
