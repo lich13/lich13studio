@@ -37,7 +37,7 @@ zip = { version = "9.0.0", default-features = false, features = ["deflate"] }
 [target.'cfg(not(target_os = "android"))'.dependencies]
 auto-launch = "0.5"
 rfd = "0.15"
-xcap = "0.7"
+xcap = "0.9"
 tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-single-instance = "2"
 

@@ -36,8 +36,8 @@ class MainActivity : TauriActivity() {
         }
     }
     override fun onDestroy() {
-        BackgroundService.stopAll(this, if (isFinishing) "app-exit" else "renderer-destroyed")
         web.clear()
+        BackgroundService.stopAll(this, if (isFinishing) "app-exit" else "renderer-destroyed")
         super.onDestroy()
     }
 }

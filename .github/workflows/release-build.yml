@@ -101,7 +101,7 @@ jobs:
       matrix:
         include:
           - label: macOS arm64
-            os: macos-14
+            os: macos-latest
             rust_target: aarch64-apple-darwin
             prepare_cmd: node scripts/prepare-tauri-bundled-binary.mjs --target aarch64-apple-darwin
             build_cmd: pnpm dlx @tauri-apps/cli@2.10.1 build --ci --config src-tauri/tauri.conf.json --bundles dmg --target aarch64-apple-darwin

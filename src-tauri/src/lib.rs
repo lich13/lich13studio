@@ -2779,6 +2779,7 @@ fn clear_attachments() -> Result<u64, String> {
     clear_attachments_in_root(&files_dir()?)
 }
 
+#[cfg(not(target_os = "android"))]
 fn encode_png(image: image::RgbaImage) -> Result<Vec<u8>, String> {
     let (width, height) = image.dimensions();
     let rgba = image.into_raw();
@@ -2850,6 +2851,7 @@ fn capture_windows() -> Result<Vec<CaptureWindowInfo>, String> {
     Ok(windows)
 }
 
+#[cfg(not(target_os = "android"))]
 fn ensure_screen_capture_access() -> Result<(), String> {
     #[cfg(target_os = "macos")]
     unsafe {

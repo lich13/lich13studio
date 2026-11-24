@@ -7,8 +7,10 @@ import store from './store'
 loggerService.initWindowSource('mainWindow')
 
 function initKeyv() {
-  window.keyv = window.keyv || new KeyvStorage()
-  void window.keyv.init()
+  if (!window.keyv) {
+    window.keyv = new KeyvStorage()
+    void window.keyv.init()
+  }
 }
 
 function initAutoSync() {
