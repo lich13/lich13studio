@@ -5,7 +5,6 @@
  */
 
 import { loggerService } from '@logger'
-import type { AgentType, BuiltinOcrProviderId } from '@renderer/types'
 
 import i18n from './index'
 
@@ -318,23 +317,4 @@ const fileFieldKeyMap = {
 
 export const getFileFieldLabel = (key: string): string => {
   return getLabel(fileFieldKeyMap, key)
-}
-
-const builtinOcrProviderKeyMap = {
-  system: 'ocr.builtin.system',
-  tesseract: '',
-  paddleocr: '',
-  ovocr: ''
-} as const satisfies Record<BuiltinOcrProviderId, string>
-
-export const getBuiltinOcrProviderLabel = (key: BuiltinOcrProviderId) => {
-  if (key === 'tesseract') return 'Tesseract'
-  else if (key == 'paddleocr') return 'PaddleOCR'
-  else if (key == 'ovocr') return 'Intel OV(NPU) OCR'
-  else return getLabel(builtinOcrProviderKeyMap, key)
-}
-
-// oxlint-disable-next-line no-unused-vars -- placeholder for future agent type labels
-export const getAgentTypeLabel = (_key: AgentType) => {
-  return 'Agent'
 }

@@ -94,7 +94,7 @@ const Markdown: FC<Props> = ({ block, postProcess }) => {
     const oldContent = prevContentRef.current || ''
 
     const isDifferentBlock = block.id !== prevBlockIdRef.current
-    const isContentReset = oldContent && newContent && !newContent.startsWith(oldContent)
+    const isContentReset = Boolean(oldContent) && !newContent.startsWith(oldContent)
 
     if (isDifferentBlock || isContentReset) {
       reset(newContent)

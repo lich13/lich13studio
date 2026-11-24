@@ -3,7 +3,6 @@ import { loggerService } from '@logger'
 import { backgroundTasks } from '@renderer/services/mobile/BackgroundTaskService'
 
 const logger = loggerService.withContext('TauriNativeFetch')
-const textEncoder = new TextEncoder()
 
 type TauriListenEvent = {
   payload: NativeHttpChunkEvent
@@ -20,6 +19,7 @@ type NativeHttpRequest = {
   method: string
   headers: NativeHttpHeader[]
   body?: number[]
+  bodyText?: string
   taskEpoch?: number
 }
 
@@ -274,11 +274,12 @@ async function tauriNativeFetch(input: RequestInfo | URL, init?: RequestInit): P
 
   document.addEventListener('visibilitychange', resumeDelivery)
   let bodyBuffer: Uint8Array | undefined
+  let bodyText: string | undefined
   try {
     unregisterReceiver = await registerChunkReceiver(apis, requestId, receive)
     if (request.method !== 'GET' && request.method !== 'HEAD') {
       if (!(input instanceof Request) && typeof init?.body === 'string') {
-        bodyBuffer = textEncoder.encode(init.body)
+        bodyText = init.body.length > 0 ? init.body : undefined
       } else {
         bodyBuffer = new Uint8Array(await request.arrayBuffer())
       }
@@ -307,7 +308,8 @@ async function tauriNativeFetch(input: RequestInfo | URL, init?: RequestInit): P
         return headers
       })().entries()
     ).map(([name, value]) => ({ name, value })),
-    body: bodyBuffer && bodyBuffer.length > 0 ? Array.from(bodyBuffer) : undefined
+    body: bodyBuffer && bodyBuffer.length > 0 ? Array.from(bodyBuffer) : undefined,
+    bodyText
   }
 
   let responseStart: NativeHttpResponseStart

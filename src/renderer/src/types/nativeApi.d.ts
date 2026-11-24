@@ -1,6 +1,6 @@
-import type { GitBashPathInfo, TerminalConfig, UpgradeChannel } from '@shared/config/constant'
+import type { GitBashPathInfo, UpgradeChannel } from '@shared/config/constant'
 import type { LogLevel, LogSourceWithContext } from '@shared/config/logger'
-import type { CodeToolsRunResult, FileChangeEvent, OperationResult } from '@shared/config/types'
+import type { FileChangeEvent } from '@shared/config/types'
 import type { ExternalAppInfo } from '@shared/externalApp/types'
 import type { Notification } from '@types'
 import type {
@@ -8,41 +8,16 @@ import type {
   FileMetadata,
   FileUploadResponse,
   GetApiServerStatusResult,
-  Model,
-  OcrProvider,
-  OcrResult,
   Provider,
   RestartApiServerStatusResult,
   StartApiServerStatusResult,
   StopApiServerStatusResult,
-  SupportedOcrFile,
   ThemeMode,
   WebDavConfig
 } from '@types'
 import type { CreateDirectoryOptions } from 'webdav'
 
 import type { OpenDialogOptions } from './fileDialog'
-import type {
-  InstalledSkill,
-  LocalSkill,
-  SkillFileNode,
-  SkillInstallFromDirectoryOptions,
-  SkillInstallFromZipOptions,
-  SkillInstallOptions,
-  SkillResult,
-  SkillToggleOptions
-} from './skill'
-type OpenClawGatewayStatus = 'stopped' | 'starting' | 'running' | 'error'
-interface OpenClawHealthInfo {
-  status: 'healthy' | 'unhealthy'
-  gatewayPort: number
-}
-interface OpenClawChannelInfo {
-  id: string
-  name: string
-  type: string
-  status: 'connected' | 'disconnected' | 'error'
-}
 type DirectoryListOptions = {
   recursive?: boolean
   maxDepth?: number
@@ -414,34 +389,6 @@ declare const api: {
     hasCredentials: () => Promise<any>
     clearCredentials: () => Promise<any>
   }
-  codeTools: {
-    run: (
-      cliTool: string,
-      model: string,
-      directory: string,
-      env: Record<string, string>,
-      options?: {
-        autoUpdateToLatest?: boolean
-        terminal?: string
-      }
-    ) => Promise<CodeToolsRunResult>
-    getAvailableTerminals: () => Promise<TerminalConfig[]>
-    setCustomTerminalPath: (terminalId: string, path: string) => Promise<void>
-    getCustomTerminalPath: (terminalId: string) => Promise<string | undefined>
-    removeCustomTerminalPath: (terminalId: string) => Promise<void>
-  }
-  ocr: {
-    ocr: (file: SupportedOcrFile, provider: OcrProvider) => Promise<OcrResult>
-    listProviders: () => Promise<string[]>
-  }
-  cherryai: {
-    generateSignature: (params: {
-      method: string
-      path: string
-      query: string
-      body: Record<string, any>
-    }) => Promise<any>
-  }
   windowControls: {
     minimize: () => Promise<void>
     maximize: () => Promise<void>
@@ -456,44 +403,6 @@ declare const api: {
     restart: () => Promise<RestartApiServerStatusResult>
     stop: () => Promise<StopApiServerStatusResult>
     onReady: (callback: () => void) => () => void
-  }
-  skill: {
-    list: () => Promise<SkillResult<InstalledSkill[]>>
-    install: (options: SkillInstallOptions) => Promise<SkillResult<InstalledSkill>>
-    uninstall: (skillId: string) => Promise<SkillResult<void>>
-    toggle: (options: SkillToggleOptions) => Promise<SkillResult<InstalledSkill | null>>
-    installFromZip: (options: SkillInstallFromZipOptions) => Promise<SkillResult<InstalledSkill>>
-    installFromDirectory: (options: SkillInstallFromDirectoryOptions) => Promise<SkillResult<InstalledSkill>>
-    readSkillFile: (skillId: string, filename: string) => Promise<SkillResult<string | null>>
-    listFiles: (skillId: string) => Promise<SkillResult<SkillFileNode[]>>
-    listLocal: (workdir: string) => Promise<SkillResult<LocalSkill[]>>
-  }
-  openclaw: {
-    checkInstalled: () => Promise<{
-      installed: boolean
-      path: string | null
-      needsMigration: boolean
-    }>
-    install: () => Promise<OperationResult>
-    uninstall: () => Promise<OperationResult>
-    startGateway: (port?: number) => Promise<OperationResult>
-    stopGateway: () => Promise<OperationResult>
-    getStatus: () => Promise<{
-      status: OpenClawGatewayStatus
-      port: number
-    }>
-    checkHealth: () => Promise<OpenClawHealthInfo>
-    getDashboardUrl: () => Promise<string>
-    syncConfig: (provider: Provider, primaryModel: Model) => Promise<OperationResult>
-    getChannels: () => Promise<OpenClawChannelInfo[]>
-    checkUpdate: () => Promise<{
-      hasUpdate: boolean
-      currentVersion: string | null
-      latestVersion: string | null
-      message?: string
-    }>
-    performUpdate: () => Promise<OperationResult>
-    onInstallProgress: (callback: (data: { message: string; type: 'info' | 'warn' | 'error' }) => void) => () => void
   }
 }
 export type NativeApi = typeof api

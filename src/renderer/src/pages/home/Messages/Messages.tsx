@@ -282,10 +282,16 @@ const Messages: React.FC<MessagesProps> = ({ assistant, topic, setActiveTopic, o
 
   useEffect(() => {
     requestAnimationFrame(() => onComponentUpdate?.())
-  }, [onComponentUpdate])
+  }, [displayMessages, onComponentUpdate])
 
+  const prevScrollMetaRef = useRef({ topicId: topic.id, length: 0 })
   useEffect(() => {
-    if (!messages.length) {
+    const prev = prevScrollMetaRef.current
+    const topicChanged = prev.topicId !== topic.id
+    const messagesAdded = messages.length > prev.length
+    prevScrollMetaRef.current = { topicId: topic.id, length: messages.length }
+
+    if (!messages.length || (!topicChanged && !messagesAdded)) {
       return
     }
 

@@ -1,4 +1,3 @@
-import * as XLSX from '@e965/xlsx'
 import dayjs from 'dayjs'
 
 /**
@@ -55,8 +54,10 @@ export async function exportTableToExcel(markdown: string): Promise<boolean> {
     return false
   }
 
+  const { utils, write } = await import('@e965/xlsx')
+
   // 创建工作表
-  const worksheet = XLSX.utils.aoa_to_sheet(data)
+  const worksheet = utils.aoa_to_sheet(data)
 
   // 设置列宽自适应
   const colWidths = data[0].map((_, colIndex) => {
@@ -66,19 +67,19 @@ export async function exportTableToExcel(markdown: string): Promise<boolean> {
   worksheet['!cols'] = colWidths
 
   // 创建工作簿
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1')
+  const workbook = utils.book_new()
+  utils.book_append_sheet(workbook, worksheet, 'Sheet1')
 
   // 生成文件内容 (Uint8Array)
-  const buffer = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' })
+  const buffer = write(workbook, { type: 'array', bookType: 'xlsx' })
   const uint8Array = new Uint8Array(buffer)
 
   // 生成默认文件名
   const fileName = `table_${dayjs().format('YYYY-MM-DD_HHmmss')}.xlsx`
 
   try {
-    await window.api.file.save(fileName, uint8Array)
-    return true
+    const saved = await window.api.file.save(fileName, uint8Array)
+    return Boolean(saved)
   } catch (error) {
     if (error instanceof Error && /cancel/i.test(error.message)) {
       return false

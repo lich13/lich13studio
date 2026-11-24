@@ -50,4 +50,12 @@ describe('decryptPortableBackup', () => {
       password: 'fixture-password'
     })
   })
+
+  it('returns empty string without throwing when the native save dialog is cancelled', async () => {
+    mocks.invoke.mockResolvedValueOnce('')
+    await expect(exportPortableBackup('lich13studio.20261125.zip', true)).resolves.toBe('')
+
+    mocks.invoke.mockRejectedValueOnce(new Error('User canceled the save dialog'))
+    await expect(exportPortableBackup('lich13studio.20261125.zip', true)).resolves.toBe('')
+  })
 })

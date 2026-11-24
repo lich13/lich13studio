@@ -138,5 +138,14 @@ describe('Tauri portable backup restore', () => {
 
     await (window as any).api.file.delete('pdf-1.pdf')
     expect(mocks.invoke).toHaveBeenCalledWith('delete_attachment', { name: 'pdf-1.pdf' })
+
+    mocks.invoke.mockResolvedValueOnce('')
+    await expect((window as any).api.file.save('cancelled.md', '# hello')).resolves.toBe(false)
+
+    mocks.invoke.mockRejectedValueOnce(new Error('User canceled the save dialog'))
+    await expect((window as any).api.file.save('cancelled.md', '# hello')).resolves.toBe(false)
+
+    mocks.invoke.mockResolvedValueOnce('/tmp/saved.md')
+    await expect((window as any).api.file.save('saved.md', '# hello')).resolves.toBe(true)
   })
 })

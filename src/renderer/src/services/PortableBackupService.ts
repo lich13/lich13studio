@@ -10,12 +10,20 @@ export async function exportPortableBackup(fileName: string, skipBackupFile: boo
   const { buildBackupSnapshot } = await import('@renderer/tauri-shim')
   const state = await buildBackupSnapshot(Boolean(options.includeCredentials))
   const targetFileName = options.includeCredentials ? fileName.replace(/\.(zip|bak)$/i, '') + '.lich13backup' : fileName
-  return invoke<string>('export_portable_backup_archive', {
-    fileName: targetFileName,
-    state,
-    includeFiles: !skipBackupFile,
-    password: options.includeCredentials ? options.password : null
-  })
+  try {
+    const savedPath = await invoke<string>('export_portable_backup_archive', {
+      fileName: targetFileName,
+      state,
+      includeFiles: !skipBackupFile,
+      password: options.includeCredentials ? options.password : null
+    })
+    return typeof savedPath === 'string' ? savedPath.trim() : ''
+  } catch (error) {
+    if (error instanceof Error && /cancel/i.test(error.message)) {
+      return ''
+    }
+    throw error
+  }
 }
 
 export async function decryptPortableBackup(bytes: number[]) {

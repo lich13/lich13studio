@@ -17,6 +17,7 @@ type NativeRequest = {
   method: string
   headers: { name: string; value: string }[]
   body?: number[]
+  bodyText?: string
   taskEpoch?: number
 }
 type ResponseStart = {
@@ -167,9 +168,23 @@ describe('Tauri native fetch delivery', () => {
     expect(response.headers.get('content-type')).toBe('text/event-stream')
     expect(await response.text()).toBe('before headers')
     expect(request).toMatchObject({ url: fixtureUrl, method: 'POST', taskEpoch: 73 })
-    expect(new TextDecoder().decode(Uint8Array.from(request.body!))).toBe(body)
+    expect(request.bodyText).toBe(body)
+    expect(request.body).toBeUndefined()
     expect(request.headers).toContainEqual({ name: 'x-fixture', value: 'yes' })
     expect(unlisteners[0]).toHaveBeenCalledTimes(1)
+  })
+
+  it('forwards binary Uint8Array request bodies as byte arrays', async () => {
+    const binaryPayload = new Uint8Array([0, 159, 255, 42])
+    const response = await nativeFetch({
+      method: 'POST',
+      headers: { 'Content-Type': 'application/octet-stream' },
+      body: binaryPayload
+    })
+    expect(requests[0].body).toEqual([0, 159, 255, 42])
+    expect(requests[0].bodyText).toBeUndefined()
+    emit(chunk(requests[0].requestId, 1, 'ok', true))
+    expect(await response.text()).toBe('ok')
   })
 
   it('merges out-of-order live and replayed events without losing or repeating text', async () => {

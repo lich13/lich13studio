@@ -7,7 +7,6 @@ import type { ReasoningEffort, ReasoningMode } from '@shared/reasoning'
 import type { CSSProperties } from 'react'
 
 export * from './file'
-export * from './note'
 
 import * as z from 'zod'
 
@@ -18,16 +17,12 @@ import type { KnowledgeReference } from './knowledge'
 import type { Message } from './newMessage'
 import type { BaseTool, HistoricalTool } from './tool'
 
-export * from './agent'
 export * from './apiModels'
 export * from './apiServer'
 export * from './knowledge'
 export * from './notification'
-export * from './ocr'
-export * from './plugin'
 export * from './provider'
 export * from './serialize'
-export * from './skill'
 
 export type Assistant = {
   modelSelection?: ModelProviderSelection

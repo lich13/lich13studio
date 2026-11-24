@@ -667,9 +667,16 @@ const downloadBlob = (fileName: string, blob: Blob) => {
 
 const saveBlob = async (fileName: string, blob: Blob) => {
   if (invoke) {
-    const bytes = Array.from(new Uint8Array(await blob.arrayBuffer()))
-    await invoke('save_file', { fileName, bytes })
-    return true
+    try {
+      const bytes = Array.from(new Uint8Array(await blob.arrayBuffer()))
+      const savedPath = await invoke('save_file', { fileName, bytes })
+      return typeof savedPath === 'string' ? savedPath.trim().length > 0 : Boolean(savedPath)
+    } catch (error) {
+      if (error instanceof Error && /cancel/i.test(error.message)) {
+        return false
+      }
+      throw error
+    }
   }
 
   downloadBlob(fileName, blob)
@@ -1420,7 +1427,7 @@ const api = {
         emitRestoreProgress({ stage: 'extracting', progress: 40, total: 100 })
         const data = await invoke('webdav_restore', { config })
         emitRestoreProgress({ stage: 'completed', progress: 100, total: 100 })
-        return JSON.stringify(data)
+        return typeof data === 'string' ? data : JSON.stringify(data)
       } catch (error) {
         emitRestoreProgress({ stage: 'completed', progress: 100, total: 100 })
         throw error

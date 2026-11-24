@@ -28,7 +28,9 @@ use std::fs::File;
 use std::io::{Cursor, Read, Write};
 use std::path::{Component, Path, PathBuf};
 use std::process::Command as StdCommand;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+#[cfg(not(target_os = "android"))]
+use std::sync::atomic::AtomicU64;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 #[cfg(not(target_os = "android"))]
@@ -273,6 +275,7 @@ struct CaptureWindowInfo {
     is_focused: bool,
 }
 
+#[cfg(not(target_os = "android"))]
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 struct PersistedWindowState {
@@ -1084,6 +1087,7 @@ fn save_state_file(state: &Value) -> Result<String, String> {
     Ok(path.display().to_string())
 }
 
+#[cfg(not(target_os = "android"))]
 fn load_window_state(label: &str) -> Result<Option<PersistedWindowState>, String> {
     let state = load_state_file()?;
     let Some(window_state) = state.get(WINDOW_STATE_KEY) else {
@@ -1208,6 +1212,7 @@ fn persist_window_state(window: &Window, immediate: bool) -> Result<(), String> 
     Ok(())
 }
 
+#[cfg(not(target_os = "android"))]
 fn should_persist_window_event(event: &WindowEvent) -> Option<bool> {
     match event {
         WindowEvent::Resized(_) | WindowEvent::Moved(_) => Some(false),
@@ -1299,7 +1304,7 @@ async fn save_file_bytes(file_name: String, bytes: Vec<u8>) -> Result<String, St
         .await;
 
     let Some(file_handle) = handle else {
-        return Err(String::from("User canceled the save dialog"));
+        return Ok(String::new());
     };
 
     let file_path = file_handle.path().to_path_buf();
@@ -1701,13 +1706,14 @@ async fn webdav_client(config: &BackupWebDavConfig) -> Result<Client, String> {
 }
 
 async fn upload_webdav(config: &BackupWebDavConfig, payload: Vec<u8>) -> Result<String, String> {
-    let client = webdav_client(config).await?;
-    let file_name = config
+    let raw_file_name = config
         .file_name
-        .clone()
+        .as_deref()
         .filter(|file_name| !file_name.trim().is_empty())
-        .unwrap_or_else(|| String::from("lich13studio-backup.zip"));
-    let target = format!("{}/{}", normalize_base_url(&config.url), file_name);
+        .unwrap_or("lich13studio-backup.zip");
+    let safe_name = validate_safe_backup_file_name(raw_file_name)?;
+    let client = webdav_client(config).await?;
+    let target = format!("{}/{}", normalize_base_url(&config.url), safe_name);
 
     let mut request = client
         .put(&target)
@@ -1734,13 +1740,14 @@ async fn upload_webdav(config: &BackupWebDavConfig, payload: Vec<u8>) -> Result<
 }
 
 async fn download_webdav(config: &BackupWebDavConfig) -> Result<Vec<u8>, String> {
-    let client = webdav_client(config).await?;
-    let file_name = config
+    let raw_file_name = config
         .file_name
-        .clone()
+        .as_deref()
         .filter(|file_name| !file_name.trim().is_empty())
-        .unwrap_or_else(|| String::from("lich13studio-backup.zip"));
-    let target = format!("{}/{}", normalize_base_url(&config.url), file_name);
+        .unwrap_or("lich13studio-backup.zip");
+    let safe_name = validate_safe_backup_file_name(raw_file_name)?;
+    let client = webdav_client(config).await?;
+    let target = format!("{}/{}", normalize_base_url(&config.url), safe_name);
 
     let mut request = client
         .get(&target)
@@ -2654,12 +2661,6 @@ fn extract_backup_archive_to(bytes: &[u8], data_root: &Path) -> Result<String, S
 }
 
 #[tauri::command]
-fn create_portable_backup(state: Value, include_files: bool) -> Result<Vec<u8>, String> {
-    validate_backup_value(&state)?;
-    create_backup_archive_bytes(&state, include_files)
-}
-
-#[tauri::command]
 async fn export_portable_backup_archive(
     app: AppHandle,
     file_name: String,
@@ -2952,10 +2953,9 @@ async fn webdav_backup(state: Value, config: BackupWebDavConfig) -> Result<Strin
 }
 
 #[tauri::command]
-async fn webdav_restore(config: BackupWebDavConfig) -> Result<Value, String> {
+async fn webdav_restore(config: BackupWebDavConfig) -> Result<String, String> {
     let bytes = download_webdav(&config).await?;
-    let payload = extract_backup_archive(&bytes)?;
-    serde_json::from_str(&payload).map_err(|error| error.to_string())
+    extract_backup_archive(&bytes)
 }
 
 #[tauri::command]
@@ -3404,7 +3404,6 @@ pub fn run() {
             set_launch_on_boot,
             is_launch_on_boot_enabled,
             is_startup_silent,
-            create_portable_backup,
             export_portable_backup_archive,
             finish_backup_restore,
             persist_attachment,
@@ -3523,6 +3522,26 @@ mod tests {
         assert_eq!(
             validate_safe_backup_file_name("lich13studio.20261125.lich13backup").unwrap(),
             "lich13studio.20261125.lich13backup"
+        );
+    }
+
+    #[tokio::test]
+    async fn webdav_upload_and_download_reject_unsafe_file_names_before_network() {
+        let bad_config = BackupWebDavConfig {
+            url: "https://webdav.example.invalid/backups".into(),
+            username: "user".into(),
+            password: "secret".into(),
+            file_name: Some("../escape.zip".into()),
+            skip_backup_file: Some(true),
+            user_agent: None,
+        };
+        assert_eq!(
+            upload_webdav(&bad_config, vec![1, 2, 3]).await.unwrap_err(),
+            "Invalid backup file name"
+        );
+        assert_eq!(
+            download_webdav(&bad_config).await.unwrap_err(),
+            "Invalid backup file name"
         );
     }
 

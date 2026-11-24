@@ -7,7 +7,8 @@ import i18n, { setDayjsLocale } from '@renderer/i18n'
 import { notifyLatestReleaseIfAvailable } from '@renderer/services/appUpdateNotification'
 import { handleSaveData, useAppDispatch } from '@renderer/store'
 import { setAvatar, setFilesPath, setResourcesPath } from '@renderer/store/runtime'
-import { checkDataLimit, runAsyncFunction } from '@renderer/utils'
+import { runAsyncFunction } from '@renderer/utils'
+import { checkDataLimit } from '@renderer/utils/dataLimit'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect } from 'react'
 
@@ -76,7 +77,7 @@ export function useAppInit() {
   useEffect(() => {
     const currentLanguage = 'zh-CN'
     void i18n.changeLanguage(currentLanguage)
-    setDayjsLocale(currentLanguage)
+    setDayjsLocale()
   }, [language])
 
   useEffect(() => {
