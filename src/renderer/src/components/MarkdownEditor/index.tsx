@@ -1,15 +1,15 @@
-import 'katex/dist/katex.min.css'
-
 import type { FC } from 'react'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ReactMarkdown from 'react-markdown'
-import rehypeKatex from 'rehype-katex'
 import rehypeRaw from 'rehype-raw'
 import remarkCjkFriendly from 'remark-cjk-friendly'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import styled from 'styled-components'
+import type { Pluggable } from 'unified'
+
+let cachedEditorKatexPlugin: Pluggable | null = null
 
 interface MarkdownEditorProps {
   value: string
@@ -28,10 +28,38 @@ const MarkdownEditor: FC<MarkdownEditorProps> = ({
 }) => {
   const { t } = useTranslation()
   const [inputValue, setInputValue] = useState(value || '')
+  const [katexPlugin, setKatexPlugin] = useState<Pluggable | null>(() => cachedEditorKatexPlugin)
 
   useEffect(() => {
     setInputValue(value || '')
   }, [value])
+
+  const previewContent = inputValue || t('settings.provider.notes.markdown_editor_default_value')
+  const hasMath = previewContent.includes('$')
+
+  useEffect(() => {
+    if (!hasMath || katexPlugin) return
+    let cancelled = false
+    void Promise.all([import('katex/dist/katex.min.css'), import('rehype-katex')]).then(([, mod]) => {
+      const resolved = (mod.default ?? mod) as Pluggable
+      cachedEditorKatexPlugin = resolved
+      if (!cancelled) {
+        setKatexPlugin(() => resolved)
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [hasMath, katexPlugin])
+
+  const remarkPlugins = useMemo(
+    () => (hasMath ? [remarkGfm, remarkCjkFriendly, remarkMath] : [remarkGfm, remarkCjkFriendly]),
+    [hasMath]
+  )
+  const rehypePlugins = useMemo(
+    () => (hasMath && katexPlugin ? [rehypeRaw, katexPlugin] : [rehypeRaw]),
+    [hasMath, katexPlugin]
+  )
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value
@@ -43,10 +71,8 @@ const MarkdownEditor: FC<MarkdownEditorProps> = ({
     <EditorContainer style={{ height }}>
       <InputArea value={inputValue} onChange={handleChange} placeholder={placeholder} autoFocus={autoFocus} />
       <PreviewArea className="markdown">
-        <ReactMarkdown
-          remarkPlugins={[remarkGfm, remarkCjkFriendly, remarkMath]}
-          rehypePlugins={[rehypeRaw, rehypeKatex]}>
-          {inputValue || t('settings.provider.notes.markdown_editor_default_value')}
+        <ReactMarkdown remarkPlugins={remarkPlugins} rehypePlugins={rehypePlugins}>
+          {previewContent}
         </ReactMarkdown>
       </PreviewArea>
     </EditorContainer>

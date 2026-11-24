@@ -52,8 +52,3 @@ keyring = { version = "3.6", features = ["apple-native"] }
 objc2 = "0.6"
 objc2-app-kit = { version = "0.3", default-features = false, features = ["NSApplication", "NSResponder"] }
 objc2-foundation = { version = "0.3", default-features = false, features = ["NSAppleEventManager", "NSAppleEventDescriptor", "objc2-core-services"] }
-
-[patch.crates-io]
-# macOS 27 drops tray-icon click forwarding while an NSMenu is permanently
-# attached. This is the 0.21.3-compatible backport of tray-icon PR #365.
-tray-icon = { path = "../vendor/tray-icon-0.21.3" }

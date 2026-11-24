@@ -12,7 +12,6 @@ lich13studio 是 [CherryHQ/cherry-studio](https://github.com/CherryHQ/cherry-stu
 
 | 内容 | 来源与许可位置 |
 | --- | --- |
-| tray-icon 0.21.3 回移 | [维护说明](vendor/tray-icon-0.21.3/LICH13STUDIO.md)，保留 MIT／Apache-2.0 原文 |
 | pnpm 补丁 | [补丁说明](patches/README.md)和 `patches/licenses` 中各包原文 |
 | 模型能力快照与 OpenAI 图标 | [来源](src/renderer/src/config/models/registry/README.md)，相邻上游 AGPL 许可证 |
 | 其他 npm／Cargo 依赖 | 版本由 pnpm-lock.yaml、Cargo.lock 固定；各包保留自己的版权与许可证 |

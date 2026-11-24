@@ -733,8 +733,6 @@ const pickFiles = async (multiple = true, filters?: Array<{ name: string; extens
     input.click()
   })
 
-const getAppDataOverride = () => localStorage.getItem('tauri:app-data-path') || null
-
 const computeCacheSizeBytes = () => {
   let bytes = 0
 
@@ -771,19 +769,7 @@ const getAppInfo = async () => {
   if (cachedAppInfo) {
     return cachedAppInfo
   }
-  const info = await invoke('app_info')
-  const appDataOverride = getAppDataOverride()
-  cachedAppInfo = appDataOverride
-    ? {
-        ...info,
-        appDataPath: appDataOverride,
-        configPath: appDataOverride,
-        filesPath: `${appDataOverride}/Files`,
-        logsPath: `${appDataOverride}/Logs`,
-        notesPath: `${appDataOverride}/Notes`,
-        statePath: `${appDataOverride}/state.json`
-      }
-    : info
+  cachedAppInfo = await invoke('app_info')
   return cachedAppInfo
 }
 
@@ -861,11 +847,6 @@ const api = {
   resolvePath: async (value: string) => value,
   isPathInside: async (childPath: string, parentPath: string) =>
     childPath === parentPath || childPath.startsWith(parentPath),
-  setAppDataPath: async (path: string) => {
-    if (!path) return
-    localStorage.setItem('tauri:app-data-path', path)
-    cachedAppInfo = null
-  },
   getDataPathFromArgs: async () => null,
   copy: async () => true,
   setStopQuitApp: noOpAsync,
@@ -873,6 +854,12 @@ const api = {
   isNotEmptyDir: async () => false,
   relaunchApp: async () => location.reload(),
   resetData: async () => {
+    clearFileCache()
+    pendingFileRegistrations.clear()
+    cachedAppInfo = null
+    if (!previewMode && invoke) {
+      await invoke('clear_attachments')
+    }
     if (credentialStorageEnabled) await mobilePersistStorage.removeItem('persist:cherry-studio')
     localStorage.clear()
     location.reload()
@@ -1546,4 +1533,6 @@ if (isTauriRuntime) {
   })
 }
 
-for (const key of ['config:mcpServers', 'config:mcp', 'mcpServers', 'mcp']) localStorage.removeItem(key)
+for (const key of ['config:mcpServers', 'config:mcp', 'mcpServers', 'mcp', 'tauri:app-data-path']) {
+  localStorage.removeItem(key)
+}

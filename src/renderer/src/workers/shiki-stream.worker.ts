@@ -2,7 +2,9 @@
 
 import { loggerService } from '@logger'
 import { LRUCache } from 'lru-cache'
-import type { HighlighterGeneric, SpecialLanguage, ThemedToken } from 'shiki/core'
+import { createBundledHighlighter, type HighlighterGeneric, type SpecialLanguage, type ThemedToken } from 'shiki/core'
+import { createOnigurumaEngine } from 'shiki/engine/oniguruma'
+import { bundledThemes } from 'shiki/themes'
 
 import type { ShikiStreamTokenizerOptions } from '../services/ShikiStreamTokenizer'
 import { ShikiStreamTokenizer } from '../services/ShikiStreamTokenizer'
@@ -35,6 +37,78 @@ interface HighlightChunkResult {
   recall: number
 }
 
+const BUNDLED_LANGUAGES: Record<string, () => Promise<any>> = {
+  c: () => import('shiki/langs/c.mjs'),
+  cpp: () => import('shiki/langs/cpp.mjs'),
+  'c++': () => import('shiki/langs/cpp.mjs'),
+  csharp: () => import('shiki/langs/csharp.mjs'),
+  cs: () => import('shiki/langs/csharp.mjs'),
+  css: () => import('shiki/langs/css.mjs'),
+  csv: () => import('shiki/langs/csv.mjs'),
+  diff: () => import('shiki/langs/diff.mjs'),
+  docker: () => import('shiki/langs/dockerfile.mjs'),
+  dockerfile: () => import('shiki/langs/dockerfile.mjs'),
+  go: () => import('shiki/langs/go.mjs'),
+  golang: () => import('shiki/langs/go.mjs'),
+  gql: () => import('shiki/langs/graphql.mjs'),
+  graphql: () => import('shiki/langs/graphql.mjs'),
+  html: () => import('shiki/langs/html.mjs'),
+  http: () => import('shiki/langs/http.mjs'),
+  ini: () => import('shiki/langs/ini.mjs'),
+  java: () => import('shiki/langs/java.mjs'),
+  javascript: () => import('shiki/langs/javascript.mjs'),
+  js: () => import('shiki/langs/javascript.mjs'),
+  cjs: () => import('shiki/langs/javascript.mjs'),
+  mjs: () => import('shiki/langs/javascript.mjs'),
+  json: () => import('shiki/langs/json.mjs'),
+  jsonc: () => import('shiki/langs/jsonc.mjs'),
+  jsonl: () => import('shiki/langs/jsonl.mjs'),
+  jsx: () => import('shiki/langs/jsx.mjs'),
+  kotlin: () => import('shiki/langs/kotlin.mjs'),
+  kt: () => import('shiki/langs/kotlin.mjs'),
+  kts: () => import('shiki/langs/kotlin.mjs'),
+  lua: () => import('shiki/langs/lua.mjs'),
+  make: () => import('shiki/langs/makefile.mjs'),
+  makefile: () => import('shiki/langs/makefile.mjs'),
+  markdown: () => import('shiki/langs/markdown.mjs'),
+  md: () => import('shiki/langs/markdown.mjs'),
+  php: () => import('shiki/langs/php.mjs'),
+  powershell: () => import('shiki/langs/powershell.mjs'),
+  ps1: () => import('shiki/langs/powershell.mjs'),
+  py: () => import('shiki/langs/python.mjs'),
+  python: () => import('shiki/langs/python.mjs'),
+  rb: () => import('shiki/langs/ruby.mjs'),
+  regex: () => import('shiki/langs/regexp.mjs'),
+  regexp: () => import('shiki/langs/regexp.mjs'),
+  rs: () => import('shiki/langs/rust.mjs'),
+  ruby: () => import('shiki/langs/ruby.mjs'),
+  rust: () => import('shiki/langs/rust.mjs'),
+  scss: () => import('shiki/langs/scss.mjs'),
+  bash: () => import('shiki/langs/shellscript.mjs'),
+  sh: () => import('shiki/langs/shellscript.mjs'),
+  shell: () => import('shiki/langs/shellscript.mjs'),
+  shellscript: () => import('shiki/langs/shellscript.mjs'),
+  zsh: () => import('shiki/langs/shellscript.mjs'),
+  sql: () => import('shiki/langs/sql.mjs'),
+  swift: () => import('shiki/langs/swift.mjs'),
+  toml: () => import('shiki/langs/toml.mjs'),
+  ts: () => import('shiki/langs/typescript.mjs'),
+  cts: () => import('shiki/langs/typescript.mjs'),
+  mts: () => import('shiki/langs/typescript.mjs'),
+  tsx: () => import('shiki/langs/tsx.mjs'),
+  typescript: () => import('shiki/langs/typescript.mjs'),
+  vue: () => import('shiki/langs/vue.mjs'),
+  xml: () => import('shiki/langs/xml.mjs'),
+  yaml: () => import('shiki/langs/yaml.mjs'),
+  yml: () => import('shiki/langs/yaml.mjs')
+}
+
+const createHighlighter = createBundledHighlighter({
+  langs: BUNDLED_LANGUAGES,
+  themes: bundledThemes,
+  engine: () => createOnigurumaEngine(import('shiki/wasm'))
+})
+
 let highlighter: HighlighterGeneric<any, any> | null = null
 
 const tokenizerMap = new LRUCache<string, ShikiStreamTokenizer>({
@@ -47,36 +121,10 @@ const tokenizerMap = new LRUCache<string, ShikiStreamTokenizer>({
 })
 
 async function initHighlighter(themes: string[], languages: string[]): Promise<void> {
-  const { createHighlighter } = await import('shiki/bundle/web')
   highlighter = await createHighlighter({
     langs: languages as any,
     themes: themes as any
   })
-}
-
-const EXTRA_DEV_LANGUAGES: Record<string, () => Promise<any>> = {
-  rust: () => import('shiki/langs/rust.mjs'),
-  rs: () => import('shiki/langs/rust.mjs'),
-  go: () => import('shiki/langs/go.mjs'),
-  golang: () => import('shiki/langs/go.mjs'),
-  swift: () => import('shiki/langs/swift.mjs'),
-  kotlin: () => import('shiki/langs/kotlin.mjs'),
-  kt: () => import('shiki/langs/kotlin.mjs'),
-  kts: () => import('shiki/langs/kotlin.mjs'),
-  csharp: () => import('shiki/langs/csharp.mjs'),
-  cs: () => import('shiki/langs/csharp.mjs'),
-  ruby: () => import('shiki/langs/ruby.mjs'),
-  rb: () => import('shiki/langs/ruby.mjs'),
-  toml: () => import('shiki/langs/toml.mjs'),
-  dockerfile: () => import('shiki/langs/dockerfile.mjs'),
-  docker: () => import('shiki/langs/dockerfile.mjs'),
-  diff: () => import('shiki/langs/diff.mjs'),
-  powershell: () => import('shiki/langs/powershell.mjs'),
-  ps1: () => import('shiki/langs/powershell.mjs'),
-  lua: () => import('shiki/langs/lua.mjs'),
-  ini: () => import('shiki/langs/ini.mjs'),
-  makefile: () => import('shiki/langs/makefile.mjs'),
-  make: () => import('shiki/langs/makefile.mjs')
 }
 
 async function ensureLanguageAndThemeLoaded(
@@ -87,7 +135,6 @@ async function ensureLanguageAndThemeLoaded(
     throw new Error('Highlighter not initialized')
   }
 
-  const { bundledLanguages, bundledThemes } = await import('shiki/bundle/web')
   const normalizedLang = language.trim().toLowerCase() || 'text'
   let actualLanguage = normalizedLang
   let actualTheme = theme
@@ -97,8 +144,7 @@ async function ensureLanguageAndThemeLoaded(
       if (['text', 'ansi'].includes(normalizedLang)) {
         await highlighter.loadLanguage(normalizedLang as SpecialLanguage)
       } else {
-        const languageImportFn =
-          bundledLanguages[normalizedLang as keyof typeof bundledLanguages] ?? EXTRA_DEV_LANGUAGES[normalizedLang]
+        const languageImportFn = BUNDLED_LANGUAGES[normalizedLang]
         if (!languageImportFn) {
           throw new Error(`Unsupported language: ${normalizedLang}`)
         }

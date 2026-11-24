@@ -1,7 +1,7 @@
 import { loggerService } from '@logger'
 import i18n from '@renderer/i18n'
 import { getProviderLabel } from '@renderer/i18n/label'
-import { getMessageTitle } from '@renderer/services/MessagesService'
+import { getMessageTitle, getTitleFromString } from '@renderer/services/MessagesService'
 import store from '@renderer/store'
 import { setExportState } from '@renderer/store/runtime'
 import type { Topic } from '@renderer/types'
@@ -123,35 +123,7 @@ async function fetchTopicMessages(topicId: string): Promise<Message[]> {
   return await TopicManager.getTopicMessages(topicId)
 }
 
-/**
- * 从消息内容中提取标题，限制长度并处理换行和标点符号。用于导出功能。
- * @param {string} str 输入字符串
- * @param {number} [length=80] 标题最大长度，默认为 80
- * @returns {string} 提取的标题
- */
-export function getTitleFromString(str: string, length: number = 80): string {
-  let title = str.trimStart().split('\n')[0]
-
-  if (title.includes('。')) {
-    title = title.split('。')[0]
-  } else if (title.includes('，')) {
-    title = title.split('，')[0]
-  } else if (title.includes('.')) {
-    title = title.split('.')[0]
-  } else if (title.includes(',')) {
-    title = title.split(',')[0]
-  }
-
-  if (title.length > length) {
-    title = title.slice(0, length)
-  }
-
-  if (!title) {
-    title = str.slice(0, length)
-  }
-
-  return title
-}
+export { getTitleFromString }
 
 const getRoleText = (role: string, modelName?: string, providerId?: string): string => {
   const { showModelNameInMarkdown, showModelProviderInMarkdown } = store.getState().settings

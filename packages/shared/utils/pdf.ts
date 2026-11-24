@@ -1,5 +1,3 @@
-import { PDFParse } from 'pdf-parse'
-
 /**
  * Extract text content from PDF data.
  * Works in both Node.js and browser environments (pdf-parse 2.x).
@@ -8,6 +6,8 @@ import { PDFParse } from 'pdf-parse'
  * @returns Extracted text content
  */
 export async function extractPdfText(data: Uint8Array | ArrayBuffer | string | URL): Promise<string> {
+  const { PDFParse } = await import('pdf-parse')
+
   if (data instanceof URL) {
     const parser = new PDFParse({ url: data.href })
     try {

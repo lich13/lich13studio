@@ -1,6 +1,5 @@
 import { loggerService } from '@logger'
 
-import { handleData } from './BackupService'
 import { runtimeCapabilities } from './mobile/runtime'
 
 const logger = loggerService.withContext('LegacyLocalMigration')
@@ -36,6 +35,7 @@ export async function runLegacyLocalMigrationIfNeeded() {
 
     localStorage.setItem(MIGRATION_FLAG_KEY, '1')
     logger.info('Applying legacy local migration payload')
+    const { handleData } = await import('./BackupService')
     await handleData(data)
     return true
   } catch (error) {

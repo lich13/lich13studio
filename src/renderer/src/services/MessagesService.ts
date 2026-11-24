@@ -1,5 +1,4 @@
 import { loggerService } from '@logger'
-import SearchPopup from '@renderer/components/Popups/SearchPopup'
 import { DEFAULT_CONTEXTCOUNT, MAX_CONTEXT_COUNT, UNLIMITED_CONTEXT_COUNT } from '@renderer/config/constant'
 import { getTopicById } from '@renderer/hooks/useTopic'
 import i18n from '@renderer/i18n'
@@ -12,7 +11,6 @@ import { FILE_TYPE } from '@renderer/types'
 import type { Message, MessageBlock } from '@renderer/types/newMessage'
 import { AssistantMessageStatus, MessageBlockStatus, MessageBlockType } from '@renderer/types/newMessage'
 import { uuid } from '@renderer/utils'
-import { getTitleFromString } from '@renderer/utils/export'
 import {
   createAssistantMessage,
   createFileBlock,
@@ -97,6 +95,7 @@ export function isGenerating() {
 export async function locateToMessage(navigate: NavigateFunction, message: Message) {
   await isGenerating()
 
+  const { default: SearchPopup } = await import('@renderer/components/Popups/SearchPopup')
   SearchPopup.hide()
   const assistant = getAssistantById(message.assistantId)
   const topic = await getTopicById(message.topicId)
@@ -215,6 +214,30 @@ export function resetAssistantMessage(message: Message, model?: Model): Message 
     blocks: [],
     createdAt: new Date().toISOString()
   }
+}
+
+export function getTitleFromString(str: string, length: number = 80): string {
+  let title = str.trimStart().split('\n')[0]
+
+  if (title.includes('。')) {
+    title = title.split('。')[0]
+  } else if (title.includes('，')) {
+    title = title.split('，')[0]
+  } else if (title.includes('.')) {
+    title = title.split('.')[0]
+  } else if (title.includes(',')) {
+    title = title.split(',')[0]
+  }
+
+  if (title.length > length) {
+    title = title.slice(0, length)
+  }
+
+  if (!title) {
+    title = str.slice(0, length)
+  }
+
+  return title
 }
 
 export async function getMessageTitle(message: Message, length = 30): Promise<string> {

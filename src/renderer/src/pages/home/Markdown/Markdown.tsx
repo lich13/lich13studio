@@ -1,6 +1,3 @@
-import 'katex/dist/katex.min.css'
-import 'katex/contrib/copy-tex'
-import 'katex/contrib/mhchem'
 import 'remark-github-blockquote-alert/alert.css'
 
 import ImageViewer from '@renderer/components/ImageViewer'
@@ -19,7 +16,6 @@ import { isEmpty } from 'lodash'
 import { type FC, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ReactMarkdown, { type Components, defaultUrlTransform } from 'react-markdown'
-import rehypeKatex from 'rehype-katex'
 import rehypeRaw from 'rehype-raw'
 import remarkCjkFriendly from 'remark-cjk-friendly'
 import remarkGfm from 'remark-gfm'
@@ -46,11 +42,33 @@ interface Props {
   postProcess?: (text: string) => string
 }
 
+let cachedKatexPlugin: Pluggable | null = null
+let katexLoadPromise: Promise<Pluggable> | null = null
 let cachedMathjaxPlugin: Pluggable | null = null
+
+function loadKatexPlugin(): Promise<Pluggable> {
+  if (cachedKatexPlugin) {
+    return Promise.resolve(cachedKatexPlugin)
+  }
+  if (!katexLoadPromise) {
+    katexLoadPromise = Promise.all([
+      import('katex/dist/katex.min.css'),
+      import('katex/contrib/copy-tex'),
+      import('katex/contrib/mhchem'),
+      import('rehype-katex')
+    ]).then(([, , , mod]) => {
+      const resolved = (mod.default ?? mod) as Pluggable
+      cachedKatexPlugin = resolved
+      return resolved
+    })
+  }
+  return katexLoadPromise
+}
 
 const Markdown: FC<Props> = ({ block, postProcess }) => {
   const { t } = useTranslation()
   const { mathEngine, mathEnableSingleDollar } = useSettings()
+  const [katexPlugin, setKatexPlugin] = useState<Pluggable | null>(() => cachedKatexPlugin)
   const [mathjaxPlugin, setMathjaxPlugin] = useState<Pluggable | null>(() => cachedMathjaxPlugin)
 
   useEffect(() => {
@@ -112,6 +130,33 @@ const Markdown: FC<Props> = ({ block, postProcess }) => {
     setIsStreamDone(!isStreaming)
   }, [block.content, block.id, block.status, addChunk, reset])
 
+  const messageContent = useMemo(() => {
+    if ('status' in block && block.status === 'paused' && isEmpty(block.content)) {
+      return t('message.chat.completion.paused')
+    }
+    return removeSvgEmptyLines(processLatexBrackets(displayedContent))
+  }, [block, displayedContent, t])
+
+  const hasMathSyntax = useMemo(
+    () => mathEngine !== 'none' && messageContent.includes('$'),
+    [mathEngine, messageContent]
+  )
+
+  useEffect(() => {
+    if (!hasMathSyntax || mathEngine !== 'KaTeX' || katexPlugin) {
+      return
+    }
+    let cancelled = false
+    void loadKatexPlugin().then((resolved) => {
+      if (!cancelled) {
+        setKatexPlugin(() => resolved)
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [hasMathSyntax, mathEngine, katexPlugin])
+
   const remarkPlugins = useMemo(() => {
     const plugins = [
       [remarkGfm, { singleTilde: false }] as Pluggable,
@@ -120,18 +165,11 @@ const Markdown: FC<Props> = ({ block, postProcess }) => {
       remarkCjkAutolinkLiteral,
       remarkDisableConstructs(['codeIndented'])
     ]
-    if (mathEngine !== 'none') {
+    if (hasMathSyntax) {
       plugins.push([remarkMath, { singleDollarTextMath: mathEnableSingleDollar }])
     }
     return plugins
-  }, [mathEngine, mathEnableSingleDollar])
-
-  const messageContent = useMemo(() => {
-    if ('status' in block && block.status === 'paused' && isEmpty(block.content)) {
-      return t('message.chat.completion.paused')
-    }
-    return removeSvgEmptyLines(processLatexBrackets(displayedContent))
-  }, [block, displayedContent, t])
+  }, [hasMathSyntax, mathEnableSingleDollar])
 
   const hasRawElements = useMemo(() => ALLOWED_ELEMENTS.test(messageContent), [messageContent])
   const hasStyleElement = useMemo(() => STYLE_ELEMENT_REGEX.test(messageContent), [messageContent])
@@ -142,13 +180,13 @@ const Markdown: FC<Props> = ({ block, postProcess }) => {
       plugins.push(rehypeRaw, rehypeScalableSvg)
     }
     plugins.push([rehypeHeadingIds, { prefix: `heading-${block.id}` }])
-    if (mathEngine === 'KaTeX') {
-      plugins.push(rehypeKatex)
-    } else if (mathEngine === 'MathJax' && mathjaxPlugin) {
+    if (hasMathSyntax && mathEngine === 'KaTeX' && katexPlugin) {
+      plugins.push(katexPlugin)
+    } else if (hasMathSyntax && mathEngine === 'MathJax' && mathjaxPlugin) {
       plugins.push(mathjaxPlugin)
     }
     return plugins
-  }, [mathEngine, mathjaxPlugin, hasRawElements, block.id])
+  }, [hasMathSyntax, mathEngine, katexPlugin, mathjaxPlugin, hasRawElements, block.id])
 
   const baseComponents = useMemo(() => {
     return {

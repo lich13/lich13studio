@@ -47,7 +47,6 @@ declare const api: {
   hasWritePermission: (path: string) => Promise<any>
   resolvePath: (path: string) => Promise<any>
   isPathInside: (childPath: string, parentPath: string) => Promise<any>
-  setAppDataPath: (path: string) => Promise<any>
   getDataPathFromArgs: () => Promise<any>
   copy: (oldPath: string, newPath: string, occupiedDirs?: string[]) => Promise<any>
   setStopQuitApp: (stop: boolean, reason: string) => Promise<any>

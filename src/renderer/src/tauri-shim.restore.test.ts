@@ -3,7 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
   invoke: vi.fn(),
-  decryptPortableBackup: vi.fn()
+  decryptPortableBackup: vi.fn(),
+  credentialStorageEnabled: false,
+  removePersistedCredentials: vi.fn()
 }))
 
 vi.mock('./services/mobile/webviewCompatibility', () => ({}))
@@ -19,8 +21,11 @@ vi.mock('@tauri-apps/plugin-notification', () => ({
   requestPermission: vi.fn(async () => 'denied')
 }))
 vi.mock('./services/mobile/credentials', () => ({
+  get credentialStorageEnabled() {
+    return mocks.credentialStorageEnabled
+  },
   hydrateCredentials: (value: unknown) => value,
-  mobilePersistStorage: { removeItem: vi.fn(), getItem: vi.fn(), setItem: vi.fn() },
+  mobilePersistStorage: { removeItem: mocks.removePersistedCredentials, getItem: vi.fn(), setItem: vi.fn() },
   stripCredentials: (value: unknown) => value
 }))
 vi.mock('./services/mobile/runtime', () => ({
@@ -36,10 +41,13 @@ vi.mock('./services/PortableBackupService', () => ({ decryptPortableBackup: mock
 describe('Tauri portable backup restore', () => {
   beforeEach(async () => {
     vi.resetModules()
+    mocks.credentialStorageEnabled = false
+    mocks.removePersistedCredentials.mockReset().mockResolvedValue(undefined)
     mocks.invoke.mockReset().mockResolvedValue(undefined)
     mocks.decryptPortableBackup.mockReset().mockRejectedValue(new Error('fixture authentication failed'))
     localStorage.clear()
     localStorage.setItem('persist:cherry-studio', JSON.stringify({ settings: JSON.stringify({ theme: 'dark' }) }))
+    localStorage.setItem('tauri:app-data-path', '/stale/shadow-dir')
     Object.defineProperty(window, '__TAURI__', {
       configurable: true,
       value: { core: { invoke: mocks.invoke } }
@@ -147,5 +155,43 @@ describe('Tauri portable backup restore', () => {
 
     mocks.invoke.mockResolvedValueOnce('/tmp/saved.md')
     await expect((window as any).api.file.save('saved.md', '# hello')).resolves.toBe(true)
+  })
+
+  it('purges stale tauri:app-data-path shadow state and reclaims attachments/cache on resetData', async () => {
+    expect(localStorage.getItem('tauri:app-data-path')).toBeNull()
+
+    const nativeAppInfo = {
+      version: '0.1.39',
+      appDataPath: '/real/data',
+      configPath: '/real/data',
+      filesPath: '/real/data/Files',
+      statePath: '/real/data/state.json'
+    }
+    mocks.invoke.mockImplementation(async (command: string) => {
+      if (command === 'app_info') return nativeAppInfo
+      return undefined
+    })
+
+    localStorage.setItem('tauri:app-data-path', '/injected/override')
+    const resolvedInfo = await (window as any).api.getAppInfo()
+    expect(resolvedInfo).toEqual(nativeAppInfo)
+
+    await (window as any).api.setAppDataPath('/ignored/override')
+    expect(localStorage.getItem('tauri:app-data-path')).toBe('/injected/override')
+
+    await (window as any).api.file.write('memory://reset/attachment.bin', new Uint8Array(4096))
+    expect(await (window as any).api.getCacheSize()).not.toBe('0 B')
+
+    mocks.credentialStorageEnabled = true
+    const reloadSpy = vi.fn()
+    vi.stubGlobal('location', { ...window.location, reload: reloadSpy })
+
+    await (window as any).api.resetData()
+
+    expect(mocks.invoke).toHaveBeenCalledWith('clear_attachments')
+    expect(mocks.removePersistedCredentials).toHaveBeenCalledWith('persist:cherry-studio')
+    expect(localStorage.length).toBe(0)
+    expect(await (window as any).api.getCacheSize()).toBe('0 B')
+    expect(reloadSpy).toHaveBeenCalledTimes(1)
   })
 })

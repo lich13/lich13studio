@@ -1,6 +1,5 @@
 import { loggerService } from '@logger'
 import { CopyIcon, DeleteIcon, EditIcon, RefreshIcon } from '@renderer/components/Icons'
-import ObsidianExportPopup from '@renderer/components/Popups/ObsidianExportPopup'
 import { SelectChatModelPopup } from '@renderer/components/Popups/SelectModelPopup'
 import { isEmbeddingModel, isRerankModel, isVisionModel } from '@renderer/config/models'
 import type { MessageMenubarButtonId, MessageMenubarScope } from '@renderer/config/registry/messageMenubar'
@@ -20,7 +19,6 @@ import type { Assistant, Model, Topic } from '@renderer/types'
 import { type Message, MessageBlockType } from '@renderer/types/newMessage'
 import { classNames } from '@renderer/utils'
 import { copyMessageAsPlainText } from '@renderer/utils/copy'
-import { exportMessageAsMarkdown, messageToMarkdown } from '@renderer/utils/export'
 import { removeTrailingDoubleSpaces } from '@renderer/utils/markdown'
 import { findMainTextBlocks, getMainTextContent } from '@renderer/utils/messageUtils/find'
 import type { MenuProps } from 'antd'
@@ -217,17 +215,24 @@ const MessageMenubar: FC<Props> = (props) => {
           exportMenuOptions.markdown && {
             label: t('chat.topics.export.md.label'),
             key: 'markdown',
-            onClick: () => exportMessageAsMarkdown(message)
+            onClick: async () => {
+              const { exportMessageAsMarkdown } = await import('@renderer/utils/export')
+              await exportMessageAsMarkdown(message)
+            }
           },
           exportMenuOptions.markdown_reason && {
             label: t('chat.topics.export.md.reason'),
             key: 'markdown_reason',
-            onClick: () => exportMessageAsMarkdown(message, true)
+            onClick: async () => {
+              const { exportMessageAsMarkdown } = await import('@renderer/utils/export')
+              await exportMessageAsMarkdown(message, true)
+            }
           },
           exportMenuOptions.docx && {
             label: t('chat.topics.export.word'),
             key: 'word',
             onClick: async () => {
+              const { messageToMarkdown } = await import('@renderer/utils/export')
               const markdown = messageToMarkdown(message)
               const title = await getMessageTitle(message)
               void window.api.export.toWord(markdown, title)
@@ -238,6 +243,7 @@ const MessageMenubar: FC<Props> = (props) => {
             key: 'obsidian',
             onClick: async () => {
               const title = topic.name?.replace(/\\/g, '_') || 'Untitled'
+              const { default: ObsidianExportPopup } = await import('@renderer/components/Popups/ObsidianExportPopup')
               await ObsidianExportPopup.show({ title, message, processingMethod: '1' })
             }
           }

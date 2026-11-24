@@ -1,8 +1,9 @@
-import HistoryPage from '@renderer/pages/history/HistoryPage'
 import { Modal } from 'antd'
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 
 import { TopView } from '../TopView'
+
+const HistoryPage = lazy(() => import('@renderer/pages/history/HistoryPage'))
 
 interface Props {
   resolve: (data: any) => void
@@ -50,7 +51,9 @@ const PopupContainer: React.FC<Props> = ({ resolve }) => {
       centered
       closable={false}
       footer={null}>
-      <HistoryPage />
+      <Suspense fallback={null}>
+        <HistoryPage />
+      </Suspense>
     </Modal>
   )
 }

@@ -23,6 +23,19 @@ describe('model logo resolution', () => {
 
   it('does not brand unrelated model names as OpenAI', () => {
     expect(getModelLogoById('mygpt-6-unknown')).toBeUndefined()
+    expect(getModelLogoById('cohere-command-r')).toBeUndefined()
+    expect(getModelLogoById('deepseek-chat')).toBeUndefined()
+  })
+
+  it('resolves OpenAI o-series, Anthropic Claude, and Grok logos in light and dark themes', () => {
+    expect(getModelLogoById('o3-pro', 'light')).toBe(OpenAILight)
+    expect(getModelLogoById('o4-mini', 'dark')).toBe(OpenAIDark)
+    expect(getModelLogoById('claude-sonnet-4-6', 'light')).toBeTruthy()
+    expect(getModelLogoById('claude-sonnet-4-6', 'dark')).toBeTruthy()
+    expect(getModelLogoById('claude-sonnet-4-6', 'light')).not.toBe(getModelLogoById('claude-sonnet-4-6', 'dark'))
+    expect(getModelLogoById('grok-4.7', 'light')).toBeTruthy()
+    expect(getModelLogoById('grok-4.7', 'dark')).toBeTruthy()
+    expect(getModelLogoById('grok-4.7', 'light')).not.toBe(getModelLogoById('grok-4.7', 'dark'))
   })
 })
 import OpenAIDark from '@renderer/assets/images/models/cherry/openai-dark.svg'

@@ -3,7 +3,6 @@ import AssistantAvatar from '@renderer/components/Avatar/AssistantAvatar'
 import type { DraggableVirtualListRef } from '@renderer/components/DraggableList'
 import { DraggableVirtualList } from '@renderer/components/DraggableList'
 import { CopyIcon, DeleteIcon, EditIcon } from '@renderer/components/Icons'
-import ObsidianExportPopup from '@renderer/components/Popups/ObsidianExportPopup'
 import PromptPopup from '@renderer/components/Popups/PromptPopup'
 import { isMac } from '@renderer/config/constant'
 import { db } from '@renderer/databases'
@@ -22,7 +21,6 @@ import { setGenerating } from '@renderer/store/runtime'
 import type { Assistant, Topic } from '@renderer/types'
 import { classNames, removeSpecialCharactersForFileName } from '@renderer/utils'
 import { copyTopicAsMarkdown, copyTopicAsPlainText } from '@renderer/utils/copy'
-import { exportTopicAsMarkdown, topicToMarkdown } from '@renderer/utils/export'
 import type { MenuProps } from 'antd'
 import { Dropdown, Tooltip } from 'antd'
 import type { ItemType, MenuItemType } from 'antd/es/menu/interface'
@@ -361,17 +359,24 @@ export const Topics: React.FC<Props> = ({ assistant: _assistant, activeTopic, se
           exportMenuOptions.markdown && {
             label: t('chat.topics.export.md.label'),
             key: 'markdown',
-            onClick: () => exportTopicAsMarkdown(topic)
+            onClick: async () => {
+              const { exportTopicAsMarkdown } = await import('@renderer/utils/export')
+              await exportTopicAsMarkdown(topic)
+            }
           },
           exportMenuOptions.markdown_reason && {
             label: t('chat.topics.export.md.reason'),
             key: 'markdown_reason',
-            onClick: () => exportTopicAsMarkdown(topic, true)
+            onClick: async () => {
+              const { exportTopicAsMarkdown } = await import('@renderer/utils/export')
+              await exportTopicAsMarkdown(topic, true)
+            }
           },
           exportMenuOptions.docx && {
             label: t('chat.topics.export.word'),
             key: 'word',
             onClick: async () => {
+              const { topicToMarkdown } = await import('@renderer/utils/export')
               const markdown = await topicToMarkdown(topic)
               void window.api.export.toWord(markdown, removeSpecialCharactersForFileName(topic.name))
             }
@@ -380,6 +385,7 @@ export const Topics: React.FC<Props> = ({ assistant: _assistant, activeTopic, se
             label: t('chat.topics.export.obsidian'),
             key: 'obsidian',
             onClick: async () => {
+              const { default: ObsidianExportPopup } = await import('@renderer/components/Popups/ObsidianExportPopup')
               await ObsidianExportPopup.show({ title: topic.name, topic, processingMethod: '3' })
             }
           }

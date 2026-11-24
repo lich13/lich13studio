@@ -3,7 +3,6 @@ import './assets/styles/index.css'
 import './assets/styles/tailwind.css'
 import './assets/styles/mobile.css'
 import './services/mobile/runtime'
-import '@ant-design/v5-patch-for-react-19'
 
 import KeyvStorage from '@kangfenmao/keyv-storage'
 import StartupScreen from '@renderer/components/StartupScreen'
