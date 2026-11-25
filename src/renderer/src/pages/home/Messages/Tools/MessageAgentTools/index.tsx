@@ -7,9 +7,6 @@ import { useMemo } from 'react'
 // 导出所有类型
 export * from './types'
 
-// 导入所有渲染器
-import { AskUserQuestionCard } from '../AskUserQuestionCard'
-import ToolPermissionRequestCard from '../ToolPermissionRequestCard'
 import { BashOutputTool } from './BashOutputTool'
 import { BashTool } from './BashTool'
 import { EditTool } from './EditTool'
@@ -138,27 +135,12 @@ export function MessageAgentTools({ toolResponse }: { toolResponse: NormalToolRe
     }
   }, [partialArguments])
 
-  // AskUserQuestion uses a unified card for both pending and completed states
-  if (tool?.name === AgentToolsType.AskUserQuestion) {
-    const isLoading = status === 'streaming' || status === 'invoking'
-    return (
-      <StreamingContext value={isLoading}>
-        <AskUserQuestionCard toolResponse={toolResponse} />
-      </StreamingContext>
-    )
-  }
-
-  // TodoWrite tools are always shown in PinnedTodoPanel, never in message stream
+  // TodoWrite tools are omitted from message stream
   if (tool?.name === AgentToolsType.TodoWrite) {
     return null
   }
 
   const effectiveStatus = getEffectiveStatus(status, false)
-
-  if (effectiveStatus === 'waiting') {
-    return <ToolPermissionRequestCard toolResponse={toolResponse} />
-  }
-
   const isLoading = effectiveStatus === 'streaming' || effectiveStatus === 'invoking'
   return (
     <ToolContent

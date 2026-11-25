@@ -82,13 +82,20 @@ export class BlockManager {
   ) {
     const isBlockTypeChanged = this._lastBlockType !== null && this._lastBlockType !== blockType
     if (isBlockTypeChanged || isComplete) {
-      // 如果块类型改变，则取消上一个块的节流更新
-      if (isBlockTypeChanged && this._activeBlockInfo) {
-        this.deps.cancelThrottledBlockUpdate(this._activeBlockInfo.id)
+      // 如果块类型改变且切换到新块，先冲刷并持久化上一个活跃块的挂起更新
+      if (isBlockTypeChanged && this._activeBlockInfo && this._activeBlockInfo.id !== blockId) {
+        const prevBlockId = this._activeBlockInfo.id
+        this.deps.cancelThrottledBlockUpdate(prevBlockId)
+        void this.deps.saveUpdatedBlockToDB(
+          prevBlockId,
+          this.deps.assistantMsgId,
+          this.deps.topicId,
+          this.deps.getState
+        )
       }
-      // 如果当前块完成，则取消当前块的节流更新
+      // 同步冲刷当前块的挂起 Redux 增量并取消 DB 节流定时器
+      this.deps.cancelThrottledBlockUpdate(blockId)
       if (isComplete) {
-        this.deps.cancelThrottledBlockUpdate(blockId)
         this._activeBlockInfo = null // 块完成时清空activeBlockInfo
       } else {
         this._activeBlockInfo = { id: blockId, type: blockType } // 更新活跃块信息
@@ -98,6 +105,7 @@ export class BlockManager {
       this._lastBlockType = blockType
     } else {
       this._activeBlockInfo = { id: blockId, type: blockType } // 更新活跃块信息
+      this._lastBlockType = blockType
       this.deps.throttledBlockUpdate(blockId, changes)
     }
   }
@@ -107,6 +115,11 @@ export class BlockManager {
    */
   async handleBlockTransition(newBlock: MessageBlock, newBlockType: MessageBlockType) {
     logger.debug('handleBlockTransition', { newBlock, newBlockType })
+    if (this._activeBlockInfo && this._activeBlockInfo.id !== newBlock.id) {
+      const prevBlockId = this._activeBlockInfo.id
+      this.deps.cancelThrottledBlockUpdate(prevBlockId)
+      await this.deps.saveUpdatedBlockToDB(prevBlockId, this.deps.assistantMsgId, this.deps.topicId, this.deps.getState)
+    }
     this._lastBlockType = newBlockType
     this._activeBlockInfo = { id: newBlock.id, type: newBlockType } // 设置新的活跃块信息
 

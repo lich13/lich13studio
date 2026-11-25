@@ -47,7 +47,8 @@ import { getTopicQueue, hasTopicPendingRequests, waitForTopicQueue } from '@rend
 import { getTopicFulfilledActiveTopicId, shouldMarkTopicFulfilled } from '@renderer/utils/topicStatus'
 import { defaultAppHeaders } from '@shared/utils'
 import { t } from 'i18next'
-import { isEmpty, throttle } from 'lodash'
+import isEmpty from 'lodash/isEmpty'
+import throttle from 'lodash/throttle'
 import { LRUCache } from 'lru-cache'
 
 import type { AppDispatch, RootState } from '../index'
@@ -217,9 +218,54 @@ const updateExistingMessageAndBlocksInDB = async (
   }
 }
 
+const STREAM_DB_FLUSH_INTERVAL_MS = 1500
+const HIDDEN_REDUX_COALESCE_MS = 50
+const pendingBlockReduxChanges = new Map<string, Record<string, any>>()
+const pendingBlockDbChanges = new Map<string, Record<string, any>>()
+
+type ScheduledReduxFlush = {
+  kind: 'raf' | 'timeout'
+  handle: any
+}
+
+const clearScheduledHandle = (entry: ScheduledReduxFlush) => {
+  if (entry.kind === 'raf' && typeof cancelAnimationFrame === 'function') {
+    cancelAnimationFrame(entry.handle)
+  } else {
+    clearTimeout(entry.handle)
+  }
+}
+
 /**
- * 消息块节流器。
- * 每个消息块有独立节流器，并发更新时不会互相影响
+ * 消息块 Redux 合并调度器（前台按 rAF 合帧，后台/无 rAF 环境按短定时器合并，防止隐藏窗口挂死）。
+ */
+const blockUpdateSchedulers = new LRUCache<string, ScheduledReduxFlush>({
+  max: 100,
+  ttl: 1000 * 60 * 5,
+  updateAgeOnGet: true,
+  dispose: (entry) => {
+    clearScheduledHandle(entry)
+  }
+})
+
+const cancelScheduledReduxFlush = (id: string) => {
+  const entry = blockUpdateSchedulers.get(id)
+  if (entry) {
+    clearScheduledHandle(entry)
+    blockUpdateSchedulers.delete(id)
+  }
+}
+
+const flushSingleBlockRedux = (id: string) => {
+  cancelScheduledReduxFlush(id)
+  const changes = pendingBlockReduxChanges.get(id)
+  if (!changes) return
+  pendingBlockReduxChanges.delete(id)
+  store.dispatch(updateOneBlock({ id, changes }))
+}
+
+/**
+ * 消息块数据库节流器（1.5s 合并落盘，避免逐帧 IndexedDB 事务放大）。
  */
 const blockUpdateThrottlers = new LRUCache<string, ReturnType<typeof throttle>>({
   max: 100,
@@ -227,46 +273,24 @@ const blockUpdateThrottlers = new LRUCache<string, ReturnType<typeof throttle>>(
   updateAgeOnGet: true,
   dispose: (throttler, id) => {
     throttler.cancel()
-    const rafId = blockUpdateRafs.get(id)
-    if (rafId) {
-      cancelAnimationFrame(rafId)
-      blockUpdateRafs.delete(id)
-    }
+    cancelScheduledReduxFlush(id)
+    pendingBlockReduxChanges.delete(id)
+    pendingBlockDbChanges.delete(id)
   }
 })
 
-/**
- * 消息块 RAF 缓存。
- * 用于管理 RAF 请求创建和取消。
- */
-const blockUpdateRafs = new LRUCache<string, number>({
-  max: 100,
-  ttl: 1000 * 60 * 5,
-  updateAgeOnGet: true,
-  dispose: (rafId) => {
-    cancelAnimationFrame(rafId)
-  }
-})
-
-/**
- * 获取或创建消息块专用的节流函数。
- */
 const getBlockThrottler = (id: string) => {
   if (!blockUpdateThrottlers.has(id)) {
-    const throttler = throttle(async (blockUpdate: any) => {
-      const existingRAF = blockUpdateRafs.get(id)
-      if (existingRAF) {
-        cancelAnimationFrame(existingRAF)
-      }
-
-      const rafId = requestAnimationFrame(() => {
-        store.dispatch(updateOneBlock({ id, changes: blockUpdate }))
-        blockUpdateRafs.delete(id)
-      })
-
-      blockUpdateRafs.set(id, rafId)
-      await updateSingleBlock(id, blockUpdate)
-    }, 150)
+    const throttler = throttle(
+      async () => {
+        const changes = pendingBlockDbChanges.get(id)
+        if (!changes) return
+        pendingBlockDbChanges.delete(id)
+        await updateSingleBlock(id, changes)
+      },
+      STREAM_DB_FLUSH_INTERVAL_MS,
+      { leading: false, trailing: true }
+    )
 
     blockUpdateThrottlers.set(id, throttler)
   }
@@ -274,24 +298,84 @@ const getBlockThrottler = (id: string) => {
   return blockUpdateThrottlers.get(id)!
 }
 
-/**
- * 更新单个消息块。
- */
-export const throttledBlockUpdate = (id: string, blockUpdate: any) => {
-  const throttler = getBlockThrottler(id)
-  // store.dispatch(updateOneBlock({ id, changes: blockUpdate }))
-  throttler(blockUpdate)
+export const flushPendingBlockUpdates = async () => {
+  for (const id of Array.from(pendingBlockReduxChanges.keys())) {
+    flushSingleBlockRedux(id)
+  }
+
+  const dbFlushes: Promise<void>[] = []
+  for (const [id, changes] of Array.from(pendingBlockDbChanges.entries())) {
+    pendingBlockDbChanges.delete(id)
+    const throttler = blockUpdateThrottlers.get(id)
+    if (throttler) {
+      throttler.cancel()
+      blockUpdateThrottlers.delete(id)
+    }
+    dbFlushes.push(updateSingleBlock(id, changes))
+  }
+  if (dbFlushes.length > 0) {
+    await Promise.all(dbFlushes)
+  }
+}
+
+if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      void flushPendingBlockUpdates()
+    } else {
+      for (const id of Array.from(pendingBlockReduxChanges.keys())) {
+        flushSingleBlockRedux(id)
+      }
+    }
+  })
 }
 
 /**
- * 取消单个块的节流更新，移除节流器和 RAF。
+ * 更新单个消息块：前台按 rAF 同帧合并 Redux 更新（后台按短定时器合并），Dexie 按 1.5s 节流写入。
+ */
+export const throttledBlockUpdate = (id: string, blockUpdate: any) => {
+  const prevRedux = pendingBlockReduxChanges.get(id)
+  pendingBlockReduxChanges.set(id, prevRedux ? { ...prevRedux, ...blockUpdate } : { ...blockUpdate })
+
+  if (!blockUpdateSchedulers.has(id)) {
+    const runFlush = () => {
+      blockUpdateSchedulers.delete(id)
+      const changes = pendingBlockReduxChanges.get(id)
+      if (!changes) return
+      pendingBlockReduxChanges.delete(id)
+      store.dispatch(updateOneBlock({ id, changes }))
+    }
+    const useRaf = typeof requestAnimationFrame === 'function' && (typeof document === 'undefined' || !document.hidden)
+    const entry: ScheduledReduxFlush = useRaf
+      ? { kind: 'raf', handle: requestAnimationFrame(runFlush) }
+      : { kind: 'timeout', handle: setTimeout(runFlush, HIDDEN_REDUX_COALESCE_MS) }
+    blockUpdateSchedulers.set(id, entry)
+  }
+
+  const prevDb = pendingBlockDbChanges.get(id)
+  pendingBlockDbChanges.set(id, prevDb ? { ...prevDb, ...blockUpdate } : { ...blockUpdate })
+  const throttler = getBlockThrottler(id)
+  void throttler()
+}
+
+/**
+ * 同步冲刷挂起的 Redux 增量并取消单个块的 DB 节流定时器（供完成/暂停/切换块调用方立即接管持久化）。
  */
 export const cancelThrottledBlockUpdate = (id: string) => {
-  const rafId = blockUpdateRafs.get(id)
-  if (rafId) {
-    cancelAnimationFrame(rafId)
-    blockUpdateRafs.delete(id)
+  flushSingleBlockRedux(id)
+  pendingBlockDbChanges.delete(id)
+
+  const throttler = blockUpdateThrottlers.get(id)
+  if (throttler) {
+    throttler.cancel()
+    blockUpdateThrottlers.delete(id)
   }
+}
+
+const discardThrottledBlockUpdate = (id: string) => {
+  cancelScheduledReduxFlush(id)
+  pendingBlockReduxChanges.delete(id)
+  pendingBlockDbChanges.delete(id)
 
   const throttler = blockUpdateThrottlers.get(id)
   if (throttler) {
@@ -305,7 +389,7 @@ export const cancelThrottledBlockUpdate = (id: string) => {
  */
 export const cleanupMultipleBlocks = (dispatch: AppDispatch, blockIds: string[]) => {
   blockIds.forEach((id) => {
-    cancelThrottledBlockUpdate(id)
+    discardThrottledBlockUpdate(id)
   })
 
   const getBlocksFiles = async (blockIds: string[]) => {
@@ -554,6 +638,7 @@ const fetchAndProcessAssistantResponseImpl = async (
     // 确保无论如何都设置 loading 为 false（onError 回调中已设置，这里是保险）
     dispatch(newMessagesActions.setTopicLoading({ topicId, loading: false }))
   } finally {
+    await flushPendingBlockUpdates()
     if (abortKey && abortFn) removeAbortController(abortKey, abortFn)
     const finalStatus = getState().messages.entities[assistantMsgId]?.status
     const reason =

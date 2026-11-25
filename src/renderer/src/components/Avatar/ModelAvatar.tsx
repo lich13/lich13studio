@@ -3,7 +3,7 @@ import { useTheme } from '@renderer/context/ThemeProvider'
 import type { Model } from '@renderer/types'
 import type { AvatarProps } from 'antd'
 import { Avatar } from 'antd'
-import { first } from 'lodash'
+import first from 'lodash/first'
 import type { FC } from 'react'
 
 interface Props {

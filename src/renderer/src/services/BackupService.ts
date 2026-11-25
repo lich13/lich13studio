@@ -497,12 +497,12 @@ export function startAutoSync(immediate = false, type?: BackupType) {
   // 如果没有指定类型，启动所有配置的自动同步
   if (!type) {
     const settings = store.getState().settings
-    const { webdavAutoSync, webdavHost, localBackupAutoSync, localBackupDir } = settings
+    const { webdavAutoSync, webdavHost, localBackupAutoSync } = settings
 
     if (webdavAutoSync && webdavHost) {
       startAutoSync(immediate, 'webdav')
     }
-    if (localBackupAutoSync && localBackupDir) {
+    if (localBackupAutoSync && !runtimeCapabilities.android) {
       startAutoSync(immediate, 'local')
     }
     return
@@ -522,8 +522,8 @@ export function startAutoSync(immediate = false, type?: BackupType) {
       return
     }
 
-    webdavAutoSyncStarted = true
     stopAutoSync('webdav')
+    webdavAutoSyncStarted = true
     scheduleNextBackup(immediate ? 'immediate' : 'fromLastSyncTime', 'webdav')
   } else if (type === 'local') {
     if (localAutoSyncStarted) {
@@ -531,15 +531,15 @@ export function startAutoSync(immediate = false, type?: BackupType) {
     }
 
     const settings = store.getState().settings
-    const { localBackupAutoSync, localBackupDir } = settings
+    const { localBackupAutoSync } = settings
 
-    if (!localBackupAutoSync || !localBackupDir) {
+    if (!localBackupAutoSync) {
       logger.verbose('Invalid sync settings, auto sync disabled')
       return
     }
 
-    localAutoSyncStarted = true
     stopAutoSync('local')
+    localAutoSyncStarted = true
     scheduleNextBackup(immediate ? 'immediate' : 'fromLastSyncTime', 'local')
   }
 

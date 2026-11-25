@@ -6,8 +6,7 @@ import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
 
-export default function MobileNavigation() {
-  const { t } = useTranslation()
+export function MobileBackHandler() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   useEffect(() => {
@@ -42,24 +41,34 @@ export default function MobileNavigation() {
       void listener.then((value) => value.unregister()).catch(() => {})
     }
   }, [pathname, navigate])
+  return null
+}
+
+export default function MobileNavigation() {
+  const { t } = useTranslation()
+  const { pathname } = useLocation()
+  const navigate = useNavigate()
   const tabs = [
     { path: '/', label: t('mobile.chat'), icon: MessageSquare },
     { path: '/settings/provider', label: t('settings.title'), icon: Settings }
   ]
   return (
-    <nav className="mobile-navigation" aria-label={t('mobile.navigation')}>
-      {tabs.map(({ path, label, icon: Icon }) => (
-        <button
-          key={path}
-          type="button"
-          aria-current={
-            (path.startsWith('/settings') ? pathname.startsWith('/settings') : pathname === path) ? 'page' : undefined
-          }
-          onClick={() => navigate(path)}>
-          <Icon size={20} />
-          <span>{label}</span>
-        </button>
-      ))}
-    </nav>
+    <>
+      <MobileBackHandler />
+      <nav className="mobile-navigation" aria-label={t('mobile.navigation')}>
+        {tabs.map(({ path, label, icon: Icon }) => (
+          <button
+            key={path}
+            type="button"
+            aria-current={
+              (path.startsWith('/settings') ? pathname.startsWith('/settings') : pathname === path) ? 'page' : undefined
+            }
+            onClick={() => navigate(path)}>
+            <Icon size={20} />
+            <span>{label}</span>
+          </button>
+        ))}
+      </nav>
+    </>
   )
 }

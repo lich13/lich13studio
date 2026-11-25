@@ -53,7 +53,6 @@ pub async fn mobile_command(
         "background",
         "saveFile",
         "openUrl",
-        "consumeImportIntent",
     ];
     if !allowed.contains(&command.as_str()) {
         return Err("Unsupported mobile operation".into());
@@ -100,7 +99,13 @@ mod commands {
         file_name: String,
         bytes: Vec<u8>,
     ) -> Result<String, String> {
-        let path = crate::files_dir()?.join(format!(
+        let export_dir = app
+            .path()
+            .app_cache_dir()
+            .map_err(|_| String::from("Could not resolve cache directory"))?
+            .join("exports");
+        std::fs::create_dir_all(&export_dir).map_err(|_| String::from("Could not stage export"))?;
+        let path = export_dir.join(format!(
             "{}-{}",
             uuid::Uuid::new_v4(),
             std::path::Path::new(&file_name)

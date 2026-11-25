@@ -1,4 +1,4 @@
-import { throttle } from 'lodash'
+import throttle from 'lodash/throttle'
 import type { FC } from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import styled from 'styled-components'

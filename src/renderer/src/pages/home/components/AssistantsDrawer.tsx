@@ -6,6 +6,7 @@ import { runtimeCapabilities } from '@renderer/services/mobile/runtime'
 import type { Assistant, Topic } from '@renderer/types'
 import { Drawer } from 'antd'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import HomeTabs from '../Tabs'
 
@@ -27,6 +28,7 @@ const PopupContainer: React.FC<Props> = ({
   setActiveTopic,
   resolve
 }) => {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(true)
   const { setTimeoutTimer } = useTimer()
 
@@ -40,19 +42,20 @@ const PopupContainer: React.FC<Props> = ({
 
   return (
     <Drawer
-      title={null}
+      title={runtimeCapabilities.android ? `${t('assistants.abbr')} / ${t('common.topics')}` : null}
+      closable={runtimeCapabilities.android}
       height="var(--app-viewport-height)"
       placement="left"
       open={open}
       onClose={onClose}
       style={{ width: 'var(--assistants-width)' }}
       styles={{
-        header: { display: 'none' },
+        header: runtimeCapabilities.android ? { padding: '8px 12px', minHeight: 48 } : { display: 'none' },
         body: {
           display: 'flex',
           padding: 0,
-          paddingTop: isMac ? 'var(--navbar-height)' : 0,
-          height: 'calc(var(--app-viewport-height) - var(--navbar-height))',
+          paddingTop: isMac && !runtimeCapabilities.android ? 'var(--navbar-height)' : 0,
+          height: runtimeCapabilities.android ? '100%' : 'calc(var(--app-viewport-height) - var(--navbar-height))',
           overflow: 'hidden',
           backgroundColor: 'var(--color-background-opacity)'
         },
@@ -63,6 +66,8 @@ const PopupContainer: React.FC<Props> = ({
       <HomeTabs
         activeAssistant={activeAssistant}
         activeTopic={activeTopic}
+        forceToSeeAllTab={runtimeCapabilities.android}
+        style={runtimeCapabilities.android ? { height: '100%', width: '100%' } : undefined}
         setActiveAssistant={(assistant) => {
           setActiveAssistant(assistant)
           onClose()

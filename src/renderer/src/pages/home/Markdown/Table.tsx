@@ -6,8 +6,7 @@ import { messageBlocksSelectors } from '@renderer/store/messageBlock'
 import { exportTableToExcel } from '@renderer/utils/exportExcel'
 import { Tooltip } from 'antd'
 import { Check, FileSpreadsheet } from 'lucide-react'
-import MarkdownIt from 'markdown-it'
-import React, { memo, useCallback } from 'react'
+import React, { memo, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 import type { Node } from 'unist'
@@ -18,26 +17,28 @@ interface Props {
   children: React.ReactNode
   node?: Omit<Node, 'type'>
   blockId?: string
+  lineOffset?: number
 }
 
 /**
  * 自定义 Markdown 表格组件，提供 copy 功能。
  */
-const Table: React.FC<Props> = ({ children, node, blockId }) => {
+const Table: React.FC<Props> = ({ children, node, blockId, lineOffset = 0 }) => {
   const { t } = useTranslation()
   const [copied, setCopied] = useTemporaryValue(false, 2000)
+  const tableRef = useRef<HTMLTableElement | null>(null)
 
   const handleCopyTable = useCallback(async () => {
-    const tableMarkdown = extractTableMarkdown(blockId ?? '', node?.position)
+    const tableMarkdown = extractTableMarkdown(blockId ?? '', node?.position, lineOffset)
     if (!tableMarkdown) {
       window.toast?.error(t('message.error.table.invalid'))
       return
     }
 
     try {
-      const tableHtml = convertMarkdownTableToHtml(tableMarkdown)
+      const tableHtml = tableRef.current?.outerHTML || ''
 
-      if (navigator.clipboard && window.ClipboardItem) {
+      if (tableHtml && navigator.clipboard && window.ClipboardItem) {
         const clipboardItem = new ClipboardItem({
           'text/plain': new Blob([tableMarkdown], { type: 'text/plain' }),
           'text/html': new Blob([tableHtml], { type: 'text/html' })
@@ -51,10 +52,10 @@ const Table: React.FC<Props> = ({ children, node, blockId }) => {
       logger.error('Failed to copy table to clipboard', { error })
       window.toast?.error(t('message.copy.failed'))
     }
-  }, [blockId, node?.position, setCopied, t])
+  }, [blockId, lineOffset, node?.position, setCopied, t])
 
   const handleExportExcel = useCallback(async () => {
-    const tableMarkdown = extractTableMarkdown(blockId ?? '', node?.position)
+    const tableMarkdown = extractTableMarkdown(blockId ?? '', node?.position, lineOffset)
     if (!tableMarkdown) {
       window.toast?.error(t('message.error.table.invalid'))
       return
@@ -69,11 +70,11 @@ const Table: React.FC<Props> = ({ children, node, blockId }) => {
       logger.error('Failed to export table to Excel', { error })
       window.toast?.error(t('message.error.excel.export'))
     }
-  }, [blockId, node?.position, t])
+  }, [blockId, lineOffset, node?.position, t])
 
   return (
     <TableWrapper className="table-wrapper">
-      <table>{children}</table>
+      <table ref={tableRef}>{children}</table>
       <ToolbarWrapper className="table-toolbar">
         <Tooltip title={t('common.copy')} mouseEnterDelay={0.8}>
           <ToolButton role="button" aria-label={t('common.copy')} onClick={handleCopyTable}>
@@ -96,7 +97,7 @@ const Table: React.FC<Props> = ({ children, node, blockId }) => {
  * @param position 表格节点的位置信息
  * @returns 源代码
  */
-export function extractTableMarkdown(blockId: string, position: any): string {
+export function extractTableMarkdown(blockId: string, position: any, lineOffset: number = 0): string {
   if (!position || !blockId) return ''
 
   const block = messageBlocksSelectors.selectById(store.getState(), blockId)
@@ -106,18 +107,8 @@ export function extractTableMarkdown(blockId: string, position: any): string {
   const lines = block.content.split('\n')
 
   // 提取表格对应的行（行号从1开始，数组索引从0开始）
-  const tableLines = lines.slice(start.line - 1, end.line)
+  const tableLines = lines.slice(start.line - 1 + lineOffset, end.line + lineOffset)
   return tableLines.join('\n').trim()
-}
-
-function convertMarkdownTableToHtml(markdownTable: string): string {
-  const md = new MarkdownIt({
-    html: true,
-    breaks: false,
-    linkify: false
-  })
-
-  return md.render(markdownTable)
 }
 
 const TableWrapper = styled.div`
@@ -166,4 +157,37 @@ const ToolButton = styled.div`
   }
 `
 
-export default memo(Table)
+export function areTablePropsEqual(prev: Props, next: Props): boolean {
+  const prevStart = prev.node?.position?.start
+  const nextStart = next.node?.position?.start
+  const prevEnd = prev.node?.position?.end
+  const nextEnd = next.node?.position?.end
+  const prevOffset = prev.lineOffset ?? 0
+  const nextOffset = next.lineOffset ?? 0
+  if (prev.blockId !== next.blockId || prevOffset !== nextOffset) return false
+  if (prev.children === next.children) {
+    return (
+      prevStart?.line === nextStart?.line &&
+      prevEnd?.line === nextEnd?.line &&
+      prevStart?.offset === nextStart?.offset &&
+      prevEnd?.offset === nextEnd?.offset
+    )
+  }
+  if (
+    prev.blockId &&
+    prevStart?.offset !== undefined &&
+    prevEnd?.offset !== undefined &&
+    prevStart.offset === nextStart?.offset &&
+    prevEnd.offset === nextEnd?.offset &&
+    prevStart.line === nextStart?.line &&
+    prevEnd.line === nextEnd?.line
+  ) {
+    return (
+      extractTableMarkdown(prev.blockId, prev.node?.position, prevOffset) ===
+      extractTableMarkdown(next.blockId!, next.node?.position, nextOffset)
+    )
+  }
+  return false
+}
+
+export default memo(Table, areTablePropsEqual)

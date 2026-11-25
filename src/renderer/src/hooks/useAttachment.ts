@@ -16,7 +16,7 @@ export function useAttachment() {
   const preview = async (path: string, title: string, fileType: FileType, extension?: string) => {
     try {
       if (fileType === FILE_TYPE.TEXT) {
-        const content = await window.api.fs.readText(path)
+        const content = await window.api.file.readExternal(path)
         let ext = extension
         if (ext?.startsWith('.')) {
           ext = ext.replace('.', '')

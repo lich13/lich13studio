@@ -5,7 +5,7 @@ import type { FC } from 'react'
 import { lazy, Suspense, useMemo } from 'react'
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 
-import MobileNavigation from './components/app/MobileNavigation'
+import MobileNavigation, { MobileBackHandler } from './components/app/MobileNavigation'
 import Sidebar from './components/app/Sidebar'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import NavigationHandler from './handler/NavigationHandler'
@@ -35,6 +35,7 @@ const Router: FC = () => {
   if (!onboardingCompleted) {
     return (
       <HashRouter>
+        {runtimeCapabilities.android && <MobileBackHandler />}
         <Suspense fallback={null}>
           <OnboardingPage onComplete={completeOnboarding} />
         </Suspense>

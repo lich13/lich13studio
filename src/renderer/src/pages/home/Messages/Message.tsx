@@ -1,17 +1,16 @@
 import { loggerService } from '@logger'
 import HorizontalScrollContainer from '@renderer/components/HorizontalScrollContainer'
-import Scrollbar from '@renderer/components/Scrollbar'
 import { useMessageEditing } from '@renderer/context/MessageEditingContext'
 import { useAssistant } from '@renderer/hooks/useAssistant'
 import { useChatContext } from '@renderer/hooks/useChatContext'
 import { useMessageOperations } from '@renderer/hooks/useMessageOperations'
 import { useModel } from '@renderer/hooks/useModel'
-import { useSettings } from '@renderer/hooks/useSettings'
 import { useTimer } from '@renderer/hooks/useTimer'
 import { EVENT_NAMES, EventEmitter } from '@renderer/services/EventService'
 import { getMessageModelId } from '@renderer/services/MessagesService'
 import { getModelUniqId } from '@renderer/services/ModelService'
 import { estimateMessageUsage } from '@renderer/services/TokenService'
+import { useAppSelector } from '@renderer/store'
 import type { Assistant, Topic } from '@renderer/types'
 import type { Message, MessageBlock } from '@renderer/types/newMessage'
 import { classNames, cn } from '@renderer/utils'
@@ -71,7 +70,10 @@ const MessageItem: FC<Props> = ({
   const { assistant, setModel } = useAssistant(message.assistantId)
   const { isMultiSelectMode } = useChatContext(topic)
   const model = useModel(getMessageModelId(message), message.model?.provider) || message.model
-  const { messageFont, fontSize, messageStyle, showMessageOutline } = useSettings()
+  const messageFont = useAppSelector((state) => state.settings.messageFont)
+  const fontSize = useAppSelector((state) => state.settings.fontSize)
+  const messageStyle = useAppSelector((state) => state.settings.messageStyle)
+  const showMessageOutline = useAppSelector((state) => state.settings.showMessageOutline)
   const { editMessageBlocks, resendUserMessageWithEdit, editMessage } = useMessageOperations(topic)
   const messageContainerRef = useRef<HTMLDivElement>(null)
   const { editingMessageId, stopEditing } = useMessageEditing()
@@ -270,11 +272,12 @@ const MessageContainer = styled.div`
   }
 `
 
-const MessageContentContainer = styled(Scrollbar)`
+const MessageContentContainer = styled.div`
   max-width: 100%;
   padding-left: 46px;
   margin-top: 0;
-  overflow-y: auto;
+  overflow-x: auto;
+  overflow-y: visible;
 `
 
 const MessageFooter = styled.div`

@@ -3,10 +3,9 @@
  * 处理文件内容提取、文件格式转换、文件上传等逻辑
  */
 
-import type OpenAI from '@cherrystudio/openai'
 import { loggerService } from '@logger'
 import { getProviderByModel } from '@renderer/services/AssistantService'
-import type { FileMetadata, Message, Model } from '@renderer/types'
+import type { Message, Model } from '@renderer/types'
 import { FILE_TYPE } from '@renderer/types'
 import type { FileMessageBlock } from '@renderer/types/newMessage'
 import { findFileBlocks } from '@renderer/utils/messageUtils/find'
@@ -14,7 +13,7 @@ import type { FilePart, TextPart } from 'ai'
 import i18n from 'i18next'
 
 import { getAiSdkProviderId } from '../provider/factory'
-import { getFileSizeLimit, supportsImageInput, supportsLargeFileUpload } from './modelCapabilities'
+import { getFileSizeLimit, supportsImageInput } from './modelCapabilities'
 
 const logger = loggerService.withContext('fileProcessor')
 
@@ -83,119 +82,6 @@ export async function convertFileBlockToTextPart(fileBlock: FileMessageBlock): P
 }
 
 /**
- * 处理Gemini大文件上传
- */
-export async function handleGeminiFileUpload(file: FileMetadata, model: Model): Promise<FilePart | null> {
-  try {
-    const provider = getProviderByModel(model)
-
-    // 检查文件是否已经上传过
-    const fileMetadata = await window.api.fileService.retrieve(provider, file.id)
-
-    if (fileMetadata.status === 'success' && fileMetadata.originalFile?.file) {
-      const remoteFile = fileMetadata.originalFile.file as any // 临时类型断言，因为File类型定义可能不完整
-      // 注意：AI SDK的FilePart格式和Gemini原生格式不同，这里需要适配
-      // 暂时返回null让它回退到文本处理，或者需要扩展FilePart支持uri
-      logger.info(`File ${file.origin_name} already uploaded to Gemini with URI: ${remoteFile.uri || 'unknown'}`)
-      return null
-    }
-
-    // 如果文件未上传，执行上传
-    const uploadResult = await window.api.fileService.upload(provider, file)
-    if (uploadResult.originalFile?.file) {
-      const remoteFile = uploadResult.originalFile.file as any // 临时类型断言
-      logger.info(`File ${file.origin_name} uploaded to Gemini with URI: ${remoteFile.uri || 'unknown'}`)
-      // 同样，这里需要处理URI格式的文件引用
-      return null
-    }
-  } catch (error) {
-    logger.error(`Failed to upload file ${file.origin_name} to Gemini:`, error as Error)
-  }
-
-  return null
-}
-
-/**
- * 处理OpenAI兼容大文件上传
- */
-export async function handleOpenAILargeFileUpload(
-  file: FileMetadata,
-  model: Model
-): Promise<(FilePart & { id?: string }) | null> {
-  const provider = getProviderByModel(model)
-  // 如果模型为qwen-long系列，文档中要求purpose需要为'file-extract'
-  if (['qwen-long', 'qwen-doc'].some((modelName) => model.name.includes(modelName))) {
-    file = {
-      ...file,
-      // 该类型并不在OpenAI定义中，但符合sdk规范，强制断言
-      purpose: 'file-extract' as OpenAI.FilePurpose
-    }
-  }
-  try {
-    // 检查文件是否已经上传过
-    const fileMetadata = await window.api.fileService.retrieve(provider, file.id)
-    if (fileMetadata.status === 'success' && fileMetadata.originalFile?.file) {
-      // 断言OpenAIFile对象
-      const remoteFile = fileMetadata.originalFile.file as OpenAI.Files.FileObject
-      // 判断用途是否一致
-      if (remoteFile.purpose !== file.purpose) {
-        logger.warn(`File ${file.origin_name} purpose mismatch: ${remoteFile.purpose} vs ${file.purpose}`)
-        throw new Error('File purpose mismatch')
-      }
-      return {
-        type: 'file',
-        filename: file.origin_name,
-        mediaType: '',
-        data: `fileid://${remoteFile.id}`
-      }
-    }
-  } catch (error) {
-    logger.error(`Failed to retrieve file ${file.origin_name}:`, error as Error)
-    return null
-  }
-  try {
-    // 如果文件未上传，执行上传
-    const uploadResult = await window.api.fileService.upload(provider, file)
-    if (uploadResult.originalFile?.file) {
-      // 断言OpenAIFile对象
-      const remoteFile = uploadResult.originalFile.file as OpenAI.Files.FileObject
-      logger.info(`File ${file.origin_name} uploaded.`)
-      return {
-        type: 'file',
-        filename: remoteFile.filename,
-        mediaType: '',
-        data: `fileid://${remoteFile.id}`
-      }
-    }
-  } catch (error) {
-    logger.error(`Failed to upload file ${file.origin_name}:`, error as Error)
-  }
-
-  return null
-}
-
-/**
- * 大文件上传路由函数
- */
-export async function handleLargeFileUpload(
-  file: FileMetadata,
-  model: Model
-): Promise<(FilePart & { id?: string }) | null> {
-  const provider = getProviderByModel(model)
-  const aiSdkId = getAiSdkProviderId(provider)
-
-  if (['google', 'google-vertex'].includes(aiSdkId)) {
-    return await handleGeminiFileUpload(file, model)
-  }
-
-  if (provider.type === 'openai-response') {
-    return await handleOpenAILargeFileUpload(file, model)
-  }
-
-  return null
-}
-
-/**
  * 将文件块转换为FilePart（用于原生文件支持）
  */
 export async function convertFileBlockToFilePart(fileBlock: FileMessageBlock, model: Model): Promise<FilePart | null> {
@@ -205,29 +91,15 @@ export async function convertFileBlockToFilePart(fileBlock: FileMessageBlock, mo
   try {
     // 处理PDF文档（始终生成 FilePart，由下游插件处理兼容性）
     if (file.type === FILE_TYPE.DOCUMENT && file.ext === '.pdf') {
-      // 检查文件大小限制
       if (file.size > fileSizeLimit) {
-        // 如果支持大文件上传（如Gemini File API），尝试上传
-        if (supportsLargeFileUpload(model)) {
-          logger.info(`Large PDF file ${file.origin_name} (${file.size} bytes) attempting File API upload`)
-          const uploadResult = await handleLargeFileUpload(file, model)
-          if (uploadResult) {
-            return uploadResult
-          }
-          // 如果上传失败，回退到文本处理
-          logger.warn(`Failed to upload large PDF ${file.origin_name}, falling back to text extraction`)
-          window.toast.warning(i18n.t('message.warning.file.pdf_upload_failed', { name: file.origin_name }))
-          return null
-        } else {
-          logger.warn(`PDF file ${file.origin_name} exceeds size limit (${file.size} > ${fileSizeLimit})`)
-          window.toast.warning(
-            i18n.t('message.warning.file.pdf_exceeds_limit', {
-              name: file.origin_name,
-              limit: `${Math.round(fileSizeLimit / 1024 / 1024)}MB`
-            })
-          )
-          return null // 文件过大，回退到文本处理
-        }
+        logger.warn(`PDF file ${file.origin_name} exceeds size limit (${file.size} > ${fileSizeLimit})`)
+        window.toast.warning(
+          i18n.t('message.warning.file.pdf_exceeds_limit', {
+            name: file.origin_name,
+            limit: `${Math.round(fileSizeLimit / 1024 / 1024)}MB`
+          })
+        )
+        return null
       }
 
       const base64Data = await window.api.file.base64File(file.id + file.ext)

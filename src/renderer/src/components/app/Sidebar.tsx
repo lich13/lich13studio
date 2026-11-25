@@ -115,7 +115,7 @@ const Container = styled.div<{ $isFullscreen: boolean }>`
   height: ${({ $isFullscreen }) =>
     isMac && !$isFullscreen ? 'calc(var(--app-viewport-height) - var(--navbar-height))' : 'var(--app-viewport-height)'};
   -webkit-app-region: drag !important;
-  margin-top: ${({ $isFullscreen }) => (isMac && !$isFullscreen ? 'env(titlebar-area-height)' : 0)};
+  margin-top: ${({ $isFullscreen }) => (isMac && !$isFullscreen ? 'env(titlebar-area-height, 0px)' : 0)};
 `
 
 const MainMenusContainer = styled.div`

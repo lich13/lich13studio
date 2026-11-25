@@ -1,14 +1,10 @@
-import { isLinux, isMac, isWin } from '@renderer/config/constant'
+import { isMac } from '@renderer/config/constant'
 import { useFullscreen } from '@renderer/hooks/useFullscreen'
 import useNavBackgroundColor from '@renderer/hooks/useNavBackgroundColor'
-import { useRuntime } from '@renderer/hooks/useRuntime'
 import { useNavbarPosition } from '@renderer/hooks/useSettings'
 import { runtimeCapabilities } from '@renderer/services/mobile/runtime'
-import type { FC, PropsWithChildren } from 'react'
-import type { HTMLAttributes } from 'react'
+import type { FC, HTMLAttributes, PropsWithChildren } from 'react'
 import styled from 'styled-components'
-
-import WindowControls from '../WindowControls'
 
 type Props = PropsWithChildren & HTMLAttributes<HTMLDivElement>
 
@@ -16,7 +12,6 @@ export const Navbar: FC<Props> = ({ children, ...props }) => {
   const backgroundColor = useNavBackgroundColor()
   const isFullscreen = useFullscreen()
   const { isTopNavbar } = useNavbarPosition()
-  const { minappShow } = useRuntime()
 
   if (isTopNavbar || runtimeCapabilities.android) {
     return null
@@ -25,7 +20,6 @@ export const Navbar: FC<Props> = ({ children, ...props }) => {
   return (
     <NavbarContainer {...props} style={{ backgroundColor }} $isFullScreen={isFullscreen}>
       {children}
-      {!minappShow && <WindowControls />}
     </NavbarContainer>
   )
 }
@@ -64,11 +58,12 @@ const NavbarContainer = styled.div<{ $isFullScreen: boolean }>`
   min-width: 100%;
   display: flex;
   flex-direction: row;
-  min-height: ${({ $isFullScreen }) => (!$isFullScreen && isMac ? 'env(titlebar-area-height)' : 'var(--navbar-height)')};
+  min-height: ${({ $isFullScreen }) =>
+    !$isFullScreen && isMac ? 'env(titlebar-area-height, var(--navbar-height))' : 'var(--navbar-height)'};
   max-height: var(--navbar-height);
   margin-left: ${isMac ? 'calc(var(--sidebar-width) * -1 + 2px)' : 0};
   padding-left: ${({ $isFullScreen }) =>
-    isMac ? ($isFullScreen ? 'var(--sidebar-width)' : 'env(titlebar-area-x)') : 0};
+    isMac ? ($isFullScreen ? 'var(--sidebar-width)' : 'env(titlebar-area-x, var(--sidebar-width))') : 0};
   -webkit-app-region: drag;
 `
 
@@ -108,11 +103,10 @@ const NavbarMainContainer = styled.div<{ $isFullscreen: boolean }>`
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  padding-right: ${isMac ? '20px' : 0};
   padding-left: 10px;
+  padding-right: 12px;
   font-weight: bold;
   color: var(--color-text-1);
-  padding-right: ${({ $isFullscreen }) => ($isFullscreen ? '12px' : isWin ? '140px' : isLinux ? '120px' : '12px')};
 `
 
 const NavbarHeaderContent = styled.div`

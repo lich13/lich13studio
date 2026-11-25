@@ -4,7 +4,6 @@ import { HStack } from '@renderer/components/Layout'
 import ListItem from '@renderer/components/ListItem'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import { runtimeCapabilities } from '@renderer/services/mobile/runtime'
-import { Select } from 'antd'
 import { FileText, FolderCog, FolderInput } from 'lucide-react'
 import type { FC } from 'react'
 import { useState } from 'react'
@@ -54,14 +53,23 @@ const DataSettings: FC = () => {
   return (
     <Container className="data-settings-page">
       {runtimeCapabilities.android && (
-        <Select
-          value={menu}
-          aria-label={t('settings.data.title')}
-          onChange={setMenu}
-          options={visibleMenuItems
+        <nav className="mobile-subsettings-pills" aria-label={t('settings.data.title')}>
+          {visibleMenuItems
             .filter((item) => !item.isDivider)
-            .map((item) => ({ value: item.key, label: item.title }))}
-        />
+            .map((item) => {
+              const active = menu === item.key
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  className={`mobile-subpill ${active ? 'active' : ''}`}
+                  aria-current={active ? 'page' : undefined}
+                  onClick={() => setMenu(item.key)}>
+                  {item.title}
+                </button>
+              )
+            })}
+        </nav>
       )}
       {!runtimeCapabilities.android && (
         <MenuList>

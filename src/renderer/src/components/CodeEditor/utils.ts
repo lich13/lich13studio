@@ -1,40 +1,160 @@
-import { getExtensionByLanguage } from '@renderer/utils/code-language'
+const LANGUAGE_EXTENSIONS: Record<string, string> = {
+  bash: '.sh',
+  c: '.c',
+  clojure: '.clj',
+  cmake: '.cmake',
+  cpp: '.cpp',
+  'c++': '.cpp',
+  cs: '.cs',
+  csharp: '.cs',
+  'c#': '.cs',
+  css: '.css',
+  dart: '.dart',
+  diff: '.diff',
+  dockerfile: '.dockerfile',
+  dot: '.dot',
+  elixir: '.ex',
+  erlang: '.erl',
+  go: '.go',
+  golang: '.go',
+  graphql: '.graphql',
+  graphviz: '.dot',
+  groovy: '.groovy',
+  haskell: '.hs',
+  html: '.html',
+  ini: '.ini',
+  java: '.java',
+  javascript: '.js',
+  js: '.js',
+  json: '.json',
+  jsonc: '.jsonc',
+  jsx: '.jsx',
+  kotlin: '.kt',
+  latex: '.tex',
+  less: '.less',
+  lua: '.lua',
+  makefile: '.mk',
+  markdown: '.md',
+  md: '.md',
+  mermaid: '.mmd',
+  objc: '.m',
+  'objective-c': '.m',
+  ocaml: '.ml',
+  perl: '.pl',
+  php: '.php',
+  plaintext: '.txt',
+  powershell: '.ps1',
+  protobuf: '.proto',
+  py: '.py',
+  python: '.py',
+  r: '.r',
+  rb: '.rb',
+  ruby: '.rb',
+  rs: '.rs',
+  rust: '.rs',
+  scala: '.scala',
+  scss: '.scss',
+  sh: '.sh',
+  shell: '.sh',
+  sql: '.sql',
+  svg: '.svg',
+  swift: '.swift',
+  tex: '.tex',
+  text: '.txt',
+  toml: '.toml',
+  ts: '.ts',
+  tsx: '.tsx',
+  txt: '.txt',
+  typescript: '.ts',
+  vab: '.vb',
+  vb: '.vb',
+  vue: '.vue',
+  xml: '.xml',
+  yaml: '.yaml',
+  yml: '.yml',
+  zsh: '.sh'
+}
 
-// 自定义语言文件扩展名映射
-// key: 语言名小写
-// value: 扩展名
-const _customLanguageExtensions: Record<string, string> = {
+const EXTENSION_LANGUAGES: Record<string, string> = {
+  c: 'c',
+  cc: 'cpp',
+  cpp: 'cpp',
+  cs: 'csharp',
+  css: 'css',
+  dart: 'dart',
+  go: 'go',
+  h: 'c',
+  hpp: 'cpp',
+  htm: 'html',
+  html: 'html',
+  java: 'java',
+  js: 'javascript',
+  json: 'json',
+  jsonc: 'jsonc',
+  jsx: 'jsx',
+  kt: 'kotlin',
+  kts: 'kotlin',
+  less: 'less',
+  lua: 'lua',
+  m: 'objc',
+  md: 'markdown',
+  mdx: 'markdown',
+  mjs: 'javascript',
+  php: 'php',
+  pl: 'perl',
+  ps1: 'powershell',
+  py: 'python',
+  r: 'r',
+  rb: 'ruby',
+  rs: 'rust',
+  scala: 'scala',
+  scss: 'scss',
+  sh: 'bash',
+  sql: 'sql',
+  svg: 'xml',
+  swift: 'swift',
+  tex: 'latex',
+  toml: 'toml',
+  ts: 'typescript',
+  tsx: 'tsx',
+  txt: 'text',
+  vue: 'vue',
+  xml: 'xml',
+  yaml: 'yaml',
+  yml: 'yaml',
+  zsh: 'bash'
+}
+
+const CUSTOM_NORMALIZED_EXTENSIONS: Record<string, string> = {
   svg: 'xml',
   vab: 'vb',
   graphviz: 'dot'
 }
 
-/**
- * 获取语言的扩展名，用于 @uiw/codemirror-extensions-langs
- * - 先搜索自定义扩展名
- * - 再搜索 github linguist 扩展名
- * - 最后假定名称已经是扩展名
- * @param language 语言名称
- * @returns 扩展名（不包含 `.`）
- */
-export async function getNormalizedExtension(language: string) {
-  const lowerLanguage = language.toLowerCase()
-
-  const customExt = _customLanguageExtensions[lowerLanguage]
-  if (customExt) {
-    return customExt
+export function getExtensionByLanguage(language: string): string {
+  const normalized = language.trim().toLowerCase()
+  if (!normalized) return '.txt'
+  if (LANGUAGE_EXTENSIONS[normalized]) {
+    return LANGUAGE_EXTENSIONS[normalized]
   }
+  return normalized.startsWith('.') ? normalized : `.${normalized}`
+}
 
-  const linguistExt = getExtensionByLanguage(language)
-  if (linguistExt) {
-    return linguistExt.slice(1)
+export function getLanguageByFilePath(filePath: string): string {
+  if (!filePath) return 'text'
+  const ext = filePath.split('.').pop()?.trim().toLowerCase()
+  if (!ext || ext === filePath.toLowerCase()) return 'text'
+  return EXTENSION_LANGUAGES[ext] || ext
+}
+
+export async function getNormalizedExtension(language: string): Promise<string> {
+  const lowerLanguage = language.trim().toLowerCase()
+  if (CUSTOM_NORMALIZED_EXTENSIONS[lowerLanguage]) {
+    return CUSTOM_NORMALIZED_EXTENSIONS[lowerLanguage]
   }
-
-  // 如果语言名称像扩展名
-  if (language.startsWith('.') && language.length > 1) {
-    return language.slice(1)
+  const mapped = LANGUAGE_EXTENSIONS[lowerLanguage]
+  if (mapped) {
+    return mapped.slice(1)
   }
-
-  // 回退到语言名称
-  return language
+  return lowerLanguage.startsWith('.') && lowerLanguage.length > 1 ? lowerLanguage.slice(1) : lowerLanguage
 }

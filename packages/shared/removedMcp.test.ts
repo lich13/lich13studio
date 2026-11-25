@@ -20,6 +20,6 @@ describe('removed execution surfaces', () => {
     expect(read('src/renderer/src/pages/home/Messages/Tools/MessageTools.tsx')).toContain(
       "tool.name.startsWith('mcp__')"
     )
-    expect(read('packages/shared/agents/claudecode/constants.ts')).toMatch(/GLOBALLY_DISALLOWED_TOOLS[^=]*= \[\]/)
+    expect(fs.existsSync(path.join(process.cwd(), 'packages/shared/agents'))).toBe(false)
   })
 })

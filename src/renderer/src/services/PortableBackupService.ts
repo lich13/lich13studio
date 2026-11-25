@@ -30,5 +30,5 @@ export async function decryptPortableBackup(bytes: number[]) {
   const { requestBackupPassword } = await import('@renderer/components/Popups/BackupPasswordPopup')
   const password = await requestBackupPassword()
   if (password === null) return null
-  return invoke<number[]>('decrypt_backup', { bytes, password })
+  return invoke<string | number[]>('restore_encrypted_backup_archive', { bytes, password })
 }

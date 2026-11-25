@@ -1,8 +1,7 @@
+import { getLanguageByFilePath } from '@renderer/components/CodeEditor/utils'
 import CodeViewer from '@renderer/components/CodeViewer'
-import { getLanguageByFilePath } from '@renderer/utils/code-language'
 import type { CollapseProps } from 'antd'
 
-import { ClickableFilePath } from './ClickableFilePath'
 import { SkeletonValue, ToolHeader } from './GenericTools'
 import { AgentToolsType, type WriteToolInput, type WriteToolOutput } from './types'
 
@@ -22,7 +21,7 @@ export function WriteTool({
         toolName={AgentToolsType.Write}
         params={
           <SkeletonValue
-            value={input?.file_path ? <ClickableFilePath path={input.file_path} displayName={filename} /> : undefined}
+            value={input?.file_path ? <span title={input.file_path}>{filename || input.file_path}</span> : undefined}
             width="200px"
           />
         }

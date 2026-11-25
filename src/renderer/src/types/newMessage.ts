@@ -1,4 +1,3 @@
-import type { CompletionUsage } from '@cherrystudio/openai/resources'
 import type { ProviderMetadata } from 'ai'
 
 import type {
@@ -245,5 +244,5 @@ export interface MessageInputBaseParams {
   /**
    * @deprecated
    */
-  usage?: CompletionUsage
+  usage?: Usage
 }

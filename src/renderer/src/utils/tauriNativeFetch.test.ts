@@ -359,4 +359,47 @@ describe('Tauri native fetch delivery', () => {
     expect(await second.text()).toBe('world')
     expect(activeListeners.size).toBe(0)
   })
+
+  it('batches acknowledge_http_chunks by 8 chunks, 64 KiB, 25ms timer, and immediate terminal flush', async () => {
+    vi.useFakeTimers()
+    try {
+      const response = await nativeFetch()
+      const id = requests[0].requestId
+
+      // 3 small chunks: no immediate ACK before 25ms
+      emit(chunk(id, 1, 'a'))
+      emit(chunk(id, 2, 'b'))
+      emit(chunk(id, 3, 'c'))
+      expect(callsFor('acknowledge_http_chunks')).toHaveLength(0)
+
+      // After 25ms timer: flushes sequence 3 once
+      await vi.advanceTimersByTimeAsync(25)
+      expect(callsFor('acknowledge_http_chunks')).toEqual([['acknowledge_http_chunks', { requestId: id, sequence: 3 }]])
+
+      // 8 more chunks (sequences 4..11): flushes immediately on 8th chunk without timer
+      for (let seq = 4; seq <= 10; seq += 1) {
+        emit(chunk(id, seq, 'x'))
+      }
+      expect(callsFor('acknowledge_http_chunks')).toHaveLength(1)
+      emit(chunk(id, 11, 'x'))
+      expect(callsFor('acknowledge_http_chunks')).toHaveLength(2)
+      expect(callsFor('acknowledge_http_chunks').at(-1)?.[1]).toEqual({ requestId: id, sequence: 11 })
+
+      // Single >= 64 KiB chunk (sequence 12): flushes immediately
+      emit({ requestId: id, sequence: 12, chunk: new Array(65536).fill(65), done: false })
+      expect(callsFor('acknowledge_http_chunks')).toHaveLength(3)
+      expect(callsFor('acknowledge_http_chunks').at(-1)?.[1]).toEqual({ requestId: id, sequence: 12 })
+
+      // Terminal done chunk (sequence 13): flushes immediately
+      emit(chunk(id, 13, '!', true))
+      expect(callsFor('acknowledge_http_chunks')).toHaveLength(4)
+      expect(callsFor('acknowledge_http_chunks').at(-1)?.[1]).toEqual({ requestId: id, sequence: 13 })
+
+      const text = await response.text()
+      expect(text.startsWith('abcxxxxxxxx')).toBe(true)
+      expect(text.endsWith('!')).toBe(true)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })

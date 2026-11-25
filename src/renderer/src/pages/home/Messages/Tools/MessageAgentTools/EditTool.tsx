@@ -1,6 +1,5 @@
 import type { CollapseProps } from 'antd'
 
-import { ClickableFilePath } from './ClickableFilePath'
 import { DiffStyleToggle, useDiffStyle } from './DiffStyleToggle'
 import { ToolHeader } from './GenericTools'
 import { SimpleTextDiff } from './SimpleTextDiff'
@@ -33,7 +32,7 @@ export function EditTool({
     label: (
       <ToolHeader
         toolName={AgentToolsType.Edit}
-        params={input?.file_path ? <ClickableFilePath path={input.file_path} displayName={filename} /> : undefined}
+        params={input?.file_path ? <span title={input.file_path}>{filename || input.file_path}</span> : undefined}
         variant="collapse-label"
         showStatus={false}
       />

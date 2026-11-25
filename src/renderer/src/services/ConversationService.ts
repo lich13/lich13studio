@@ -3,7 +3,8 @@ import { convertMessagesToSdkMessages } from '@renderer/aiCore/prepareParams'
 import type { Assistant, Message } from '@renderer/types'
 import { filterAdjacentUserMessaegs, filterLastAssistantMessage } from '@renderer/utils/messageUtils/filters'
 import type { ModelMessage } from 'ai'
-import { findLast, takeRight } from 'lodash'
+import findLast from 'lodash/findLast'
+import takeRight from 'lodash/takeRight'
 
 import { getAssistantSettings, getDefaultModel } from './AssistantService'
 import {

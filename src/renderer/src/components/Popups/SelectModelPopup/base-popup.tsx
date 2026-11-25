@@ -13,7 +13,7 @@ import { classNames, filterModelsByKeywords, getFancyProviderName } from '@rende
 import { getDuplicateModelNames, getModelTags } from '@renderer/utils/model'
 import { getModelPresentation } from '@renderer/utils/modelPresentation'
 import { Divider, Empty, Modal, Tooltip } from 'antd'
-import { sortBy } from 'lodash'
+import sortBy from 'lodash/sortBy'
 import { Settings2 } from 'lucide-react'
 import React, {
   startTransition,

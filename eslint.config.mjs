@@ -67,7 +67,6 @@ export default defineConfig([
       '.yarn/**',
       '.gitignore',
       '.conductor/**',
-      'scripts/cloudflare-worker.js',
       'src/renderer/src/ui/**',
       'packages/**/dist'
     ]

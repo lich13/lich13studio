@@ -1,7 +1,6 @@
 import type { FileMetadata, FileType } from '@renderer/types'
 import { FILE_TYPE } from '@renderer/types'
 import { audioExts, documentExts, GB, imageExts, KB, MB, textExts, videoExts } from '@shared/config/constant'
-import mime from 'mime-types'
 
 /**
  * 从文件路径中提取目录路径。
@@ -116,21 +115,38 @@ export async function filterSupportedFiles(files: FileMetadata[], supportExts: s
   return validationResults.filter((result) => result.isValid).map((result) => result.file)
 }
 
+const MIME_EXTENSION_MAP: Record<string, string> = {
+  'application/json': '.json',
+  'application/msword': '.doc',
+  'application/pdf': '.pdf',
+  'application/vnd.ms-excel': '.xls',
+  'application/vnd.ms-powerpoint': '.ppt',
+  'application/vnd.oasis.opendocument.presentation': '.odp',
+  'application/vnd.oasis.opendocument.spreadsheet': '.ods',
+  'application/vnd.oasis.opendocument.text': '.odt',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': '.pptx',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
+  'text/csv': '.csv',
+  'text/html': '.html',
+  'text/markdown': '.md',
+  'text/plain': '.txt',
+  'text/xml': '.xml'
+}
+
 export const mime2type = (mimeStr: string): FileType => {
-  const mimeType = mimeStr.toLowerCase()
-  const ext = mime.extension(mimeType)
+  const mimeType = mimeStr.split(';')[0].trim().toLowerCase()
+  if (mimeType.startsWith('image/')) return FILE_TYPE.IMAGE
+  if (mimeType.startsWith('audio/')) return FILE_TYPE.AUDIO
+  if (mimeType.startsWith('video/')) return FILE_TYPE.VIDEO
+  if (mimeType.startsWith('text/')) return FILE_TYPE.TEXT
+  const ext = MIME_EXTENSION_MAP[mimeType]
   if (ext) {
-    if (textExts.includes(ext)) {
-      return FILE_TYPE.TEXT
-    } else if (imageExts.includes(ext)) {
-      return FILE_TYPE.IMAGE
-    } else if (documentExts.includes(ext)) {
-      return FILE_TYPE.DOCUMENT
-    } else if (audioExts.includes(ext)) {
-      return FILE_TYPE.AUDIO
-    } else if (videoExts.includes(ext)) {
-      return FILE_TYPE.VIDEO
-    }
+    if (textExts.includes(ext)) return FILE_TYPE.TEXT
+    if (imageExts.includes(ext)) return FILE_TYPE.IMAGE
+    if (documentExts.includes(ext)) return FILE_TYPE.DOCUMENT
+    if (audioExts.includes(ext)) return FILE_TYPE.AUDIO
+    if (videoExts.includes(ext)) return FILE_TYPE.VIDEO
   }
   return FILE_TYPE.OTHER
 }

@@ -11,21 +11,11 @@ export default class ImageStorage {
     const id = IMAGE_PREFIX + key
     try {
       if (typeof value === 'string') {
-        // string（emoji）
-        if (await db.settings.get(id)) {
-          void db.settings.update(id, { value })
-          return
-        }
-        await db.settings.add({ id, value })
+        await db.settings.put({ id, value })
       } else {
-        // file image
         const base64Image = await convertToBase64(value)
         if (typeof base64Image === 'string') {
-          if (await db.settings.get(id)) {
-            void db.settings.update(id, { value: base64Image })
-            return
-          }
-          await db.settings.add({ id, value: base64Image })
+          await db.settings.put({ id, value: base64Image })
         }
       }
     } catch (error) {

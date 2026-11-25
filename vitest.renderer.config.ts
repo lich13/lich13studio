@@ -20,8 +20,5 @@ export default defineConfig({
       '@cherrystudio/ai-core/built-in/plugins': path.resolve(__dirname, 'packages/aiCore/src/core/plugins/built-in'),
       '@cherrystudio/ai-core': path.resolve(__dirname, 'packages/aiCore/src')
     }
-  },
-  esbuild: {
-    target: 'node20'
   }
 })

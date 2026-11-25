@@ -18,6 +18,7 @@ import type {
   ToolStateMap
 } from '@renderer/pages/home/Inputbar/types'
 import { getToolsForScope } from '@renderer/pages/home/Inputbar/types'
+import { runtimeCapabilities } from '@renderer/services/mobile/runtime'
 import { useAppDispatch, useAppSelector } from '@renderer/store'
 import { selectToolOrderForScope, setToolOrder } from '@renderer/store/inputTools'
 import type { Assistant, Model } from '@renderer/types'
@@ -317,65 +318,78 @@ const InputbarTools = ({ scope, assistant, model, session }: InputbarToolsNewPro
               setTargetTool(null)
             }
           }}>
-          <DragDropContext onDragEnd={handleDragEnd}>
-            <Droppable droppableId="inputbar-tools-visible" direction="horizontal">
-              {(provided) => (
-                <VisibleTools ref={provided.innerRef} {...provided.droppableProps}>
-                  {visibleTools.map((toolConfig, index) => {
-                    const context = buildRenderContext(toolConfig.tool)
-                    return (
-                      <Draggable key={toolConfig.key} draggableId={toolConfig.key} index={index}>
-                        {(provided, snapshot) => (
-                          <DraggablePortal isDragging={snapshot.isDragging}>
-                            <ToolWrapper
-                              data-key={toolConfig.key}
-                              onContextMenu={() => setTargetTool(toolConfig)}
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              {...provided.dragHandleProps}
-                              style={provided.draggableProps.style}>
-                              {toolConfig.tool.render?.(context)}
-                            </ToolWrapper>
-                          </DraggablePortal>
-                        )}
-                      </Draggable>
-                    )
-                  })}
-                  {provided.placeholder}
-                </VisibleTools>
-              )}
-            </Droppable>
-            <Droppable droppableId="inputbar-tools-hidden" direction="horizontal">
-              {(provided) => (
-                <HiddenTools ref={provided.innerRef} {...provided.droppableProps}>
-                  {hiddenTools.map((toolConfig, index) => {
-                    const context = buildRenderContext(toolConfig.tool)
-                    return (
-                      <Draggable key={toolConfig.key} draggableId={toolConfig.key} index={index}>
-                        {(provided, snapshot) => (
-                          <DraggablePortal isDragging={snapshot.isDragging}>
-                            <ToolWrapper
-                              data-key={toolConfig.key}
-                              onContextMenu={() => setTargetTool(toolConfig)}
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              {...provided.dragHandleProps}
-                              style={{
-                                ...provided.draggableProps.style,
-                                transitionDelay: `${index * 0.02}s`
-                              }}>
-                              {toolConfig.tool.render?.(context)}
-                            </ToolWrapper>
-                          </DraggablePortal>
-                        )}
-                      </Draggable>
-                    )
-                  })}
-                  {provided.placeholder}
-                </HiddenTools>
-              )}
-            </Droppable>
-          </DragDropContext>
+          {runtimeCapabilities.android ? (
+            <VisibleTools className="mobile-visible-tools">
+              {visibleTools.map((toolConfig) => {
+                const context = buildRenderContext(toolConfig.tool)
+                return (
+                  <ToolWrapper key={toolConfig.key} data-key={toolConfig.key}>
+                    {toolConfig.tool.render?.(context)}
+                  </ToolWrapper>
+                )
+              })}
+            </VisibleTools>
+          ) : (
+            <DragDropContext onDragEnd={handleDragEnd}>
+              <Droppable droppableId="inputbar-tools-visible" direction="horizontal">
+                {(provided) => (
+                  <VisibleTools ref={provided.innerRef} {...provided.droppableProps}>
+                    {visibleTools.map((toolConfig, index) => {
+                      const context = buildRenderContext(toolConfig.tool)
+                      return (
+                        <Draggable key={toolConfig.key} draggableId={toolConfig.key} index={index}>
+                          {(provided, snapshot) => (
+                            <DraggablePortal isDragging={snapshot.isDragging}>
+                              <ToolWrapper
+                                data-key={toolConfig.key}
+                                onContextMenu={() => setTargetTool(toolConfig)}
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                {...provided.dragHandleProps}
+                                style={provided.draggableProps.style}>
+                                {toolConfig.tool.render?.(context)}
+                              </ToolWrapper>
+                            </DraggablePortal>
+                          )}
+                        </Draggable>
+                      )
+                    })}
+                    {provided.placeholder}
+                  </VisibleTools>
+                )}
+              </Droppable>
+              <Droppable droppableId="inputbar-tools-hidden" direction="horizontal">
+                {(provided) => (
+                  <HiddenTools ref={provided.innerRef} {...provided.droppableProps}>
+                    {hiddenTools.map((toolConfig, index) => {
+                      const context = buildRenderContext(toolConfig.tool)
+                      return (
+                        <Draggable key={toolConfig.key} draggableId={toolConfig.key} index={index}>
+                          {(provided, snapshot) => (
+                            <DraggablePortal isDragging={snapshot.isDragging}>
+                              <ToolWrapper
+                                data-key={toolConfig.key}
+                                onContextMenu={() => setTargetTool(toolConfig)}
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                {...provided.dragHandleProps}
+                                style={{
+                                  ...provided.draggableProps.style,
+                                  transitionDelay: `${index * 0.02}s`
+                                }}>
+                                {toolConfig.tool.render?.(context)}
+                              </ToolWrapper>
+                            </DraggablePortal>
+                          )}
+                        </Draggable>
+                      )
+                    })}
+                    {provided.placeholder}
+                  </HiddenTools>
+                )}
+              </Droppable>
+            </DragDropContext>
+          )}
         </ToolsContainer>
       </Dropdown>
       {managerElements}

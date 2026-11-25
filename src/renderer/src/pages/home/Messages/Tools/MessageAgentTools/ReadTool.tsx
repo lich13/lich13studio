@@ -1,11 +1,10 @@
+import { getLanguageByFilePath } from '@renderer/components/CodeEditor/utils'
 import CodeViewer from '@renderer/components/CodeViewer'
-import { getLanguageByFilePath } from '@renderer/utils/code-language'
 import { formatFileSize } from '@renderer/utils/file'
 import type { CollapseProps } from 'antd'
 import { useTranslation } from 'react-i18next'
 
 import { truncateOutput } from '../shared/truncateOutput'
-import { ClickableFilePath } from './ClickableFilePath'
 import { SkeletonValue, ToolHeader, TruncatedIndicator } from './GenericTools'
 import type { ReadToolInput as ReadToolInputType, ReadToolOutput as ReadToolOutputType, TextOutput } from './types'
 import { AgentToolsType } from './types'
@@ -71,7 +70,7 @@ export function ReadTool({
         toolName={AgentToolsType.Read}
         params={
           <SkeletonValue
-            value={input?.file_path ? <ClickableFilePath path={input.file_path} displayName={filename} /> : undefined}
+            value={input?.file_path ? <span title={input.file_path}>{filename || input.file_path}</span> : undefined}
             width="120px"
           />
         }

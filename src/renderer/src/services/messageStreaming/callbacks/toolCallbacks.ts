@@ -5,7 +5,7 @@ import type { HistoricalToolResponse, NormalToolResponse } from '@renderer/types
 import type { ToolMessageBlock } from '@renderer/types/newMessage'
 import { MessageBlockStatus, MessageBlockType } from '@renderer/types/newMessage'
 import { createToolBlock } from '@renderer/utils/messageUtils/create'
-import { isPlainObject } from 'lodash'
+import isPlainObject from 'lodash/isPlainObject'
 
 import type { BlockManager } from '../BlockManager'
 

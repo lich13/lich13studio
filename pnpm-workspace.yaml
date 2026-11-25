@@ -74,7 +74,6 @@ overrides:
   "@codemirror/lint": "6.9.5"
   "@lezer/common": "1.5.1"
   "esbuild": "^0.25.0"
-  "openai": "npm:@cherrystudio/openai@6.15.0"
   "tar-fs": "^2.1.4"
   "vite": "npm:rolldown-vite@7.3.1"
   "@ai-sdk/provider-utils": "4.0.33"
@@ -83,13 +82,11 @@ overrides:
 
 patchedDependencies:
   "antd@5.27.0": "patches/antd-npm-5.27.0-aa91c36546.patch"
-  "@ai-sdk/openai@3.0.53": "patches/@ai-sdk__openai@3.0.53.patch"
   "@ai-sdk/anthropic@3.0.64": "patches/@ai-sdk__anthropic@3.0.64.patch"
 
 allowBuilds:
   "core-js": false
   "@j178/prek": true
-  "@kangfenmao/keyv-storage": true
   "@scarf/scarf": false
   "@swc/core": true
   "esbuild": true

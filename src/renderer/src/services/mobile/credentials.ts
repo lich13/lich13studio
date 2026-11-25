@@ -44,9 +44,32 @@ export function stripCredentials<T>(value: T): T {
 }
 
 let secrets: SecretMap = {}
+let committedSecrets: SecretMap | null = null
 let initialized = false
 let tail = Promise.resolve()
 const isRef = (value: unknown): value is string => typeof value === 'string' && value.startsWith(PREFIX)
+
+function hasAllSecrets(storeMap: SecretMap | null, subset: SecretMap): boolean {
+  if (!storeMap) return false
+  return Object.keys(subset).every(
+    (key) =>
+      Object.prototype.hasOwnProperty.call(storeMap, key) &&
+      JSON.stringify(storeMap[key]) === JSON.stringify(subset[key])
+  )
+}
+
+function secretsEqual(left: SecretMap | null, right: SecretMap): boolean {
+  if (!left) return false
+  const leftKeys = Object.keys(left)
+  const rightKeys = Object.keys(right)
+  if (leftKeys.length !== rightKeys.length) return false
+  return hasAllSecrets(left, right)
+}
+
+function hasRemovedSecrets(previous: SecretMap | null, next: SecretMap): boolean {
+  if (!previous) return false
+  return Object.keys(previous).some((key) => !Object.prototype.hasOwnProperty.call(next, key))
+}
 export function hydrateCredentials<T>(value: T): T {
   return mapCredentials(value, (secret) => {
     if (!isRef(secret)) return secret
@@ -87,19 +110,33 @@ async function saveDesktopState(key: string, value: string, prune: boolean) {
     return
   }
   const { redacted, nextSecrets } = redactState(value)
-  try {
-    await invoke('write_secure_credentials', { value: JSON.stringify(nextSecrets), replace: false })
-    secrets = { ...secrets, ...nextSecrets }
+  const shouldPrune = prune && key === 'persist:cherry-studio'
+  const allPresent = hasAllSecrets(committedSecrets, nextSecrets)
+  const removed = hasRemovedSecrets(committedSecrets, nextSecrets)
+  if (allPresent && (!shouldPrune || !removed)) {
     localStorage.setItem(key, redacted)
-  } catch (error) {
-    logger.warn('OS credential store write failed; keeping credentials in local app data', error as Error)
-    localStorage.setItem(key, hydrateCredentials(value))
     return
   }
-  if (prune && key === 'persist:cherry-studio') {
+  if (!allPresent) {
+    try {
+      await invoke('write_secure_credentials', { value: JSON.stringify(nextSecrets), replace: false })
+      const mergedSecrets = { ...(committedSecrets ?? secrets), ...nextSecrets }
+      secrets = mergedSecrets
+      committedSecrets = mergedSecrets
+      localStorage.setItem(key, redacted)
+    } catch (error) {
+      logger.warn('OS credential store write failed; keeping credentials in local app data', error as Error)
+      localStorage.setItem(key, hydrateCredentials(value))
+      return
+    }
+  } else {
+    localStorage.setItem(key, redacted)
+  }
+  if (shouldPrune && hasRemovedSecrets(committedSecrets, nextSecrets)) {
     try {
       await invoke('write_secure_credentials', { value: JSON.stringify(nextSecrets), replace: true })
-      secrets = nextSecrets
+      secrets = { ...nextSecrets }
+      committedSecrets = { ...nextSecrets }
     } catch (error) {
       logger.warn('Could not prune unused OS credential store entries', error as Error)
     }
@@ -125,6 +162,7 @@ async function initializeDesktopCredentials() {
   const parsed = JSON.parse(stored)
   if (!parsed || Array.isArray(parsed) || typeof parsed !== 'object') throw new Error('Invalid secure credential store')
   secrets = parsed
+  committedSecrets = { ...parsed }
   // Idempotent migration: plaintext values move to the store, existing refs are reused.
   if (old) await saveDesktopState('persist:cherry-studio', old, isMainTauriWindow())
   initialized = true
@@ -132,17 +170,30 @@ async function initializeDesktopCredentials() {
 
 async function savePrivateState(key: string, value: string) {
   const { redacted, nextSecrets } = redactState(value)
+  const unchanged =
+    key === 'persist:cherry-studio'
+      ? secretsEqual(committedSecrets, nextSecrets)
+      : hasAllSecrets(committedSecrets, nextSecrets)
+  if (unchanged) {
+    localStorage.setItem(key, redacted)
+    return
+  }
+  const previousSecrets = secrets
+  const mergedSecrets = { ...(committedSecrets ?? secrets), ...nextSecrets }
   // Commit the secure copy first; a failure leaves the previous state readable.
-  await mobileCommand('writeCredentials', { value: JSON.stringify({ ...secrets, ...nextSecrets }) })
-  secrets = { ...secrets, ...nextSecrets }
+  await mobileCommand('writeCredentials', { value: JSON.stringify(mergedSecrets) })
+  secrets = mergedSecrets
+  committedSecrets = mergedSecrets
   const previousState = localStorage.getItem(key)
   localStorage.setItem(key, redacted)
-  // The only credential-bearing local record is persist:cherry-studio.
-  if (key === 'persist:cherry-studio') {
+  // Prune stale keys only when persist:cherry-studio actually dropped secret references.
+  if (key === 'persist:cherry-studio' && hasRemovedSecrets(mergedSecrets, nextSecrets)) {
     try {
       await mobileCommand('writeCredentials', { value: JSON.stringify(nextSecrets) })
-      secrets = nextSecrets
+      secrets = { ...nextSecrets }
+      committedSecrets = { ...nextSecrets }
     } catch (error) {
+      secrets = { ...previousSecrets, ...nextSecrets }
       if (previousState === null) localStorage.removeItem(key)
       else localStorage.setItem(key, previousState)
       throw error
@@ -160,6 +211,7 @@ export async function initializeMobileCredentials() {
   const parsed = JSON.parse(result.value)
   if (!parsed || Array.isArray(parsed) || typeof parsed !== 'object') throw new Error('Invalid secure credential store')
   secrets = parsed
+  committedSecrets = { ...parsed }
   const old = localStorage.getItem('persist:cherry-studio')
   if (old) await savePrivateState('persist:cherry-studio', old)
   initialized = true
@@ -187,6 +239,7 @@ export const mobilePersistStorage = {
       if (runtimeCapabilities.android) await mobileCommand('clearCredentials')
       else if (desktopMode === 'secure') await invoke('clear_secure_credentials')
       secrets = {}
+      committedSecrets = {}
     }
   }
 }

@@ -32,10 +32,6 @@ export function LocalBackupManager({ visible, onClose, localBackupDir, restoreMe
     total: 0
   })
   const fetchBackupFiles = useCallback(async () => {
-    if (!localBackupDir) {
-      return
-    }
-
     setLoading(true)
     try {
       const files = await window.api.backup.listLocalBackupFiles(localBackupDir)
@@ -72,10 +68,6 @@ export function LocalBackupManager({ visible, onClose, localBackupDir, restoreMe
       return
     }
 
-    if (!localBackupDir) {
-      return
-    }
-
     window.modal.confirm({
       title: t('settings.data.local.backup.manager.delete.confirm.title'),
       icon: <ExclamationCircleOutlined />,
@@ -105,10 +97,6 @@ export function LocalBackupManager({ visible, onClose, localBackupDir, restoreMe
   }
 
   const handleDeleteSingle = async (fileName: string) => {
-    if (!localBackupDir) {
-      return
-    }
-
     window.modal.confirm({
       title: t('settings.data.local.backup.manager.delete.confirm.title'),
       icon: <ExclamationCircleOutlined />,
@@ -132,10 +120,6 @@ export function LocalBackupManager({ visible, onClose, localBackupDir, restoreMe
   }
 
   const handleRestore = async (fileName: string) => {
-    if (!localBackupDir) {
-      return
-    }
-
     window.modal.confirm({
       title: t('settings.data.local.restore.confirm.title'),
       icon: <ExclamationCircleOutlined />,

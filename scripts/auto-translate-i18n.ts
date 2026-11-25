@@ -8,7 +8,6 @@
  * - Progress tracking and detailed logging
  * - Built-in rate limiting to avoid API limits
  */
-import { OpenAI } from '@cherrystudio/openai'
 import * as cliProgress from 'cli-progress'
 import * as fs from 'fs'
 import * as path from 'path'
@@ -96,10 +95,7 @@ const validateConfig = () => {
   })
 }
 
-const openai = new OpenAI({
-  apiKey: SCRIPT_CONFIG.API_KEY ?? '',
-  baseURL: SCRIPT_CONFIG.BASE_URL
-})
+const chatCompletionsEndpoint = `${SCRIPT_CONFIG.BASE_URL.replace(/\/+$/, '')}/chat/completions`
 
 // Concurrency Control with ES6+ features
 class ConcurrencyController {
@@ -171,14 +167,27 @@ const translate = async (systemPrompt: string, text: string): Promise<string> =>
       await new Promise((resolve) => setTimeout(resolve, SCRIPT_CONFIG.TRANSLATION_DELAY_MS))
     }
 
-    const completion = await openai.chat.completions.create({
-      model: SCRIPT_CONFIG.MODEL,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: text }
-      ]
+    const response = await fetch(chatCompletionsEndpoint, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${SCRIPT_CONFIG.API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: SCRIPT_CONFIG.MODEL,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: text }
+        ]
+      })
     })
-    return completion.choices[0]?.message?.content ?? ''
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status} ${response.statusText}`)
+    }
+    const completion = (await response.json()) as {
+      choices?: Array<{ message?: { content?: string } }>
+    }
+    return completion.choices?.[0]?.message?.content ?? ''
   } catch (e) {
     console.error(`Translation failed for text: "${text.substring(0, 50)}..."`)
     throw e

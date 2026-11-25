@@ -43,8 +43,9 @@ import {
   selectionModelReference
 } from '@shared/modelProviderSelection'
 import { Button, Tooltip } from 'antd'
-import { cloneDeep, isEmpty } from 'lodash'
-import { last } from 'lodash'
+import cloneDeep from 'lodash/cloneDeep'
+import isEmpty from 'lodash/isEmpty'
+import last from 'lodash/last'
 import { Image as ImageIcon, MessageSquareDiff, X } from 'lucide-react'
 import type { FC } from 'react'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'

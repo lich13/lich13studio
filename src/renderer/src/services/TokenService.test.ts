@@ -68,4 +68,25 @@ describe('TokenService.estimateMessagesUsage', () => {
     expect(usage.completion_tokens).toBeGreaterThan(0)
     expect(usage.total_tokens).toBe(usage.prompt_tokens + usage.completion_tokens)
   })
+
+  it('invalidates cached history tokens when message content changes to another string of identical length', async () => {
+    const asciiSameLen = 'aaaaaaaaaaaa' // 12 ASCII chars
+    const cjkSameLen = '中文测试词元计数验证内容' // 12 CJK chars (different token estimate, identical .length === 12)
+    expect(asciiSameLen.length).toBe(cjkSameLen.length)
+
+    const tailMsg = createMockMessage('m-tail', 'assistant', 'ok')
+    const beforeHistory = createMockMessage('m-same-len', 'user', asciiSameLen)
+    const afterHistory = createMockMessage('m-same-len', 'user', cjkSameLen)
+
+    const first = await estimateMessagesUsage({
+      assistant: mockAssistant,
+      messages: [beforeHistory, tailMsg]
+    })
+    const second = await estimateMessagesUsage({
+      assistant: mockAssistant,
+      messages: [afterHistory, tailMsg]
+    })
+
+    expect(second.prompt_tokens).not.toBe(first.prompt_tokens)
+  })
 })

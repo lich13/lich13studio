@@ -1,6 +1,7 @@
 import { loggerService } from '@logger'
 import { combineReducers, configureStore } from '@reduxjs/toolkit'
 import { credentialStorageEnabled, mobilePersistStorage } from '@renderer/services/mobile/credentials'
+import { isMainTauriWindow, runtimeCapabilities } from '@renderer/services/mobile/runtime'
 import { useDispatch, useSelector, useStore } from 'react-redux'
 import {
   FLUSH,
@@ -26,10 +27,8 @@ import migrate from './migrate'
 import { modelCatalogMiddleware } from './modelCatalogMiddleware'
 import newMessagesReducer from './newMessage'
 import runtime from './runtime'
-import selectionStore from './selectionStore'
 import settings from './settings'
 import shortcuts from './shortcuts'
-import tabs from './tabs'
 
 const logger = loggerService.withContext('Store')
 
@@ -40,8 +39,6 @@ const rootReducer = combineReducers({
   settings,
   runtime,
   shortcuts,
-  selectionStore,
-  tabs,
   messages: newMessagesReducer,
   messageBlocks: messageBlocksReducer,
   inputTools: inputToolsReducer
@@ -72,7 +69,7 @@ const persistedReducer = persistReducer<RootState>(
     key: 'cherry-studio',
     storage: credentialStorageEnabled ? mobilePersistStorage : storage,
     version: 223,
-    blacklist: ['runtime', 'messages', 'messageBlocks', 'tabs'],
+    blacklist: ['runtime', 'messages', 'messageBlocks'],
     stateReconciler: reconcileActiveSlices,
     migrate
   },
@@ -80,7 +77,7 @@ const persistedReducer = persistReducer<RootState>(
 )
 
 storeSyncService.setOptions({
-  syncList: ['assistants/', 'settings/', 'llm/', 'selectionStore/']
+  syncList: ['assistants/', 'settings/', 'llm/']
 })
 
 const store = configureStore({
@@ -97,10 +94,17 @@ const store = configureStore({
 
 export type AppDispatch = typeof store.dispatch
 
+const isMiniWindowContext = () =>
+  typeof window !== 'undefined' &&
+  (window.location?.pathname?.endsWith('miniWindow.html') ||
+    (!runtimeCapabilities.android && Boolean((window as any).__TAURI_INTERNALS__) && !isMainTauriWindow()))
+
 export const persistor = persistStore(store, undefined, () => {
-  void import('@renderer/services/PlatformModelCatalogService').then(({ platformModelCatalogService }) =>
-    platformModelCatalogService.initialize()
-  )
+  if (!isMiniWindowContext()) {
+    void import('@renderer/services/PlatformModelCatalogService').then(({ platformModelCatalogService }) =>
+      platformModelCatalogService.initialize()
+    )
+  }
   void window.api?.notifyReduxStoreReady?.()
   logger.info('Redux store ready, notified main process')
 })

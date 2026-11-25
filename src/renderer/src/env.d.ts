@@ -1,6 +1,5 @@
 /// <reference types="vite/client" />
 
-import type KeyvStorage from '@kangfenmao/keyv-storage'
 import type { HookAPI } from 'antd/es/modal/useModal'
 import type { NavigateFunction } from 'react-router-dom'
 
@@ -16,6 +15,7 @@ import type {
   success,
   warning
 } from './components/TopView/toast'
+import type { MemoryKeyv } from './utils/memoryKeyv'
 
 interface ImportMetaEnv {
   VITE_RENDERER_INTEGRATED_MODEL: string
@@ -27,9 +27,10 @@ interface ImportMeta {
 
 declare global {
   interface Window {
+    api: Record<string, any>
     root: HTMLElement
     modal: HookAPI
-    keyv: KeyvStorage
+    keyv: MemoryKeyv
     store: any
     navigate: NavigateFunction
     toast: {

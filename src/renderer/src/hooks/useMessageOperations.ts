@@ -29,7 +29,8 @@ import { AssistantMessageStatus, MessageBlockStatus, MessageBlockType } from '@r
 import { abortCompletion } from '@renderer/utils/abortController'
 import { isMessageProcessing } from '@renderer/utils/messageUtils/is'
 import { clearTopicQueue } from '@renderer/utils/queue'
-import { difference, throttle } from 'lodash'
+import difference from 'lodash/difference'
+import throttle from 'lodash/throttle'
 import { useCallback } from 'react'
 
 const logger = loggerService.withContext('UseMessageOperations')
@@ -179,7 +180,8 @@ export function useMessageOperations(topic: Topic) {
         ) {
           cancelThrottledBlockUpdate(blockId)
           dispatch(updateOneBlock({ id: blockId, changes: { status: MessageBlockStatus.PAUSED } }))
-          blocksToPersist.push({ ...block, status: MessageBlockStatus.PAUSED })
+          const latestBlock = store.getState().messageBlocks.entities[blockId]
+          blocksToPersist.push(latestBlock ?? { ...block, status: MessageBlockStatus.PAUSED })
         }
       }
     }

@@ -28,6 +28,7 @@ class MobileArgs { var id: String = ""; var value: String = ""; var path: String
 @TauriPlugin(permissions = [Permission(strings = [Manifest.permission.POST_NOTIFICATIONS], alias = "taskNotifications")])
 class MobileRuntimePlugin(private val activity: Activity) : Plugin(activity) {
     private val alias = "lich13studio.credentials.v1"
+    private val credentialLock = Any()
     private val store = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
     private val notificationRequests = mutableListOf<Invoke>()
     private fun notificationsGranted() = activity.getSystemService(NotificationManager::class.java).areNotificationsEnabled()
@@ -65,13 +66,16 @@ class MobileRuntimePlugin(private val activity: Activity) : Plugin(activity) {
     }
     @Command fun readCredentials(invoke: Invoke) {
         try {
-            val file = file()
-            if (!file.baseFile.exists()) { invoke.resolve(JSObject().put("value", "{}")); return }
-            val saved = JSONObject(file.openRead().use { it.readBytes().toString(Charsets.UTF_8) })
-            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-            cipher.init(Cipher.DECRYPT_MODE, secret(false), GCMParameterSpec(128, Base64.decode(saved.getString("iv"), Base64.NO_WRAP)))
-            cipher.updateAAD(alias.toByteArray())
-            val value = cipher.doFinal(Base64.decode(saved.getString("ciphertext"), Base64.NO_WRAP)).toString(Charsets.UTF_8)
+            val value = synchronized(credentialLock) {
+                val file = file()
+                if (!file.baseFile.exists()) "{}" else {
+                    val saved = JSONObject(file.openRead().use { it.readBytes().toString(Charsets.UTF_8) })
+                    val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+                    cipher.init(Cipher.DECRYPT_MODE, secret(false), GCMParameterSpec(128, Base64.decode(saved.getString("iv"), Base64.NO_WRAP)))
+                    cipher.updateAAD(alias.toByteArray())
+                    cipher.doFinal(Base64.decode(saved.getString("ciphertext"), Base64.NO_WRAP)).toString(Charsets.UTF_8)
+                }
+            }
             invoke.resolve(JSObject().put("value", value))
         } catch (_: Exception) { invoke.reject("安全存储读取失败") }
     }
@@ -80,18 +84,20 @@ class MobileRuntimePlugin(private val activity: Activity) : Plugin(activity) {
             val args = invoke.parseArgs(MobileArgs::class.java)
             require(args.value.length <= 4 * 1024 * 1024)
             JSONObject(args.value)
-            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-            cipher.init(Cipher.ENCRYPT_MODE, secret(true)); cipher.updateAAD(alias.toByteArray())
-            val saved = JSONObject().put("iv", Base64.encodeToString(cipher.iv, Base64.NO_WRAP))
-                .put("ciphertext", Base64.encodeToString(cipher.doFinal(args.value.toByteArray()), Base64.NO_WRAP))
-            val file = file(); val stream = file.startWrite()
-            try { stream.write(saved.toString().toByteArray()); file.finishWrite(stream) }
-            catch (error: Exception) { file.failWrite(stream); throw error }
+            synchronized(credentialLock) {
+                val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+                cipher.init(Cipher.ENCRYPT_MODE, secret(true)); cipher.updateAAD(alias.toByteArray())
+                val saved = JSONObject().put("iv", Base64.encodeToString(cipher.iv, Base64.NO_WRAP))
+                    .put("ciphertext", Base64.encodeToString(cipher.doFinal(args.value.toByteArray()), Base64.NO_WRAP))
+                val file = file(); val stream = file.startWrite()
+                try { stream.write(saved.toString().toByteArray()); file.finishWrite(stream) }
+                catch (error: Exception) { file.failWrite(stream); throw error }
+            }
             invoke.resolve()
         } catch (_: Exception) { invoke.reject("安全存储写入失败") }
     }
     @Command fun clearCredentials(invoke: Invoke) {
-        try { file().delete(); store.deleteEntry(alias); invoke.resolve() }
+        try { synchronized(credentialLock) { file().delete(); store.deleteEntry(alias) }; invoke.resolve() }
         catch (_: Exception) { invoke.reject("安全存储删除失败") }
     }
     @Command fun beginTask(invoke: Invoke) {

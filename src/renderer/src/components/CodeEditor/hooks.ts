@@ -4,6 +4,7 @@ import { loggerService } from '@logger'
 import type { Extension } from '@uiw/react-codemirror'
 import { keymap } from '@uiw/react-codemirror'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { loadLanguageAsync } from 'virtual:cm-langs'
 
 import { getNormalizedExtension } from './utils'
 
@@ -52,10 +53,9 @@ async function loadLanguageExtension(language: string): Promise<Extension | null
     }
   }
 
-  // 回退到 uiw/codemirror 包含的语言
+  // 按需加载 CodeMirror 语言扩展
   try {
-    const { loadLanguage } = await import('@uiw/codemirror-extensions-langs')
-    const extension = loadLanguage(fileExt as any)
+    const extension = await loadLanguageAsync(fileExt)
     return extension || null
   } catch (error) {
     logger.debug(`Failed to load language ${language} (${fileExt})`, error as Error)

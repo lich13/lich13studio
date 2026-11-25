@@ -49,11 +49,11 @@ const HomeTabs: FC<Props> = ({
       ? { borderRight: isLeftNavbar ? borderStyle : 'none' }
       : { borderLeft: isLeftNavbar ? borderStyle : 'none', borderTopLeftRadius: 0 }
 
-  if (position === 'left' && topicPosition === 'left') {
+  const showTab = Boolean(forceToSeeAllTab) || (position === 'left' && topicPosition === 'left')
+
+  if (showTab) {
     _tab = tab
   }
-
-  const showTab = position === 'left' && topicPosition === 'left'
 
   const onCreateAssistant = async () => {
     const assistant = await AddAssistantPopup.show()
@@ -90,7 +90,7 @@ const HomeTabs: FC<Props> = ({
     if (position === 'right' && topicPosition === 'right' && tab === 'assistants') {
       setTab('topic')
     }
-    if (position === 'left' && topicPosition === 'right' && tab === 'topic') {
+    if (!forceToSeeAllTab && position === 'left' && topicPosition === 'right' && tab === 'topic') {
       setTab('assistants')
     }
   }, [position, tab, topicPosition, forceToSeeAllTab])
@@ -99,8 +99,8 @@ const HomeTabs: FC<Props> = ({
     <Container
       style={{ ...border, ...style }}
       className={classNames('home-tabs', { right: position === 'right' && topicPosition === 'right' })}>
-      {position === 'left' && topicPosition === 'left' && (
-        <CustomTabs>
+      {showTab && (
+        <CustomTabs className="home-custom-tabs">
           <TabItem active={tab === 'assistants'} onClick={() => setTab('assistants')}>
             {t('assistants.abbr')}
           </TabItem>

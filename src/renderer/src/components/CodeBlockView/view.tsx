@@ -2,6 +2,7 @@ import { loggerService } from '@logger'
 import type { ActionTool } from '@renderer/components/ActionTools'
 import type { CodeEditorHandles } from '@renderer/components/CodeEditor'
 import CodeEditor from '@renderer/components/CodeEditor'
+import { getExtensionByLanguage } from '@renderer/components/CodeEditor/utils'
 import {
   CodeToolbar,
   useCopyTool,
@@ -16,7 +17,6 @@ import CodeViewer from '@renderer/components/CodeViewer'
 import type { BasicPreviewHandles } from '@renderer/components/Preview'
 import { MAX_COLLAPSED_CODE_HEIGHT } from '@renderer/config/constant'
 import { useSettings } from '@renderer/hooks/useSettings'
-import { getExtensionByLanguage } from '@renderer/utils/code-language'
 import { extractHtmlTitle, getFileNameFromHtmlTitle } from '@renderer/utils/formats'
 import dayjs from 'dayjs'
 import { FileCode } from 'lucide-react'

@@ -1,5 +1,4 @@
-import type { GroundingSupport } from '@google/genai'
-import type { Citation, WebSearchSource } from '@renderer/types'
+import type { Citation, GroundingSupport, WebSearchSource } from '@renderer/types'
 import { WEB_SEARCH_SOURCE } from '@renderer/types'
 
 import { cleanMarkdownContent, encodeHTML } from './formats'

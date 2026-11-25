@@ -555,9 +555,11 @@ export const InputbarCore: FC<InputbarCoreProps> = ({
         <InputBarContainer
           id="inputbar"
           className={classNames('inputbar-container', isDragging && 'file-dragging', isExpanded && 'expanded')}>
-          <DragHandle onMouseDown={handleDragStart}>
-            <HolderOutlined style={{ fontSize: 12 }} />
-          </DragHandle>
+          {!runtimeCapabilities.android && (
+            <DragHandle onMouseDown={handleDragStart}>
+              <HolderOutlined style={{ fontSize: 12 }} />
+            </DragHandle>
+          )}
           {files.length > 0 && (
             <AttachmentPreview files={files} setFiles={setFiles} onAttachmentContextMenu={appendTxtContentToInput} />
           )}

@@ -4,8 +4,8 @@ import './assets/styles/tailwind.css'
 import './assets/styles/mobile.css'
 import './services/mobile/runtime'
 
-import KeyvStorage from '@kangfenmao/keyv-storage'
 import StartupScreen from '@renderer/components/StartupScreen'
+import { MemoryKeyv } from '@renderer/utils/memoryKeyv'
 import { lazy, Suspense } from 'react'
 import { createRoot } from 'react-dom/client'
 import { ErrorBoundary } from 'react-error-boundary'
@@ -24,9 +24,8 @@ const App = lazy(async () => {
 })
 
 if (!window.keyv) {
-  window.keyv = new KeyvStorage()
+  window.keyv = new MemoryKeyv()
 }
-void window.keyv.init()
 
 function BootApp() {
   return (

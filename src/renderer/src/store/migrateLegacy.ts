@@ -29,11 +29,10 @@ import {
   isSupportStreamOptionsProvider
 } from '@renderer/utils/provider'
 import { API_SERVER_DEFAULTS, defaultByPassRules, UpgradeChannel } from '@shared/config/constant'
-import { isEmpty } from 'lodash'
+import isEmpty from 'lodash/isEmpty'
 
 import { DEFAULT_TOOL_ORDER, DEFAULT_TOOL_ORDER_BY_SCOPE } from './inputTools'
 import { initialState as llmInitialState, moveProvider } from './llm'
-import { defaultActionItems } from './selectionStore'
 import { initialState as settingsInitialState } from './settings'
 import { initialState as shortcutsInitialState } from './shortcuts'
 
@@ -90,15 +89,8 @@ function updateProvider(state: RootState, id: string, provider: Partial<Provider
   }
 }
 
-function addSelectionAction(state: RootState, id: string) {
-  if (state.selectionStore && state.selectionStore.actionItems) {
-    if (!state.selectionStore.actionItems.some((item: { id: string }) => item.id === id)) {
-      const action = defaultActionItems.find((item) => item.id === id)
-      if (action) {
-        state.selectionStore.actionItems.push(action)
-      }
-    }
-  }
+function addSelectionAction(...args: unknown[]) {
+  void args
 }
 
 function addShortcuts(state: RootState, ids: string[], afterId: string) {

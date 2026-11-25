@@ -175,8 +175,45 @@ async function tauriNativeFetch(input: RequestInfo | URL, init?: RequestInit): P
   let unregisterReceiver: (() => void) | null = null
   let aborting = false
   let consumedSequence = 0
+  let ackedSequence = -1
+  let unackedChunks = 0
+  let unackedBytes = 0
+  let ackTimer: ReturnType<typeof setTimeout> | null = null
   let replaying = false
   const orderedChunks = new Map<number, NativeHttpChunkEvent>()
+  const ACK_BATCH_CHUNKS = 8
+  const ACK_BATCH_BYTES = 64 * 1024
+  const ACK_FLUSH_DELAY_MS = 25
+
+  const clearAckTimer = () => {
+    if (ackTimer !== null) {
+      clearTimeout(ackTimer)
+      ackTimer = null
+    }
+  }
+
+  const flushAck = (force = false) => {
+    clearAckTimer()
+    if (aborting) return
+    if (!force && consumedSequence === ackedSequence) return
+    ackedSequence = consumedSequence
+    unackedChunks = 0
+    unackedBytes = 0
+    void apis.invoke('acknowledge_http_chunks', { requestId, sequence: consumedSequence }).catch(() => {})
+  }
+
+  const scheduleAck = (immediate: boolean) => {
+    if (immediate || unackedChunks >= ACK_BATCH_CHUNKS || unackedBytes >= ACK_BATCH_BYTES) {
+      flushAck(immediate)
+      return
+    }
+    if (consumedSequence > ackedSequence && ackTimer === null) {
+      ackTimer = setTimeout(() => {
+        ackTimer = null
+        flushAck()
+      }, ACK_FLUSH_DELAY_MS)
+    }
+  }
 
   const flushPending = () => {
     if (!controllerRef || streamClosed) {
@@ -199,6 +236,7 @@ async function tauriNativeFetch(input: RequestInfo | URL, init?: RequestInit): P
   }
 
   const cleanup = () => {
+    clearAckTimer()
     if (unregisterReceiver) {
       unregisterReceiver()
       unregisterReceiver = null
@@ -229,16 +267,18 @@ async function tauriNativeFetch(input: RequestInfo | URL, init?: RequestInit): P
 
   request.signal.addEventListener('abort', onAbort, { once: true })
 
-  const consume = (payload: NativeHttpChunkEvent) => {
-    if (streamClosed || aborting) return
+  const consume = (payload: NativeHttpChunkEvent): { byteLength: number; terminal: boolean } => {
+    if (streamClosed || aborting) return { byteLength: 0, terminal: false }
     const decoded = decodeChunkBytes(payload.chunk)
-    if (decoded && decoded.byteLength > 0) pendingChunks.push(decoded)
+    const byteLength = decoded?.byteLength ?? 0
+    if (decoded && byteLength > 0) pendingChunks.push(decoded)
     if (payload.error) pendingError = new Error(payload.error)
     if (payload.done) {
       pendingDone = true
       cleanup()
     }
     flushPending()
+    return { byteLength, terminal: Boolean(payload.done || payload.error) }
   }
 
   const receive = (payload: NativeHttpChunkEvent) => {
@@ -249,13 +289,21 @@ async function tauriNativeFetch(input: RequestInfo | URL, init?: RequestInit): P
     }
     if (payload.sequence <= consumedSequence) return
     orderedChunks.set(payload.sequence, payload)
+    let sawTerminal = false
     while (orderedChunks.has(consumedSequence + 1)) {
       const next = orderedChunks.get(++consumedSequence)!
       orderedChunks.delete(consumedSequence)
-      consume(next)
+      const { byteLength, terminal } = consume(next)
+      unackedChunks += 1
+      unackedBytes += byteLength
+      if (terminal) sawTerminal = true
     }
-    void apis.invoke('acknowledge_http_chunks', { requestId, sequence: consumedSequence }).catch(() => {})
-    if (orderedChunks.size) void replay().catch(() => {})
+    if (orderedChunks.size) {
+      flushAck(true)
+      void replay().catch(() => {})
+    } else {
+      scheduleAck(sawTerminal)
+    }
   }
 
   const replay = async () => {

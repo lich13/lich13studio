@@ -19,13 +19,12 @@ import { isAnthropicSupportedProvider } from '@renderer/utils/provider'
 import { inferProviderPlatform, PLATFORM_NAMES, PROVIDER_PLATFORMS, type ProviderPlatform } from '@shared/platforms'
 import type { MenuProps } from 'antd'
 import { Button, Dropdown, Empty, Input, Select, Tag } from 'antd'
-import { Check, Filter, GripVertical, MoreHorizontal, PlusIcon, Search, UserPen } from 'lucide-react'
+import { ArrowLeft, Check, Filter, GripVertical, MoreHorizontal, PlusIcon, Search, UserPen } from 'lucide-react'
 import type { FC } from 'react'
 import { startTransition, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
 import styled from 'styled-components'
-import useSWRImmutable from 'swr/immutable'
 
 import AddProviderPopup from './AddProviderPopup'
 import ModelNotesPopup from './ModelNotesPopup'
@@ -35,16 +34,6 @@ import ProviderSetting from './ProviderSetting'
 const logger = loggerService.withContext('ProviderList')
 
 const BUTTON_WRAPPER_HEIGHT = 50
-
-const getIsOvmsSupported = async (): Promise<boolean> => {
-  try {
-    const result = await window.api.ovms.isSupported()
-    return result
-  } catch (e) {
-    logger.warn('Fetching isOvmsSupported failed. Fallback to false.', e as Error)
-    return false
-  }
-}
 
 interface ProviderListProps {
   /** Whether in onboarding mode for new users */
@@ -69,8 +58,6 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
   const [agentFilterEnabled, setAgentFilterEnabled] = useState(false)
   const [providerLogos, setProviderLogos] = useState<Record<string, string>>({})
   const listRef = useRef<DraggableVirtualListRef>(null)
-
-  const { data: isOvmsSupported } = useSWRImmutable('ovms/isSupported', getIsOvmsSupported)
 
   const setSelectedProvider = useCallback((provider: Provider) => {
     startTransition(() => {
@@ -260,8 +247,22 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
               }
             }
 
-            setSelectedProvider(providers.filter((p) => isSystemProvider(p))[0])
+            const remaining = providers.filter((p) => p.id !== provider.id)
+            const nextProvider =
+              remaining.find((p) => inferProviderPlatform(p) === platform) ??
+              remaining.find((p) => isSystemProvider(p)) ??
+              remaining[0]
             removeProvider(provider)
+            if (runtimeCapabilities.android) {
+              _setSelectedProvider(nextProvider)
+              if (!nextProvider || selectedProvider?.id === provider.id) {
+                setMobileDetail(false)
+              }
+            } else if (nextProvider) {
+              setSelectedProvider(nextProvider)
+            } else {
+              _setSelectedProvider(undefined as unknown as Provider)
+            }
           }
         })
       }
@@ -286,8 +287,7 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
 
   const filteredProviders = providers.filter((provider) => {
     if (inferProviderPlatform(provider) !== platform) return false
-    // don't show it when isOvmsSupported is loading
-    if (provider.id === 'ovms' && !isOvmsSupported) {
+    if (provider.id === 'ovms') {
       return false
     }
 
@@ -324,7 +324,22 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
   return (
     <Container className="provider-page selectable">
       {runtimeCapabilities.android && mobileDetail && (
-        <Button onClick={() => setMobileDetail(false)}>{t('common.back')}</Button>
+        <div className="mobile-detail-header">
+          <Button
+            type="text"
+            className="mobile-back-btn"
+            icon={<ArrowLeft size={18} />}
+            onClick={() => setMobileDetail(false)}>
+            {t('common.back')}
+          </Button>
+          <div className="mobile-detail-title">
+            {catalogVisible
+              ? `${PLATFORM_NAMES[platform]} · ${t('platform.models_title')}`
+              : selectedProvider
+                ? getFancyProviderName(selectedProvider)
+                : t('settings.provider.title')}
+          </div>
+        </div>
       )}
       <ProviderListContainer
         style={
@@ -422,9 +437,11 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
                 key={provider.id}
                 className={provider.id === selectedProvider?.id ? 'active' : ''}
                 onClick={() => setSelectedProvider(provider)}>
-                <DragHandle>
-                  <GripVertical size={12} />
-                </DragHandle>
+                {!runtimeCapabilities.android && (
+                  <DragHandle>
+                    <GripVertical size={12} />
+                  </DragHandle>
+                )}
                 <ProviderAvatar
                   style={{
                     width: 24,
@@ -534,6 +551,10 @@ const DragHandle = styled.div`
 `
 
 const ProviderItemName = styled.div`
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   margin-left: 10px;
   font-weight: 500;
 `

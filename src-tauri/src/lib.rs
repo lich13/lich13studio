@@ -9,7 +9,9 @@ mod startup;
 use auto_launch::{AutoLaunch, AutoLaunchBuilder};
 use base64::{engine::general_purpose, Engine as _};
 use futures_util::StreamExt;
+#[cfg(not(target_os = "android"))]
 use image::codecs::png::PngEncoder;
+#[cfg(not(target_os = "android"))]
 use image::{ColorType, ImageEncoder};
 use reqwest::header::{HeaderName, HeaderValue, CONTENT_TYPE, USER_AGENT};
 use reqwest::{Client, Method};
@@ -25,14 +27,14 @@ use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs;
 use std::fs::File;
-use std::io::{Cursor, Read, Write};
+use std::io::{BufWriter, Cursor, Read, Seek, Write};
 use std::path::{Component, Path, PathBuf};
 use std::process::Command as StdCommand;
 #[cfg(not(target_os = "android"))]
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime};
 #[cfg(not(target_os = "android"))]
 use tauri::image::Image;
 #[cfg(not(target_os = "android"))]
@@ -46,6 +48,7 @@ use tauri::{
     WebviewUrl, WebviewWindow, WebviewWindowBuilder, Window, WindowEvent,
 };
 use tauri_plugin_notification::NotificationExt;
+#[cfg(not(target_os = "android"))]
 use tokio::process::Command;
 use url::Url;
 use uuid::Uuid;
@@ -92,7 +95,7 @@ const TRAY_QUIT_MENU_ID: &str = "quit";
 #[cfg(target_os = "windows")]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
-#[cfg(target_os = "macos")]
+#[cfg(not(target_os = "android"))]
 static APP_EXITING: AtomicBool = AtomicBool::new(false);
 
 #[derive(Serialize)]
@@ -305,7 +308,7 @@ impl Default for RuntimeSettings {
     }
 }
 
-#[cfg(any(target_os = "macos", test))]
+#[cfg(any(not(target_os = "android"), test))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum MainWindowCloseAction {
     KeepBackground,
@@ -327,7 +330,7 @@ struct MacOSLoginItemConfig {
     args: Vec<String>,
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", target_os = "android")))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct AutoLaunchConfig {
     app_name: String,
@@ -409,7 +412,7 @@ fn hidden_command<S: AsRef<OsStr>>(program: S) -> Command {
     command
 }
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(all(not(target_os = "windows"), not(target_os = "android")))]
 fn hidden_command<S: AsRef<OsStr>>(program: S) -> Command {
     Command::new(program)
 }
@@ -512,7 +515,7 @@ fn apply_runtime_setting(
     Ok(())
 }
 
-#[cfg(any(target_os = "macos", test))]
+#[cfg(any(not(target_os = "android"), test))]
 fn main_window_close_action(settings: RuntimeSettings) -> MainWindowCloseAction {
     if settings.tray && settings.tray_on_close {
         MainWindowCloseAction::KeepBackground
@@ -521,7 +524,7 @@ fn main_window_close_action(settings: RuntimeSettings) -> MainWindowCloseAction 
     }
 }
 
-#[cfg(any(target_os = "macos", test))]
+#[cfg(any(not(target_os = "android"), test))]
 fn should_prevent_implicit_exit(
     exit_code_present: bool,
     app_exiting: bool,
@@ -931,6 +934,13 @@ fn hide_mini_window_for_app(app: &AppHandle) -> Result<(), String> {
 }
 
 #[cfg(not(target_os = "android"))]
+fn close_auxiliary_windows(app: &AppHandle) {
+    if let Some(mini_window) = app.get_webview_window(MINI_WINDOW_LABEL) {
+        let _ = mini_window.destroy();
+    }
+}
+
+#[cfg(not(target_os = "android"))]
 fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let [show_id, check_update_id, quit_id] = tray_menu_item_ids();
     let show_item = MenuItem::with_id(app, show_id, "打开主界面", true, None::<&str>)?;
@@ -999,8 +1009,8 @@ fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
                 });
             }
             TRAY_QUIT_MENU_ID => {
-                #[cfg(target_os = "macos")]
                 APP_EXITING.store(true, Ordering::Relaxed);
+                close_auxiliary_windows(app);
                 app.exit(0);
             }
             _ => {}
@@ -1222,27 +1232,27 @@ fn should_persist_window_event(event: &WindowEvent) -> Option<bool> {
 }
 
 #[cfg(not(target_os = "android"))]
-fn handle_main_window_close(_window: &Window, _event: &WindowEvent) {
-    #[cfg(target_os = "macos")]
-    if _window.label() == "main" {
-        if let WindowEvent::CloseRequested { api, .. } = _event {
+fn handle_main_window_close(window: &Window, event: &WindowEvent) {
+    if window.label() == "main" {
+        if let WindowEvent::CloseRequested { api, .. } = event {
             if APP_EXITING.load(Ordering::Relaxed) {
                 return;
             }
 
             api.prevent_close();
-            let _ = persist_window_state(_window, true);
+            let _ = persist_window_state(window, true);
             match main_window_close_action(current_runtime_settings()) {
                 MainWindowCloseAction::KeepBackground => {
-                    let _ = _window.hide();
+                    let _ = window.hide();
                     apply_dock_visibility(
-                        _window.app_handle(),
+                        window.app_handle(),
                         dock_visibility_for_background_keepalive(),
                     );
                 }
                 MainWindowCloseAction::Quit => {
                     APP_EXITING.store(true, Ordering::Relaxed);
-                    _window.app_handle().exit(0);
+                    close_auxiliary_windows(window.app_handle());
+                    window.app_handle().exit(0);
                 }
             }
         }
@@ -1262,9 +1272,8 @@ fn handle_mini_window_focus(window: &Window, event: &WindowEvent) {
 }
 
 #[cfg(not(target_os = "android"))]
-fn handle_run_event(_app: &AppHandle, _event: &RunEvent) {
-    #[cfg(target_os = "macos")]
-    match _event {
+fn handle_run_event(app: &AppHandle, event: &RunEvent) {
+    match event {
         RunEvent::ExitRequested { api, code, .. } => {
             if should_prevent_implicit_exit(
                 code.is_some(),
@@ -1272,18 +1281,20 @@ fn handle_run_event(_app: &AppHandle, _event: &RunEvent) {
                 current_runtime_settings(),
             ) {
                 api.prevent_exit();
-                apply_dock_visibility(_app, dock_visibility_for_background_keepalive());
+                apply_dock_visibility(app, dock_visibility_for_background_keepalive());
                 return;
             }
 
             APP_EXITING.store(true, Ordering::Relaxed);
+            close_auxiliary_windows(app);
         }
+        #[cfg(target_os = "macos")]
         RunEvent::Reopen {
             has_visible_windows: false,
             ..
         } => {
             let reason = startup::launch_show_reason(&[], startup::current_launch_event());
-            let _ = request_main_window(_app, reason);
+            let _ = request_main_window(app, reason);
         }
         _ => {}
     }
@@ -1989,9 +2000,7 @@ async fn delete_webdav(config: &BackupWebDavConfig, file_name: &str) -> Result<b
 }
 
 fn format_system_time(time: SystemTime) -> String {
-    time.duration_since(UNIX_EPOCH)
-        .map(|duration| duration.as_secs().to_string())
-        .unwrap_or_else(|_| String::from("0"))
+    chrono::DateTime::<chrono::Utc>::from(time).to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
 }
 
 fn config_dir() -> Result<PathBuf, String> {
@@ -2462,8 +2471,8 @@ fn zip_file_options() -> SimpleFileOptions {
         .unix_permissions(0o644)
 }
 
-fn add_directory_to_zip(
-    zip: &mut ZipWriter<Cursor<Vec<u8>>>,
+fn add_directory_to_zip<W: Write + Seek>(
+    zip: &mut ZipWriter<W>,
     source_dir: &Path,
     archive_root: &str,
 ) -> Result<(), String> {
@@ -2506,21 +2515,62 @@ fn add_directory_to_zip(
     Ok(())
 }
 
-fn create_backup_archive_bytes(state: &Value, include_files: bool) -> Result<Vec<u8>, String> {
-    let cursor = Cursor::new(Vec::new());
-    let mut zip = ZipWriter::new(cursor);
+fn write_backup_archive<W: Write + Seek>(
+    writer: W,
+    state: &Value,
+    include_files: bool,
+    data_root: &Path,
+) -> Result<W, String> {
+    let mut zip = ZipWriter::new(writer);
 
     zip.start_file("data.json", zip_file_options())
         .map_err(|error| error.to_string())?;
-    let payload = serde_json::to_vec_pretty(state).map_err(|error| error.to_string())?;
-    zip.write_all(&payload).map_err(|error| error.to_string())?;
+    serde_json::to_writer(&mut zip, state).map_err(|error| error.to_string())?;
 
     if include_files {
-        add_directory_to_zip(&mut zip, &data_dir()?, "Data")?;
+        add_directory_to_zip(&mut zip, data_root, "Data")?;
     }
 
-    let cursor = zip.finish().map_err(|error| error.to_string())?;
+    zip.finish().map_err(|error| error.to_string())
+}
+
+fn create_backup_archive_bytes(state: &Value, include_files: bool) -> Result<Vec<u8>, String> {
+    let cursor = write_backup_archive(Cursor::new(Vec::new()), state, include_files, &data_dir()?)?;
     Ok(cursor.into_inner())
+}
+
+fn write_backup_archive_to_file(
+    file_path: &Path,
+    state: &Value,
+    include_files: bool,
+    data_root: &Path,
+) -> Result<(), String> {
+    let parent = file_path
+        .parent()
+        .ok_or_else(|| String::from("Invalid backup file path"))?;
+    fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+    let temp_name = format!(
+        ".{}.tmp-{}",
+        file_path.file_name().unwrap_or_default().to_string_lossy(),
+        Uuid::new_v4()
+    );
+    let temp_path = parent.join(temp_name);
+    let write_result = (|| -> Result<(), String> {
+        let file = File::create(&temp_path).map_err(|error| error.to_string())?;
+        let mut writer =
+            write_backup_archive(BufWriter::new(file), state, include_files, data_root)?;
+        writer.flush().map_err(|error| error.to_string())?;
+        Ok(())
+    })();
+    if let Err(error) = write_result {
+        let _ = fs::remove_file(&temp_path);
+        return Err(error);
+    }
+    if let Err(error) = fs::rename(&temp_path, file_path) {
+        let _ = fs::remove_file(&temp_path);
+        return Err(error.to_string());
+    }
+    Ok(())
 }
 
 fn validate_backup_value(data: &Value) -> Result<(), String> {
@@ -2630,7 +2680,6 @@ fn extract_backup_archive_to(bytes: &[u8], data_root: &Path) -> Result<String, S
             }
             let mut output = File::create(&output_path).map_err(|_| "Cannot stage file")?;
             std::io::copy(&mut file, &mut output).map_err(|_| "Damaged backup file")?;
-            output.sync_all().map_err(|_| "Cannot flush backup file")?;
         }
         Ok(has_data)
     })();
@@ -2730,10 +2779,11 @@ fn persist_attachment(name: String, bytes: Vec<u8>) -> Result<String, String> {
 }
 
 #[tauri::command]
-fn read_attachment(name: String) -> Result<Vec<u8>, String> {
+fn read_attachment(name: String) -> Result<tauri::ipc::Response, String> {
     let root = files_dir()?;
     let path = resolve_attachment_in_root(&root, &name)?;
-    fs::read(path).map_err(|_| "Could not read attachment".into())
+    let bytes = fs::read(path).map_err(|_| String::from("Could not read attachment"))?;
+    Ok(tauri::ipc::Response::new(bytes))
 }
 
 fn delete_attachment_in_root(root: &Path, name: &str) -> Result<bool, String> {
@@ -2949,15 +2999,22 @@ fn is_startup_silent() -> bool {
 
 #[tauri::command]
 async fn webdav_backup(state: Value, config: BackupWebDavConfig) -> Result<String, String> {
-    validate_backup_value(&state)?;
-    let payload = create_backup_archive_bytes(&state, !config.skip_backup_file.unwrap_or(false))?;
+    let include_files = !config.skip_backup_file.unwrap_or(false);
+    let payload = tauri::async_runtime::spawn_blocking(move || -> Result<Vec<u8>, String> {
+        validate_backup_value(&state)?;
+        create_backup_archive_bytes(&state, include_files)
+    })
+    .await
+    .map_err(|_| String::from("Backup archive task failed"))??;
     upload_webdav(&config, payload).await
 }
 
 #[tauri::command]
 async fn webdav_restore(config: BackupWebDavConfig) -> Result<String, String> {
     let bytes = download_webdav(&config).await?;
-    extract_backup_archive(&bytes)
+    tauri::async_runtime::spawn_blocking(move || extract_backup_archive(&bytes))
+        .await
+        .map_err(|_| String::from("Backup restore task failed"))?
 }
 
 #[tauri::command]
@@ -3048,22 +3105,32 @@ fn capture_window(window_id: u32) -> Result<Vec<u8>, String> {
 async fn backup_to_local_dir(
     file_name: String,
     local_backup_dir: Option<String>,
-    payload: String,
+    state: Option<Value>,
+    payload: Option<String>,
     skip_backup_file: Option<bool>,
 ) -> Result<bool, String> {
-    let safe_name = validate_safe_backup_file_name(&file_name)?;
+    let safe_name = validate_safe_backup_file_name(&file_name)?.to_string();
     let base_dir = local_backup_dir
         .filter(|dir| !dir.trim().is_empty())
         .map(PathBuf::from)
         .unwrap_or(downloads_dir()?);
-
-    fs::create_dir_all(&base_dir).map_err(|error| error.to_string())?;
-    let file_path = base_dir.join(safe_name);
-    let state: Value = serde_json::from_str(&payload).map_err(|error| error.to_string())?;
-    validate_backup_value(&state)?;
-    let bytes = create_backup_archive_bytes(&state, !skip_backup_file.unwrap_or(false))?;
-    fs::write(file_path, bytes).map_err(|error| error.to_string())?;
-    Ok(true)
+    let include_files = !skip_backup_file.unwrap_or(false);
+    tauri::async_runtime::spawn_blocking(move || -> Result<bool, String> {
+        let backup_state = match state {
+            Some(value) => value,
+            None => {
+                let raw =
+                    payload.ok_or_else(|| String::from("Backup state payload is required"))?;
+                serde_json::from_str(&raw).map_err(|error| error.to_string())?
+            }
+        };
+        validate_backup_value(&backup_state)?;
+        let file_path = base_dir.join(safe_name);
+        write_backup_archive_to_file(&file_path, &backup_state, include_files, &data_dir()?)?;
+        Ok(true)
+    })
+    .await
+    .map_err(|_| String::from("Local backup task failed"))?
 }
 
 #[tauri::command]
@@ -3078,31 +3145,49 @@ async fn restore_from_local_backup(
         .map(PathBuf::from)
         .unwrap_or(downloads_dir()?);
     let file_path = base_dir.join(&safe_name);
-    let lower_name = safe_name.to_ascii_lowercase();
-    if lower_name.ends_with(".lich13backup") {
-        let encrypted = fs::read(&file_path).map_err(|error| error.to_string())?;
-        let secret = password.ok_or_else(|| String::from("Backup password is required"))?;
-        let decrypted = tauri::async_runtime::spawn_blocking(move || {
+    tauri::async_runtime::spawn_blocking(move || -> Result<String, String> {
+        let lower_name = safe_name.to_ascii_lowercase();
+        if lower_name.ends_with(".lich13backup") {
+            let encrypted = fs::read(&file_path).map_err(|error| error.to_string())?;
+            let secret = password.ok_or_else(|| String::from("Backup password is required"))?;
             let zeroized = zeroize::Zeroizing::new(secret);
-            backup_crypto::decrypt(&encrypted, &zeroized)
-        })
-        .await
-        .map_err(|_| String::from("Backup decryption task failed"))??;
-        return extract_backup_archive(&decrypted);
-    }
-    if lower_name.ends_with(".zip") {
-        let bytes = fs::read(&file_path).map_err(|error| error.to_string())?;
-        return extract_backup_archive(&bytes);
-    }
+            let decrypted = backup_crypto::decrypt(&encrypted, &zeroized)?;
+            return extract_backup_archive(&decrypted);
+        }
+        if lower_name.ends_with(".zip") {
+            let bytes = fs::read(&file_path).map_err(|error| error.to_string())?;
+            return extract_backup_archive(&bytes);
+        }
 
-    let raw = fs::read_to_string(&file_path).map_err(|error| error.to_string())?;
-    validate_backup_payload(&raw)?;
-    Ok(raw)
+        let raw = fs::read_to_string(&file_path).map_err(|error| error.to_string())?;
+        validate_backup_payload(&raw)?;
+        Ok(raw)
+    })
+    .await
+    .map_err(|_| String::from("Local restore task failed"))?
 }
 
 #[tauri::command]
 async fn restore_backup_archive(file_name: String, bytes: Vec<u8>) -> Result<String, String> {
-    decode_portable_backup(&file_name, &bytes, &data_dir()?)
+    tauri::async_runtime::spawn_blocking(move || {
+        decode_portable_backup(&file_name, &bytes, &data_dir()?)
+    })
+    .await
+    .map_err(|_| String::from("Backup restore task failed"))?
+}
+
+#[tauri::command]
+async fn restore_encrypted_backup_archive(
+    bytes: Vec<u8>,
+    password: String,
+) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let zeroized = zeroize::Zeroizing::new(password);
+        let decrypted = backup_crypto::decrypt(&bytes, &zeroized)?;
+        extract_backup_archive(&decrypted)
+    })
+    .await
+    .map_err(|_| String::from("Encrypted backup restore task failed"))?
 }
 
 fn decode_portable_backup(
@@ -3119,13 +3204,14 @@ fn decode_portable_backup(
     String::from_utf8(bytes.to_vec()).map_err(|_| "Invalid backup data".into())
 }
 
-#[tauri::command]
-async fn list_local_backup_files(
+fn list_local_backup_files_in_dir(
     local_backup_dir: Option<String>,
+    fallback_dir: &Path,
 ) -> Result<Vec<LocalBackupFileInfo>, String> {
     let base_dir = local_backup_dir
+        .filter(|dir| !dir.trim().is_empty())
         .map(PathBuf::from)
-        .unwrap_or(downloads_dir()?);
+        .unwrap_or_else(|| fallback_dir.to_path_buf());
 
     if !base_dir.exists() {
         return Ok(Vec::new());
@@ -3153,12 +3239,24 @@ async fn list_local_backup_files(
             modified_time: metadata
                 .modified()
                 .map(format_system_time)
-                .unwrap_or_else(|_| String::from("0")),
+                .unwrap_or_else(|_| format_system_time(SystemTime::UNIX_EPOCH)),
         });
     }
 
     items.sort_by(|left, right| right.modified_time.cmp(&left.modified_time));
     Ok(items)
+}
+
+#[tauri::command]
+async fn list_local_backup_files(
+    local_backup_dir: Option<String>,
+) -> Result<Vec<LocalBackupFileInfo>, String> {
+    let fallback = downloads_dir()?;
+    tauri::async_runtime::spawn_blocking(move || {
+        list_local_backup_files_in_dir(local_backup_dir, &fallback)
+    })
+    .await
+    .map_err(|_| String::from("List local backups task failed"))?
 }
 
 #[tauri::command]
@@ -3424,6 +3522,7 @@ pub fn run() {
             backup_to_local_dir,
             restore_from_local_backup,
             restore_backup_archive,
+            restore_encrypted_backup_archive,
             list_local_backup_files,
             delete_local_backup_file,
             list_webdav_files,
@@ -3931,5 +4030,78 @@ mod tests {
             dock_visibility_for_background_keepalive(),
             DockVisibility::Hidden
         );
+    }
+
+    #[test]
+    fn format_system_time_emits_sortable_rfc3339_utc_timestamps() {
+        let t1 = SystemTime::UNIX_EPOCH + Duration::from_secs(1_700_000_000);
+        let t2 = t1 + Duration::from_millis(250);
+        let formatted1 = format_system_time(t1);
+        let formatted2 = format_system_time(t2);
+        assert_eq!(formatted1, "2023-11-14T22:13:20.000Z");
+        assert_eq!(formatted2, "2023-11-14T22:13:20.250Z");
+        assert!(formatted2 > formatted1);
+    }
+
+    #[test]
+    fn list_local_backup_files_falls_back_when_dir_is_empty_or_whitespace() {
+        let fallback = std::env::temp_dir().join(format!("lich13-local-list-{}", Uuid::new_v4()));
+        fs::create_dir_all(&fallback).unwrap();
+        fs::write(fallback.join("lich13studio.20260101.zip"), b"archive").unwrap();
+        fs::write(fallback.join("unrelated.zip"), b"ignore").unwrap();
+
+        for empty_dir in [None, Some(String::new()), Some(String::from("   "))] {
+            let listed = list_local_backup_files_in_dir(empty_dir, &fallback).unwrap();
+            assert_eq!(listed.len(), 1);
+            assert_eq!(listed[0].file_name, "lich13studio.20260101.zip");
+            assert!(listed[0].modified_time.ends_with('Z'));
+            assert!(listed[0].modified_time.contains('T'));
+        }
+
+        fs::remove_dir_all(fallback).unwrap();
+    }
+
+    #[test]
+    fn write_backup_archive_to_file_streams_compact_json_and_cleans_temp_files() {
+        let root = std::env::temp_dir().join(format!("lich13-stream-zip-{}", Uuid::new_v4()));
+        let data_root = root.join("Data");
+        let files_dir = data_root.join("Files");
+        let out_dir = root.join("Backups");
+        fs::create_dir_all(&files_dir).unwrap();
+        fs::write(files_dir.join("note.txt"), b"streamed attachment").unwrap();
+
+        let state = serde_json::json!({
+            "version": 5,
+            "localStorage": { "persist:cherry-studio": "{}" },
+            "indexedDB": { "topics": [] }
+        });
+        let archive_path = out_dir.join("lich13studio.stream.zip");
+        write_backup_archive_to_file(&archive_path, &state, true, &data_root).unwrap();
+
+        let out_entries: Vec<String> = fs::read_dir(&out_dir)
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().to_string())
+            .collect();
+        assert_eq!(out_entries, vec!["lich13studio.stream.zip".to_string()]);
+
+        let mut archive = ZipArchive::new(File::open(&archive_path).unwrap()).unwrap();
+        let mut raw_json = String::new();
+        archive
+            .by_name("data.json")
+            .unwrap()
+            .read_to_string(&mut raw_json)
+            .unwrap();
+        assert!(!raw_json.contains('\n'));
+        assert_eq!(serde_json::from_str::<Value>(&raw_json).unwrap(), state);
+
+        let mut attachment = String::new();
+        archive
+            .by_name("Data/Files/note.txt")
+            .unwrap()
+            .read_to_string(&mut attachment)
+            .unwrap();
+        assert_eq!(attachment, "streamed attachment");
+
+        fs::remove_dir_all(root).unwrap();
     }
 }

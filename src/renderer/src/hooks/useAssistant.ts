@@ -132,7 +132,15 @@ export function useAssistant(id: string) {
     },
     updateTopic: (topic: Topic) => dispatch(updateTopic({ assistantId: assistant.id, topic })),
     updateTopics: (topics: Topic[]) => dispatch(updateTopics({ assistantId: assistant.id, topics })),
-    removeAllTopics: () => dispatch(removeAllTopics({ assistantId: assistant.id })),
+    removeAllTopics: () => {
+      if (!assistant) return
+      const topicIds = normalizedTopics.map((topic) => topic.id)
+      const defaultTopic = getDefaultTopic(assistant.id)
+      dispatch(removeAllTopics({ assistantId: assistant.id, defaultTopic }))
+      topicIds.forEach((topicId) => {
+        void TopicManager.removeTopic(topicId)
+      })
+    },
     setModel: useCallback(
       (model: Model) => assistant && dispatch(setModel({ assistantId: assistant?.id, model })),
       [assistant, dispatch]

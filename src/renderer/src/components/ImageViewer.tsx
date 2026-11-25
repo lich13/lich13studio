@@ -9,6 +9,7 @@ import {
   ZoomOutOutlined
 } from '@ant-design/icons'
 import { loggerService } from '@logger'
+import { attachmentMime } from '@renderer/utils/attachmentMime'
 import { download } from '@renderer/utils/download'
 import { convertImageToPng } from '@renderer/utils/image'
 import { parseDataUrl } from '@shared/utils'
@@ -16,7 +17,6 @@ import type { ImageProps as AntImageProps } from 'antd'
 import { Dropdown, Image as AntImage, Space } from 'antd'
 import { Base64 } from 'js-base64'
 import { DownloadIcon } from 'lucide-react'
-import mime from 'mime'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
@@ -46,10 +46,10 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ src, style, ...props }) => {
         const byteArray = Base64.toUint8Array(parseResult.data)
         blob = new Blob([byteArray.slice()], { type: parseResult.mediaType })
       } else if (src.startsWith('file://')) {
-        // 处理本地文件路径
-        const bytes = await window.api.fs.read(src)
-        const mimeType = mime.getType(src) || 'application/octet-stream'
-        blob = new Blob([bytes], { type: mimeType })
+        const filePath = src.replace(/^file:\/\//i, '')
+        const binary = await window.api.file.binaryImage(filePath)
+        const mimeType = attachmentMime(filePath, binary.mime, binary.data)
+        blob = new Blob([binary.data.slice()], { type: mimeType })
       } else {
         // 处理 URL 格式的图片
         const response = await fetch(src)

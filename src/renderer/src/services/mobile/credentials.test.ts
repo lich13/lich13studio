@@ -497,4 +497,75 @@ describe('desktop OS credential store', () => {
     expect(decodeState(backup[PERSIST_KEY]).messages).toEqual(state.messages)
     expect(decodeState(credentials.hydrateCredentials(memoryStorage.getItem(PERSIST_KEY)!))).toEqual(state)
   })
+
+  it('skips redundant secure writes when secrets are unchanged and skips prune when no secret keys are removed', async () => {
+    // Android Keystore path
+    native.android = true
+    native.desktop = false
+    vi.resetModules()
+    credentials = await import('./credentials')
+
+    const state = createState()
+    await credentials.mobilePersistStorage.setItem(PERSIST_KEY, encodeState(state))
+    expect(native.writeCount).toBe(1) // Initial write from empty store: no removed keys -> 1 write
+
+    // Non-secret change (theme + chat message): 0 Keystore writes
+    state.settings.theme = 'light'
+    state.messages.push({ id: 'msg-extra', role: 'user', content: 'ordinary chat update' })
+    await credentials.mobilePersistStorage.setItem(PERSIST_KEY, encodeState(state))
+    expect(native.writeCount).toBe(1)
+
+    // Adding a new secret without deleting existing secrets: 1 merge write, 0 prune writes
+    state.llm.providers.push({
+      id: 'provider-c',
+      apiHost: 'https://provider-c.invalid',
+      apiKey: 'fixture-provider-c-key',
+      extra_headers: {}
+    })
+    await credentials.mobilePersistStorage.setItem(PERSIST_KEY, encodeState(state))
+    expect(native.writeCount).toBe(2)
+
+    // Deleting a provider secret: merge write + prune write (2 writes)
+    state.llm.providers = state.llm.providers.filter((p) => p.id !== 'provider-c')
+    await credentials.mobilePersistStorage.setItem(PERSIST_KEY, encodeState(state))
+    expect(native.writeCount).toBe(4)
+
+    // Desktop Keychain path
+    memoryStorage.clear()
+    await startDesktop()
+    native.invoke.mockClear()
+    const desktopState = createState()
+    await credentials.mobilePersistStorage.setItem(PERSIST_KEY, encodeState(desktopState))
+    const writesAfterInit = native.invoke.mock.calls.filter(([cmd]) => cmd === 'write_secure_credentials').length
+    expect(writesAfterInit).toBe(1)
+
+    desktopState.settings.theme = 'light'
+    await credentials.mobilePersistStorage.setItem(PERSIST_KEY, encodeState(desktopState))
+    const writesAfterThemeChange = native.invoke.mock.calls.filter(([cmd]) => cmd === 'write_secure_credentials').length
+    expect(writesAfterThemeChange).toBe(1)
+
+    // Deleting a provider on Desktop (runtime prune=false): committedSecrets retains superset,
+    // and subsequent non-secret writes must STILL skip Keychain IPC (0 extra writes).
+    desktopState.llm.providers = desktopState.llm.providers.filter((p) => p.id !== 'provider-b')
+    await credentials.mobilePersistStorage.setItem(PERSIST_KEY, encodeState(desktopState))
+    const writesAfterDelete = native.invoke.mock.calls.filter(([cmd]) => cmd === 'write_secure_credentials').length
+    expect(writesAfterDelete).toBe(1) // Subset already present in Keychain -> 0 writes!
+
+    desktopState.settings.theme = 'dark'
+    desktopState.messages.push({ id: 'msg-after-del', role: 'user', content: 'chat after provider deletion' })
+    await credentials.mobilePersistStorage.setItem(PERSIST_KEY, encodeState(desktopState))
+    const writesAfterSubsequentChat = native.invoke.mock.calls.filter(
+      ([cmd]) => cmd === 'write_secure_credentials'
+    ).length
+    expect(writesAfterSubsequentChat).toBe(1)
+
+    // Restarting Desktop main window (prune=true) prunes stale provider-b keys in a single replace=true call.
+    native.invoke.mockClear()
+    vi.resetModules()
+    credentials = await import('./credentials')
+    await credentials.initializeMobileCredentials()
+    const startupWrites = native.invoke.mock.calls.filter(([cmd]) => cmd === 'write_secure_credentials')
+    expect(startupWrites).toHaveLength(1)
+    expect(startupWrites[0][1]).toMatchObject({ replace: true })
+  })
 })

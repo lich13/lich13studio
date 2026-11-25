@@ -13,7 +13,8 @@ import type { FileMessageBlock, ImageMessageBlock } from '@renderer/types/newMes
 import { MessageBlockType } from '@renderer/types/newMessage'
 import { findMainTextBlocks } from '@renderer/utils/messageUtils/find'
 import { truncateText } from '@renderer/utils/naming'
-import { find, isEmpty } from 'lodash'
+import find from 'lodash/find'
+import isEmpty from 'lodash/isEmpty'
 import { type Dispatch, type SetStateAction, useEffect, useState } from 'react'
 
 import { useAssistant } from './useAssistant'

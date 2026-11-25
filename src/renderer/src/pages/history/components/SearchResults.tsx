@@ -195,6 +195,18 @@ const buildSearchSnippet = (text: string, terms: string[], matchMode: KeywordMat
   return outputLines.join('\n')
 }
 
+const MARKDOWN_OR_HTML_CHAR_REGEX = /[*_`\]<#]/
+
+function containsOrderedChars(haystackLower: string, needleLower: string): boolean {
+  let pos = 0
+  for (let i = 0; i < needleLower.length; i += 1) {
+    pos = haystackLower.indexOf(needleLower[i], pos)
+    if (pos === -1) return false
+    pos += 1
+  }
+  return true
+}
+
 export async function scanHistoryMatches({
   database,
   keywords,
@@ -213,6 +225,7 @@ export async function scanHistoryMatches({
     return { terms: [], candidates: [] }
   }
 
+  const lowerTerms = terms.map((term) => term.toLowerCase())
   const searchRegexes = buildKeywordRegexes(terms, { matchMode, flags: 'i' })
   const matchedRefs: Array<{ blockId: string; messageId: string }> = []
   const neededMessageIds = new Set<string>()
@@ -222,6 +235,15 @@ export async function scanHistoryMatches({
     .until(isCancelled)
     .each((block) => {
       if (block.type !== MessageBlockType.MAIN_TEXT || typeof block.content !== 'string') {
+        return
+      }
+      const rawLower = block.content.toLowerCase()
+      const hasDirectTerm = lowerTerms.some((term) => rawLower.includes(term))
+      if (
+        !hasDirectTerm &&
+        (!MARKDOWN_OR_HTML_CHAR_REGEX.test(block.content) ||
+          !lowerTerms.some((term) => containsOrderedChars(rawLower, term)))
+      ) {
         return
       }
       const searchableContent = stripMarkdownFormatting(block.content)

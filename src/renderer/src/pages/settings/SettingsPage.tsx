@@ -2,9 +2,10 @@ import { Navbar, NavbarCenter } from '@renderer/components/app/Navbar'
 import Scrollbar from '@renderer/components/Scrollbar'
 import ModelSettings from '@renderer/pages/settings/ModelSettings/ModelSettings'
 import { runtimeCapabilities } from '@renderer/services/mobile/runtime'
-import { Divider as AntDivider, Select } from 'antd'
+import { Divider as AntDivider } from 'antd'
 import { Cloud, HardDrive, MonitorCog, Package, Settings2, Zap } from 'lucide-react'
 import type { FC } from 'react'
+import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import styled from 'styled-components'
@@ -19,8 +20,24 @@ const SettingsPage: FC = () => {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const { t } = useTranslation()
+  const pillsRef = useRef<HTMLElement | null>(null)
 
   const isRoute = (path: string): string => (pathname === path || pathname.startsWith(`${path}/`) ? 'active' : '')
+  const activeMobilePage = pathname.split('/')[2] || 'provider'
+
+  useEffect(() => {
+    if (!runtimeCapabilities.android) return
+    const activeEl = pillsRef.current?.querySelector<HTMLElement>('.mobile-pill.active')
+    activeEl?.scrollIntoView?.({ inline: 'center', block: 'nearest' })
+  }, [activeMobilePage])
+  const mobileTabs = [
+    { key: 'provider', label: t('settings.provider.title'), icon: Cloud },
+    { key: 'model', label: t('settings.model'), icon: Package },
+    { key: 'general', label: t('settings.general.label'), icon: Settings2 },
+    { key: 'display', label: t('settings.display.title'), icon: MonitorCog },
+    { key: 'data', label: t('settings.data.title'), icon: HardDrive },
+    { key: 'quickphrase', label: t('settings.quickPhrase.title'), icon: Zap }
+  ]
 
   return (
     <Container className="settings-page">
@@ -29,20 +46,22 @@ const SettingsPage: FC = () => {
       </Navbar>
       <ContentContainer id="content-container">
         {runtimeCapabilities.android && (
-          <Select
-            className="mobile-settings-menu"
-            aria-label={t('settings.title')}
-            value={pathname.split('/')[2] || 'provider'}
-            onChange={(page) => navigate(`/settings/${page}`)}
-            options={[
-              { value: 'provider', label: t('settings.provider.title') },
-              { value: 'model', label: t('settings.model') },
-              { value: 'general', label: t('settings.general.label') },
-              { value: 'display', label: t('settings.display.title') },
-              { value: 'data', label: t('settings.data.title') },
-              { value: 'quickphrase', label: t('settings.quickPhrase.title') }
-            ]}
-          />
+          <nav ref={pillsRef} className="mobile-settings-pills" aria-label={t('settings.title')}>
+            {mobileTabs.map(({ key, label, icon: Icon }) => {
+              const active = activeMobilePage === key
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  className={`mobile-pill ${active ? 'active' : ''}`}
+                  aria-current={active ? 'page' : undefined}
+                  onClick={() => navigate(`/settings/${key}`)}>
+                  <Icon size={15} />
+                  <span>{label}</span>
+                </button>
+              )
+            })}
+          </nav>
         )}
         {!runtimeCapabilities.android && (
           <SettingMenus>

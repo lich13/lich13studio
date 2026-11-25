@@ -2,11 +2,42 @@ import type { Assistant, FileMetadata, Usage } from '@renderer/types'
 import { FILE_TYPE } from '@renderer/types'
 import type { Message } from '@renderer/types/newMessage'
 import { findFileBlocks, getMainTextContent, getThinkingContent } from '@renderer/utils/messageUtils/find'
-import { flatten, takeRight } from 'lodash'
+import takeRight from 'lodash/takeRight'
 import { approximateTokenSize } from 'tokenx'
 
 import { getAssistantSettings } from './AssistantService'
 import { filterAfterContextClearMessages, filterMessages } from './MessagesService'
+
+const MAX_CACHED_MESSAGE_TOKENS = 512
+const messageTokenCache = new Map<string, number>()
+
+function hashTextFnv1a(text: string): string {
+  let hash = 0x811c9dc5
+  for (let i = 0; i < text.length; i += 1) {
+    hash ^= text.charCodeAt(i)
+    hash = Math.imul(hash, 0x01000193)
+  }
+  return (hash >>> 0).toString(36)
+}
+
+function getCachedMessageTokens(key: string): number | undefined {
+  const cached = messageTokenCache.get(key)
+  if (cached !== undefined) {
+    messageTokenCache.delete(key)
+    messageTokenCache.set(key, cached)
+  }
+  return cached
+}
+
+function setCachedMessageTokens(key: string, tokens: number) {
+  if (messageTokenCache.size >= MAX_CACHED_MESSAGE_TOKENS) {
+    const oldestKey = messageTokenCache.keys().next().value
+    if (oldestKey !== undefined) {
+      messageTokenCache.delete(oldestKey)
+    }
+  }
+  messageTokenCache.set(key, tokens)
+}
 
 interface MessageItem {
   name?: string
@@ -178,27 +209,38 @@ export async function estimateHistoryTokens(assistant: Assistant, msgs: Message[
   const maxContextCount = contextCount
   const messages = filterMessages(filterAfterContextClearMessages(takeRight(msgs, maxContextCount)))
 
-  // 有 usage 数据的消息，快速计算总数
-  const uasageTokens = messages
-    .filter((m) => m.usage)
-    .reduce((acc, message) => {
-      const inputTokens = message.usage?.total_tokens ?? 0
-      const outputTokens = message.usage!.completion_tokens ?? 0
-      return acc + (message.role === 'user' ? inputTokens : outputTokens)
-    }, 0)
+  let usageTokens = 0
+  let unmeasuredTokens = 0
 
-  // 没有 usage 数据的消息，需要计算每条消息的 token
-  let allMessages: MessageItem[][] = []
+  for (const message of messages) {
+    if (message.usage) {
+      const inputTokens = message.usage.total_tokens ?? 0
+      const outputTokens = message.usage.completion_tokens ?? 0
+      usageTokens += message.role === 'user' ? inputTokens : outputTokens
+      continue
+    }
 
-  for (const message of messages.filter((m) => !m.usage)) {
+    const content = getMainTextContent(message)
+    const files = findFileBlocks(message)
+    const filesKey = files.map((fileBlock) => `${fileBlock.file?.id ?? ''}:${fileBlock.file?.size ?? 0}`).join(',')
+    const cacheKey = message.id
+      ? `${message.id}|${message.updatedAt ?? message.createdAt ?? ''}|${content.length}:${hashTextFnv1a(content)}|${filesKey}`
+      : ''
+    const cached = cacheKey ? getCachedMessageTokens(cacheKey) : undefined
+    if (cached !== undefined) {
+      unmeasuredTokens += cached
+      continue
+    }
+
     const items = await getMessageParam(message)
-    allMessages = allMessages.concat(items)
+    const joined = items.map((item) => item.content).join('\n')
+    const tokens = estimateTextTokens(joined)
+    if (cacheKey) {
+      setCachedMessageTokens(cacheKey, tokens)
+    }
+    unmeasuredTokens += tokens
   }
 
-  const prompt = assistant.prompt
-  const input = flatten(allMessages)
-    .map((m) => m.content)
-    .join('\n')
-
-  return estimateTextTokens(prompt + input) + uasageTokens
+  const promptTokens = assistant.prompt ? estimateTextTokens(assistant.prompt) : 0
+  return promptTokens + unmeasuredTokens + usageTokens
 }

@@ -1,4 +1,3 @@
-import axios from 'axios'
 import * as htmlparser2 from 'htmlparser2'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
@@ -31,9 +30,12 @@ export function useMetaDataParser<T extends string>(
     setError(null)
 
     try {
-      const response = await axios.get(link, { timeout, signal: controller.signal })
-
-      const htmlContent = response.data
+      const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(timeout)])
+      const response = await fetch(link, { signal })
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status} ${response.statusText}`)
+      }
+      const htmlContent = await response.text()
       const parsedMetadata = {} as Record<T, string>
 
       const parser = new htmlparser2.Parser({
@@ -51,8 +53,7 @@ export function useMetaDataParser<T extends string>(
 
       setMetadata(parsedMetadata)
     } catch (err) {
-      // Don't set error if request was aborted
-      if (axios.isCancel(err) || (err instanceof Error && err.name === 'AbortError')) {
+      if (controller.signal.aborted || (err instanceof Error && err.name === 'AbortError')) {
         return
       }
       setError(err instanceof Error ? err : new Error('Failed to fetch HTML'))

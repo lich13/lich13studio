@@ -15,23 +15,24 @@
  * - v2 Refactor PR   : https://github.com/CherryHQ/cherry-studio/pull/10162
  * --------------------------------------------------------------------------
  */
-import type { WebSearchResultBlock } from '@anthropic-ai/sdk/resources'
-import type OpenAI from '@cherrystudio/openai'
-import type { GroundingMetadata } from '@google/genai'
 import { createEntityAdapter, createSelector, createSlice, type PayloadAction } from '@reduxjs/toolkit'
-import type { TodoItem, TodoWriteToolInput } from '@renderer/pages/home/Messages/Tools/MessageAgentTools/types'
+import type { TodoWriteToolInput } from '@renderer/pages/home/Messages/Tools/MessageAgentTools/types'
 import type {
   AISDKWebSearchResult,
+  AnthropicWebSearchResultBlock,
   BaseTool,
   Citation,
+  GroundingMetadata,
   NormalToolResponse,
+  OpenAIResponseUrlCitation,
+  OpenAIUrlCitationAnnotation,
   WebSearchProviderResponse
 } from '@renderer/types'
 import { WEB_SEARCH_SOURCE } from '@renderer/types'
 import type { CitationMessageBlock, MessageBlock, ToolMessageBlock } from '@renderer/types/newMessage'
 import { MessageBlockType } from '@renderer/types/newMessage'
 
-import type { RootState } from './index' // 确认 RootState 从 store/index.ts 导出
+import type { RootState } from './index'
 
 // Create a simplified type for the entity adapter to avoid circular type issues
 type MessageBlockEntity = MessageBlock
@@ -136,7 +137,7 @@ export const formatCitationsFromBlock = (block: CitationMessageBlock | undefined
       }
       case WEB_SEARCH_SOURCE.OPENAI_RESPONSE:
         formattedCitations =
-          (block.response.results as OpenAI.Responses.ResponseOutputText.URLCitation[])?.map((result, index) => {
+          (block.response.results as OpenAIResponseUrlCitation[])?.map((result, index) => {
             let hostname: string | undefined
             try {
               hostname = result.title ? undefined : new URL(result.url).hostname
@@ -155,7 +156,7 @@ export const formatCitationsFromBlock = (block: CitationMessageBlock | undefined
         break
       case WEB_SEARCH_SOURCE.OPENAI:
         formattedCitations =
-          (block.response.results as OpenAI.Chat.Completions.ChatCompletionMessage.Annotation[])?.map((url, index) => {
+          (block.response.results as OpenAIUrlCitationAnnotation[])?.map((url, index) => {
             const urlCitation = url.url_citation
             let hostname: string | undefined
             try {
@@ -175,7 +176,7 @@ export const formatCitationsFromBlock = (block: CitationMessageBlock | undefined
         break
       case WEB_SEARCH_SOURCE.ANTHROPIC:
         formattedCitations =
-          (block.response.results as Array<WebSearchResultBlock>)?.map((result, index) => {
+          (block.response.results as Array<AnthropicWebSearchResultBlock>)?.map((result, index) => {
             const { url } = result
             let hostname: string | undefined
             try {
@@ -370,93 +371,14 @@ export interface TodoWriteToolMessageBlock extends Omit<ToolMessageBlock, 'metad
   }
 }
 
-/**
- * Check if todos have any incomplete items
- */
-const hasIncompleteTodos = (todos: TodoItem[]): boolean =>
-  todos.some((todo) => todo.status === 'pending' || todo.status === 'in_progress')
-
-/**
- * Check if a block is a TodoWrite tool block
- */
 export const isTodoWriteBlock = (block: MessageBlock | undefined): block is TodoWriteToolMessageBlock => {
   if (!block || block.type !== MessageBlockType.TOOL) return false
   const toolResponse = block.metadata?.rawMcpToolResponse
   if (toolResponse?.tool?.name !== 'TodoWrite') return false
-  // Defensive: validate todos is actually an array to prevent dirty data from crashing selectors (#12804)
   const args = toolResponse.arguments
   if (!args || typeof args !== 'object' || Array.isArray(args)) return false
   return Array.isArray(args.todos)
 }
-
-/**
- * Information about active todos for PinnedTodoPanel
- */
-export interface ActiveTodoInfo {
-  /** All todos from the latest block with incomplete items */
-  todos: TodoItem[]
-  /** Current active todo (in_progress or first pending) */
-  activeTodo: TodoItem | undefined
-  /** Number of completed todos */
-  completedCount: number
-  /** Total number of todos */
-  totalCount: number
-  /** All TodoWrite blocks grouped by messageId (for batch deletion) */
-  blockIdsByMessage: Record<string, string[]>
-}
-
-/**
- * Select active todo info for a topic in a single pass.
- * Returns undefined if no TodoWrite block with incomplete todos exists.
- *
- * Used by PinnedTodoPanel to display current task progress above the inputbar.
- */
-export const selectActiveTodoInfo = createSelector(
-  [
-    (state: RootState) => state.messages.entities,
-    (state: RootState) => state.messageBlocks.entities,
-    (state: RootState) => state.messages.messageIdsByTopic,
-    (_state: RootState, topicId: string) => topicId
-  ],
-  (messageEntities, blockEntities, messageIdsByTopic, topicId): ActiveTodoInfo | undefined => {
-    const topicMessageIds = messageIdsByTopic[topicId]
-    if (!topicMessageIds?.length) return undefined
-
-    const blockIdsByMessage: Record<string, string[]> = {}
-    let latestBlock: TodoWriteToolMessageBlock | undefined
-
-    for (const messageId of topicMessageIds) {
-      const message = messageEntities[messageId]
-      if (!message?.blocks?.length) continue
-
-      for (const blockId of message.blocks) {
-        const block = blockEntities[blockId]
-        if (isTodoWriteBlock(block)) {
-          const ids = (blockIdsByMessage[messageId] ??= [])
-          ids.push(blockId)
-          const todos = block.metadata.rawMcpToolResponse?.arguments?.todos
-          if (todos && hasIncompleteTodos(todos)) {
-            latestBlock = block
-          }
-        }
-      }
-    }
-    if (!latestBlock) return undefined
-    const todos = latestBlock.metadata.rawMcpToolResponse?.arguments?.todos
-    if (!todos) return undefined
-    const activeTodo =
-      todos.find((todo) => todo.status === 'in_progress') ?? todos.find((todo) => todo.status === 'pending')
-    return {
-      todos,
-      activeTodo,
-      completedCount: todos.filter((todo) => todo.status === 'completed').length,
-      totalCount: todos.length,
-      blockIdsByMessage
-    }
-  }
-)
-
-// --- Selector Integration --- END
 
 type MessageBlocksSlicePublic = {
   reducer: typeof _messageBlocksSlice.reducer

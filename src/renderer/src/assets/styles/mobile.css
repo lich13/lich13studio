@@ -9,8 +9,8 @@ html {
 html[data-runtime='android'] {
   --sidebar-width: 0px;
   --settings-width: 100%;
-  --assistants-width: min(360px, 100vw);
-  --app-viewport-height: calc(var(--mobile-viewport-height) - 64px) !important;
+  --assistants-width: min(320px, 86vw);
+  --app-viewport-height: calc(var(--mobile-viewport-height) - 56px) !important;
   --app-viewport-width: 100vw !important;
   --navbar-height: 0px;
 }
@@ -30,10 +30,10 @@ html[data-runtime='android'] #root > :not(.mobile-navigation) {
 }
 .mobile-navigation {
   display: flex;
-  flex: 0 0 64px;
+  flex: 0 0 56px;
   z-index: 20;
   background: var(--color-background);
-  border-top: 1px solid var(--color-border);
+  border-top: 0.5px solid var(--color-border);
 }
 .mobile-navigation button {
   flex: 1;
@@ -49,6 +49,7 @@ html[data-runtime='android'] #root > :not(.mobile-navigation) {
   color: var(--color-text-2);
   font: inherit;
   font-size: 12px;
+  font-weight: 500;
 }
 .mobile-navigation button[aria-current='page'] {
   color: var(--color-primary);
@@ -85,57 +86,112 @@ html[data-runtime='android'] #chat-main > .flex {
 html[data-runtime='android'] #chat-main > .flex > .narrow-mode {
   flex-shrink: 0;
 }
-html[data-runtime='android'] .home-navbar {
+html[data-runtime='android'] .home-navbar.mobile-home-navbar {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 6px;
   height: auto !important;
   min-height: 0;
   max-height: none;
   flex: 0 0 auto;
-  padding: 6px 8px;
+  padding: 6px 10px 8px;
+  border-bottom: 0.5px solid var(--color-border);
+  background: var(--color-background);
 }
-html[data-runtime='android'] .home-navbar > div {
-  height: auto;
-  align-items: flex-start;
-  overflow: visible;
-}
-html[data-runtime='android'] .chat-target-controls {
-  flex: 1;
-  margin: 0;
-  overflow: visible;
-}
-html[data-runtime='android'] .chat-target-controls > div {
-  flex-wrap: wrap;
+html[data-runtime='android'] .mobile-navbar-top-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   width: 100%;
+  min-width: 0;
+  min-height: 40px;
 }
-html[data-runtime='android'] .chat-target-controls .lucide-chevron-right {
-  display: none;
+html[data-runtime='android'] .mobile-assistant-trigger {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border: 0.5px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-background-soft);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: start;
+  cursor: pointer;
 }
-html[data-runtime='android'] .assistant-settings-trigger {
-  min-height: 48px;
+html[data-runtime='android'] .mobile-assistant-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-html[data-runtime='android'] .assistant-settings-trigger > span {
-  max-width: 100%;
+html[data-runtime='android'] .mobile-navbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+html[data-runtime='android'] .mobile-drawer-toggle,
+html[data-runtime='android'] .mobile-navbar-action {
+  min-height: 40px;
+  min-width: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+}
+html[data-runtime='android'] .mobile-navbar-model-row {
+  width: 100%;
+  min-width: 0;
 }
 html[data-runtime='android'] .model-provider-selection {
   width: 100%;
   flex: 1 1 100%;
 }
-html[data-runtime='android'] .model-provider-fields {
-  flex-direction: column;
-  align-items: stretch;
+html[data-runtime='android'] .mobile-navbar-model-row .model-provider-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 6px;
+  align-items: center;
 }
-html[data-runtime='android'] .model-provider-fields .ant-select {
-  width: 100%;
-  flex: auto;
+html[data-runtime='android'] .mobile-navbar-model-row .model-provider-fields select {
+  min-height: 38px;
+  height: 38px;
+  padding: 0 8px;
+  font-size: 13px;
+  border-radius: 8px;
+  background: var(--color-background-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+html[data-runtime='android'] .home-custom-tabs {
+  margin: 0 10px;
+  padding: 4px 0;
+}
+html[data-runtime='android'] .home-custom-tabs button {
+  min-height: 40px;
+  font-size: 14px;
 }
 html[data-runtime='android'] .ant-select-single {
-  height: 48px;
+  height: 44px;
 }
-html[data-runtime='android'] .ant-btn {
-  min-height: 48px;
-  min-width: 48px;
+/* Narrow touch minimum to primary/form buttons; preserve compact inline/link buttons */
+html[data-runtime='android'] .ant-btn:not(.ant-btn-sm):not(.ant-btn-link) {
+  min-height: 44px;
   flex-shrink: 0;
   white-space: nowrap;
   height: auto;
+}
+html[data-runtime='android'] .ant-btn.ant-btn-icon-only:not(.ant-btn-sm) {
+  min-width: 44px;
 }
 html[data-runtime='android'] input,
 html[data-runtime='android'] textarea {
@@ -144,7 +200,7 @@ html[data-runtime='android'] textarea {
 html[data-runtime='android'] .ant-input:not(textarea),
 html[data-runtime='android'] .ant-input-affix-wrapper,
 html[data-runtime='android'] .ant-input-number-input {
-  min-height: 48px;
+  min-height: 44px;
 }
 html[data-runtime='android'] .ant-input-affix-wrapper > .ant-input:not(textarea) {
   min-height: 0;
@@ -152,14 +208,14 @@ html[data-runtime='android'] .ant-input-affix-wrapper > .ant-input:not(textarea)
 html[data-runtime='android'] .ant-dropdown-menu-item,
 html[data-runtime='android'] .ant-checkbox-wrapper,
 html[data-runtime='android'] .ant-radio-wrapper {
-  min-height: 48px;
+  min-height: 44px;
   align-items: center;
 }
 html[data-runtime='android'] .ant-select-dropdown {
   max-width: calc(100vw - 16px) !important;
 }
 html[data-runtime='android'] .ant-select-item-option {
-  min-height: 48px;
+  min-height: 44px;
   align-items: center;
 }
 html[data-runtime='android'] .ant-modal {
@@ -188,8 +244,8 @@ html[data-runtime='android'] .ant-modal:not(.ant-modal-confirm) .ant-modal-conte
   padding: 0 0 16px;
 }
 html[data-runtime='android'] .ant-modal:not(.ant-modal-confirm) .ant-modal-content .ant-modal-header {
-  min-height: 64px;
-  padding: 20px 64px 16px 16px;
+  min-height: 56px;
+  padding: 16px 56px 12px 16px;
   background: var(--color-background);
   border-radius: 0;
 }
@@ -199,8 +255,8 @@ html[data-runtime='android'] .ant-modal:not(.ant-modal-confirm) .ant-modal-conte
 }
 html[data-runtime='android'] .ant-modal-close,
 html[data-runtime='android'] .ant-drawer-close {
-  min-width: 48px;
-  min-height: 48px;
+  min-width: 44px;
+  min-height: 44px;
 }
 html[data-runtime='android'] .setting-container {
   padding: 12px;
@@ -210,17 +266,28 @@ html[data-runtime='android'] .setting-group {
   padding: 12px;
   min-width: 0;
 }
+/* Keep short labels + Switch on a single line; wrap only wide controls */
 html[data-runtime='android'] .setting-row {
   flex-wrap: wrap;
-  gap: 8px;
+  align-items: center;
+  gap: 8px 12px;
   min-width: 0;
 }
 html[data-runtime='android'] .setting-row > :first-child {
-  flex-basis: 100%;
+  flex: 1 1 180px;
+  min-width: 0;
+}
+html[data-runtime='android'] .setting-row > :last-child {
+  max-width: 100%;
 }
 html[data-runtime='android'] .setting-row .ant-input,
 html[data-runtime='android'] .setting-row .ant-select {
   width: 100% !important;
+  max-width: 100%;
+}
+html[data-runtime='android'] .setting-row .ant-segmented {
+  max-width: 100%;
+  overflow-x: auto;
 }
 html[data-runtime='android'] .ant-space {
   max-width: 100%;
@@ -240,7 +307,7 @@ html[data-runtime='android'] .ant-form-item .ant-form-item-label {
   padding-bottom: 6px;
 }
 html[data-runtime='android'] .ant-form-item .ant-form-item-label > label {
-  min-height: 28px;
+  min-height: 24px;
   height: auto;
 }
 html[data-runtime='android'] .ant-form-item .ant-form-item-control {
@@ -291,8 +358,38 @@ html[data-runtime='android'] .ant-list-item-meta-title,
 html[data-runtime='android'] .ant-list-item-meta-description {
   overflow-wrap: anywhere;
 }
+/* Full-width mobile messages & visible vector toolbars */
 html[data-runtime='android'] #messages {
   min-width: 0;
+}
+html[data-runtime='android'] .message {
+  padding: 10px 12px 4px;
+}
+html[data-runtime='android'] .message-content-container {
+  padding-left: 0 !important;
+  padding-right: 0;
+}
+html[data-runtime='android'] .MessageFooter {
+  margin-left: 0 !important;
+  margin-top: 6px;
+}
+html[data-runtime='android'] .message .menubar,
+html[data-runtime='android'] .code-block .code-toolbar,
+html[data-runtime='android'] .table-wrapper .table-toolbar {
+  opacity: 1 !important;
+}
+html[data-runtime='android'] .table-wrapper {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 4px;
+}
+html[data-runtime='android'] .table-wrapper .table-toolbar {
+  position: static;
+  justify-content: flex-end;
+}
+html[data-runtime='android'] .code-block {
+  min-width: 0 !important;
+  max-width: 100%;
 }
 html[data-runtime='android'] .markdown img {
   max-width: 100%;
@@ -302,6 +399,7 @@ html[data-runtime='android'] .markdown table {
   max-width: 100%;
   overflow-x: auto;
 }
+/* Mobile settings pill navigation & sticky detail header */
 html[data-runtime='android'] .settings-page {
   height: var(--app-viewport-height);
   overflow: hidden;
@@ -314,9 +412,97 @@ html[data-runtime='android'] .settings-page #content-container {
   flex-direction: column;
   min-height: 0;
 }
-html[data-runtime='android'] .mobile-settings-menu {
-  margin: 8px 12px;
-  flex: 0 0 48px;
+html[data-runtime='android'] .mobile-settings-pills {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  overflow-x: auto;
+  flex-shrink: 0;
+  border-bottom: 0.5px solid var(--color-border);
+  background: var(--color-background);
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+html[data-runtime='android'] .mobile-settings-pills::-webkit-scrollbar,
+html[data-runtime='android'] .mobile-subsettings-pills::-webkit-scrollbar {
+  display: none;
+}
+html[data-runtime='android'] .mobile-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 18px;
+  border: 1px solid var(--color-border);
+  background: var(--color-background-soft);
+  color: var(--color-text-2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+html[data-runtime='android'] .mobile-pill.active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+html[data-runtime='android'] .mobile-subsettings-pills {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px 4px;
+  overflow-x: auto;
+  flex-shrink: 0;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+html[data-runtime='android'] .mobile-subpill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-background-soft);
+  color: var(--color-text-2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+html[data-runtime='android'] .mobile-subpill.active {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+html[data-runtime='android'] .mobile-detail-header {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 48px;
+  padding: 4px 12px 4px 4px;
+  border-bottom: 0.5px solid var(--color-border);
+  background: var(--color-background);
+  flex-shrink: 0;
+}
+html[data-runtime='android'] .mobile-detail-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 html[data-runtime='android'] .settings-content {
   min-height: 0;
@@ -329,29 +515,35 @@ html[data-runtime='android'] .data-settings-page {
   height: 100%;
   min-height: 0;
 }
-html[data-runtime='android'] .data-settings-page > .ant-select {
-  margin: 8px 12px;
-  flex: 0 0 48px;
+/* Inputbar mobile layout & smooth horizontal tool strip */
+html[data-runtime='android'] .inputbar {
+  padding: 4px 10px 10px !important;
 }
-html[data-runtime='android'] .inputbar-tools > div {
-  min-height: 48px;
+html[data-runtime='android'] .mobile-visible-tools {
+  height: 40px;
+  gap: 4px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 html[data-runtime='android'] .inputbar-tools [data-key] {
-  width: 48px;
+  width: 40px;
+  height: 40px;
   flex-shrink: 0;
-  margin-right: 2px;
+  margin-right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 html[data-runtime='android'] .inputbar-tools [data-key] > * {
-  min-width: 48px;
-  min-height: 48px;
+  min-width: 40px;
+  min-height: 40px;
 }
 html[data-runtime='android'] .inputbar textarea.ant-input {
-  max-height: 30vh !important;
+  max-height: 28vh !important;
 }
-html[data-runtime='android'] .icon-ic_send,
-html[data-runtime='android'] .mobile-drawer-toggle {
-  min-height: 48px;
-  min-width: 48px;
+html[data-runtime='android'] .icon-ic_send {
+  min-height: 40px;
+  min-width: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -359,11 +551,21 @@ html[data-runtime='android'] .mobile-drawer-toggle {
 html[data-runtime='android'][data-keyboard='open'] {
   --app-viewport-height: var(--mobile-viewport-height) !important;
 }
-html[data-runtime='android'][data-keyboard='open'] .mobile-navigation,
-html[data-runtime='android'][data-keyboard='open'] .home-navbar {
+html[data-runtime='android'][data-keyboard='open'] .mobile-navigation {
   display: none;
 }
 @media (orientation: landscape) and (max-height: 600px) {
+  html[data-runtime='android'] {
+    --app-viewport-height: calc(var(--mobile-viewport-height) - 40px) !important;
+  }
+  html[data-runtime='android'] .mobile-navigation {
+    flex: 0 0 40px;
+  }
+  html[data-runtime='android'] .mobile-navigation button {
+    min-height: 40px;
+    flex-direction: row;
+    gap: 6px;
+  }
   html[data-runtime='android'] .provider-catalog-controls {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -373,39 +575,49 @@ html[data-runtime='android'][data-keyboard='open'] .home-navbar {
   html[data-runtime='android'] .provider-catalog-controls .ant-btn {
     margin-top: 0 !important;
   }
-  html[data-runtime='android'] .home-navbar .chat-target-controls > div {
+  html[data-runtime='android'] .home-navbar.mobile-home-navbar {
     flex-direction: row;
-    flex-wrap: nowrap;
     align-items: center;
+    gap: 8px;
+    padding: 4px 10px;
   }
-  html[data-runtime='android'] .home-navbar .assistant-settings-trigger {
-    flex: 0 1 160px;
-    min-width: 0;
+  html[data-runtime='android'] .mobile-navbar-top-row {
+    flex: 0 1 46%;
+    min-height: 38px;
   }
-  html[data-runtime='android'] .home-navbar .model-provider-selection {
-    flex: 1 1 0;
-    width: auto;
-  }
-  html[data-runtime='android'] .home-navbar .model-provider-fields {
-    flex-direction: row;
-    flex-wrap: nowrap;
-  }
-  html[data-runtime='android'] .home-navbar .model-provider-fields .ant-select {
-    flex: 1 1 0;
-    width: 0;
+  html[data-runtime='android'] .mobile-navbar-model-row {
+    flex: 1 1 54%;
   }
   html[data-runtime='android'] .system-prompt {
-    margin: 4px 8px;
-    padding: 8px;
+    margin: 2px 8px;
+    padding: 6px 10px;
     flex-shrink: 0;
   }
   html[data-runtime='android'] .system-prompt > div {
     -webkit-line-clamp: 1;
   }
   html[data-runtime='android'] .inputbar {
-    padding: 0 8px 8px;
+    padding: 2px 8px 4px !important;
+  }
+  html[data-runtime='android'] .inputbar-container {
+    padding-top: 4px;
+    border-radius: 12px;
   }
   html[data-runtime='android'] .inputbar textarea.ant-input {
-    max-height: 48px !important;
+    min-height: 28px !important;
+    max-height: 36px !important;
+    padding-top: 2px !important;
+  }
+  html[data-runtime='android'] .inputbar-container > :last-child {
+    padding: 2px 10px 4px;
+    min-height: 32px;
+  }
+  html[data-runtime='android'] .mobile-visible-tools,
+  html[data-runtime='android'] .inputbar-tools [data-key],
+  html[data-runtime='android'] .inputbar-tools [data-key] > *,
+  html[data-runtime='android'] .icon-ic_send {
+    height: 34px;
+    min-height: 34px;
+    min-width: 34px;
   }
 }

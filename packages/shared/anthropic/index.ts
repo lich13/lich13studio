@@ -1,5 +1,9 @@
-import type { TextBlockParam } from '@anthropic-ai/sdk/resources'
 import type { ModelMessage } from 'ai'
+
+export type TextBlockParam = {
+  type: 'text'
+  text: string
+}
 
 const defaultClaudeCodeSystemPrompt = `You are Claude Code, Anthropic's official CLI for Claude.`
 

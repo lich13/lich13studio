@@ -1,15 +1,15 @@
 import { ResetIcon } from '@renderer/components/Icons'
 import { HStack } from '@renderer/components/Layout'
-import { isLinux, isMac, THEME_COLOR_PRESETS } from '@renderer/config/constant'
+import { THEME_COLOR_PRESETS } from '@renderer/config/constant'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import { useSettings } from '@renderer/hooks/useSettings'
-import { useTimer } from '@renderer/hooks/useTimer'
 import useUserTheme from '@renderer/hooks/useUserTheme'
+import { runtimeCapabilities } from '@renderer/services/mobile/runtime'
 import { useAppDispatch } from '@renderer/store'
 import type { AssistantIconType } from '@renderer/store/settings'
-import { setAssistantIconType } from '@renderer/store/settings'
+import { setAssistantIconType, setFontSize, setMessageStyle, setThoughtAutoCollapse } from '@renderer/store/settings'
 import { ThemeMode } from '@renderer/types'
-import { Button, ColorPicker, Segmented, Select, Switch, Tooltip } from 'antd'
+import { Button, ColorPicker, Segmented, Select, Slider, Switch, Tooltip } from 'antd'
 import { Minus, Monitor, Moon, Plus, Sun } from 'lucide-react'
 import type { FC } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -54,49 +54,13 @@ const ColorCircle = styled.div<{ color: string; isActive?: boolean }>`
 `
 
 const DisplaySettings: FC = () => {
-  const {
-    windowStyle,
-    setWindowStyle,
-    setTheme,
-    assistantIconType,
-    userTheme,
-    useSystemTitleBar,
-    setUseSystemTitleBar
-  } = useSettings()
+  const { setTheme, assistantIconType, userTheme, fontSize, messageStyle, thoughtAutoCollapse } = useSettings()
   const { theme, settedTheme } = useTheme()
   const { t } = useTranslation()
   const dispatch = useAppDispatch()
-  const { setTimeoutTimer } = useTimer()
   const [currentZoom, setCurrentZoom] = useState(1.0)
   const { setUserTheme } = useUserTheme()
   const [fontList, setFontList] = useState<string[]>([])
-
-  const handleWindowStyleChange = useCallback(
-    (checked: boolean) => {
-      setWindowStyle(checked ? 'transparent' : 'opaque')
-    },
-    [setWindowStyle]
-  )
-
-  const handleUseSystemTitleBarChange = (checked: boolean) => {
-    window.modal.confirm({
-      title: t('settings.use_system_title_bar.confirm.title'),
-      content: t('settings.use_system_title_bar.confirm.content'),
-      okText: t('common.confirm'),
-      cancelText: t('common.cancel'),
-      centered: true,
-      onOk() {
-        setUseSystemTitleBar(checked)
-        setTimeoutTimer(
-          'handleUseSystemTitleBarChange',
-          () => {
-            void window.api.relaunchApp()
-          },
-          500
-        )
-      }
-    })
-  }
 
   const handleColorPrimaryChange = useCallback(
     (colorHex: string) => {
@@ -142,12 +106,12 @@ const DisplaySettings: FC = () => {
   )
 
   useEffect(() => {
-    // 初始化获取所有系统字体
+    if (runtimeCapabilities.android) return
+
     void window.api.getSystemFonts().then((fonts: string[]) => {
       setFontList(fonts)
     })
 
-    // 初始化获取当前缩放值
     void window.api.handleZoomFactor(0).then((factor) => {
       setCurrentZoom(factor)
     })
@@ -157,10 +121,8 @@ const DisplaySettings: FC = () => {
         setCurrentZoom(factor)
       })
     }
-    // 添加resize事件监听
     window.addEventListener('resize', handleResize)
 
-    // 清理事件监听，防止内存泄漏
     return () => {
       window.removeEventListener('resize', handleResize)
     }
@@ -227,8 +189,8 @@ const DisplaySettings: FC = () => {
         <SettingDivider />
         <SettingRow>
           <SettingRowTitle>{t('settings.theme.color_primary')}</SettingRowTitle>
-          <SettingRowValue>
-            <HStack gap="12px">
+          <SettingRowValue style={{ justifyContent: runtimeCapabilities.android ? 'flex-start' : 'flex-end' }}>
+            <HStack gap="8px" style={{ flexWrap: 'wrap', maxWidth: '100%' }}>
               {THEME_COLOR_PRESETS.map((color) => (
                 <ColorCircleWrapper key={color}>
                   <ColorCircle
@@ -255,105 +217,135 @@ const DisplaySettings: FC = () => {
             />
           </SettingRowValue>
         </SettingRow>
-        {isMac && (
-          <>
+      </SettingGroup>
+      {runtimeCapabilities.android ? (
+        <SettingGroup theme={theme}>
+          <SettingTitle>{t('settings.messages.title')}</SettingTitle>
+          <SettingDivider />
+          <SettingRow>
+            <SettingRowTitle>{t('settings.font_size.title')}</SettingRowTitle>
+            <span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--color-text-2)' }}>{fontSize}px</span>
+          </SettingRow>
+          <div style={{ padding: '0 4px 4px' }}>
+            <Slider min={12} max={22} step={1} value={fontSize} onChange={(value) => dispatch(setFontSize(value))} />
+          </div>
+          <SettingDivider />
+          <SettingRow>
+            <SettingRowTitle>{t('message.message.style.label')}</SettingRowTitle>
+            <Segmented
+              value={messageStyle}
+              shape="round"
+              onChange={(value) => dispatch(setMessageStyle(value as 'plain' | 'bubble'))}
+              options={[
+                { value: 'plain', label: t('message.message.style.plain') },
+                { value: 'bubble', label: t('message.message.style.bubble') }
+              ]}
+            />
+          </SettingRow>
+          <SettingDivider />
+          <SettingRow>
+            <SettingRowTitle>{t('chat.settings.thought_auto_collapse.label')}</SettingRowTitle>
+            <Switch checked={thoughtAutoCollapse} onChange={(checked) => dispatch(setThoughtAutoCollapse(checked))} />
+          </SettingRow>
+        </SettingGroup>
+      ) : (
+        <>
+          <SettingGroup theme={theme}>
+            <SettingTitle>{t('settings.display.zoom.title')}</SettingTitle>
             <SettingDivider />
             <SettingRow>
-              <SettingRowTitle>{t('settings.theme.window.style.transparent')}</SettingRowTitle>
-              <Switch checked={windowStyle === 'transparent'} onChange={handleWindowStyleChange} />
+              <SettingRowTitle>{t('settings.zoom.title')}</SettingRowTitle>
+              <ZoomButtonGroup>
+                <Button
+                  onClick={() => handleZoomFactor(-0.1)}
+                  icon={<Minus size="14" />}
+                  color="default"
+                  variant="text"
+                />
+                <ZoomValue>{Math.round(currentZoom * 100)}%</ZoomValue>
+                <Button
+                  onClick={() => handleZoomFactor(0.1)}
+                  icon={<Plus size="14" />}
+                  color="default"
+                  variant="text"
+                />
+                <Button
+                  onClick={() => handleZoomFactor(0, true)}
+                  style={{ marginLeft: 8 }}
+                  icon={<ResetIcon size="14" />}
+                  color="default"
+                  variant="text"
+                />
+              </ZoomButtonGroup>
             </SettingRow>
-          </>
-        )}
-        {isLinux && (
-          <>
+          </SettingGroup>
+          <SettingGroup theme={theme}>
+            <SettingTitle>{t('settings.display.font.title')}</SettingTitle>
             <SettingDivider />
             <SettingRow>
-              <SettingRowTitle>{t('settings.use_system_title_bar.title')}</SettingRowTitle>
-              <Switch checked={useSystemTitleBar} onChange={handleUseSystemTitleBarChange} />
+              <SettingRowTitle>{t('settings.display.font.global')}</SettingRowTitle>
+              <SelectRow>
+                <Select
+                  style={{ width: 280 }}
+                  placeholder={t('settings.display.font.select')}
+                  options={[
+                    {
+                      label: (
+                        <span style={{ fontFamily: 'var(--font-family)' }}>{t('settings.display.font.default')}</span>
+                      ),
+                      value: ''
+                    },
+                    ...fontList.map((font) => ({ label: renderFontOption(font), value: font }))
+                  ]}
+                  value={userTheme.userFontFamily || ''}
+                  onChange={(font) => handleUserFontChange(font)}
+                  showSearch
+                  getPopupContainer={(triggerNode) => triggerNode.parentElement || document.body}
+                />
+                <Button
+                  onClick={() => handleUserFontChange('')}
+                  style={{ marginLeft: 8 }}
+                  icon={<ResetIcon size="14" />}
+                  color="default"
+                  variant="text"
+                />
+              </SelectRow>
             </SettingRow>
-          </>
-        )}
-      </SettingGroup>
-      <SettingGroup theme={theme}>
-        <SettingTitle>{t('settings.display.zoom.title')}</SettingTitle>
-        <SettingDivider />
-        <SettingRow>
-          <SettingRowTitle>{t('settings.zoom.title')}</SettingRowTitle>
-          <ZoomButtonGroup>
-            <Button onClick={() => handleZoomFactor(-0.1)} icon={<Minus size="14" />} color="default" variant="text" />
-            <ZoomValue>{Math.round(currentZoom * 100)}%</ZoomValue>
-            <Button onClick={() => handleZoomFactor(0.1)} icon={<Plus size="14" />} color="default" variant="text" />
-            <Button
-              onClick={() => handleZoomFactor(0, true)}
-              style={{ marginLeft: 8 }}
-              icon={<ResetIcon size="14" />}
-              color="default"
-              variant="text"
-            />
-          </ZoomButtonGroup>
-        </SettingRow>
-      </SettingGroup>
-      <SettingGroup theme={theme}>
-        <SettingTitle>{t('settings.display.font.title')}</SettingTitle>
-        <SettingDivider />
-        <SettingRow>
-          <SettingRowTitle>{t('settings.display.font.global')}</SettingRowTitle>
-          <SelectRow>
-            <Select
-              style={{ width: 280 }}
-              placeholder={t('settings.display.font.select')}
-              options={[
-                {
-                  label: <span style={{ fontFamily: 'var(--font-family)' }}>{t('settings.display.font.default')}</span>,
-                  value: ''
-                },
-                ...fontList.map((font) => ({ label: renderFontOption(font), value: font }))
-              ]}
-              value={userTheme.userFontFamily || ''}
-              onChange={(font) => handleUserFontChange(font)}
-              showSearch
-              getPopupContainer={(triggerNode) => triggerNode.parentElement || document.body}
-            />
-            <Button
-              onClick={() => handleUserFontChange('')}
-              style={{ marginLeft: 8 }}
-              icon={<ResetIcon size="14" />}
-              color="default"
-              variant="text"
-            />
-          </SelectRow>
-        </SettingRow>
-        <SettingDivider />
-        <SettingRow>
-          <SettingRowTitle>{t('settings.display.font.code')}</SettingRowTitle>
-          <SelectRow>
-            <Select
-              style={{ width: 280 }}
-              placeholder={t('settings.display.font.select')}
-              options={[
-                {
-                  label: (
-                    <span style={{ fontFamily: 'var(--font-family-mono)' }}>{t('settings.display.font.default')}</span>
-                  ),
-                  value: ''
-                },
-                ...fontList.map((font) => ({ label: renderFontOption(font), value: font }))
-              ]}
-              value={userTheme.userCodeFontFamily || ''}
-              onChange={(font) => handleUserCodeFontChange(font)}
-              showSearch
-              getPopupContainer={(triggerNode) => triggerNode.parentElement || document.body}
-            />
-            <Button
-              onClick={() => handleUserCodeFontChange('')}
-              style={{ marginLeft: 8 }}
-              icon={<ResetIcon size="14" />}
-              color="default"
-              variant="text"
-            />
-          </SelectRow>
-        </SettingRow>
-      </SettingGroup>
+            <SettingDivider />
+            <SettingRow>
+              <SettingRowTitle>{t('settings.display.font.code')}</SettingRowTitle>
+              <SelectRow>
+                <Select
+                  style={{ width: 280 }}
+                  placeholder={t('settings.display.font.select')}
+                  options={[
+                    {
+                      label: (
+                        <span style={{ fontFamily: 'var(--font-family-mono)' }}>
+                          {t('settings.display.font.default')}
+                        </span>
+                      ),
+                      value: ''
+                    },
+                    ...fontList.map((font) => ({ label: renderFontOption(font), value: font }))
+                  ]}
+                  value={userTheme.userCodeFontFamily || ''}
+                  onChange={(font) => handleUserCodeFontChange(font)}
+                  showSearch
+                  getPopupContainer={(triggerNode) => triggerNode.parentElement || document.body}
+                />
+                <Button
+                  onClick={() => handleUserCodeFontChange('')}
+                  style={{ marginLeft: 8 }}
+                  icon={<ResetIcon size="14" />}
+                  color="default"
+                  variant="text"
+                />
+              </SelectRow>
+            </SettingRow>
+          </SettingGroup>
+        </>
+      )}
       <SettingGroup theme={theme}>
         <SettingTitle>{t('settings.display.assistant.title')}</SettingTitle>
         <SettingDivider />

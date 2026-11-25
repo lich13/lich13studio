@@ -4,8 +4,9 @@ import type { Message } from '@renderer/types/newMessage' // Assuming correct Me
 import { MessageBlockType } from '@renderer/types/newMessage'
 // May need Block types if refactoring to use them
 // import type { MessageBlock, MainTextMessageBlock } from '@renderer/types/newMessageTypes';
-import { remove, takeRight } from 'lodash'
-import { isEmpty } from 'lodash'
+import isEmpty from 'lodash/isEmpty'
+import remove from 'lodash/remove'
+import takeRight from 'lodash/takeRight'
 // Assuming getGroupedMessages is also moved here or imported
 // import { getGroupedMessages } from './path/to/getGroupedMessages';
 

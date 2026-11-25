@@ -1,5 +1,5 @@
-import KeyvStorage from '@kangfenmao/keyv-storage'
 import { loggerService } from '@logger'
+import { MemoryKeyv } from '@renderer/utils/memoryKeyv'
 
 import storeSyncService from './services/StoreSyncService'
 import store from './store'
@@ -8,8 +8,7 @@ loggerService.initWindowSource('mainWindow')
 
 function initKeyv() {
   if (!window.keyv) {
-    window.keyv = new KeyvStorage()
-    void window.keyv.init()
+    window.keyv = new MemoryKeyv()
   }
 }
 

@@ -61,8 +61,6 @@ const mockInvoke = async (command: string) => {
   return null
 }
 const invoke = tauri?.core?.invoke ?? (previewMode ? mockInvoke : undefined)
-const getCurrentWindow =
-  !runtimeCapabilities.android && tauri?.window?.getCurrentWindow ? () => tauri.window.getCurrentWindow() : null
 
 const isTauriRuntime = typeof invoke === 'function'
 const isExternalUrl = (value: string) => /^(?:https?:|mailto:|tel:)/i.test(value.trim())
@@ -304,28 +302,38 @@ type CachedFileEntry = { fileName: string; ext: string; blob: Blob; text?: strin
 const MAX_FILE_CACHE_ENTRIES = 64
 const MAX_FILE_CACHE_BYTES = 64 * 1024 * 1024
 const fileCache = new Map<string, CachedFileEntry>()
+const fileAliasMap = new Map<string, string>()
 let fileCacheTotalBytes = 0
 const fileObjectMap = new WeakMap<File, string>()
 const pendingFileRegistrations = new Map<string, Promise<AnyRecord>>()
 let cachedAppInfo: AnyRecord | null = null
 
 const deleteCachedFileEntry = (key: string) => {
-  const existing = fileCache.get(key)
+  const canonicalKey = fileAliasMap.get(key) ?? key
+  fileAliasMap.delete(key)
+  for (const [alias, target] of fileAliasMap.entries()) {
+    if (target === canonicalKey) {
+      fileAliasMap.delete(alias)
+    }
+  }
+  const existing = fileCache.get(canonicalKey)
   if (!existing) return
-  fileCache.delete(key)
+  fileCache.delete(canonicalKey)
   fileCacheTotalBytes = Math.max(0, fileCacheTotalBytes - existing.blob.size)
 }
 
 const clearFileCache = () => {
   fileCache.clear()
+  fileAliasMap.clear()
   fileCacheTotalBytes = 0
 }
 
 const touchCachedFileEntry = (key: string): CachedFileEntry | undefined => {
-  const entry = fileCache.get(key)
+  const canonicalKey = fileAliasMap.get(key) ?? key
+  const entry = fileCache.get(canonicalKey)
   if (!entry) return undefined
-  fileCache.delete(key)
-  fileCache.set(key, entry)
+  fileCache.delete(canonicalKey)
+  fileCache.set(canonicalKey, entry)
   return entry
 }
 
@@ -504,7 +512,10 @@ const registerBlob = async (blob: Blob, fileName: string, explicitPath?: string)
     if (typeof path === 'string') cacheKey = path
   }
   setCachedFileEntry(cacheKey, { fileName, ext, blob })
-  setCachedFileEntry(`${id}${ext}`, { fileName, ext, blob })
+  const aliasKey = `${id}${ext}`
+  if (aliasKey !== cacheKey && fileCache.has(cacheKey)) {
+    fileAliasMap.set(aliasKey, cacheKey)
+  }
 
   return {
     id,
@@ -537,26 +548,35 @@ const registerBrowserFile = async (file: File) => {
   return meta.path
 }
 
+const toUint8Array = (raw: unknown): Uint8Array => {
+  if (raw instanceof Uint8Array) return raw
+  if (raw instanceof ArrayBuffer) return new Uint8Array(raw)
+  if (ArrayBuffer.isView(raw)) return new Uint8Array(raw.buffer, raw.byteOffset, raw.byteLength)
+  if (Array.isArray(raw)) return new Uint8Array(raw)
+  return new Uint8Array()
+}
+
 const getCachedFile = async (fileIdOrPath: string) => {
   const direct = touchCachedFileEntry(fileIdOrPath)
   if (direct) {
     return direct
   }
   for (const [key] of fileCache.entries()) {
-    if (key.endsWith(`/${fileIdOrPath}`)) {
+    if (key.endsWith(`/${fileIdOrPath}`) || key.endsWith(`\\${fileIdOrPath}`)) {
       return touchCachedFileEntry(key)
     }
   }
   if (invoke && fileIdOrPath && !/^(?:https?:|memory:)/i.test(fileIdOrPath)) {
     try {
-      const bytes = await invoke('read_attachment', { name: fileIdOrPath })
+      const rawBytes = await invoke('read_attachment', { name: fileIdOrPath })
+      const byteArray = toUint8Array(rawBytes)
       const fileName = fileIdOrPath.replace(/\\/g, '/').split('/').pop() || fileIdOrPath
       const ext = normalizeExt(fileName)
-      const mime = attachmentMime(fileName, '', new Uint8Array(bytes))
+      const mime = attachmentMime(fileName, '', byteArray)
       const cached = {
         fileName,
         ext,
-        blob: new Blob([new Uint8Array(bytes)], { type: mime }),
+        blob: new Blob([toBlobPart(byteArray)], { type: mime }),
         text: undefined as string | undefined
       }
       setCachedFileEntry(fileIdOrPath, cached)
@@ -773,42 +793,18 @@ const getAppInfo = async () => {
   return cachedAppInfo
 }
 
+const QUOTE_TO_MAIN_EVENT = 'lich13:quote-to-main-window'
+
 const noOpAsync = async (...args: any[]) => {
   void args
   return undefined
 }
 
-const fallbackCallable = (path = 'api') => {
-  const fn = (...args: any[]) => {
-    void args
-    return Promise.resolve(undefined)
-  }
-  return new Proxy(fn, {
-    get(_target, prop: string) {
-      if (prop === 'then') return undefined
-      if (typeof prop === 'string' && prop.startsWith('on')) {
-        return () => createCleanup()
-      }
-      if (prop === 'subscribe' || prop === 'unsubscribe') {
-        return noOpAsync
-      }
-      return fallbackCallable(`${path}.${String(prop)}`)
-    },
-    apply() {
-      return Promise.resolve(undefined)
-    }
-  })
-}
-
 const api = {
   getAppInfo,
-  getDiskInfo: async () => null,
+  setAppDataPath: noOpAsync,
+  notifyReduxStoreReady: noOpAsync,
   reload: async () => location.reload(),
-  quit: async () => getCurrentWindow?.()?.close?.(),
-  setProxy: noOpAsync,
-  setLanguage: async (lang: string) => {
-    localStorage.setItem('tauri:language', lang)
-  },
   setLaunchOnBoot: async (enabled: boolean) => {
     if (invoke) {
       return invoke('set_launch_on_boot', { enabled })
@@ -817,6 +813,8 @@ const api = {
   },
   setTestPlan: noOpAsync,
   setTestChannel: noOpAsync,
+  setAutoUpdate: noOpAsync,
+  setUseSystemTitleBar: noOpAsync,
   setTheme: async (theme: string) => {
     const normalizedTheme = theme === 'light' || theme === 'dark' || theme === 'system' ? theme : 'system'
     localStorage.setItem(THEME_STORAGE_KEY, normalizedTheme)
@@ -833,7 +831,6 @@ const api = {
 
     return applyZoomFactor(currentZoomFactor + delta)
   },
-  setAutoUpdate: noOpAsync,
   select: async (options?: AnyRecord) => {
     if (options?.properties?.includes?.('openDirectory')) {
       if (invoke) {
@@ -847,11 +844,6 @@ const api = {
   resolvePath: async (value: string) => value,
   isPathInside: async (childPath: string, parentPath: string) =>
     childPath === parentPath || childPath.startsWith(parentPath),
-  getDataPathFromArgs: async () => null,
-  copy: async () => true,
-  setStopQuitApp: noOpAsync,
-  flushAppData: noOpAsync,
-  isNotEmptyDir: async () => false,
   relaunchApp: async () => {
     if (!previewMode && invoke && !runtimeCapabilities.android) {
       await invoke('close_mini_window').catch(() => {})
@@ -872,9 +864,6 @@ const api = {
     localStorage.clear()
     location.reload()
   },
-  openWebsite: async (url: string) => {
-    return openExternalUrl(url)
-  },
   openPath: async (url: string) => {
     if (invoke) {
       if (isExternalUrl(url)) {
@@ -888,13 +877,39 @@ const api = {
   clearCache: async () => {
     clearFileCache()
   },
-  logToMain: noOpAsync,
+  onSaveData: () => createCleanup(),
+  quoteToMainWindow: async (text: string) => {
+    if (tauri?.event?.emit) {
+      await tauri.event.emit(QUOTE_TO_MAIN_EVENT, text)
+    }
+  },
+  onQuoteToMainWindow: (callback: (text: string) => void) => {
+    if (tauri?.event?.listen) {
+      let cleanup = createCleanup()
+      void tauri.event
+        .listen(QUOTE_TO_MAIN_EVENT, (event: { payload?: string }) => {
+          if (typeof event.payload === 'string') {
+            callback(event.payload)
+          }
+        })
+        .then((unlisten: () => void) => {
+          cleanup = unlisten
+        })
+      return () => cleanup()
+    }
+    return createCleanup()
+  },
   onThemeUpdated: (callback: (theme: 'light' | 'dark') => void) => {
     themeListeners.add(callback)
     callback(emitThemeUpdated())
     return () => {
       themeListeners.delete(callback)
     }
+  },
+  onFullScreenStatusChanged: (callback: (isFullScreen: boolean) => void) => {
+    const handler = () => callback(Boolean(document.fullscreenElement))
+    document.addEventListener('fullscreenchange', handler)
+    return () => document.removeEventListener('fullscreenchange', handler)
   },
   setFullScreen: async (value: boolean) => {
     if (value) {
@@ -905,7 +920,6 @@ const api = {
   },
   isFullScreen: async () => Boolean(document.fullscreenElement),
   getSystemFonts,
-  getIpCountry: async () => 'us',
   shell: {
     openExternal: openExternalUrl
   },
@@ -977,11 +991,6 @@ const api = {
       }
       return globalWindow.location.hostname || 'localhost'
     },
-    getCpuName: async () => navigator.userAgent,
-    checkGitBash: async () => false,
-    getGitBashPath: async () => null,
-    getGitBashPathInfo: async () => ({ path: null, source: 'tauri', exists: false }),
-    setGitBashPath: async () => false,
     listCaptureWindows: async () => {
       if (!invoke) return []
       return invoke('list_capture_windows')
@@ -997,7 +1006,6 @@ const api = {
     toggle: async () => undefined
   },
   zip: {
-    compress: async (text: string) => new TextEncoder().encode(text),
     decompress: async (input: Uint8Array | ArrayBuffer | string) => {
       if (typeof input === 'string') return input
       const bytes = input instanceof Uint8Array ? input : new Uint8Array(input)
@@ -1045,16 +1053,7 @@ const api = {
   },
   window: {
     setMinimumSize: noOpAsync,
-    resetMinimumSize: noOpAsync,
-    getSize: async () => [window.innerWidth, window.innerHeight]
-  },
-  windowControls: {
-    isMaximized: async () => false,
-    onMaximizedChange: () => createCleanup(),
-    minimize: async () => getCurrentWindow?.()?.minimize?.(),
-    maximize: async () => getCurrentWindow?.()?.maximize?.(),
-    unmaximize: async () => getCurrentWindow?.()?.unmaximize?.(),
-    close: async () => getCurrentWindow?.()?.close?.()
+    resetMinimumSize: noOpAsync
   },
   miniWindow: {
     show: async () => {
@@ -1084,7 +1083,8 @@ const api = {
     }
   },
   config: {
-    set: async (key: string, value: any) => {
+    set: async (key: string, value: any, _sync?: boolean) => {
+      void _sync
       localStorage.setItem(`config:${key}`, JSON.stringify(value))
       if (invoke && typeof value === 'boolean' && isMainProcessSettingKey(key)) {
         await invoke('set_runtime_setting', { key, value })
@@ -1150,7 +1150,7 @@ const api = {
     delete: async (fileId: string) => {
       deleteCachedFileEntry(fileId)
       for (const key of Array.from(fileCache.keys())) {
-        if (key.endsWith(`/${fileId}`)) {
+        if (key.endsWith(`/${fileId}`) || key.endsWith(`\\${fileId}`)) {
           deleteCachedFileEntry(key)
         }
       }
@@ -1159,18 +1159,10 @@ const api = {
       }
       return true
     },
-    deleteDir: async () => true,
-    deleteExternalFile: async () => true,
-    deleteExternalDir: async () => true,
-    move: async () => true,
-    moveDir: async () => true,
-    rename: async () => true,
-    renameDir: async () => true,
     read: async (fileId: string, forceTextExtract?: boolean) => {
       const cached = await getCachedFile(fileId)
       if (!cached) {
-        const stored = localStorage.getItem(`file:${fileId}`)
-        return stored ?? (fileId === 'custom-minapps.json' ? '[]' : '')
+        return ''
       }
       if (forceTextExtract && /\.pdf$/i.test(cached.fileName || fileId)) {
         const { extractPdfText } = await import('@shared/utils/pdf')
@@ -1186,12 +1178,6 @@ const api = {
       cached.text = cached.text ?? (await readBlobAsText(cached.blob))
       return cached.text
     },
-    clear: async () => {
-      clearFileCache()
-      if (!previewMode && invoke) {
-        await invoke('clear_attachments')
-      }
-    },
     get: async (filePath: string) => {
       const pending = pendingFileRegistrations.get(filePath)
       if (pending) return pending
@@ -1205,7 +1191,6 @@ const api = {
       setCachedFileEntry(path, { fileName, ext: normalizeExt(fileName), blob: new Blob([]), text: '' })
       return path
     },
-    mkdir: async () => true,
     write: async (filePath: string, data: Uint8Array | string) => {
       const blob = typeof data === 'string' ? new Blob([data], { type: 'text/plain' }) : new Blob([toBlobPart(data)])
       const current = fileCache.get(filePath)
@@ -1214,10 +1199,6 @@ const api = {
         ext: current?.ext || normalizeExt(filePath),
         blob
       })
-      return true
-    },
-    writeWithId: async (id: string, content: string) => {
-      localStorage.setItem(`file:${id}`, content)
       return true
     },
     openPath: async (path: string) => {
@@ -1290,15 +1271,6 @@ const api = {
       const blob = new Blob([toBlobPart(imageData)], { type: `image/${mimeExtension}` })
       return registerBlob(blob, fileName)
     },
-    download: async (url: string) => {
-      const response = await fetch(url)
-      const blob = await response.blob()
-      const fileName = url.split('/').pop()?.split('?')[0] || `download-${Date.now()}`
-      const meta = await registerBlob(blob, fileName)
-      downloadBlob(fileName, blob)
-      return meta
-    },
-    copy: async () => true,
     base64File: async (fileId: string) => {
       const cached = await getCachedFile(fileId)
       if (!cached) {
@@ -1312,7 +1284,6 @@ const api = {
         data: base64
       }
     },
-    pdfInfo: async () => null,
     getPathForFile: (file: File) => {
       const existing = fileObjectMap.get(file)
       if (existing) return existing
@@ -1330,19 +1301,7 @@ const api = {
       void registration.catch(() => {}) // The awaiting file.get caller handles the error.
       return pseudoPath
     },
-    openFileWithRelativePath: async (file: AnyRecord) => api.file.openPath(file?.path || file?.filePath || ''),
-    isTextFile: async (filePath: string) => /\.(txt|md|markdown|json|js|ts|tsx|jsx|html|css|csv)$/i.test(filePath),
-    isDirectory: async () => false,
-    getDirectoryStructure: async () => [],
-    listDirectory: async () => [],
-    checkFileName: async (_dirPath: string, fileName: string) => ({ safeName: fileName, exists: false }),
-    validateNotesDirectory: async () => true,
-    pauseFileWatcher: noOpAsync,
-    resumeFileWatcher: noOpAsync,
-    startFileWatcher: noOpAsync,
-    stopFileWatcher: noOpAsync,
-    onFileChange: () => createCleanup(),
-    batchUploadMarkdown: async () => ({ success: [], failed: [] })
+    isTextFile: async (filePath: string) => /\.(txt|md|markdown|json|js|ts|tsx|jsx|html|css|csv)$/i.test(filePath)
   },
   backup: {
     onProgress: (callback: (data: ProgressPayload) => void) => {
@@ -1365,12 +1324,17 @@ const api = {
         await waitForNextFrame()
         if (invoke && /\.(zip|lich13backup)$/i.test(cached.fileName)) {
           emitRestoreProgress({ stage: 'extracting', progress: 35, total: 100 })
-          let bytes = Array.from(await readBlobAsUint8Array(cached.blob))
+          const bytes = Array.from(await readBlobAsUint8Array(cached.blob))
           if (cached.fileName.toLowerCase().endsWith('.lich13backup')) {
             const { decryptPortableBackup } = await import('./services/PortableBackupService')
-            const decrypted = await decryptPortableBackup(bytes)
-            if (!decrypted) throw new DOMException('Request was aborted', 'AbortError')
-            bytes = decrypted
+            const restored = await decryptPortableBackup(bytes)
+            if (!restored) throw new DOMException('Request was aborted', 'AbortError')
+            const result =
+              typeof restored === 'string'
+                ? restored
+                : await invoke('restore_backup_archive', { fileName: cached.fileName, bytes: restored })
+            emitRestoreProgress({ stage: 'completed', progress: 100, total: 100 })
+            return result
           }
           const result = await invoke('restore_backup_archive', { fileName: cached.fileName, bytes })
           emitRestoreProgress({ stage: 'completed', progress: 100, total: 100 })
@@ -1391,20 +1355,18 @@ const api = {
     backup: async (fileName: string, destinationPath?: string, skipBackupFile: boolean = false) => {
       try {
         const snapshot = await buildBackupSnapshot()
-        emitBackupProgress({ stage: 'writing_data', progress: 74, total: 100 })
-        const payload = JSON.stringify(snapshot, null, 2)
-        emitBackupProgress({ stage: 'compressing', progress: 88, total: 100 })
+        emitBackupProgress({ stage: 'compressing', progress: 84, total: 100 })
         if (invoke) {
           await invoke('backup_to_local_dir', {
             fileName,
             localBackupDir: destinationPath || null,
-            payload,
+            state: snapshot,
             skipBackupFile
           })
           emitBackupProgress({ stage: 'completed', progress: 100, total: 100 })
           return true
         }
-        const blob = new Blob([payload], { type: 'application/json' })
+        const blob = new Blob([JSON.stringify(snapshot)], { type: 'application/json' })
         downloadBlob(fileName.replace(/\.zip$/i, '.json'), blob)
         emitBackupProgress({ stage: 'completed', progress: 100, total: 100 })
         return true
@@ -1470,19 +1432,19 @@ const api = {
     },
     backupToLocalDir: async (fileName: string, localConfig?: AnyRecord) => {
       try {
-        const payload = JSON.stringify(await buildBackupSnapshot(), null, 2)
+        const snapshot = await buildBackupSnapshot()
         emitBackupProgress({ stage: 'compressing', progress: 88, total: 100 })
         if (invoke) {
           await invoke('backup_to_local_dir', {
             fileName,
             localBackupDir: localConfig?.localBackupDir || null,
-            payload,
+            state: snapshot,
             skipBackupFile: Boolean(localConfig?.skipBackupFile)
           })
           emitBackupProgress({ stage: 'completed', progress: 100, total: 100 })
           return true
         }
-        const blob = new Blob([payload], { type: 'application/json' })
+        const blob = new Blob([JSON.stringify(snapshot)], { type: 'application/json' })
         downloadBlob(fileName.replace(/\.zip$/i, '.json'), blob)
         emitBackupProgress({ stage: 'completed', progress: 100, total: 100 })
         return true
@@ -1536,20 +1498,12 @@ const api = {
       return Boolean(webdavConfig?.webdavHost)
     }
   }
-} as AnyRecord
+}
+
+export type TauriShimApi = typeof api
 
 if (isTauriRuntime) {
-  globalWindow.api = new Proxy(api, {
-    get(target, prop: string) {
-      if (typeof prop === 'string' && prop.startsWith('on') && !(prop in target)) {
-        return () => createCleanup()
-      }
-      if (prop in target) {
-        return target[prop]
-      }
-      return fallbackCallable(`api.${String(prop)}`)
-    }
-  })
+  globalWindow.api = api
 }
 
 for (const key of ['config:mcpServers', 'config:mcp', 'mcpServers', 'mcp', 'tauri:app-data-path']) {

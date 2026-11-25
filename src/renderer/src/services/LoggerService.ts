@@ -1,5 +1,5 @@
 /* eslint-disable no-restricted-syntax */
-import type { LogContextData, LogLevel, LogSourceWithContext } from '@shared/config/logger'
+import type { LogContextData, LogLevel } from '@shared/config/logger'
 import { LEVEL, LEVEL_MAP } from '@shared/config/logger'
 import { sanitizeLogText, sanitizeLogValue } from '@shared/logSanitizer'
 
@@ -10,7 +10,6 @@ const IS_WORKER = typeof window === 'undefined'
 const IS_DEV = IS_WORKER ? false : import.meta.env.DEV
 
 const DEFAULT_LEVEL = IS_DEV ? LEVEL.SILLY : LEVEL.INFO
-const MAIN_LOG_LEVEL = LEVEL.WARN
 
 /**
  * IMPORTANT: How to use LoggerService
@@ -21,13 +20,10 @@ const MAIN_LOG_LEVEL = LEVEL.WARN
 class LoggerService {
   private static instance: LoggerService
 
-  // env variables, only used in dev mode
-  // only affect console output, not affect logToMain
   private envLevel: LogLevel = LEVEL.NONE
   private envShowModules: string[] = []
 
   private level: LogLevel = DEFAULT_LEVEL
-  private logToMainLevel: LogLevel = MAIN_LOG_LEVEL
 
   private window: string = ''
   private module: string = ''
@@ -109,22 +105,8 @@ class LoggerService {
     }
 
     const safeMessage = sanitizeLogText(message)
-    const forceLogToMain = data.length > 0 && data[data.length - 1]?.logToMain === true
-    const dataForLog = forceLogToMain ? data.slice(0, -1) : data
+    const dataForLog = data.length > 0 && data[data.length - 1]?.logToMain === true ? data.slice(0, -1) : data
     const safeData = dataForLog.map((value) => sanitizeLogValue(value))
-
-    let windowSource = this.window
-    if (!this.window) {
-      if (!IS_WORKER && (window as any).__LICH13_TAURI_SHIM__) {
-        windowSource = 'mainWindow'
-      } else if (IS_WORKER) {
-        windowSource = 'worker'
-      } else {
-        console.error('[LoggerService] window source not initialized, please initialize window source first')
-        windowSource = 'UNKNOWN'
-      }
-    }
-
     const logMessage = this.module ? `[${this.module}] ${safeMessage}` : safeMessage
 
     switch (level) {
@@ -146,26 +128,6 @@ class LoggerService {
       case LEVEL.SILLY:
         console.debug('%c<silly>', 'color: #808080', logMessage, ...safeData)
         break
-    }
-
-    // if the last data is an object with logToMain: true, force log to main
-    if (currentLevel >= LEVEL_MAP[this.logToMainLevel] || forceLogToMain) {
-      const source: LogSourceWithContext = {
-        process: 'renderer',
-        window: windowSource,
-        module: this.module
-      }
-
-      if (Object.keys(this.context).length > 0) {
-        source.context = sanitizeLogValue(this.context) as Record<string, unknown>
-      }
-
-      // In renderer process, use window.api.logToMain to send log to main process
-      if (!IS_WORKER) {
-        void window.api.logToMain(source, level, safeMessage, safeData)
-      } else {
-        //TODO support worker to send log to main process
-      }
     }
   }
 
@@ -232,29 +194,6 @@ class LoggerService {
    */
   public resetLevel(): void {
     this.setLevel(DEFAULT_LEVEL)
-  }
-
-  /**
-   * Set the minimum level for logging to main process
-   * @param level - The log level to set
-   */
-  public setLogToMainLevel(level: LogLevel): void {
-    this.logToMainLevel = level
-  }
-
-  /**
-   * Get the current log to main level
-   * @returns The current log to main level
-   */
-  public getLogToMainLevel(): LogLevel {
-    return this.logToMainLevel
-  }
-
-  /**
-   * Reset log to main level to default
-   */
-  public resetLogToMainLevel(): void {
-    this.setLogToMainLevel(MAIN_LOG_LEVEL)
   }
 }
 

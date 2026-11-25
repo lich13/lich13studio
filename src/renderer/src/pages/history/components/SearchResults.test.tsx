@@ -442,4 +442,62 @@ describe('SearchResults global scan, sorting, and top-K snippet hydration', () =
 
     expect(scanObservedCancelled).toBe(true)
   })
+
+  it('matches keywords split across inline Markdown or HTML delimiters without false negatives', async () => {
+    const topic: Topic = {
+      id: 'topic-md',
+      assistantId: 'assistant-1',
+      name: 'Markdown Split Topic',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      messages: []
+    }
+    const storeTopicsMap = new Map<string, Topic>([['topic-md', topic]])
+    const messages: Message[] = [1, 2, 3].map((n) => ({
+      id: `msg-md-${n}`,
+      role: 'assistant',
+      assistantId: 'assistant-1',
+      topicId: 'topic-md',
+      createdAt: `2026-01-01T00:0${n}:00.000Z`,
+      status: 'success' as any,
+      blocks: [`blk-md-${n}`]
+    }))
+    const blocks: MessageBlock[] = [
+      {
+        id: 'blk-md-1',
+        messageId: 'msg-md-1',
+        type: MessageBlockType.MAIN_TEXT,
+        content: 'Split bold foo**bar** token',
+        createdAt: '2026-01-01T00:01:00.000Z',
+        status: MessageBlockStatus.SUCCESS
+      } as MessageBlock,
+      {
+        id: 'blk-md-2',
+        messageId: 'msg-md-2',
+        type: MessageBlockType.MAIN_TEXT,
+        content: 'Split link [foo](https://example.invalid)bar token',
+        createdAt: '2026-01-01T00:02:00.000Z',
+        status: MessageBlockStatus.SUCCESS
+      } as MessageBlock,
+      {
+        id: 'blk-md-3',
+        messageId: 'msg-md-3',
+        type: MessageBlockType.MAIN_TEXT,
+        content: 'Unrelated plain paragraph without match',
+        createdAt: '2026-01-01T00:03:00.000Z',
+        status: MessageBlockStatus.SUCCESS
+      } as MessageBlock
+    ]
+
+    const { database } = createFakeSearchDb(blocks, [{ id: 'topic-md', messages }])
+    const scanned = await scanHistoryMatches({
+      database,
+      keywords: 'foobar',
+      matchMode: 'whole-word',
+      storeTopicsMap,
+      isCancelled: () => false
+    })
+
+    expect(scanned?.candidates.map((c) => c.blockId)).toEqual(['blk-md-1', 'blk-md-2'])
+  })
 })

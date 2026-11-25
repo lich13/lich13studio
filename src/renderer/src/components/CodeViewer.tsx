@@ -5,7 +5,7 @@ import { useSettings } from '@renderer/hooks/useSettings'
 import { uuid } from '@renderer/utils'
 import { getReactStyleFromToken } from '@renderer/utils/shiki'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { debounce } from 'lodash'
+import debounce from 'lodash/debounce'
 import React, { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import type { ThemedToken } from 'shiki/core'
 import styled from 'styled-components'
@@ -341,9 +341,9 @@ const CodeViewer = ({
   // `line-height: 1.6` 为全局样式，但是为了避免测量误差在这里取整
   const estimateSize = useCallback(() => Math.round(fontSize * 1.6), [fontSize])
 
-  // 创建 virtualizer 实例
+  // 创建 virtualizer 实例（展开态不限高，跳过伪虚拟化与逐行 ResizeObserver）
   const virtualizer = useVirtualizer({
-    count: rawLines.length,
+    count: expanded ? 0 : rawLines.length,
     getScrollElement,
     getItemKey,
     estimateSize,
@@ -362,15 +362,26 @@ const CodeViewer = ({
   // 防抖高亮提高流式响应的性能，数字大一点也不会影响用户体验
   const debouncedHighlightLines = useMemo(() => debounce(highlightLines, 300), [highlightLines])
 
+  useEffect(() => {
+    return () => {
+      debouncedHighlightLines.cancel()
+    }
+  }, [debouncedHighlightLines])
+
   // 渐进式高亮
   useEffect(() => {
-    if (virtualItems.length > 0 && shikiThemeRef.current) {
+    if (!shikiThemeRef.current || rawLines.length === 0) return
+    if (expanded) {
+      void debouncedHighlightLines(rawLines.length)
+      return
+    }
+    if (virtualItems.length > 0) {
       const lastIndex = virtualItems[virtualItems.length - 1].index
       void debouncedHighlightLines(lastIndex + 1)
     }
-  }, [virtualItems, debouncedHighlightLines])
+  }, [expanded, rawLines.length, virtualItems, debouncedHighlightLines])
 
-  // Monitor selection changes, clear stale selection state, and auto-expand in collapsed state
+  // Monitor selection changes only in collapsed state when onRequestExpand is provided
   const handleSelectionChange = useMemo(
     () =>
       debounce(() => {
@@ -404,15 +415,19 @@ const CodeViewer = ({
   )
 
   useEffect(() => {
+    if (expanded || !onRequestExpand) {
+      return
+    }
     document.addEventListener('selectionchange', handleSelectionChange)
     return () => {
       document.removeEventListener('selectionchange', handleSelectionChange)
       handleSelectionChange.cancel()
     }
-  }, [handleSelectionChange])
+  }, [expanded, onRequestExpand, handleSelectionChange])
 
-  // Listen for copy events
+  // Listen for copy events only in collapsed virtualized state
   useEffect(() => {
+    if (expanded) return
     const scroller = scrollerRef.current
     if (!scroller) return
 
@@ -420,7 +435,7 @@ const CodeViewer = ({
     return () => {
       scroller.removeEventListener('copy', handleCopy as EventListener)
     }
-  }, [handleCopy])
+  }, [expanded, handleCopy])
 
   // Report scrollHeight when it might change
   useLayoutEffect(() => {
@@ -435,7 +450,7 @@ const CodeViewer = ({
         $wrap={wrapped}
         $expand={expanded}
         $lineHeight={estimateSize()}
-        onScroll={handleScroll}
+        onScroll={expanded ? undefined : handleScroll}
         style={
           {
             '--gutter-width': `${gutterDigits}ch`,
@@ -445,33 +460,48 @@ const CodeViewer = ({
             overflowY: expanded ? 'hidden' : 'auto'
           } as React.CSSProperties
         }>
-        <div
-          className="shiki-list"
-          style={{
-            height: `${virtualizer.getTotalSize()}px`,
-            width: '100%',
-            position: 'relative'
-          }}>
-          <div
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100%',
-              transform: `translateY(${virtualItems[0]?.start ?? 0}px)`
-            }}>
-            {virtualItems.map((virtualItem) => (
-              <div key={virtualItem.key} data-index={virtualItem.index} ref={virtualizer.measureElement}>
+        {expanded ? (
+          <div className="shiki-list" style={{ width: '100%', position: 'relative' }}>
+            {rawLines.map((rawLine, index) => (
+              <div key={`${callerId}-${index}`} data-index={index}>
                 <VirtualizedRow
-                  rawLine={rawLines[virtualItem.index]}
-                  tokenLine={tokenLines[virtualItem.index]}
+                  rawLine={rawLine}
+                  tokenLine={tokenLines[index]}
                   showLineNumbers={lineNumbers}
-                  index={virtualItem.index}
+                  index={index}
                 />
               </div>
             ))}
           </div>
-        </div>
+        ) : (
+          <div
+            className="shiki-list"
+            style={{
+              height: `${virtualizer.getTotalSize()}px`,
+              width: '100%',
+              position: 'relative'
+            }}>
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                transform: `translateY(${virtualItems[0]?.start ?? 0}px)`
+              }}>
+              {virtualItems.map((virtualItem) => (
+                <div key={virtualItem.key} data-index={virtualItem.index} ref={virtualizer.measureElement}>
+                  <VirtualizedRow
+                    rawLine={rawLines[virtualItem.index]}
+                    tokenLine={tokenLines[virtualItem.index]}
+                    showLineNumbers={lineNumbers}
+                    index={virtualItem.index}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </ScrollContainer>
     </div>
   )
@@ -582,11 +612,13 @@ const ScrollContainer = styled.div<{
 
     .line-content {
       flex: 1;
+      min-width: 0;
       padding-right: 1em;
-      white-space: pre;
+      white-space: ${(props) => (props.$wrap ? 'pre-wrap' : 'pre')};
+      overflow-wrap: ${(props) => (props.$wrap ? 'anywhere' : 'normal')};
       * {
         white-space: ${(props) => (props.$wrap ? 'pre-wrap' : 'pre')};
-        overflow-wrap: ${(props) => (props.$wrap ? 'break-word' : 'normal')};
+        overflow-wrap: ${(props) => (props.$wrap ? 'anywhere' : 'normal')};
       }
     }
   }

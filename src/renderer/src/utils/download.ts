@@ -10,7 +10,7 @@ export const download = (url: string, filename?: string) => {
       let bytes: Uint8Array
       let name = filename
       if (url.startsWith('file://')) {
-        bytes = await window.api.fs.read(url)
+        bytes = (await window.api.file.binaryImage(url.replace(/^file:\/\//i, ''))).data
         name ||= decodeURIComponent(new URL(url).pathname.split('/').pop() || 'download')
       } else {
         const response = await fetch(url)

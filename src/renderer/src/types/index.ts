@@ -1,10 +1,53 @@
 import type { LanguageModelV3Source } from '@ai-sdk/provider'
-import type { WebSearchResultBlock } from '@anthropic-ai/sdk/resources'
-import type OpenAI from '@cherrystudio/openai'
-import type { GenerateImagesConfig, GroundingMetadata, PersonGeneration } from '@google/genai'
 import type { ModelProviderSelection } from '@shared/modelProviderSelection'
 import type { ReasoningEffort, ReasoningMode } from '@shared/reasoning'
 import type { CSSProperties } from 'react'
+
+export type GroundingSupport = {
+  groundingChunkIndices?: number[]
+  segment?: {
+    startIndex?: number
+    endIndex?: number
+    text?: string
+  }
+}
+
+export type GroundingMetadata = {
+  groundingChunks?: Array<{
+    web?: {
+      uri?: string
+      title?: string
+    }
+  }>
+  groundingSupports?: GroundingSupport[]
+  webSearchQueries?: string[]
+}
+
+export type OpenAIUrlCitationAnnotation = {
+  type?: string
+  url_citation: {
+    url: string
+    title?: string
+    start_index?: number
+    end_index?: number
+  }
+}
+
+export type OpenAIResponseUrlCitation = {
+  type?: string
+  url: string
+  title?: string
+  start_index?: number
+  end_index?: number
+}
+
+export type AnthropicWebSearchResultBlock = {
+  type?: string
+  url: string
+  title?: string
+  encrypted_content?: string
+  page_age?: string | null
+}
 
 export * from './file'
 
@@ -201,7 +244,7 @@ export type LegacyMessage = {
     // Perplexity Or Openrouter
     citations?: string[]
     // OpenAI
-    annotations?: OpenAI.Chat.Completions.ChatCompletionMessage.Annotation[]
+    annotations?: OpenAIUrlCitationAnnotation[]
     // Zhipu or Hunyuan
     webSearchInfo?: any[]
     // Web search
@@ -219,7 +262,20 @@ export type LegacyMessage = {
   foldSelected?: boolean
 }
 
-export type Usage = OpenAI.Completions.CompletionUsage & {
+export type Usage = {
+  prompt_tokens: number
+  completion_tokens: number
+  total_tokens: number
+  completion_tokens_details?: {
+    accepted_prediction_tokens?: number
+    audio_tokens?: number
+    reasoning_tokens?: number
+    rejected_prediction_tokens?: number
+  }
+  prompt_tokens_details?: {
+    audio_tokens?: number
+    cached_tokens?: number
+  }
   thoughts_tokens?: number
   // OpenRouter specific fields
   cost?: number
@@ -346,7 +402,7 @@ export interface GeneratePainting extends PaintingParams {
   n?: number
   size?: string
   background?: string
-  personGeneration?: GenerateImagesConfig['personGeneration']
+  personGeneration?: string
   numberOfImages?: number
   safetyTolerance?: number
   width?: number
@@ -588,7 +644,7 @@ export type GenerateImageParams = {
   guidanceScale?: number
   signal?: AbortSignal
   promptEnhancement?: boolean
-  personGeneration?: PersonGeneration
+  personGeneration?: string
   quality?: string
 }
 
@@ -693,9 +749,9 @@ export type AISDKWebSearchResult = Omit<Extract<LanguageModelV3Source, { sourceT
 export type WebSearchResults =
   | WebSearchProviderResponse
   | GroundingMetadata
-  | OpenAI.Chat.Completions.ChatCompletionMessage.Annotation.URLCitation[]
-  | OpenAI.Responses.ResponseOutputText.URLCitation[]
-  | WebSearchResultBlock[]
+  | OpenAIUrlCitationAnnotation[]
+  | OpenAIResponseUrlCitation[]
+  | AnthropicWebSearchResultBlock[]
   | AISDKWebSearchResult[]
   | any[]
 

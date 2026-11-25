@@ -1,10 +1,10 @@
 import { useCodeStyle } from '@renderer/context/CodeStyleProvider'
 import { useSettings } from '@renderer/hooks/useSettings'
-import * as cmThemes from '@uiw/codemirror-themes-all'
 import type { BasicSetupOptions, Extension } from '@uiw/react-codemirror'
 import CodeMirror, { Annotation, EditorView } from '@uiw/react-codemirror'
 import diff from 'fast-diff'
-import { memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef } from 'react'
+import { memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
+import { loadCmTheme } from 'virtual:cm-themes'
 
 import { useBlurHandler, useHeightListener, useLanguageExtensions, useSaveKeymap, useScrollToLine } from './hooks'
 
@@ -79,10 +79,30 @@ const CodeEditorImpl = ({
   const fontSize = useMemo(() => customFontSize ?? _fontSize - 1, [customFontSize, _fontSize])
 
   const { activeCmThemeName } = useCodeStyle()
-  const activeCmTheme = useMemo(
-    () => cmThemes[activeCmThemeName as keyof typeof cmThemes] || activeCmThemeName,
-    [activeCmThemeName]
-  )
+  const [loadedCmTheme, setLoadedCmTheme] = useState<{ name: string; ext: Extension } | null>(null)
+  useEffect(() => {
+    if (activeCmThemeName === 'light' || activeCmThemeName === 'dark') {
+      return
+    }
+    let cancelled = false
+    void loadCmTheme(activeCmThemeName).then((ext) => {
+      if (!cancelled && ext) {
+        setLoadedCmTheme({ name: activeCmThemeName, ext })
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [activeCmThemeName])
+  const activeCmTheme = useMemo(() => {
+    if (activeCmThemeName === 'light' || activeCmThemeName === 'dark') {
+      return activeCmThemeName
+    }
+    if (loadedCmTheme?.name === activeCmThemeName) {
+      return loadedCmTheme.ext
+    }
+    return activeCmThemeName.toLowerCase().includes('dark') ? 'dark' : 'light'
+  }, [activeCmThemeName, loadedCmTheme])
   const initialContent = useRef(options?.stream ? (value ?? '').trimEnd() : (value ?? ''))
   const editorViewRef = useRef<EditorView | null>(null)
 

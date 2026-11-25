@@ -1,15 +1,10 @@
 import { loggerService } from '@logger'
-import type { AppInfo } from '@renderer/types'
-import { GB, MB } from '@shared/config/constant'
+import { MB } from '@shared/config/constant'
 import { notification } from 'antd'
 import { t } from 'i18next'
 
 const logger = loggerService.withContext('useDataLimit')
 
-const CHECK_INTERVAL_NORMAL = 1000 * 60 * 10 // 10 minutes
-const CHECK_INTERVAL_WARNING = 1000 * 60 * 1 // 1 minute when warning is active
-
-let currentInterval: NodeJS.Timeout | null = null
 let diskWarningNotificationKey: string | null = null
 
 async function checkAppStorageQuota() {
@@ -22,8 +17,6 @@ async function checkAppStorageQuota() {
 
       logger.info(`App storage quota: Used ${usageInMB} MB / Total ${quotaInMB} MB (${usagePercentage.toFixed(2)}%)`)
 
-      // if usage percentage is greater than 95%,
-      // warn user to clean up app internal data
       if (usagePercentage >= 95) {
         return true
       }
@@ -34,72 +27,19 @@ async function checkAppStorageQuota() {
   return false
 }
 
-async function checkAppDataDiskQuota(appDataPath: string) {
-  try {
-    const diskInfo = await window.api.getDiskInfo(appDataPath)
-    if (!diskInfo) {
-      return false
-    }
-    const { free } = diskInfo
-    logger.info(`App data disk quota: Free ${(free / GB).toFixed(2)} GB`)
-    // if free is less than 1GB, return true
-    return free < 1 * GB
-  } catch (error) {
-    logger.error('Failed to get app data disk quota:', error as Error)
-  }
-  return false
-}
-
 export async function checkDataLimit() {
-  const check = async () => {
-    let isStorageQuotaLow = false
-    let isAppDataDiskQuotaLow = false
-
-    isStorageQuotaLow = await checkAppStorageQuota()
-
-    const appInfo: AppInfo = await window.api.getAppInfo()
-    if (appInfo?.appDataPath) {
-      isAppDataDiskQuotaLow = await checkAppDataDiskQuota(appInfo.appDataPath)
-    }
-
-    const shouldShowWarning = isStorageQuotaLow || isAppDataDiskQuotaLow
-
-    // Show or hide notification based on warning state
-    if (shouldShowWarning && !diskWarningNotificationKey) {
-      const key = `disk-warning-${Date.now()}`
-      notification.warning({
-        message: t('settings.data.limit.appDataDiskQuota'),
-        description: t('settings.data.limit.appDataDiskQuotaDescription'),
-        duration: 0,
-        key
-      })
-      diskWarningNotificationKey = key
-
-      // Switch to warning mode with shorter interval
-      logger.info('Disk space low, switching to 1-minute check interval')
-      if (currentInterval) {
-        clearInterval(currentInterval)
-      }
-      currentInterval = setInterval(check, CHECK_INTERVAL_WARNING)
-    } else if (!shouldShowWarning && diskWarningNotificationKey) {
-      // Dismiss notification when space is recovered
-      notification.destroy(diskWarningNotificationKey)
-      diskWarningNotificationKey = null
-
-      // Switch back to normal mode
-      logger.info('Disk space recovered, switching back to 10-minute check interval')
-      if (currentInterval) {
-        clearInterval(currentInterval)
-      }
-      currentInterval = setInterval(check, CHECK_INTERVAL_NORMAL)
-    }
-  }
-
-  // Initial check
-  void check()
-
-  // Set up initial interval (normal mode)
-  if (!currentInterval) {
-    currentInterval = setInterval(check, CHECK_INTERVAL_NORMAL)
+  const isStorageQuotaLow = await checkAppStorageQuota()
+  if (isStorageQuotaLow && !diskWarningNotificationKey) {
+    const key = `disk-warning-${Date.now()}`
+    notification.warning({
+      message: t('settings.data.limit.appDataDiskQuota'),
+      description: t('settings.data.limit.appDataDiskQuotaDescription'),
+      duration: 0,
+      key
+    })
+    diskWarningNotificationKey = key
+  } else if (!isStorageQuotaLow && diskWarningNotificationKey) {
+    notification.destroy(diskWarningNotificationKey)
+    diskWarningNotificationKey = null
   }
 }

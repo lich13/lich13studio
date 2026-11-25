@@ -10,8 +10,6 @@ import { isSerializedAiSdkAPICallError } from '@renderer/types/error'
 import { safeSerialize } from '@shared/utils/serialize'
 import type { NoSuchToolError } from 'ai'
 import { InvalidToolInputError } from 'ai'
-import type { AxiosError } from 'axios'
-import { isAxiosError } from 'axios'
 import { t } from 'i18next'
 import type * as z from 'zod'
 import { ZodError } from 'zod'
@@ -50,9 +48,6 @@ export function getErrorDetails(err: any, seen = new WeakSet()): any {
 export function formatErrorMessage(error: unknown): string {
   if (error instanceof ZodError) {
     return formatZodError(error)
-  }
-  if (isAxiosError(error)) {
-    return formatAxiosError(error)
   }
   const detailedError = getErrorDetails(error)
   delete detailedError?.headers
@@ -329,13 +324,4 @@ export function formatAiSdkError(error: SerializedAiSdkError): string {
   }
 
   return text.trim()
-}
-export const formatAxiosError = (error: AxiosError) => {
-  if (!error.response) {
-    return `${t('common.error')}: ${t('error.no_response')}`
-  }
-
-  const { status, statusText } = error.response
-
-  return `${t('common.error')}: ${status} ${statusText}`
 }

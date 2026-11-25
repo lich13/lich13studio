@@ -12,7 +12,7 @@ import type {
 } from '@renderer/types/newMessage'
 import { removeSvgEmptyLines } from '@renderer/utils/formats'
 import { processLatexBrackets } from '@renderer/utils/markdown'
-import { isEmpty } from 'lodash'
+import isEmpty from 'lodash/isEmpty'
 import { type FC, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ReactMarkdown, { type Components, defaultUrlTransform } from 'react-markdown'
@@ -37,6 +37,116 @@ const ALLOWED_ELEMENTS =
 const DISALLOWED_ELEMENTS = ['iframe', 'script']
 const STYLE_ELEMENT_REGEX = /<style\b[^>]*>/i
 const HAS_MATH_SYNTAX_REGEX = /\$|(?:^|\n)\s*(?:`{3,}|~{3,})\s*math\b/i
+const STREAM_SEGMENT_MIN_CHARS = 1600
+const STREAM_TAIL_KEEP_CHARS = 400
+const STREAM_PREFIX_STEP_CHARS = 1024
+const UNSAFE_PREFIX_SPLIT_DOC_REGEX = /\[\^|\]:\s|\]\[|<\/?(?:details|summary|table|svg|div|style)\b/i
+const LIST_OR_QUOTE_MARKER_REGEX = /^(?:>|\d+[.)]\s|[-*+]\s)/
+const UNSAFE_NEXT_LINE_REGEX = /^(?:\||>|\d+[.)]\s|[-*+]\s|={2,}\s*$|-{2,}\s*$)/
+
+export function splitStreamingMarkdownPrefix(content: string): { prefix: string; tail: string } {
+  if (content.length < STREAM_SEGMENT_MIN_CHARS || UNSAFE_PREFIX_SPLIT_DOC_REGEX.test(content)) {
+    return { prefix: '', tail: content }
+  }
+  const targetMaxSplit = content.length - STREAM_TAIL_KEEP_CHARS
+  let activeFenceChar = ''
+  let activeFenceLen = 0
+  let inDisplayMath = false
+  let inListOrQuote = false
+  let lastSafeSplit = 0
+  let lineStart = 0
+
+  while (lineStart < content.length) {
+    const newlineIdx = content.indexOf('\n', lineStart)
+    const lineEnd = newlineIdx === -1 ? content.length : newlineIdx
+    const line = content.slice(lineStart, lineEnd)
+    const trimmed = line.trimStart()
+
+    const fenceMatch = /^(`{3,}|~{3,})/.exec(trimmed)
+    if (fenceMatch) {
+      const char = fenceMatch[1][0]
+      const len = fenceMatch[1].length
+      if (!activeFenceChar) {
+        activeFenceChar = char
+        activeFenceLen = len
+      } else if (char === activeFenceChar && len >= activeFenceLen && trimmed.slice(len).trim() === '') {
+        activeFenceChar = ''
+        activeFenceLen = 0
+      }
+    } else if (!activeFenceChar && trimmed.startsWith('$$')) {
+      const occurrences = line.split('$$').length - 1
+      if (occurrences % 2 === 1) {
+        inDisplayMath = !inDisplayMath
+      }
+    } else if (!activeFenceChar && !inDisplayMath && trimmed !== '') {
+      if (LIST_OR_QUOTE_MARKER_REGEX.test(trimmed)) {
+        inListOrQuote = true
+      } else if (!/^[ \t]{2,}/.test(line)) {
+        inListOrQuote = false
+      }
+    }
+
+    if (
+      !activeFenceChar &&
+      !inDisplayMath &&
+      !inListOrQuote &&
+      trimmed === '' &&
+      newlineIdx !== -1 &&
+      newlineIdx + 1 <= targetMaxSplit
+    ) {
+      const nextLineEnd = content.indexOf('\n', newlineIdx + 1)
+      const rawNextLine = content.slice(newlineIdx + 1, nextLineEnd === -1 ? content.length : nextLineEnd)
+      const nextTrimmed = rawNextLine.trimStart()
+      if (nextTrimmed !== '' && !/^[ \t]{2,}/.test(rawNextLine) && !UNSAFE_NEXT_LINE_REGEX.test(nextTrimmed)) {
+        lastSafeSplit = newlineIdx + 1
+      }
+    }
+
+    if (newlineIdx === -1) break
+    lineStart = newlineIdx + 1
+  }
+
+  if (lastSafeSplit < STREAM_PREFIX_STEP_CHARS) {
+    return { prefix: '', tail: content }
+  }
+  return {
+    prefix: content.slice(0, lastSafeSplit),
+    tail: content.slice(lastSafeSplit)
+  }
+}
+
+const MarkdownSegment = memo(
+  ({
+    content,
+    rehypePlugins,
+    remarkPlugins,
+    components,
+    urlTransform,
+    footnoteLabel
+  }: {
+    content: string
+    rehypePlugins: Pluggable[]
+    remarkPlugins: Pluggable[]
+    components: Partial<Components>
+    urlTransform: (value: string) => string
+    footnoteLabel: string
+  }) => (
+    <ReactMarkdown
+      rehypePlugins={rehypePlugins}
+      remarkPlugins={remarkPlugins}
+      components={components}
+      disallowedElements={DISALLOWED_ELEMENTS}
+      urlTransform={urlTransform}
+      remarkRehypeOptions={{
+        footnoteLabel,
+        footnoteLabelTagName: 'h4',
+        footnoteBackContent: ' '
+      }}>
+      {content}
+    </ReactMarkdown>
+  )
+)
+MarkdownSegment.displayName = 'MarkdownSegment'
 
 interface Props {
   block: MainTextMessageBlock | TranslationMessageBlock | ThinkingMessageBlock | CompactMessageBlock
@@ -249,21 +359,96 @@ const Markdown: FC<Props> = ({ block, postProcess }) => {
     return defaultUrlTransform(value)
   }, [])
 
+  const footnoteLabel = t('common.footnotes')
+  const isStreamingBlock = 'status' in block && block.status === 'streaming'
+  const cachedPrefixRef = useRef<{ blockId: string; prefix: string }>({ blockId: block.id, prefix: '' })
+
+  const { prefixContent, tailContent, prefixLines } = useMemo(() => {
+    if (!isStreamingBlock) {
+      cachedPrefixRef.current = { blockId: block.id, prefix: '' }
+      return { prefixContent: '', tailContent: messageContent, prefixLines: 0 }
+    }
+    const split = splitStreamingMarkdownPrefix(messageContent)
+    if (!split.prefix) {
+      cachedPrefixRef.current = { blockId: block.id, prefix: '' }
+      return { prefixContent: '', tailContent: messageContent, prefixLines: 0 }
+    }
+    const prev = cachedPrefixRef.current
+    const activePrefix =
+      prev.blockId === block.id &&
+      prev.prefix.length > 0 &&
+      messageContent.startsWith(prev.prefix) &&
+      split.prefix.length - prev.prefix.length < STREAM_PREFIX_STEP_CHARS
+        ? prev.prefix
+        : split.prefix
+    cachedPrefixRef.current = { blockId: block.id, prefix: activePrefix }
+    let lines = 0
+    for (let i = 0; i < activePrefix.length; i += 1) {
+      if (activePrefix.charCodeAt(i) === 10) lines += 1
+    }
+    return {
+      prefixContent: activePrefix,
+      tailContent: messageContent.slice(activePrefix.length),
+      prefixLines: lines
+    }
+  }, [block.id, isStreamingBlock, messageContent])
+
+  const prefixCharOffset = prefixContent.length
+  const tailComponents = useMemo(() => {
+    if (prefixCharOffset === 0) return components
+    return {
+      ...components,
+      code: (props: any) => {
+        const pos = props?.node?.position
+        const shiftedNode = pos
+          ? {
+              ...props.node,
+              position: {
+                start: pos.start
+                  ? {
+                      ...pos.start,
+                      line: pos.start.line + prefixLines,
+                      offset: pos.start.offset !== undefined ? pos.start.offset + prefixCharOffset : undefined
+                    }
+                  : undefined,
+                end: pos.end
+                  ? {
+                      ...pos.end,
+                      line: pos.end.line + prefixLines,
+                      offset: pos.end.offset !== undefined ? pos.end.offset + prefixCharOffset : undefined
+                    }
+                  : undefined
+              }
+            }
+          : props.node
+        return <CodeBlock {...props} node={shiftedNode} blockId={block.id} />
+      },
+      table: (props: any) => <Table {...props} blockId={block.id} lineOffset={prefixLines} />
+    } as Partial<Components>
+  }, [block.id, components, prefixCharOffset, prefixLines])
+
   return (
     <div className="markdown">
-      <ReactMarkdown
+      <MarkdownSegment
+        key="primary"
+        content={prefixContent || tailContent}
         rehypePlugins={rehypePlugins}
         remarkPlugins={remarkPlugins}
         components={components}
-        disallowedElements={DISALLOWED_ELEMENTS}
         urlTransform={urlTransform}
-        remarkRehypeOptions={{
-          footnoteLabel: t('common.footnotes'),
-          footnoteLabelTagName: 'h4',
-          footnoteBackContent: ' '
-        }}>
-        {messageContent}
-      </ReactMarkdown>
+        footnoteLabel={footnoteLabel}
+      />
+      {prefixContent ? (
+        <MarkdownSegment
+          key="streaming-tail"
+          content={tailContent}
+          rehypePlugins={rehypePlugins}
+          remarkPlugins={remarkPlugins}
+          components={tailComponents}
+          urlTransform={urlTransform}
+          footnoteLabel={footnoteLabel}
+        />
+      ) : null}
     </div>
   )
 }

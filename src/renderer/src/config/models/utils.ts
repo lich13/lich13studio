@@ -1,4 +1,3 @@
-import type OpenAI from '@cherrystudio/openai'
 import { isEmbeddingModel, isRerankModel } from '@renderer/config/models/embedding'
 import { type Model, SystemProviderIds } from '@renderer/types'
 import type { OpenAIVerbosity, ValidOpenAIVerbosity } from '@renderer/types/aiCoreTypes'
@@ -42,7 +41,7 @@ export function isSupportedFlexServiceTier(model: Model): boolean {
   return isSupportFlexServiceTierModel(model)
 }
 
-export function isSupportedModel(model: OpenAI.Models.Model): boolean {
+export function isSupportedModel(model: { id: string }): boolean {
   if (!model) {
     return false
   }
