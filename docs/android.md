@@ -35,6 +35,13 @@ CI 为 API 31／36 模拟器构建单独的 x86_64 debug APK。`LICH13_ANDROID_T
 
 `python3 scripts/android-fixture.py` 提供回环模拟接口，端口 18765；模拟器用 `adb reverse tcp:18765 tcp:18765` 访问。只使用虚拟凭据，指标只记录请求形状与计数。
 
+## `ccswitch://` 服务商导入
+
+Android 端在 `MainActivity`（`singleTask`）注册 `ccswitch://` 深度链接接管，并在引导页与服务商设置页提供粘贴导入入口（桌面端不注册该协议）：
+
+- 兼容 `ccswitch://v1/import?resource=provider` V1 规范（支持逗号分隔多端点取首项、`apiFormat` 覆盖 `app` 默认格式，以及 Base64 内联 `config` 的 Claude `env`、Codex `auth` + `config.toml`、Grok Build `[model.*]` 与累加式应用 JSON），仅放行最终协议为 `anthropic` 或 `openai_responses` 的静态凭据配置，拒绝 `configUrl`、`env_key` 间接凭据及动态环境变量／文件／命令语法，忽略且不执行 `usageScript`。
+- 收到 Intent 后立即置空 `intent.data`，链接仅暂存于有界内存队列（上限 8 条／8192 字符），经用户确认（API Key 打码展示，可调整名称与平台）后加密写入 Android Keystore。
+
 ## 文件与后台任务
 
 Android 数据与桌面独立，依靠备份迁移，不自动跨设备同步。系统 SAF 负责选择和导出文件，附件复制到私有受管目录。默认备份排除凭据，包含时必须加密；导入凭据写入 Keystore。

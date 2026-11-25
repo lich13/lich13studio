@@ -1,12 +1,34 @@
 import ModelProviderSelect from '@renderer/components/ModelProviderSelect'
+import { TopView } from '@renderer/components/TopView'
 import { useAppSelector } from '@renderer/store'
 import type { Model } from '@renderer/types'
 import { resolveModelProviderSelection, selectionFromModel } from '@shared/modelProviderSelection'
 import { Modal } from 'antd'
+import type React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { createModelPopup } from './base-popup'
+const TopViewKey = 'SelectModelPopup'
+
+const createModelPopup = <TProps extends object, TResult>(
+  Component: React.ComponentType<TProps & { resolve: (value: TResult | undefined) => void }>
+) => {
+  return class {
+    static hide() {
+      TopView.hide(TopViewKey)
+    }
+    static show(params: Omit<TProps, 'resolve'>) {
+      return new Promise<TResult | undefined>((resolve) => {
+        const finish = (value?: TResult) => {
+          resolve(value)
+          TopView.hide(TopViewKey)
+        }
+        const props = { ...params, resolve: finish } as TProps & { resolve: (value: TResult | undefined) => void }
+        TopView.show(<Component {...props} />, TopViewKey, () => finish(undefined))
+      })
+    }
+  }
+}
 
 interface PopupParams {
   model?: Model

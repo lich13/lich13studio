@@ -327,16 +327,20 @@ export default class AddProviderPopup {
       logo?: string
       logoFile?: File
     }>((resolve) => {
+      const finish = (v: {
+        name: string
+        type: ProviderType
+        platform: ProviderPlatform
+        logo?: string
+        logoFile?: File
+      }) => {
+        resolve(v)
+        this.hide()
+      }
       TopView.show(
-        <PopupContainer
-          provider={provider}
-          initialPlatform={initialPlatform}
-          resolve={(v) => {
-            resolve(v)
-            this.hide()
-          }}
-        />,
-        'AddProviderPopup'
+        <PopupContainer provider={provider} initialPlatform={initialPlatform} resolve={finish} />,
+        'AddProviderPopup',
+        () => finish({ name: '', type: platformProtocol(initialPlatform), platform: initialPlatform })
       )
     })
   }

@@ -15,11 +15,10 @@ import { runtimeCapabilities } from '@renderer/services/mobile/runtime'
 import type { Provider } from '@renderer/types'
 import { isSystemProvider } from '@renderer/types'
 import { getFancyProviderName, matchKeywordsInModel, matchKeywordsInProvider, uuid } from '@renderer/utils'
-import { isAnthropicSupportedProvider } from '@renderer/utils/provider'
 import { inferProviderPlatform, PLATFORM_NAMES, PROVIDER_PLATFORMS, type ProviderPlatform } from '@shared/platforms'
 import type { MenuProps } from 'antd'
 import { Button, Dropdown, Empty, Input, Select, Tag } from 'antd'
-import { ArrowLeft, Check, Filter, GripVertical, MoreHorizontal, PlusIcon, Search, UserPen } from 'lucide-react'
+import { ArrowLeft, GripVertical, Link2, MoreHorizontal, PlusIcon, Search, UserPen } from 'lucide-react'
 import type { FC } from 'react'
 import { startTransition, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -55,15 +54,16 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
   useMobileBack(runtimeCapabilities.android && mobileDetail, () => setMobileDetail(false))
   const [catalogVisible, setCatalogVisible] = useState(false)
   const [dragging, setDragging] = useState(false)
-  const [agentFilterEnabled, setAgentFilterEnabled] = useState(false)
   const [providerLogos, setProviderLogos] = useState<Record<string, string>>({})
   const listRef = useRef<DraggableVirtualListRef>(null)
 
   const setSelectedProvider = useCallback((provider: Provider) => {
     startTransition(() => {
-      setMobileDetail(true)
+      if (provider) {
+        setMobileDetail(true)
+        setPlatform(inferProviderPlatform(provider))
+      }
       _setSelectedProvider(provider)
-      if (provider) setPlatform(inferProviderPlatform(provider))
       setCatalogVisible(false)
     })
   }, [])
@@ -95,39 +95,30 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
   }, [providers])
 
   useEffect(() => {
-    let shouldUpdate = false
-    const hasFilterParam = searchParams.get('filter') === 'agent'
+    const providerId = searchParams.get('id')
+    if (!providerId) return
 
-    // Handle filter param first - when filter is enabled, ignore id param
-    if (hasFilterParam) {
-      setAgentFilterEnabled(true)
-      searchParams.delete('filter')
-      searchParams.delete('id') // Clear id param when filter is enabled
-      shouldUpdate = true
-    } else if (searchParams.get('id')) {
-      const providerId = searchParams.get('id')
-      const provider = providers.find((p) => p.id === providerId)
-      if (provider) {
-        setSelectedProvider(provider)
-        // 滚动到选中的 provider
-        const index = providers.findIndex((p) => p.id === providerId)
-        if (index >= 0) {
-          setTimeoutTimer(
-            'scroll-to-selected-provider',
-            () => listRef.current?.scrollToIndex(index, { align: 'center' }),
-            100
-          )
-        }
-      } else {
-        setSelectedProvider(providers[0])
+    const provider = providers.find((p) => p.id === providerId)
+    if (provider) {
+      setSearchText('')
+      setSelectedProvider(provider)
+      const targetPlatform = inferProviderPlatform(provider)
+      const index = providers
+        .filter((p) => inferProviderPlatform(p) === targetPlatform)
+        .findIndex((p) => p.id === providerId)
+      if (index >= 0) {
+        setTimeoutTimer(
+          'scroll-to-selected-provider',
+          () => listRef.current?.scrollToIndex(index, { align: 'center' }),
+          100
+        )
       }
-      searchParams.delete('id')
-      shouldUpdate = true
+    } else if (providers[0]) {
+      setSelectedProvider(providers[0])
     }
-
-    if (shouldUpdate) {
-      setSearchParams(searchParams)
-    }
+    const nextParams = new URLSearchParams(searchParams)
+    nextParams.delete('id')
+    setSearchParams(nextParams, { replace: true })
   }, [providers, searchParams, setSearchParams, setSelectedProvider, setTimeoutTimer])
 
   const onAddProvider = async () => {
@@ -287,14 +278,6 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
 
   const filteredProviders = providers.filter((provider) => {
     if (inferProviderPlatform(provider) !== platform) return false
-    if (provider.id === 'ovms') {
-      return false
-    }
-
-    // Filter by agent support
-    if (agentFilterEnabled && !isAnthropicSupportedProvider(provider)) {
-      return false
-    }
 
     const keywords = searchText.toLowerCase().split(/\s+/).filter(Boolean)
     const isProviderMatch = matchKeywordsInProvider(keywords, provider)
@@ -376,36 +359,11 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
             value={searchText}
             style={{ borderRadius: 'var(--list-item-border-radius)', height: 35 }}
             prefix={<Search size={14} />}
-            suffix={
-              <Dropdown
-                menu={{
-                  items: [
-                    {
-                      label: t('settings.provider.filter.all'),
-                      key: 'all',
-                      icon: agentFilterEnabled ? <CheckPlaceholder /> : <Check size={14} />,
-                      onClick: () => setAgentFilterEnabled(false)
-                    },
-                    {
-                      label: t('settings.provider.filter.agent'),
-                      key: 'agent',
-                      icon: agentFilterEnabled ? <Check size={14} /> : <CheckPlaceholder />,
-                      onClick: () => setAgentFilterEnabled(true)
-                    }
-                  ]
-                }}
-                trigger={['click']}>
-                <FilterButton>
-                  <Filter
-                    size={14}
-                    className={agentFilterEnabled ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-3)]'}
-                  />
-                </FilterButton>
-              </Dropdown>
-            }
             onChange={(e) => setSearchText(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Escape') {
+              if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return
+              if (e.key === 'Escape' && searchText) {
+                e.preventDefault()
                 e.stopPropagation()
                 setSearchText('')
               }
@@ -470,14 +428,27 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
             </Dropdown>
           )}
         </DraggableVirtualList>
-        <AddButtonWrapper>
+        <AddButtonWrapper style={runtimeCapabilities.android ? { display: 'flex', gap: 8 } : undefined}>
           <Button
-            style={{ width: '100%', borderRadius: 'var(--list-item-border-radius)' }}
+            style={{ flex: 1, width: '100%', borderRadius: 'var(--list-item-border-radius)' }}
             icon={<PlusIcon size={16} />}
             onClick={onAddProvider}
             disabled={dragging}>
             {t('button.add')}
           </Button>
+          {runtimeCapabilities.android && (
+            <Button
+              style={{ flex: 1, borderRadius: 'var(--list-item-border-radius)' }}
+              icon={<Link2 size={16} />}
+              onClick={() => {
+                void import('./ProviderImportPopup').then(({ promptManualProviderImport }) =>
+                  promptManualProviderImport()
+                )
+              }}
+              disabled={dragging}>
+              {t('settings.provider.import_link')}
+            </Button>
+          )}
         </AddButtonWrapper>
       </ProviderListContainer>
       {(!runtimeCapabilities.android || mobileDetail) &&
@@ -571,22 +542,6 @@ const AddButtonWrapper = styled.div`
     padding: 4px 8px;
     .ant-input-affix-wrapper { min-height: 48px; }
   }
-`
-
-const FilterButton = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 4px;
-  cursor: pointer;
-`
-
-const CheckPlaceholder = styled.span`
-  display: inline-block;
-  width: 14px;
-  height: 14px;
 `
 
 export default ProviderList

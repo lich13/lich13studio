@@ -1,24 +1,9 @@
 import type { ProviderType } from '@renderer/types'
 import { isSystemProvider, type Provider, type SystemProviderId, SystemProviderIds } from '@renderer/types'
 import { isAzureOpenAIProvider } from '@shared/aiCore/provider/utils'
-import { CLAUDE_SUPPORTED_PROVIDERS } from '@shared/config/providers'
 
 export const isAzureResponsesEndpoint = (provider: Provider) => {
   return provider.apiVersion === 'preview' || provider.apiVersion === 'v1'
-}
-
-export const getClaudeSupportedProviders = (providers: Provider[]) => {
-  return providers.filter(
-    (p) => p.type === 'anthropic' || !!p.anthropicApiHost || CLAUDE_SUPPORTED_PROVIDERS.includes(p.id)
-  )
-}
-
-export const getAnthropicSupportedProviders = (providers: Provider[]) => {
-  return providers.filter(isAnthropicSupportedProvider)
-}
-
-export const isAnthropicSupportedProvider = (provider: Provider) => {
-  return provider.type === 'anthropic' || !!provider.anthropicApiHost
 }
 
 const NOT_SUPPORT_ARRAY_CONTENT_PROVIDERS = [

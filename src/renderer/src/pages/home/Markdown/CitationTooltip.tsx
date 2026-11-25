@@ -3,17 +3,47 @@ import MarqueeText from '@renderer/components/MarqueeText'
 import { Tooltip } from 'antd'
 import React, { memo, useCallback, useMemo } from 'react'
 import styled from 'styled-components'
-import * as z from 'zod'
 
-export const CitationSchema = z.object({
-  url: z.url(),
-  title: z.string().optional(),
-  content: z.string().optional()
-})
+export interface CitationData {
+  url: string
+  title?: string
+  content?: string
+}
+
+export const CitationSchema = {
+  safeParse(value: unknown): { success: true; data: CitationData } | { success: false } {
+    if (!value || typeof value !== 'object') {
+      return { success: false }
+    }
+    const candidate = value as Record<string, unknown>
+    if (typeof candidate.url !== 'string' || !candidate.url.trim()) {
+      return { success: false }
+    }
+    try {
+      new URL(candidate.url)
+    } catch {
+      return { success: false }
+    }
+    if (candidate.title !== undefined && typeof candidate.title !== 'string') {
+      return { success: false }
+    }
+    if (candidate.content !== undefined && typeof candidate.content !== 'string') {
+      return { success: false }
+    }
+    return {
+      success: true,
+      data: {
+        url: candidate.url,
+        title: candidate.title,
+        content: candidate.content
+      }
+    }
+  }
+}
 
 interface CitationTooltipProps {
   children: React.ReactNode
-  citation: z.infer<typeof CitationSchema>
+  citation: CitationData
 }
 
 const CitationTooltip: React.FC<CitationTooltipProps> = ({ children, citation }) => {

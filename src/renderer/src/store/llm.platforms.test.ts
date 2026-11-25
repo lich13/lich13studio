@@ -5,7 +5,9 @@ import reducer, {
   addModel,
   addProvider,
   applyPlatformCatalog,
+  importPlatformProvider,
   initialState,
+  removeModel,
   setDefaultModel,
   setPlatformModels
 } from '@renderer/store/llm'
@@ -75,5 +77,38 @@ describe('shared platform catalogs', () => {
     expect(
       inferProviderPlatform({ platform: 'openai', type: 'openai-response', models: [{ id: 'grok-custom' }] })
     ).toBe('openai')
+  })
+  it('imports a platform provider, restores excluded models, and sets initial default model when empty', () => {
+    let state = reducer(initialState, addProvider(provider('existing')))
+    state = reducer(
+      state,
+      removeModel({
+        providerId: 'existing',
+        model: { id: 'gpt-6-astra', name: 'gpt-6-astra', group: 'OpenAI', provider: 'existing' }
+      })
+    )
+    expect(state.modelCatalogExclusions.openai).toContain('gpt-6-astra')
+
+    state = reducer(
+      state,
+      importPlatformProvider({
+        provider: {
+          ...provider('ccs-1'),
+          apiHost: 'https://relay.example.invalid/v1/'
+        },
+        models: ['gpt-6-astra', 'custom-responses-model'],
+        primaryModel: 'custom-responses-model'
+      })
+    )
+    expect(state.providers[0]).toMatchObject({
+      id: 'ccs-1',
+      apiHost: 'https://relay.example.invalid/v1'
+    })
+    expect(state.modelCatalogExclusions.openai).not.toContain('gpt-6-astra')
+    expect(state.platformModels.openai.some((m) => m.id === 'custom-responses-model')).toBe(true)
+    expect(state.defaultModel).toMatchObject({
+      id: 'custom-responses-model',
+      provider: 'ccs-1'
+    })
   })
 })

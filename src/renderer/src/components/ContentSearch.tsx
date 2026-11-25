@@ -37,7 +37,7 @@ enum SearchCompletedState {
 }
 
 export interface ContentSearchRef {
-  disable(): void
+  disable(): boolean
   enable(initialText?: string): void
   // 搜索下一个并定位
   searchNext(): void
@@ -150,6 +150,8 @@ export const ContentSearch = React.forwardRef<ContentSearchRef, Props>(
     const containerRef = React.useRef<HTMLDivElement>(null)
     const searchInputRef = React.useRef<HTMLInputElement>(null)
     const [enableContentSearch, setEnableContentSearch] = useState(false)
+    const enableContentSearchRef = useRef(false)
+    enableContentSearchRef.current = enableContentSearch
     const [searchCompleted, setSearchCompleted] = useState(SearchCompletedState.NotSearched)
     const [isCaseSensitive, setIsCaseSensitive] = useState(false)
     const [isWholeWord, setIsWholeWord] = useState(false)
@@ -206,10 +208,14 @@ export const ContentSearch = React.forwardRef<ContentSearchRef, Props>(
     const implementation = useMemo(
       () => ({
         disable: () => {
+          if (!enableContentSearchRef.current) return false
+          enableContentSearchRef.current = false
           setEnableContentSearch(false)
           clearSearchHighlights()
+          return true
         },
         enable: (initialText?: string) => {
+          enableContentSearchRef.current = true
           setEnableContentSearch(true)
           if (searchInputRef.current) {
             const inputEl = searchInputRef.current
@@ -277,6 +283,7 @@ export const ContentSearch = React.forwardRef<ContentSearchRef, Props>(
 
     const keyDownHandler = useCallback(
       (event: React.KeyboardEvent<HTMLInputElement>) => {
+        if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return
         if (event.key === 'Enter') {
           event.preventDefault()
           const value = (event.target as HTMLInputElement).value.trim()
@@ -290,6 +297,7 @@ export const ContentSearch = React.forwardRef<ContentSearchRef, Props>(
             implementation.searchNext()
           }
         } else if (event.key === 'Escape') {
+          event.preventDefault()
           event.stopPropagation()
           implementation.disable()
         }

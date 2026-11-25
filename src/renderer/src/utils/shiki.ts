@@ -1,4 +1,4 @@
-import { getTokenStyleObject, type ThemedToken } from 'shiki/core'
+import type { ThemedToken } from 'shiki/core'
 
 export const DEFAULT_LANGUAGES = ['text', 'javascript', 'typescript', 'python', 'java', 'markdown', 'json']
 export const DEFAULT_THEMES = ['one-light', 'material-theme-darker']
@@ -127,24 +127,53 @@ export const CM_THEME_NAMES: readonly string[] = [
  * Convert a Shiki ThemedToken into a React inline style object.
  */
 export function getReactStyleFromToken(token: ThemedToken): Record<string, string> {
-  const style = token.htmlStyle || getTokenStyleObject(token)
+  if (token.htmlStyle) {
+    const reactStyle: Record<string, string> = {}
+    for (const [key, value] of Object.entries(token.htmlStyle)) {
+      switch (key) {
+        case 'font-style':
+          reactStyle.fontStyle = value
+          break
+        case 'font-weight':
+          reactStyle.fontWeight = value
+          break
+        case 'background-color':
+          reactStyle.backgroundColor = value
+          break
+        case 'text-decoration':
+          reactStyle.textDecoration = value
+          break
+        default:
+          reactStyle[key] = value
+      }
+    }
+    return reactStyle
+  }
+
   const reactStyle: Record<string, string> = {}
-  for (const [key, value] of Object.entries(style)) {
-    switch (key) {
-      case 'font-style':
-        reactStyle.fontStyle = value
-        break
-      case 'font-weight':
-        reactStyle.fontWeight = value
-        break
-      case 'background-color':
-        reactStyle.backgroundColor = value
-        break
-      case 'text-decoration':
-        reactStyle.textDecoration = value
-        break
-      default:
-        reactStyle[key] = value
+  if (token.color) {
+    reactStyle.color = token.color
+  }
+  if (token.bgColor) {
+    reactStyle.backgroundColor = token.bgColor
+  }
+  const fontStyle = token.fontStyle ?? 0
+  if (fontStyle > 0) {
+    if (fontStyle & 1) {
+      reactStyle.fontStyle = 'italic'
+    }
+    if (fontStyle & 2) {
+      reactStyle.fontWeight = 'bold'
+    }
+    const decorations: string[] = []
+    if (fontStyle & 4) {
+      decorations.push('underline')
+    }
+    if (fontStyle & 8) {
+      decorations.push('line-through')
+    }
+    if (decorations.length > 0) {
+      reactStyle.textDecoration = decorations.join(' ')
     }
   }
   return reactStyle

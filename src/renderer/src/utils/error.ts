@@ -8,13 +8,36 @@ import type {
 } from '@renderer/types/error'
 import { isSerializedAiSdkAPICallError } from '@renderer/types/error'
 import { safeSerialize } from '@shared/utils/serialize'
-import type { NoSuchToolError } from 'ai'
-import { InvalidToolInputError } from 'ai'
+import type { InvalidToolInputError, NoSuchToolError } from 'ai'
 import { t } from 'i18next'
-import type * as z from 'zod'
-import { ZodError } from 'zod'
 
 import { parseJSON } from './json'
+
+interface ZodIssueLike {
+  path: ReadonlyArray<PropertyKey>
+  message: string
+}
+
+export interface ZodErrorLike {
+  issues: ReadonlyArray<ZodIssueLike>
+}
+
+function isZodErrorLike(error: unknown): error is ZodErrorLike {
+  return (
+    error !== null &&
+    typeof error === 'object' &&
+    (error as { name?: unknown }).name === 'ZodError' &&
+    Array.isArray((error as { issues?: unknown }).issues)
+  )
+}
+
+function isInvalidToolInputErrorLike(error: unknown): error is InvalidToolInputError {
+  return (
+    error !== null &&
+    typeof error === 'object' &&
+    ((error as { name?: unknown }).name === 'AI_InvalidToolInputError' || 'toolInput' in error)
+  )
+}
 
 const logger = loggerService.withContext('Utils:error')
 
@@ -46,7 +69,7 @@ export function getErrorDetails(err: any, seen = new WeakSet()): any {
 }
 
 export function formatErrorMessage(error: unknown): string {
-  if (error instanceof ZodError) {
+  if (isZodErrorLike(error)) {
     return formatZodError(error)
   }
   const detailedError = getErrorDetails(error)
@@ -207,7 +230,7 @@ export const serializeError = (error: AiSdkErrorUnion): SerializedError => {
   if ('lastError' in error) serializedError.lastError = safeSerialize(error.lastError)
   if ('errors' in error) serializedError.errors = error.errors.map((err: unknown) => safeSerialize(err))
   if ('originalError' in error)
-    serializedError.originalError = InvalidToolInputError.isInstance(error.originalError)
+    serializedError.originalError = isInvalidToolInputErrorLike(error.originalError)
       ? serializeInvalidToolInputError(error.originalError)
       : serializeNoSuchToolError(error.originalError)
   if ('functionality' in error) serializedError.functionality = error.functionality
@@ -221,8 +244,8 @@ export const serializeError = (error: AiSdkErrorUnion): SerializedError => {
  * @param title - 可选的错误标题，会作为前缀添加到错误信息中
  * @returns 格式化后的错误信息字符串。
  */
-export const formatZodError = (error: z.ZodError, title?: string) => {
-  const readableErrors = error.issues.map((issue) => `${issue.path.join('.')}: ${issue.message}`)
+export const formatZodError = (error: ZodErrorLike, title?: string) => {
+  const readableErrors = error.issues.map((issue) => `${issue.path.map(String).join('.')}: ${issue.message}`)
   const errorMessage = readableErrors.join('\n')
   return title ? `${title}: \n${errorMessage}` : errorMessage
 }

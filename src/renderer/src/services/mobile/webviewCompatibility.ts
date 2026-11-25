@@ -29,6 +29,31 @@ import 'core-js/modules/es.typed-array.with.js'
 import 'core-js/modules/web.structured-clone.js'
 
 export function installWebviewCompatibility() {
+  if (!Array.prototype.at) {
+    Object.defineProperty(Array.prototype, 'at', {
+      configurable: true,
+      writable: true,
+      value<T>(this: T[], index: number): T | undefined {
+        const len = this.length >>> 0
+        const k = Math.trunc(index) || 0
+        const pos = k < 0 ? len + k : k
+        return pos >= 0 && pos < len ? this[pos] : undefined
+      }
+    })
+  }
+  if (!String.prototype.at) {
+    Object.defineProperty(String.prototype, 'at', {
+      configurable: true,
+      writable: true,
+      value(this: string, index: number): string | undefined {
+        const str = String(this)
+        const len = str.length
+        const k = Math.trunc(index) || 0
+        const pos = k < 0 ? len + k : k
+        return pos >= 0 && pos < len ? str.charAt(pos) : undefined
+      }
+    })
+  }
   if (typeof AbortSignal !== 'undefined') {
     if (!('reason' in AbortSignal.prototype)) {
       const reasons = new WeakMap<AbortSignal, unknown>()

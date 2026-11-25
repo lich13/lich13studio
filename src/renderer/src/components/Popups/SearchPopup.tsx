@@ -1,3 +1,4 @@
+import { runtimeCapabilities } from '@renderer/services/mobile/runtime'
 import { Modal } from 'antd'
 import { lazy, Suspense, useState } from 'react'
 
@@ -11,6 +12,7 @@ interface Props {
 
 const PopupContainer: React.FC<Props> = ({ resolve }) => {
   const [open, setOpen] = useState(true)
+  const isMobile = runtimeCapabilities.android
 
   const onOk = () => {
     setOpen(false)
@@ -33,26 +35,27 @@ const PopupContainer: React.FC<Props> = ({ resolve }) => {
       onCancel={onCancel}
       afterClose={onClose}
       title={null}
-      width={700}
+      width={isMobile ? '100vw' : 700}
+      style={isMobile ? { top: 0, maxWidth: '100vw', margin: 0, paddingBottom: 0 } : undefined}
       transitionName="animation-move-down"
       styles={{
         content: {
-          borderRadius: 20,
+          borderRadius: isMobile ? 0 : 20,
           padding: 0,
           overflow: 'hidden',
-          paddingBottom: 16
+          paddingBottom: isMobile ? 0 : 16
         },
         body: {
-          height: '80vh',
+          height: isMobile ? 'calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))' : '80vh',
           maxHeight: 'inherit',
           padding: 0
         }
       }}
-      centered
+      centered={!isMobile}
       closable={false}
       footer={null}>
       <Suspense fallback={null}>
-        <HistoryPage />
+        <HistoryPage onClose={isMobile ? onCancel : undefined} />
       </Suspense>
     </Modal>
   )
@@ -65,15 +68,11 @@ export default class SearchPopup {
   }
   static show() {
     return new Promise<any>((resolve) => {
-      TopView.show(
-        <PopupContainer
-          resolve={(v) => {
-            resolve(v)
-            TopView.hide('SearchPopup')
-          }}
-        />,
-        'SearchPopup'
-      )
+      const finish = (v: any = {}) => {
+        resolve(v)
+        TopView.hide('SearchPopup')
+      }
+      TopView.show(<PopupContainer resolve={finish} />, 'SearchPopup', () => finish({}))
     })
   }
 }

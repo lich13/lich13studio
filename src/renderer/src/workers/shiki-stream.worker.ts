@@ -2,9 +2,11 @@
 
 import { loggerService } from '@logger'
 import { LRUCache } from 'lru-cache'
-import { createBundledHighlighter, type HighlighterGeneric, type SpecialLanguage, type ThemedToken } from 'shiki/core'
-import { createOnigurumaEngine } from 'shiki/engine/oniguruma'
+import { createBundledHighlighter, type HighlighterGeneric, type SpecialLanguage } from 'shiki/core'
+import { createJavaScriptRegexEngine } from 'shiki/engine/javascript'
 
+import { installWebviewCompatibility } from '../services/mobile/webviewCompatibility'
+import type { HighlightChunkResult } from '../services/ShikiStreamService'
 import type { ShikiStreamTokenizerOptions } from '../services/ShikiStreamTokenizer'
 import { ShikiStreamTokenizer } from '../services/ShikiStreamTokenizer'
 
@@ -29,11 +31,6 @@ interface WorkerResponse {
   type: string
   result?: unknown
   error?: string
-}
-
-interface HighlightChunkResult {
-  lines: ThemedToken[][]
-  recall: number
 }
 
 const BUNDLED_LANGUAGES: Record<string, () => Promise<any>> = {
@@ -165,13 +162,27 @@ const BUNDLED_THEMES: Record<string, () => Promise<any>> = {
   'vitesse-light': () => import('shiki/themes/vitesse-light.mjs')
 }
 
+export { BUNDLED_LANGUAGES }
+
+function detectJsRegexTarget(): 'ES2024' | 'ES2018' {
+  try {
+    // Use dynamic RegExp constructor so both legacy runtimes (Android 12 Chromium 91 / macOS 12 WebKit)
+    // and test-time RegExp proxies fall back to ES2018 instead of silently failing every rule under forgiving mode.
+    new RegExp('', 'v')
+    return 'ES2024'
+  } catch {
+    return 'ES2018'
+  }
+}
+
 const createHighlighter = createBundledHighlighter({
   langs: BUNDLED_LANGUAGES,
   themes: BUNDLED_THEMES,
-  engine: () => createOnigurumaEngine(import('shiki/wasm'))
+  engine: () => createJavaScriptRegexEngine({ target: detectJsRegexTarget(), forgiving: true })
 })
 
 let highlighter: HighlighterGeneric<any, any> | null = null
+const resolvedLanguageAliases = new Map<string, string>()
 
 const tokenizerMap = new LRUCache<string, ShikiStreamTokenizer>({
   max: 100,
@@ -183,6 +194,7 @@ const tokenizerMap = new LRUCache<string, ShikiStreamTokenizer>({
 })
 
 async function initHighlighter(themes: string[], languages: string[]): Promise<void> {
+  installWebviewCompatibility()
   highlighter = await createHighlighter({
     langs: languages as any,
     themes: themes as any
@@ -198,24 +210,37 @@ async function ensureLanguageAndThemeLoaded(
   }
 
   const normalizedLang = language.trim().toLowerCase() || 'text'
-  let actualLanguage = normalizedLang
+  let actualLanguage = resolvedLanguageAliases.get(normalizedLang) ?? normalizedLang
   let actualTheme = theme
 
-  if (!highlighter.getLoadedLanguages().includes(normalizedLang)) {
+  if (!highlighter.getLoadedLanguages().includes(actualLanguage)) {
     try {
-      if (['text', 'ansi'].includes(normalizedLang)) {
-        await highlighter.loadLanguage(normalizedLang as SpecialLanguage)
+      if (['text', 'ansi'].includes(actualLanguage)) {
+        await highlighter.loadLanguage(actualLanguage as SpecialLanguage)
       } else {
         const languageImportFn = BUNDLED_LANGUAGES[normalizedLang]
         if (!languageImportFn) {
           throw new Error(`Unsupported language: ${normalizedLang}`)
         }
         const langData = await languageImportFn()
-        await highlighter.loadLanguage(langData)
+        const rawList = Array.isArray(langData?.default)
+          ? langData.default
+          : Array.isArray(langData)
+            ? langData
+            : [langData?.default ?? langData]
+        const canonicalName = rawList[rawList.length - 1]?.name
+        if (typeof canonicalName === 'string' && canonicalName.length > 0) {
+          actualLanguage = canonicalName
+        }
+        if (!highlighter.getLoadedLanguages().includes(actualLanguage)) {
+          await highlighter.loadLanguage(langData)
+        }
       }
+      resolvedLanguageAliases.set(normalizedLang, actualLanguage)
     } catch {
       await highlighter.loadLanguage('text')
       actualLanguage = 'text'
+      resolvedLanguageAliases.set(normalizedLang, 'text')
     }
   }
 
@@ -381,6 +406,7 @@ self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
 
       case 'dispose':
         tokenizerMap.clear()
+        resolvedLanguageAliases.clear()
         highlighter?.dispose()
         highlighter = null
         self.postMessage({ id, type: 'dispose-result', result: { success: true } } as WorkerResponse)

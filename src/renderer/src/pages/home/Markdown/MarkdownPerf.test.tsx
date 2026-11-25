@@ -35,6 +35,7 @@ vi.mock('@renderer/components/CodeBlockView', () => ({
 }))
 
 import CodeViewer from '@renderer/components/CodeViewer'
+import { processLatexBrackets } from '@renderer/utils/markdown'
 
 import CodeBlock, { areCodeBlockPropsEqual } from './CodeBlock'
 import { splitStreamingMarkdownPrefix } from './Markdown'
@@ -155,6 +156,98 @@ describe('Pure removeAllTopics reducer & Markdown/CodeViewer optimizations', () 
     expect(splitStreamingMarkdownPrefix(withRefLinks).prefix).toBe('')
     const withDetails = `<details><summary>Fold</summary>\n\n${closedIntro}\n\n</details>`
     expect(splitStreamingMarkdownPrefix(withDetails).prefix).toBe('')
+
+    // Never split inside unclosed \[...\] display math even when blank lines appear inside (> STREAM_TAIL_KEEP_CHARS)
+    const unclosedBracketMath = `${closedIntro}\\[\nx = \\frac{1}{2}\n\n${'y = x + 1\n\n'.repeat(45)}`
+    const mathSplit = splitStreamingMarkdownPrefix(unclosedBracketMath)
+    expect(mathSplit.prefix).toBe(closedIntro)
+    expect(mathSplit.tail.startsWith('\\[\n')).toBe(true)
+
+    // Allow splitting after closed <svg>...</svg>, but never split inside an unclosed <svg>
+    const unclosedSvg = `${closedIntro}<svg viewBox="0 0 100 100">\n\n${'<rect width="10" height="10" />\n\n'.repeat(25)}`
+    const svgSplit = splitStreamingMarkdownPrefix(unclosedSvg)
+    expect(svgSplit.prefix).toBe(closedIntro)
+    expect(svgSplit.tail.startsWith('<svg')).toBe(true)
+
+    const closedSvgThenProse = `<svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="4" /></svg>\n\n${closedIntro}${'Tail paragraph.\n\n'.repeat(20)}`
+    expect(splitStreamingMarkdownPrefix(closedSvgThenProse).prefix.length).toBeGreaterThan(1024)
+
+    // Never split inside mixed-case <SvG>...</SvG> or multi-line \(...\) math
+    const unclosedMixedSvg = `${closedIntro}<SvG viewBox="0 0 10 10">\n\n${'<path d="M0 0" />\n\n'.repeat(25)}</SvG>`
+    expect(splitStreamingMarkdownPrefix(unclosedMixedSvg.slice(0, -6)).prefix).toBe(closedIntro)
+    const unclosedParenMath = `${closedIntro}\\(\na + b\n\n${'c + d = x + y\n\n'.repeat(40)}`
+    expect(splitStreamingMarkdownPrefix(unclosedParenMath).prefix).toBe(closedIntro)
+
+    // Multi-line inline code, double-backtick inline code containing \[, and stray single backticks across paragraphs
+    const doubleTickWithMath = `Paragraph with \`\`a \\[ b\`\` inline code.\n\n${closedIntro}${'More prose.\n\n'.repeat(15)}`
+    expect(splitStreamingMarkdownPrefix(doubleTickWithMath).prefix.length).toBeGreaterThan(1024)
+    const multiLineInlineCodeWithMath = `Paragraph with \`line1\nline2 \\[ inside\` closed.\n\n${closedIntro}${'More prose.\n\n'.repeat(15)}`
+    expect(splitStreamingMarkdownPrefix(multiLineInlineCodeWithMath).prefix.length).toBeGreaterThan(1024)
+    const strayBacktickInFirstPara = `Cost is \`100 in paragraph 1.\n\n${closedIntro}${'More prose.\n\n'.repeat(15)}`
+    expect(splitStreamingMarkdownPrefix(strayBacktickInFirstPara).prefix.length).toBeGreaterThan(1024)
+
+    // Never split inside <svg> when <!-- </svg> --> or multi-line comments or <![CDATA[ </svg> ]]> appear inside <svg>
+    const svgWithSingleLineComment = `${closedIntro}<svg viewBox="0 0 100 100">\n<!-- </svg> -->\n\n${'<rect width="10" height="10" />\n\n'.repeat(25)}`
+    expect(splitStreamingMarkdownPrefix(svgWithSingleLineComment).prefix).toBe(closedIntro)
+    expect(splitStreamingMarkdownPrefix(svgWithSingleLineComment).tail.startsWith('<svg')).toBe(true)
+
+    const svgWithMultiLineComment = `${closedIntro}<svg viewBox="0 0 100 100">\n<!--\n  commented closing tag\n  </svg>\n-->\n\n${'<circle cx="5" cy="5" r="4" />\n\n'.repeat(25)}`
+    expect(splitStreamingMarkdownPrefix(svgWithMultiLineComment).prefix).toBe(closedIntro)
+
+    const svgWithCdata = `${closedIntro}<svg viewBox="0 0 100 100">\n<![CDATA[\n  </svg>\n]]>\n\n${'<path d="M0 0" />\n\n'.repeat(25)}`
+    expect(splitStreamingMarkdownPrefix(svgWithCdata).prefix).toBe(closedIntro)
+
+    // Closed <svg>...</svg> containing <!-- </svg> --> still allows prefix splitting after the real </svg>
+    const closedSvgWithCommentThenProse = `<svg viewBox="0 0 10 10"><!-- </svg> --><circle cx="5" cy="5" r="4" /></svg>\n\n${closedIntro}${'Tail paragraph.\n\n'.repeat(20)}`
+    const closedCommentedSplit = splitStreamingMarkdownPrefix(closedSvgWithCommentThenProse)
+    expect(closedCommentedSplit.prefix.length).toBeGreaterThan(1024)
+    expect(closedCommentedSplit.prefix.startsWith('<svg viewBox="0 0 10 10"><!-- </svg> -->')).toBe(true)
+
+    // Unclosed multi-line XML comment outside <svg> must not split mid-comment, and inline code `<svg>` must not corrupt svgDepth
+    const unclosedHtmlComment = `${closedIntro}<!--\n\n${'Comment paragraph.\n\n'.repeat(30)}`
+    expect(splitStreamingMarkdownPrefix(unclosedHtmlComment).prefix).toBe(closedIntro)
+
+    const inlineCodeSvgInProse = `Mentioning \`<svg>\` and \`</svg>\` in prose.\n\n${closedIntro}${'Tail prose.\n\n'.repeat(15)}`
+    expect(splitStreamingMarkdownPrefix(inlineCodeSvgInProse).prefix.length).toBeGreaterThan(1024)
+
+    // CommonMark inline triple-backtick code span at start of line (` ```x``` `) and 4-space indented `    ``` ` must not lock activeFenceChar
+    const inlineTripleTickAtLineStart = `\`\`\`const x = 1\`\`\` is inline code.\n\n${closedIntro}${'Tail prose.\n\n'.repeat(15)}`
+    expect(splitStreamingMarkdownPrefix(inlineTripleTickAtLineStart).prefix.length).toBeGreaterThan(1024)
+    const indentedCodeFenceLine = `    \`\`\`\n\n${closedIntro}${'Tail prose.\n\n'.repeat(15)}`
+    expect(splitStreamingMarkdownPrefix(indentedCodeFenceLine).prefix.length).toBeGreaterThan(1024)
+
+    // Single-line $$ ... $$ display math containing \[ must not corrupt outer bracketMathDepth
+    const singleLineDisplayMathWithBracket = `$$ f(x) = \\[1, 2) $$\n\n${closedIntro}${'Tail prose.\n\n'.repeat(15)}`
+    expect(splitStreamingMarkdownPrefix(singleLineDisplayMathWithBracket).prefix.length).toBeGreaterThan(1024)
+
+    // Child SVG elements with quoted "</svg>" or "<!--" must not prematurely close <svg> or open fake comments, and --!> closes HTML5 comments
+    const svgWithQuotedAttrCloseAndBangComment = `${closedIntro}<svg viewBox="0 0 100 100">\n<g data-tip="</svg>" data-note="<!--">\n\n${'<rect width="10" height="10" />\n\n'.repeat(25)}`
+    expect(splitStreamingMarkdownPrefix(svgWithQuotedAttrCloseAndBangComment).prefix).toBe(closedIntro)
+    const bangClosedComment = `<!-- html5 bang close --!>\n\n${closedIntro}${'Tail prose.\n\n'.repeat(15)}`
+    expect(splitStreamingMarkdownPrefix(bangClosedComment).prefix.length).toBeGreaterThan(1024)
+  })
+
+  it('converts balanced \\[...\\] and \\(...\\) in strictly linear O(N) time even on thousands of unclosed delimiters', () => {
+    const input = [
+      'Inline \\(a + b\\) and escaped \\\\(not math\\\\) plus `code \\(skip\\)` and [link \\(skip\\)](https://example.invalid).',
+      '\\[\n\\sum_{i=1}^{n} \\left[ x_i \\right]\n\\]',
+      'Unclosed outer \\[ prefix with inner \\[ y + z \\] and trailing unfinished \\[\nx_1 + x_2'
+    ].join('\n\n')
+    const output = processLatexBrackets(input)
+    expect(output).toContain('Inline $a + b$')
+    expect(output).toContain('\\\\(not math\\\\)')
+    expect(output).toContain('`code \\(skip\\)`')
+    expect(output).toContain('[link \\(skip\\)](https://example.invalid)')
+    expect(output).toContain('$$\n\\sum_{i=1}^{n} \\left[ x_i \\right]\n$$')
+    expect(output).toContain('Unclosed outer \\[ prefix with inner $$ y + z $$ and trailing unfinished \\[\nx_1 + x_2')
+
+    // Pathological adversarial input: 1,600 unclosed \[ followed by 1 closed \[ x \] must finish in < 50ms (was ~3,951ms)
+    const pathological = `${'\\[ unclosed '.repeat(1600)}\\[ x + 1 \\]`
+    const t0 = performance.now()
+    const pathOut = processLatexBrackets(pathological)
+    const elapsedMs = performance.now() - t0
+    expect(pathOut.endsWith('$$ x + 1 $$')).toBe(true)
+    expect(elapsedMs).toBeLessThan(100)
   })
 
   it('renders expanded CodeViewer statically without attaching global selectionchange listeners', async () => {

@@ -1,6 +1,3 @@
-import { objectValues } from '@types'
-import * as z from 'zod'
-
 export const FILE_TYPE = {
   IMAGE: 'image',
   VIDEO: 'video',
@@ -10,9 +7,7 @@ export const FILE_TYPE = {
   OTHER: 'other'
 } as const
 
-const FileTypeSchema = z.enum(objectValues(FILE_TYPE))
-
-export type FileType = z.infer<typeof FileTypeSchema>
+export type FileType = (typeof FILE_TYPE)[keyof typeof FILE_TYPE]
 
 /**
  * @interface

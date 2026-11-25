@@ -83,10 +83,17 @@ class FileManager {
     }
 
     if (!force) {
-      if (file.count > 1) {
-        await db.files.update(id, { ...file, count: file.count - 1 })
-        return
-      }
+      const { applyFileCountDeltasInTx, purgeDetachedAttachments } = await import('./db/DexieMessageDataSource')
+      let attachmentsToDelete: string[] = []
+      await db.transaction('rw', db.message_blocks, db.files, async () => {
+        attachmentsToDelete = await applyFileCountDeltasInTx(
+          db.files,
+          new Map([[id, { delta: -1, deleteIfZero: true }]]),
+          { messageBlocksTable: db.message_blocks }
+        )
+      })
+      await purgeDetachedAttachments(attachmentsToDelete)
+      return
     }
 
     await db.files.delete(id)

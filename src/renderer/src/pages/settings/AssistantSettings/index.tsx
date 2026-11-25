@@ -179,15 +179,12 @@ const StyledMenu = styled(Menu)`
 export default class AssistantSettingsPopup {
   static show(props: AssistantSettingPopupShowParams) {
     return new Promise<Assistant>((resolve) => {
-      TopView.show(
-        <AssistantSettingPopupContainer
-          {...props}
-          resolve={(v) => {
-            resolve(v)
-            TopView.hide('AssistantSettingsPopup')
-          }}
-        />,
-        'AssistantSettingsPopup'
+      const finish = (v: Assistant) => {
+        resolve(v)
+        TopView.hide('AssistantSettingsPopup')
+      }
+      TopView.show(<AssistantSettingPopupContainer {...props} resolve={finish} />, 'AssistantSettingsPopup', () =>
+        finish(props.assistant)
       )
     })
   }

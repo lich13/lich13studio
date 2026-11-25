@@ -1,12 +1,24 @@
 import type { ProviderPlatform } from '@shared/platforms'
 import type { Model } from '@types'
-import * as z from 'zod'
 
 import type { OpenAIVerbosity } from './aiCoreTypes'
 
-export const ProviderTypeSchema = z.enum(['openai-response', 'anthropic'])
+export type ProviderType = 'openai-response' | 'anthropic'
 
-export type ProviderType = z.infer<typeof ProviderTypeSchema>
+export const ProviderTypeSchema = {
+  parse(value: unknown): ProviderType {
+    if (value === 'openai-response' || value === 'anthropic') {
+      return value
+    }
+    throw new Error(`Invalid provider type: ${String(value)}`)
+  },
+  safeParse(value: unknown): { success: true; data: ProviderType } | { success: false; error: Error } {
+    if (value === 'openai-response' || value === 'anthropic') {
+      return { success: true, data: value }
+    }
+    return { success: false, error: new Error(`Invalid provider type: ${String(value)}`) }
+  }
+} as const
 
 // undefined is treated as supported, enabled by default
 export type ProviderApiOptions = {
@@ -128,78 +140,6 @@ export type Provider = {
   anthropicCacheControl?: AnthropicCacheControlSettings
 }
 
-export const SystemProviderIdSchema = z.enum([
-  'cherryin',
-  'silicon',
-  'aihubmix',
-  'ocoolai',
-  'deepseek',
-  'ppio',
-  'alayanew',
-  'qiniu',
-  'dmxapi',
-  'burncloud',
-  'tokenflux',
-  '302ai',
-  'cephalon',
-  'lanyun',
-  'ph8',
-  'openrouter',
-  'ollama',
-  'ovms',
-  'new-api',
-  'lmstudio',
-  'anthropic',
-  'openai',
-  'azure-openai',
-  'gemini',
-  'vertexai',
-  'github',
-  'copilot',
-  'zhipu',
-  'yi',
-  'moonshot',
-  'baichuan',
-  'dashscope',
-  'stepfun',
-  'doubao',
-  'infini',
-  'minimax',
-  'groq',
-  'together',
-  'fireworks',
-  'nvidia',
-  'grok',
-  'hyperbolic',
-  'mistral',
-  'jina',
-  'perplexity',
-  'modelscope',
-  'xirang',
-  'hunyuan',
-  'tencent-cloud-ti',
-  'baidu-cloud',
-  'gpustack',
-  'voyageai',
-  'aws-bedrock',
-  'poe',
-  'aionly',
-  'longcat',
-  'huggingface',
-  'sophnet',
-  'gateway',
-  'cerebras',
-  'mimo',
-  'minimax-global',
-  'zai'
-])
-
-export type SystemProviderId = z.infer<typeof SystemProviderIdSchema>
-
-export const isSystemProviderId = (id: string): id is SystemProviderId => {
-  return SystemProviderIdSchema.safeParse(id).success
-}
-
 export const SystemProviderIds = {
   cherryin: 'cherryin',
   silicon: 'silicon',
@@ -264,7 +204,13 @@ export const SystemProviderIds = {
   mimo: 'mimo',
   'minimax-global': 'minimax-global',
   zai: 'zai'
-} as const satisfies Record<SystemProviderId, SystemProviderId>
+} as const
+
+export type SystemProviderId = keyof typeof SystemProviderIds
+
+export const isSystemProviderId = (id: string): id is SystemProviderId => {
+  return Object.hasOwn(SystemProviderIds, id)
+}
 
 type SystemProviderIdTypeMap = typeof SystemProviderIds
 

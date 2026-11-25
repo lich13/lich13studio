@@ -15,7 +15,7 @@ import {
   mobilePersistStorage,
   stripCredentials
 } from './services/mobile/credentials'
-import { mobileCommand, runtimeCapabilities } from './services/mobile/runtime'
+import { mobileCommand, runtimeCapabilities, toBinaryIpcPayload } from './services/mobile/runtime'
 import { attachmentMime, managedAttachmentId } from './utils/attachmentMime'
 
 type AnyRecord = Record<string, any>
@@ -54,7 +54,7 @@ const mockInvoke = async (command: string) => {
     return await buildBackupSnapshot()
   }
 
-  if (command === 'webdav_backup' || command === 'check_webdav_connection' || command === 'create_webdav_directory') {
+  if (command === 'webdav_backup') {
     return true
   }
 
@@ -451,12 +451,14 @@ const serializeIndexedDb = async (onProgress?: (progress: number) => void) => {
     const storeNames = Array.from(db.objectStoreNames)
 
     for (const storeName of storeNames) {
-      snapshot[storeName] = await new Promise((resolve, reject) => {
+      const rows = await new Promise<any[]>((resolve, reject) => {
         const transaction = db.transaction([storeName], 'readonly')
         const request = transaction.objectStore(storeName).getAll()
         request.onerror = () => reject(request.error || new Error(`Failed to read ${storeName}`))
         request.onsuccess = () => resolve(request.result || [])
       })
+      snapshot[storeName] =
+        storeName === 'settings' ? rows.filter((entry) => entry?.id !== 'backup:committed-restore-id') : rows
       onProgress?.((snapshot[storeName] ? Object.keys(snapshot).length : 0) / Math.max(storeNames.length, 1))
       await waitForNextFrame()
     }
@@ -508,7 +510,9 @@ const registerBlob = async (blob: Blob, fileName: string, explicitPath?: string)
   const id = (explicitPath && managedAttachmentId(explicitPath, ext)) || createId('file')
   let cacheKey = explicitPath || `memory://${id}/${fileName}`
   if (invoke && !explicitPath) {
-    const path = await invoke('persist_attachment', { name: `${id}${ext}`, bytes: Array.from(bytes) })
+    const path = await invoke('persist_attachment', toBinaryIpcPayload(bytes, runtimeCapabilities.android), {
+      headers: { 'x-file-name': encodeURIComponent(`${id}${ext}`) }
+    })
     if (typeof path === 'string') cacheKey = path
   }
   setCachedFileEntry(cacheKey, { fileName, ext, blob })
@@ -688,8 +692,10 @@ const downloadBlob = (fileName: string, blob: Blob) => {
 const saveBlob = async (fileName: string, blob: Blob) => {
   if (invoke) {
     try {
-      const bytes = Array.from(new Uint8Array(await blob.arrayBuffer()))
-      const savedPath = await invoke('save_file', { fileName, bytes })
+      const bytes = new Uint8Array(await blob.arrayBuffer())
+      const savedPath = await invoke('save_file', toBinaryIpcPayload(bytes, runtimeCapabilities.android), {
+        headers: { 'x-file-name': encodeURIComponent(fileName) }
+      })
       return typeof savedPath === 'string' ? savedPath.trim().length > 0 : Boolean(savedPath)
     } catch (error) {
       if (error instanceof Error && /cancel/i.test(error.message)) {
@@ -756,13 +762,6 @@ const pickFiles = async (multiple = true, filters?: Array<{ name: string; extens
 const computeCacheSizeBytes = () => {
   let bytes = 0
 
-  for (let index = 0; index < localStorage.length; index += 1) {
-    const key = localStorage.key(index)
-    if (!key) continue
-    const value = localStorage.getItem(key) || ''
-    bytes += (key.length + value.length) * 2
-  }
-
   fileCache.forEach((cached, key) => {
     bytes += key.length * 2
     bytes += cached.fileName.length * 2
@@ -802,7 +801,6 @@ const noOpAsync = async (...args: any[]) => {
 
 const api = {
   getAppInfo,
-  setAppDataPath: noOpAsync,
   notifyReduxStoreReady: noOpAsync,
   reload: async () => location.reload(),
   setLaunchOnBoot: async (enabled: boolean) => {
@@ -811,10 +809,6 @@ const api = {
     }
     return undefined
   },
-  setTestPlan: noOpAsync,
-  setTestChannel: noOpAsync,
-  setAutoUpdate: noOpAsync,
-  setUseSystemTitleBar: noOpAsync,
   setTheme: async (theme: string) => {
     const normalizedTheme = theme === 'light' || theme === 'dark' || theme === 'system' ? theme : 'system'
     localStorage.setItem(THEME_STORAGE_KEY, normalizedTheme)
@@ -999,7 +993,7 @@ const api = {
       if (!invoke) {
         throw new Error('Window capture is unavailable in preview mode')
       }
-      return invoke('capture_window', { windowId })
+      return toUint8Array(await invoke('capture_window', { windowId }))
     }
   },
   devTools: {
@@ -1133,12 +1127,6 @@ const api = {
       return invoke('get_obsidian_files', { vaultName })
     }
   },
-  pdf: {
-    extractText: async (data: Uint8Array | ArrayBuffer | string | URL) => {
-      const { extractPdfText } = await import('@shared/utils/pdf')
-      return extractPdfText(data)
-    }
-  },
   file: {
     select: async (options?: AnyRecord) =>
       pickFiles(Boolean(options?.properties?.includes?.('multiSelections')), options?.filters),
@@ -1214,7 +1202,6 @@ const api = {
       }
       return true
     },
-    showInFolder: async (path: string) => api.file.openPath(path),
     save: async (name: string, content: string | Uint8Array) => {
       const blob =
         typeof content === 'string' ? new Blob([content], { type: 'text/plain' }) : new Blob([toBlobPart(content)])
@@ -1324,7 +1311,7 @@ const api = {
         await waitForNextFrame()
         if (invoke && /\.(zip|lich13backup)$/i.test(cached.fileName)) {
           emitRestoreProgress({ stage: 'extracting', progress: 35, total: 100 })
-          const bytes = Array.from(await readBlobAsUint8Array(cached.blob))
+          const bytes = await readBlobAsUint8Array(cached.blob)
           if (cached.fileName.toLowerCase().endsWith('.lich13backup')) {
             const { decryptPortableBackup } = await import('./services/PortableBackupService')
             const restored = await decryptPortableBackup(bytes)
@@ -1332,11 +1319,23 @@ const api = {
             const result =
               typeof restored === 'string'
                 ? restored
-                : await invoke('restore_backup_archive', { fileName: cached.fileName, bytes: restored })
+                : await invoke(
+                    'restore_backup_archive',
+                    toBinaryIpcPayload(toUint8Array(restored), runtimeCapabilities.android),
+                    {
+                      headers: { 'x-file-name': encodeURIComponent(cached.fileName) }
+                    }
+                  )
             emitRestoreProgress({ stage: 'completed', progress: 100, total: 100 })
             return result
           }
-          const result = await invoke('restore_backup_archive', { fileName: cached.fileName, bytes })
+          const result = await invoke(
+            'restore_backup_archive',
+            toBinaryIpcPayload(bytes, runtimeCapabilities.android),
+            {
+              headers: { 'x-file-name': encodeURIComponent(cached.fileName) }
+            }
+          )
           emitRestoreProgress({ stage: 'completed', progress: 100, total: 100 })
           return result
         }
@@ -1413,18 +1412,6 @@ const api = {
         }))
         .sort((a, b) => new Date(b.modifiedTime || 0).getTime() - new Date(a.modifiedTime || 0).getTime())
     },
-    checkConnection: async (webdavConfig: AnyRecord) => {
-      if (invoke) {
-        return invoke('check_webdav_connection', { config: mapWebdavConfig(webdavConfig) })
-      }
-      return Boolean(webdavConfig?.webdavHost)
-    },
-    createDirectory: async (webdavConfig: AnyRecord, targetPath: string, options?: AnyRecord) => {
-      if (invoke) {
-        return invoke('create_webdav_directory', { config: mapWebdavConfig(webdavConfig), path: targetPath, options })
-      }
-      return true
-    },
     deleteWebdavFile: async (fileName: string, webdavConfig: AnyRecord) => {
       if (!invoke) return true
       const config = mapWebdavConfig(webdavConfig)
@@ -1490,12 +1477,6 @@ const api = {
     deleteLocalBackupFile: async (fileName: string, localBackupDir?: string) => {
       if (!invoke) return true
       return invoke('delete_local_backup_file', { fileName, localBackupDir: localBackupDir || null })
-    },
-    checkWebdavConnection: async (webdavConfig: AnyRecord) => {
-      if (invoke) {
-        return invoke('check_webdav_connection', { config: mapWebdavConfig(webdavConfig) })
-      }
-      return Boolean(webdavConfig?.webdavHost)
     }
   }
 }

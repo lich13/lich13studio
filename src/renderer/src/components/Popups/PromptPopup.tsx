@@ -105,7 +105,11 @@ export default class PromptPopup {
   }
   static show(props: PromptPopupShowParams) {
     return new Promise<string>((resolve) => {
-      TopView.show(<PromptPopupContainer {...props} resolve={resolve} />, 'PromptPopup')
+      const finish = (value: any) => {
+        resolve(value)
+        TopView.hide(TopViewKey)
+      }
+      TopView.show(<PromptPopupContainer {...props} resolve={finish} />, TopViewKey, () => finish(null))
     })
   }
 }

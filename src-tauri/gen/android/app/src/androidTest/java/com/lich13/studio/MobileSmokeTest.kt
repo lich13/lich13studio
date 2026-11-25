@@ -3,6 +3,7 @@ package com.lich13.studio
 import android.content.Intent
 import android.Manifest
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.view.accessibility.AccessibilityNodeInfo
 import android.accessibilityservice.AccessibilityServiceInfo
@@ -262,5 +263,40 @@ class MobileSmokeTest {
         js("window.__vaultCheck='pending';void window.__TAURI_INTERNALS__.invoke('mobile_command',{command:'readCredentials'}).then(r=>{const parsed=JSON.parse(r.value);window.__vaultCheck=Object.keys(parsed).length>0?'ok':'empty'},()=>window.__vaultCheck='error')")
         waitFor("credentials readable after cached relaunch") { js("window.__vaultCheck") == "ok" }
         js("delete window.__vaultCheck")
+
+        // Verify ccswitch://v1/import deep-link takeover, intent scrubbing, system Back cancel without deadlock, and Keystore import.
+        val cancelLink = Uri.Builder().scheme("ccswitch").authority("v1").appendPath("import")
+            .appendQueryParameter("resource", "provider")
+            .appendQueryParameter("app", "codex")
+            .appendQueryParameter("name", "CCS Cancel Test")
+            .appendQueryParameter("endpoint", "http://127.0.0.1:18765/v1")
+            .appendQueryParameter("apiKey", "ci-only-model-key")
+            .build().toString()
+        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(cancelLink), context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        waitFor("ccswitch cancel confirmation modal") { js("!!document.querySelector('input[name=importProviderName]')") == true }
+        val current = activity()
+        assertNull(current.intent.data)
+        assertEquals(false, js("document.body.innerText.includes('ci-only-model-key')"))
+        instrumentation.runOnMainSync { current.onBackPressedDispatcher.onBackPressed() }
+        waitFor("ccswitch modal dismissed by back button") { js("!document.querySelector('input[name=importProviderName]')") == true }
+
+        val confirmLink = Uri.Builder().scheme("ccswitch").authority("v1").appendPath("import")
+            .appendQueryParameter("resource", "provider")
+            .appendQueryParameter("app", "claude")
+            .appendQueryParameter("apiFormat", "openai_responses")
+            .appendQueryParameter("name", "CCS Imported Provider")
+            .appendQueryParameter("endpoint", "http://127.0.0.1:18765/primary,http://127.0.0.1:18765/backup")
+            .appendQueryParameter("apiKey", "ci-only-model-key")
+            .appendQueryParameter("model", "gpt-6-astra")
+            .build().toString()
+        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(confirmLink), context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        waitFor("ccswitch confirm modal after back") { js("!!document.querySelector('input[name=importProviderName]')") == true }
+        assertNull(activity().intent.data)
+        js("document.querySelector('.ant-modal-footer .ant-btn-primary').click()")
+        waitFor("ccswitch provider persisted with redacted key") {
+            js("$providers.some(p=>p.name==='CCS Imported Provider' && p.apiHost==='http://127.0.0.1:18765/primary/v1' && p.apiKey.startsWith('lich13-secret:'))") == true
+        }
+        assertEquals(false, js("JSON.stringify(localStorage).includes('ci-only-model-key')"))
+        assertFalse(vault.readText().contains("ci-only-model-key"))
     }
 }

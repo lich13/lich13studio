@@ -16,7 +16,7 @@ import { credentialStorageEnabled, mobilePersistStorage } from './mobile/credent
 import { runtimeCapabilities } from './mobile/runtime'
 import { NotificationService } from './NotificationService'
 import { type BackupOptions, exportPortableBackup } from './PortableBackupService'
-import { validatePortableBackup } from './portableBackupValidation'
+import { isNativeTauriRuntime, RESTORE_COMMITTED_SETTING_ID } from './restoreReconciliation'
 
 const logger = loggerService.withContext('BackupService')
 const ZOTERO_8_USER_AGENT = 'Zotero/8.0'
@@ -151,6 +151,12 @@ const normalizeBackupDatabase = async (backup: Record<string, any>) => {
     )
   }
 
+  if (Array.isArray(normalizedBackup.settings)) {
+    normalizedBackup.settings = normalizedBackup.settings.filter(
+      (entry: any) => entry?.id !== RESTORE_COMMITTED_SETTING_ID
+    )
+  }
+
   return normalizedBackup
 }
 
@@ -223,7 +229,7 @@ export async function restore() {
         channel: 'system'
       })
     } catch (error) {
-      if (archiveExtracted && !handedOffToHandleData && (window as any).__TAURI__) {
+      if (archiveExtracted && !handedOffToHandleData && isNativeTauriRuntime()) {
         await invoke('finish_backup_restore', { commit: false }).catch(() => {})
       }
       if (error instanceof Error && error.name === 'AbortError') return
@@ -471,7 +477,7 @@ export async function restoreFromWebdav(fileName?: string) {
     handedOffToHandleData = true
     await handleData(parsed)
   } catch (error) {
-    if (!handedOffToHandleData && (window as any).__TAURI__) {
+    if (!handedOffToHandleData && isNativeTauriRuntime()) {
       await invoke('finish_backup_restore', { commit: false }).catch(() => {})
     }
     logger.error('[Backup] Error downloading file from WebDAV:', error as Error)
@@ -768,7 +774,7 @@ export function stopAutoSync(type?: BackupType) {
 
 /************************************* Backup Utils ************************************** */
 export async function handleData(data: Record<string, any>) {
-  const native = Boolean((window as any).__TAURI__)
+  const native = isNativeTauriRuntime()
   const finishFiles = async (commit: boolean) => {
     if (native) await invoke('finish_backup_restore', { commit })
   }
@@ -783,6 +789,7 @@ export async function handleData(data: Record<string, any>) {
     else localStorage.setItem(LEGACY_PERSIST_KEY, value)
   }
   try {
+    const { validatePortableBackup } = await import('./portableBackupValidation')
     validatePortableBackup(
       data,
       db.tables.map((table) => table.name)
@@ -800,6 +807,7 @@ export async function handleData(data: Record<string, any>) {
     persistor.pause()
     paused = true
     await persistor.flush()
+    const pendingRestoreId = native ? await invoke<string | null>('get_pending_restore_id').catch(() => null) : null
     previousState = credentialStorageEnabled
       ? await mobilePersistStorage.getItem(LEGACY_PERSIST_KEY)
       : localStorage.getItem(LEGACY_PERSIST_KEY)
@@ -811,11 +819,22 @@ export async function handleData(data: Record<string, any>) {
         await upgradeToV7(tx)
       }
       if (data.version === 4) await upgradeToV8(tx)
+      if (pendingRestoreId) {
+        await db.settings.put({ id: RESTORE_COMMITTED_SETTING_ID, value: pendingRestoreId })
+      }
       // Keep the database transaction alive until Keystore/persistent state is committed.
       await Dexie.waitFor(writeState(restoredState))
       stateWritten = true
     })
-    await finishFiles(true).catch(() => logger.warn('Restored data is committed; staging cleanup remains pending'))
+    let stagingCleaned = false
+    await finishFiles(true)
+      .then(() => {
+        stagingCleaned = true
+      })
+      .catch(() => logger.warn('Restored data is committed; staging cleanup remains pending'))
+    if (stagingCleaned && pendingRestoreId) {
+      await db.settings.delete(RESTORE_COMMITTED_SETTING_ID).catch(() => {})
+    }
     window.toast.success(i18n.t('message.restore.success'))
     setTimeout(() => window.api.relaunchApp(), 1000)
   } catch (error) {
@@ -1011,7 +1030,7 @@ export async function restoreFromLocal(fileName: string) {
 
     return true
   } catch (error) {
-    if (archiveExtracted && !handedOffToHandleData && (window as any).__TAURI__) {
+    if (archiveExtracted && !handedOffToHandleData && isNativeTauriRuntime()) {
       await invoke('finish_backup_restore', { commit: false }).catch(() => {})
     }
     if (error instanceof Error && error.name === 'AbortError') {

@@ -2,14 +2,13 @@ import { loggerService } from '@logger'
 import { DEFAULT_CONTEXTCOUNT, MAX_CONTEXT_COUNT, UNLIMITED_CONTEXT_COUNT } from '@renderer/config/constant'
 import { getTopicById } from '@renderer/hooks/useTopic'
 import i18n from '@renderer/i18n'
-import { fetchMessagesSummary } from '@renderer/services/ApiService'
 import store from '@renderer/store'
-import { messageBlocksSelectors, removeManyBlocks } from '@renderer/store/messageBlock'
+import { removeManyBlocks } from '@renderer/store/messageBlock'
 import { selectMessagesForTopic } from '@renderer/store/newMessage'
 import type { Assistant, FileMetadata, Model, Topic, Usage } from '@renderer/types'
 import { FILE_TYPE } from '@renderer/types'
 import type { Message, MessageBlock } from '@renderer/types/newMessage'
-import { AssistantMessageStatus, MessageBlockStatus, MessageBlockType } from '@renderer/types/newMessage'
+import { AssistantMessageStatus, MessageBlockStatus } from '@renderer/types/newMessage'
 import { uuid } from '@renderer/utils'
 import {
   createAssistantMessage,
@@ -27,7 +26,6 @@ import type { NavigateFunction } from 'react-router'
 
 import { getAssistantById, getAssistantProvider, getDefaultModel } from './AssistantService'
 import { EVENT_NAMES, EventEmitter } from './EventService'
-import FileManager from './FileManager'
 
 const logger = loggerService.withContext('MessagesService')
 
@@ -50,37 +48,6 @@ export function getContextCount(assistant: Assistant, messages: Message[]) {
   return {
     current: contextMsgs.length,
     max: settingContextCount
-  }
-}
-
-/** @deprecated Use safeDeleteFiles instead */
-export async function deleteMessageFiles(message: Message) {
-  const state = store.getState()
-  const fileDataList: FileMetadata[] = []
-
-  message.blocks?.forEach((blockId) => {
-    const block = messageBlocksSelectors.selectById(state, blockId)
-    if (block && (block.type === MessageBlockType.IMAGE || block.type === MessageBlockType.FILE)) {
-      const fileData = (block as any).file as FileMetadata | undefined
-      if (fileData) {
-        fileDataList.push(fileData)
-      }
-    }
-  })
-
-  if (fileDataList.length > 0) {
-    await FileManager.deleteFiles(fileDataList)
-  }
-}
-
-// 删除列表中的文件
-export async function safeDeleteFiles(filesToDelete: FileMetadata[]): Promise<void> {
-  if (!filesToDelete || filesToDelete.length === 0) return
-
-  try {
-    await FileManager.deleteFiles(filesToDelete)
-  } catch (error) {
-    logger.error('Failed to delete files, may produce orphan files:', error as Error)
   }
 }
 
@@ -250,6 +217,7 @@ export async function getMessageTitle(message: Message, length = 30): Promise<st
         blocks: message.blocks
       })
 
+      const { fetchMessagesSummary } = await import('@renderer/services/ApiService')
       const titlePromise = fetchMessagesSummary({ messages: [tempMessage] })
       window.toast.loading({ title: t('chat.topics.export.wait_for_title_naming'), promise: titlePromise })
       const { text: title } = await titlePromise

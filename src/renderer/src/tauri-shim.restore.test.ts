@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   invoke: vi.fn(),
   decryptPortableBackup: vi.fn(),
   credentialStorageEnabled: false,
+  android: false,
   removePersistedCredentials: vi.fn(),
   extractPdfText: vi.fn(async () => 'Extracted PDF text')
 }))
@@ -33,10 +34,18 @@ vi.mock('./services/mobile/credentials', () => ({
   mobilePersistStorage: { removeItem: mocks.removePersistedCredentials, getItem: vi.fn(), setItem: vi.fn() },
   stripCredentials: (value: unknown) => value
 }))
-vi.mock('./services/mobile/runtime', () => ({
-  mobileCommand: vi.fn(),
-  runtimeCapabilities: { android: false }
-}))
+vi.mock('./services/mobile/runtime', async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>()
+  return {
+    ...actual,
+    mobileCommand: vi.fn(),
+    runtimeCapabilities: {
+      get android() {
+        return mocks.android
+      }
+    }
+  }
+})
 vi.mock('./utils/attachmentMime', () => ({
   attachmentMime: (_name: string, mime: string) => mime || 'application/octet-stream',
   managedAttachmentId: () => undefined
@@ -47,6 +56,7 @@ describe('Tauri portable backup restore', () => {
   beforeEach(async () => {
     vi.resetModules()
     mocks.credentialStorageEnabled = false
+    mocks.android = false
     mocks.removePersistedCredentials.mockReset().mockResolvedValue(undefined)
     mocks.invoke.mockReset().mockResolvedValue(undefined)
     mocks.decryptPortableBackup.mockReset().mockRejectedValue(new Error('fixture authentication failed'))
@@ -102,8 +112,8 @@ describe('Tauri portable backup restore', () => {
 
     await expect((window as any).api.backup.restore(filePath)).rejects.toThrow('fixture authentication failed')
 
-    expect(mocks.decryptPortableBackup).toHaveBeenCalledWith([1, 2, 3])
-    expect(mocks.invoke).not.toHaveBeenCalledWith('restore_backup_archive', expect.anything())
+    expect(mocks.decryptPortableBackup).toHaveBeenCalledWith(new Uint8Array([1, 2, 3]))
+    expect(mocks.invoke).not.toHaveBeenCalledWith('restore_backup_archive', expect.anything(), expect.anything())
     expect(localStorage.length).toBe(Object.keys(storageBefore).length)
     for (const [key, value] of Object.entries(storageBefore)) expect(localStorage.getItem(key)).toBe(value)
     expect((indexedDB as any).open).not.toHaveBeenCalled()
@@ -159,7 +169,20 @@ describe('Tauri portable backup restore', () => {
     await expect((window as any).api.file.save('cancelled.md', '# hello')).resolves.toBe(false)
 
     mocks.invoke.mockResolvedValueOnce('/tmp/saved.md')
-    await expect((window as any).api.file.save('saved.md', '# hello')).resolves.toBe(true)
+    await expect((window as any).api.file.save('中文备份.md', '# hello')).resolves.toBe(true)
+    expect(mocks.invoke).toHaveBeenLastCalledWith('save_file', expect.any(Uint8Array), {
+      headers: { 'x-file-name': encodeURIComponent('中文备份.md') }
+    })
+
+    // On Android, postMessage IPC does not support InvokeBody::Raw, so binary payloads wrap base64 JSON.
+    mocks.android = true
+    mocks.invoke.mockResolvedValueOnce('content://saved.md')
+    await expect((window as any).api.file.save('安卓备份.md', new TextEncoder().encode('# hello'))).resolves.toBe(true)
+    expect(mocks.invoke).toHaveBeenLastCalledWith(
+      'save_file',
+      { base64: btoa('# hello') },
+      { headers: { 'x-file-name': encodeURIComponent('安卓备份.md') } }
+    )
   })
 
   it('purges stale tauri:app-data-path shadow state and reclaims attachments/cache on resetData', async () => {
@@ -180,9 +203,6 @@ describe('Tauri portable backup restore', () => {
     localStorage.setItem('tauri:app-data-path', '/injected/override')
     const resolvedInfo = await (window as any).api.getAppInfo()
     expect(resolvedInfo).toEqual(nativeAppInfo)
-
-    await (window as any).api.setAppDataPath('/ignored/override')
-    expect(localStorage.getItem('tauri:app-data-path')).toBe('/injected/override')
 
     await (window as any).api.file.write('memory://reset/attachment.bin', new Uint8Array(4096))
     expect(await (window as any).api.getCacheSize()).not.toBe('0 B')
@@ -206,14 +226,47 @@ describe('Tauri portable backup restore', () => {
     expect(reloadSpy).toHaveBeenCalledTimes(2)
   })
 
-  it('extracts PDF text lazily via api.pdf.extractText and api.file.read(..., true)', async () => {
+  it('extracts PDF text lazily via api.file.read(..., true)', async () => {
     mocks.extractPdfText.mockClear()
-    const base64Pdf = btoa('%PDF-1.4 test')
-    await expect((window as any).api.pdf.extractText(base64Pdf)).resolves.toBe('Extracted PDF text')
-    expect(mocks.extractPdfText).toHaveBeenCalledWith(base64Pdf)
-
     await (window as any).api.file.write('memory://pdf/doc.pdf', new TextEncoder().encode('%PDF-1.4 bytes'))
     await expect((window as any).api.file.read('memory://pdf/doc.pdf', true)).resolves.toBe('Extracted PDF text')
-    expect(mocks.extractPdfText).toHaveBeenCalledTimes(2)
+    expect(mocks.extractPdfText).toHaveBeenCalledTimes(1)
+  })
+
+  it('excludes transient backup:committed-restore-id marker when exporting portable backup snapshots', async () => {
+    ;(indexedDB as any).open = vi.fn(() => {
+      const req: any = { onerror: null, onupgradeneeded: null, onsuccess: null, result: null }
+      queueMicrotask(() => {
+        req.result = {
+          objectStoreNames: ['settings', 'topics'],
+          transaction: (names: string[]) => ({
+            objectStore: () => ({
+              getAll: () => {
+                const getAllReq: any = { onerror: null, onsuccess: null, result: [] }
+                queueMicrotask(() => {
+                  getAllReq.result =
+                    names[0] === 'settings'
+                      ? [
+                          { id: 'theme-pref', value: 'dark' },
+                          { id: 'backup:committed-restore-id', value: 'restore-previous-transient' }
+                        ]
+                      : [{ id: 'topic-1', messages: [] }]
+                  getAllReq.onsuccess?.()
+                })
+                return getAllReq
+              }
+            })
+          }),
+          close: vi.fn()
+        }
+        req.onsuccess?.()
+      })
+      return req
+    })
+
+    const { buildBackupSnapshot } = await import('./tauri-shim')
+    const snapshot = await buildBackupSnapshot(false)
+    expect(snapshot.indexedDB.settings).toEqual([{ id: 'theme-pref', value: 'dark' }])
+    expect(snapshot.indexedDB.topics).toEqual([{ id: 'topic-1', messages: [] }])
   })
 })

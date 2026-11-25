@@ -1,16 +1,11 @@
 import { DeleteOutlined, ExclamationCircleOutlined, ReloadOutlined } from '@ant-design/icons'
 import { restoreFromLocal } from '@renderer/services/BackupService'
+import type { BackupFile } from '@renderer/types'
 import { formatFileSize } from '@renderer/utils'
 import { Button, message, Modal, Space, Table, Tooltip } from 'antd'
 import dayjs from 'dayjs'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-
-interface BackupFile {
-  fileName: string
-  modifiedTime: string
-  size: number
-}
 
 interface LocalBackupManagerProps {
   visible: boolean

@@ -1,5 +1,6 @@
 import { getRestoreProgressLabel } from '@renderer/i18n/label'
 import { restore } from '@renderer/services/BackupService'
+import type { ProgressData } from '@renderer/types'
 import { Modal, Progress } from 'antd'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -8,12 +9,6 @@ import { TopView } from '../TopView'
 
 interface Props {
   resolve: (data: any) => void
-}
-
-interface ProgressData {
-  stage: string
-  progress: number
-  total: number
 }
 
 const PopupContainer: React.FC<Props> = ({ resolve }) => {
@@ -90,15 +85,11 @@ export default class RestorePopup {
   }
   static show() {
     return new Promise<any>((resolve) => {
-      TopView.show(
-        <PopupContainer
-          resolve={(v) => {
-            resolve(v)
-            TopView.hide(TopViewKey)
-          }}
-        />,
-        TopViewKey
-      )
+      const finish = (v: any = {}) => {
+        resolve(v)
+        TopView.hide(TopViewKey)
+      }
+      TopView.show(<PopupContainer resolve={finish} />, TopViewKey, () => finish({}))
     })
   }
 }

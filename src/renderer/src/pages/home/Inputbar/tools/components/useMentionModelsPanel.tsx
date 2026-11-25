@@ -3,14 +3,12 @@ import ModelTagsWithLabel from '@renderer/components/ModelTagsWithLabel'
 import type { QuickPanelListItem } from '@renderer/components/QuickPanel'
 import { QuickPanelReservedSymbol } from '@renderer/components/QuickPanel'
 import { isEmbeddingModel, isRerankModel, isVisionModel } from '@renderer/config/models'
-import db from '@renderer/databases'
 import { useProviders } from '@renderer/hooks/useProvider'
 import type { ToolQuickPanelApi, ToolQuickPanelController } from '@renderer/pages/home/Inputbar/types'
 import { getModelUniqId } from '@renderer/services/ModelService'
 import type { FileMetadata, Model } from '@renderer/types'
 import { FILE_TYPE } from '@renderer/types'
 import { getFancyProviderName } from '@renderer/utils'
-import { useLiveQuery } from 'dexie-react-hooks'
 import sortBy from 'lodash/sortBy'
 import { AtSign, CircleX, Plus } from 'lucide-react'
 import type React from 'react'
@@ -117,50 +115,14 @@ export const useMentionModelsPanel = (params: Params, role: 'button' | 'manager'
     setMentionedModels([])
   }, [setMentionedModels])
 
-  const pinnedModels = useLiveQuery(
-    async () => {
-      const setting = await db.settings.get('pinned:models')
-      return setting?.value || []
-    },
-    [],
-    []
-  )
-
   const modelItems = useMemo(() => {
     const items: QuickPanelListItem[] = []
-
-    if (pinnedModels.length > 0) {
-      const pinnedItems = providers.flatMap((provider) =>
-        provider.models
-          .filter((model) => !isEmbeddingModel(model) && !isRerankModel(model))
-          .filter((model) => pinnedModels.includes(getModelUniqId(model)))
-          .filter((model) => couldMentionNotVisionModel || (!couldMentionNotVisionModel && isVisionModel(model)))
-          .map((model) => ({
-            label: (
-              <>
-                <ProviderName>{getFancyProviderName(provider)}</ProviderName>
-                <span style={{ opacity: 0.8 }}> | {model.name}</span>
-              </>
-            ),
-            description: <ModelTagsWithLabel model={model} showLabel={false} size={10} style={{ opacity: 0.8 }} />,
-            icon: <ModelAvatar model={model} size={20} />,
-            filterText: getFancyProviderName(provider) + model.name,
-            action: () => onMentionModel(model),
-            isSelected: mentionedModels.some((selected) => getModelUniqId(selected) === getModelUniqId(model))
-          }))
-      )
-
-      if (pinnedItems.length > 0) {
-        items.push(...sortBy(pinnedItems, ['label']))
-      }
-    }
 
     providers.forEach((provider) => {
       const providerModels = sortBy(
         provider.models
           .filter((model) => !isEmbeddingModel(model) && !isRerankModel(model))
-          .filter((model) => !pinnedModels.includes(getModelUniqId(model)))
-          .filter((model) => couldMentionNotVisionModel || (!couldMentionNotVisionModel && isVisionModel(model))),
+          .filter((model) => couldMentionNotVisionModel || isVisionModel(model)),
         ['group', 'name']
       )
 
@@ -218,7 +180,6 @@ export const useMentionModelsPanel = (params: Params, role: 'button' | 'manager'
     navigate,
     onClearMentionModels,
     onMentionModel,
-    pinnedModels,
     providers,
     removeAtSymbolAndText,
     setText,

@@ -1,6 +1,19 @@
+import { dbService } from '@renderer/services/db'
+import {
+  applyFileCountDeltasInTx,
+  collectBlockFileDecrements,
+  purgeDetachedAttachments
+} from '@renderer/services/db/DexieMessageDataSource'
 import { BlockManager } from '@renderer/services/messageStreaming/BlockManager'
-import messageBlocksReducer, { upsertOneBlock } from '@renderer/store/messageBlock'
-import { MessageBlockStatus, MessageBlockType } from '@renderer/types/newMessage'
+import messageBlocksReducer, { upsertManyBlocks, upsertOneBlock } from '@renderer/store/messageBlock'
+import messagesReducer, { newMessagesActions } from '@renderer/store/newMessage'
+import {
+  cleanupMultipleBlocks,
+  collectTopicBlockIdsToEvict,
+  evictInactiveTopicsFromRedux,
+  loadTopicMessagesThunk
+} from '@renderer/store/thunk/messageThunk'
+import { AssistantMessageStatus, MessageBlockStatus, MessageBlockType } from '@renderer/types/newMessage'
 import { getTopicFulfilledActiveTopicId, shouldMarkTopicFulfilled } from '@renderer/utils/topicStatus'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -125,5 +138,260 @@ describe('message thunk topic fulfilled state & streaming block flush invariants
       content: 'hello world!',
       citations: [{ citationBlockId: 'cit-1' }]
     })
+  })
+
+  it('isolates currentTopicId during background/preview loads unless activate: true is specified', async () => {
+    const fetchSpy = vi.spyOn(dbService, 'fetchMessages').mockResolvedValue({
+      messages: [
+        {
+          id: 'msg-preview',
+          role: 'assistant',
+          assistantId: 'ast-1',
+          topicId: 'topic-preview',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          status: AssistantMessageStatus.SUCCESS,
+          blocks: ['blk-preview']
+        } as any
+      ],
+      blocks: [
+        {
+          id: 'blk-preview',
+          messageId: 'msg-preview',
+          type: MessageBlockType.MAIN_TEXT,
+          content: 'preview text',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          status: MessageBlockStatus.SUCCESS
+        } as any
+      ]
+    })
+
+    let messagesState = messagesReducer(undefined, newMessagesActions.setCurrentTopicId('topic-active'))
+    let messageBlocksState = messageBlocksReducer(undefined, { type: '@@INIT' })
+    const getState = () => ({ messages: messagesState, messageBlocks: messageBlocksState }) as any
+    const dispatch = vi.fn((action: any) => {
+      if (typeof action === 'function') {
+        return action(dispatch, getState)
+      }
+      if (typeof action?.type === 'string') {
+        if (action.type.startsWith('newMessages/')) {
+          messagesState = messagesReducer(messagesState, action)
+        } else if (action.type.startsWith('messageBlocks/')) {
+          messageBlocksState = messageBlocksReducer(messageBlocksState, action)
+        }
+      }
+      return action
+    })
+
+    await loadTopicMessagesThunk('topic-preview', true)(dispatch as any, getState)
+    expect(messagesState.currentTopicId).toBe('topic-active')
+    expect(messagesState.messageIdsByTopic['topic-preview']).toEqual(['msg-preview'])
+
+    await loadTopicMessagesThunk('topic-preview', false, { activate: true })(dispatch as any, getState)
+    expect(messagesState.currentTopicId).toBe('topic-preview')
+
+    fetchSpy.mockRestore()
+  })
+
+  it('evicts oldest inactive topics and their blocks while protecting current, preview, and streaming topics', () => {
+    let messagesState = messagesReducer(undefined, newMessagesActions.setCurrentTopicId('topic-current'))
+    messagesState = messagesReducer(messagesState, newMessagesActions.setPreviewTopicId('topic-preview'))
+    let messageBlocksState = messageBlocksReducer(undefined, { type: '@@INIT' })
+
+    const seedTopic = (topicId: string, status: AssistantMessageStatus = AssistantMessageStatus.SUCCESS) => {
+      const msgId = `msg-${topicId}`
+      const blkId = `blk-${topicId}`
+      messageBlocksState = messageBlocksReducer(
+        messageBlocksState,
+        upsertManyBlocks([
+          {
+            id: blkId,
+            messageId: msgId,
+            type: MessageBlockType.MAIN_TEXT,
+            content: topicId,
+            createdAt: '2026-01-01T00:00:00.000Z',
+            status: MessageBlockStatus.SUCCESS
+          } as any
+        ])
+      )
+      messagesState = messagesReducer(
+        messagesState,
+        newMessagesActions.messagesReceived({
+          topicId,
+          messages: [
+            {
+              id: msgId,
+              role: 'assistant',
+              assistantId: 'ast-1',
+              topicId,
+              createdAt: '2026-01-01T00:00:00.000Z',
+              status,
+              blocks: [blkId]
+            } as any
+          ]
+        })
+      )
+    }
+
+    seedTopic('topic-oldest-1')
+    seedTopic('topic-streaming', AssistantMessageStatus.PROCESSING)
+    seedTopic('topic-oldest-2')
+    seedTopic('topic-current')
+    seedTopic('topic-preview')
+    seedTopic('topic-recent')
+
+    const getState = () => ({ messages: messagesState, messageBlocks: messageBlocksState }) as any
+    const dispatch = vi.fn((action: any) => {
+      if (typeof action?.type === 'string') {
+        if (action.type.startsWith('newMessages/')) {
+          messagesState = messagesReducer(messagesState, action)
+        } else if (action.type.startsWith('messageBlocks/')) {
+          messageBlocksState = messageBlocksReducer(messageBlocksState, action)
+        }
+      }
+      return action
+    })
+
+    const evicted = evictInactiveTopicsFromRedux(dispatch as any, getState, 4)
+    expect(evicted).toEqual(['topic-oldest-1', 'topic-oldest-2'])
+    expect(messagesState.messageIdsByTopic['topic-oldest-1']).toBeUndefined()
+    expect(messageBlocksState.entities['blk-topic-oldest-1']).toBeUndefined()
+    expect(messagesState.messageIdsByTopic['topic-streaming']).toEqual(['msg-topic-streaming'])
+    expect(messagesState.messageIdsByTopic['topic-current']).toEqual(['msg-topic-current'])
+    expect(messagesState.messageIdsByTopic['topic-preview']).toEqual(['msg-topic-preview'])
+    expect(messagesState.messageIdsByTopic['topic-recent']).toEqual(['msg-topic-recent'])
+  })
+
+  it('aggregates duplicate file block decrements atomically before deleting detached files after tx commit', async () => {
+    const blocks = [
+      { id: 'b1', type: 'image', file: { id: 'f-dup' } },
+      { id: 'b2', type: 'file', file: { id: 'f-dup' } },
+      { id: 'b3', type: 'file', file: { id: 'f-keep' } }
+    ] as any
+    const deltas = collectBlockFileDecrements(blocks)
+    expect(deltas.get('f-dup')).toEqual({ delta: -2, deleteIfZero: true })
+    expect(deltas.get('f-keep')).toEqual({ delta: -1, deleteIfZero: true })
+
+    const records = new Map<string, any>([
+      ['f-dup', { id: 'f-dup', ext: '.png', count: 2 }],
+      ['f-keep', { id: 'f-keep', ext: '.pdf', count: 3 }]
+    ])
+    const fakeFilesTable = {
+      bulkGet: vi.fn(async (ids: string[]) => ids.map((id) => records.get(id))),
+      update: vi.fn(async (id: string, changes: { count: number }) => {
+        const rec = records.get(id)
+        if (rec) rec.count = changes.count
+        return 1
+      }),
+      bulkDelete: vi.fn(async (ids: string[]) => {
+        ids.forEach((id) => records.delete(id))
+      })
+    } as any
+
+    const detached = await applyFileCountDeltasInTx(fakeFilesTable, deltas)
+    expect(detached).toEqual(['f-dup.png'])
+    expect(records.has('f-dup')).toBe(false)
+    expect(records.get('f-keep')?.count).toBe(2)
+
+    const deleteFileMock = vi.fn(async () => true)
+    const prevWindow = (globalThis as any).window
+    ;(globalThis as any).window = { api: { file: { delete: deleteFileMock } } }
+    try {
+      await purgeDetachedAttachments(detached)
+      expect(deleteFileMock).toHaveBeenCalledTimes(1)
+      expect(deleteFileMock).toHaveBeenCalledWith('f-dup.png')
+    } finally {
+      ;(globalThis as any).window = prevWindow
+    }
+  })
+
+  it('self-heals legacy under-counted db.files.count instead of deleting attachments still referenced by surviving blocks', async () => {
+    // Legacy <= v0.1.42 state: 3 blocks reference f-legacy, but db.files.count is only 1
+    const allBlocks = new Map<string, any>([
+      ['b-del', { id: 'b-del', type: 'file', file: { id: 'f-legacy' } }],
+      ['b-survive-1', { id: 'b-survive-1', type: 'file', file: { id: 'f-legacy' } }],
+      ['b-survive-2', { id: 'b-survive-2', type: 'image', file: { id: 'f-legacy' } }],
+      ['b-survive-video', { id: 'b-survive-video', type: 'video', file: { id: 'f-legacy' } }]
+    ])
+    const records = new Map<string, any>([['f-legacy', { id: 'f-legacy', ext: '.pdf', count: 1 }]])
+    const fakeFilesTable = {
+      bulkGet: vi.fn(async (ids: string[]) => ids.map((id) => records.get(id))),
+      update: vi.fn(async (id: string, changes: { count: number }) => {
+        const rec = records.get(id)
+        if (rec) rec.count = changes.count
+        return 1
+      }),
+      bulkDelete: vi.fn(async (ids: string[]) => {
+        ids.forEach((id) => records.delete(id))
+      })
+    } as any
+    const fakeMessageBlocksTable = {
+      where: vi.fn((indexName: string) => {
+        expect(indexName).toBe('file.id')
+        return {
+          anyOf: (targetFileIds: string[]) => ({
+            toArray: async () => Array.from(allBlocks.values()).filter((blk) => targetFileIds.includes(blk.file?.id))
+          })
+        }
+      })
+    } as any
+
+    // Step 1: Delete b-del -> nextCount hits 0, but 3 surviving blocks (including video) remain -> self-heal count to 3!
+    const firstDeltas = collectBlockFileDecrements([allBlocks.get('b-del')])
+    const detached1 = await applyFileCountDeltasInTx(fakeFilesTable, firstDeltas, {
+      messageBlocksTable: fakeMessageBlocksTable,
+      excludingBlockIds: ['b-del']
+    })
+    allBlocks.delete('b-del')
+
+    expect(detached1).toEqual([])
+    expect(fakeFilesTable.bulkDelete).not.toHaveBeenCalled()
+    expect(records.get('f-legacy')?.count).toBe(3)
+
+    // Step 2: Delete b-survive-1 and b-survive-2 while b-survive-video still exists -> self-heal to 1, still no deletion!
+    records.get('f-legacy')!.count = 2
+    const secondDeltas = collectBlockFileDecrements([allBlocks.get('b-survive-1'), allBlocks.get('b-survive-2')])
+    const detachedMid = await applyFileCountDeltasInTx(fakeFilesTable, secondDeltas, {
+      messageBlocksTable: fakeMessageBlocksTable,
+      excludingBlockIds: ['b-survive-1', 'b-survive-2']
+    })
+    allBlocks.delete('b-survive-1')
+    allBlocks.delete('b-survive-2')
+    expect(detachedMid).toEqual([])
+    expect(records.get('f-legacy')?.count).toBe(1)
+
+    // Step 3: Once b-survive-video is also removed, decrementing to 0 deletes record & purges!
+    allBlocks.clear()
+    const detached2 = await applyFileCountDeltasInTx(
+      fakeFilesTable,
+      new Map([['f-legacy', { delta: -1, deleteIfZero: true }]]),
+      {
+        messageBlocksTable: fakeMessageBlocksTable
+      }
+    )
+
+    expect(detached2).toEqual(['f-legacy.pdf'])
+    expect(records.has('f-legacy')).toBe(false)
+  })
+
+  it('keeps cleanupMultipleBlocks pure to Redux without double-decrementing DB files, and evicts orphan blocks matching messageId', () => {
+    const dispatched: any[] = []
+    cleanupMultipleBlocks((action: any) => dispatched.push(action), ['b1', 'b2'])
+    expect(dispatched).toEqual([{ type: 'messageBlocks/removeManyBlocks', payload: ['b1', 'b2'] }])
+
+    const state = {
+      messages: {
+        entities: {
+          'msg-1': { id: 'msg-1', blocks: ['blk-listed'] }
+        }
+      },
+      messageBlocks: {
+        entities: {
+          'blk-listed': { id: 'blk-listed', messageId: 'msg-1' },
+          'blk-orphan': { id: 'blk-orphan', messageId: 'msg-1' },
+          'blk-other': { id: 'blk-other', messageId: 'msg-2' }
+        }
+      }
+    } as any
+    expect(collectTopicBlockIdsToEvict(state, ['msg-1']).sort()).toEqual(['blk-listed', 'blk-orphan'])
   })
 })

@@ -4,8 +4,8 @@ import { ContentSearch } from '@renderer/components/ContentSearch'
 import { HStack } from '@renderer/components/Layout'
 import MultiSelectActionPopup from '@renderer/components/Popups/MultiSelectionPopup'
 import PromptPopup from '@renderer/components/Popups/PromptPopup'
-import { SelectChatModelPopup } from '@renderer/components/Popups/SelectModelPopup'
 import { QuickPanelProvider } from '@renderer/components/QuickPanel'
+import { TopView } from '@renderer/components/TopView'
 import { isEmbeddingModel, isRerankModel } from '@renderer/config/models'
 import { useAssistant } from '@renderer/hooks/useAssistant'
 import { useChatContext } from '@renderer/hooks/useChatContext'
@@ -56,8 +56,10 @@ const Chat: FC<Props> = (props) => {
 
   const { setTimeoutTimer } = useTimer()
 
-  useHotkeys('esc', () => {
-    contentSearchRef.current?.disable()
+  useHotkeys('esc', (event) => {
+    if (!TopView.hasOpenOverlay() && contentSearchRef.current?.disable()) {
+      event.preventDefault()
+    }
   })
 
   useShortcut('search_message_in_chat', () => {
@@ -89,6 +91,7 @@ const Chat: FC<Props> = (props) => {
 
   useShortcut('select_model', async () => {
     const modelFilter = (m: Model) => !isEmbeddingModel(m) && !isRerankModel(m)
+    const { SelectChatModelPopup } = await import('@renderer/components/Popups/SelectModelPopup')
     const selectedModel = await SelectChatModelPopup.show({
       model: assistant?.model,
       filter: modelFilter
@@ -178,7 +181,7 @@ const Chat: FC<Props> = (props) => {
     <Container id="chat" className={classNames([messageStyle, { 'multi-select-mode': isMultiSelectMode }])}>
       <HStack>
         <motion.div
-          layout
+          layout={!runtimeCapabilities.android}
           transition={{ duration: 0.3, ease: 'easeInOut' }}
           style={{ flex: 1, display: 'flex', minWidth: 0, overflow: 'hidden' }}>
           <Main

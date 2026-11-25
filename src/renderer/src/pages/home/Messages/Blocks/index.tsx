@@ -1,13 +1,12 @@
 import { loggerService } from '@logger'
 import { ErrorBoundary } from '@renderer/components/ErrorBoundary'
 import type { RootState } from '@renderer/store'
-import { messageBlocksSelectors } from '@renderer/store/messageBlock'
 import type { ImageMessageBlock, Message, MessageBlock } from '@renderer/types/newMessage'
 import { MessageBlockStatus, MessageBlockType } from '@renderer/types/newMessage'
 import { isMainTextBlock, isMessageProcessing, isToolBlock, isVideoBlock } from '@renderer/utils/messageUtils/is'
 import { AnimatePresence, motion, type Variants } from 'motion/react'
-import React, { useMemo } from 'react'
-import { useSelector } from 'react-redux'
+import React, { Suspense, useMemo } from 'react'
+import { shallowEqual, useSelector } from 'react-redux'
 import styled from 'styled-components'
 
 import BlockErrorFallback from './BlockErrorFallback'
@@ -19,10 +18,11 @@ import ImageBlock from './ImageBlock'
 import MainTextBlock from './MainTextBlock'
 import PlaceholderBlock from './PlaceholderBlock'
 import ThinkingBlock from './ThinkingBlock'
-import ToolBlock from './ToolBlock'
-import ToolBlockGroup from './ToolBlockGroup'
 import TranslationBlock from './TranslationBlock'
 import VideoBlock from './VideoBlock'
+
+const ToolBlock = React.lazy(() => import('./ToolBlock'))
+const ToolBlockGroup = React.lazy(() => import('./ToolBlockGroup'))
 
 const logger = loggerService.withContext('MessageBlockRenderer')
 
@@ -113,10 +113,13 @@ const groupSimilarBlocks = (blocks: MessageBlock[]): (MessageBlock[] | MessageBl
 }
 
 const MessageBlockRenderer: React.FC<Props> = ({ blocks, message }) => {
-  // 始终调用useSelector，避免条件调用Hook
-  const blockEntities = useSelector((state: RootState) => messageBlocksSelectors.selectEntities(state))
-  // 根据blocks类型处理渲染数据
-  const renderedBlocks = blocks.map((blockId) => blockEntities[blockId]).filter(Boolean)
+  const renderedBlocks = useSelector(
+    (state: RootState) =>
+      blocks
+        .map((blockId) => state.messageBlocks.entities[blockId])
+        .filter((block): block is MessageBlock => Boolean(block)),
+    shallowEqual
+  )
   const groupedBlocks = useMemo(() => groupSimilarBlocks(renderedBlocks), [renderedBlocks])
 
   // Check if message is still processing
@@ -168,7 +171,9 @@ const MessageBlockRenderer: React.FC<Props> = ({ blocks, message }) => {
               }
               return (
                 <AnimatedBlockWrapper key={groupKey} enableAnimation={message.status.includes('ing')}>
-                  <ToolBlock key={block[0].id} block={block[0]} />
+                  <Suspense fallback={null}>
+                    <ToolBlock key={block[0].id} block={block[0]} />
+                  </Suspense>
                 </AnimatedBlockWrapper>
               )
             }
@@ -178,7 +183,9 @@ const MessageBlockRenderer: React.FC<Props> = ({ blocks, message }) => {
             const stableGroupKey = `tool-group-${toolBlocks[0].id}`
             return (
               <AnimatedBlockWrapper key={stableGroupKey} enableAnimation={message.status.includes('ing')}>
-                <ToolBlockGroup blocks={toolBlocks} />
+                <Suspense fallback={null}>
+                  <ToolBlockGroup blocks={toolBlocks} />
+                </Suspense>
               </AnimatedBlockWrapper>
             )
           }
@@ -218,7 +225,11 @@ const MessageBlockRenderer: React.FC<Props> = ({ blocks, message }) => {
             blockComponent = <FileBlock key={block.id} block={block} />
             break
           case MessageBlockType.TOOL:
-            blockComponent = <ToolBlock key={block.id} block={block} />
+            blockComponent = (
+              <Suspense fallback={null}>
+                <ToolBlock key={block.id} block={block} />
+              </Suspense>
+            )
             break
           case MessageBlockType.CITATION:
             blockComponent = <CitationBlock key={block.id} block={block} />

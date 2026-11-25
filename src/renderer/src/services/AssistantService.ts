@@ -12,80 +12,26 @@ import { UNKNOWN } from '@renderer/config/translate'
 import { getStoreProviders } from '@renderer/hooks/useStore'
 import i18n from '@renderer/i18n'
 import store from '@renderer/store'
-import { addAssistant } from '@renderer/store/assistants'
+import {
+  addAssistant,
+  DEFAULT_ASSISTANT_SETTINGS,
+  getDefaultAssistant,
+  getDefaultTopic
+} from '@renderer/store/assistants'
 import type {
   Assistant,
   AssistantPreset,
   AssistantSettings,
   Model,
   Provider,
-  Topic,
   TranslateAssistant,
   TranslateLanguage
 } from '@renderer/types'
 import { v4 as uuid } from 'uuid'
 
+export { DEFAULT_ASSISTANT_SETTINGS, getDefaultAssistant, getDefaultTopic }
+
 const logger = loggerService.withContext('AssistantService')
-
-/**
- * Default assistant settings configuration template.
- *
- * **Important**: This defines the DEFAULT VALUES for assistant settings, NOT the current settings
- * of the default assistant. To get the actual settings of the default assistant, use `getDefaultAssistantSettings()`.
- *
- * Provides sensible defaults for all assistant settings with a focus on minimal parameter usage:
- * - **Temperature disabled**: Use provider defaults by default
- * - **MaxTokens disabled**: Use provider defaults by default
- * - **TopP disabled**: Use provider defaults by default
- * - **Streaming enabled**: Provides real-time response for better UX
- * - **Standard context count**: Balanced memory usage and conversation length
- */
-export const DEFAULT_ASSISTANT_SETTINGS = {
-  maxTokens: DEFAULT_MAX_TOKENS,
-  enableMaxTokens: false,
-  temperature: DEFAULT_TEMPERATURE,
-  enableTemperature: false,
-  topP: 1,
-  enableTopP: false,
-  contextCount: DEFAULT_CONTEXTCOUNT,
-  defaultModel: undefined,
-  customParameters: [],
-  reasoning_effort: 'max',
-  reasoning_effort_cache: undefined,
-  qwenThinkMode: undefined,
-  // It would gracefully fallback to prompt if not supported by model.
-  toolUseMode: 'function',
-  maxToolCalls: 20,
-  enableMaxToolCalls: true
-} as const satisfies AssistantSettings
-
-/**
- * Creates a temporary default assistant instance.
- *
- * **Important**: This creates a NEW temporary assistant instance with DEFAULT_ASSISTANT_SETTINGS,
- * NOT the actual default assistant from Redux store. This is used as a template for creating
- * new assistants or as a fallback when no assistant is specified.
- *
- * To get the actual default assistant from Redux store (with current user settings), use:
- * ```typescript
- * const defaultAssistant = store.getState().assistants.defaultAssistant
- * ```
- *
- * @returns New temporary assistant instance with default settings
- */
-export function getDefaultAssistant(): Assistant {
-  return {
-    id: 'default',
-    name: i18n.t('chat.default.name'),
-    emoji: '😀',
-    prompt: '',
-    topics: [getDefaultTopic('default')],
-    messages: [],
-    type: 'assistant',
-    regularPhrases: [], // Added regularPhrases
-    settings: DEFAULT_ASSISTANT_SETTINGS
-  }
-}
 
 /**
  * Creates a default translate assistant.
@@ -156,18 +102,6 @@ export function getDefaultTranslateAssistant(
  */
 export function getDefaultAssistantSettings() {
   return store.getState().assistants.defaultAssistant.settings
-}
-
-export function getDefaultTopic(assistantId: string): Topic {
-  return {
-    id: uuid(),
-    assistantId,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    name: i18n.t('chat.default.topic.name'),
-    messages: [],
-    isNameManuallyEdited: false
-  }
 }
 
 export function getDefaultProvider() {

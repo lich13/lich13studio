@@ -1,4 +1,4 @@
-function normalizeEndpoint(value: string, appendVersion = true): string {
+export function normalizeImportEndpoint(value: string, appendVersion = true): string {
   let url: URL
   try {
     url = new URL(value)
@@ -20,7 +20,7 @@ function normalizeEndpoint(value: string, appendVersion = true): string {
 export function normalizeProviderEndpoint(value: string): string {
   const host = value.trim()
   if (!host) return ''
-  return host.endsWith('#') ? `${normalizeEndpoint(host.slice(0, -1), false)}#` : normalizeEndpoint(host)
+  return host.endsWith('#') ? `${normalizeImportEndpoint(host.slice(0, -1), false)}#` : normalizeImportEndpoint(host)
 }
 
 export function providerRequestBase(value: string): string {

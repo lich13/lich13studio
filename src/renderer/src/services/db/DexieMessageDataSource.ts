@@ -1,30 +1,127 @@
-/**
- * @deprecated Scheduled for removal in v2.0.0
- * --------------------------------------------------------------------------
- * ⚠️ NOTICE: V2 DATA&UI REFACTORING (by 0xfullex)
- * --------------------------------------------------------------------------
- * STOP: Feature PRs affecting this file are currently BLOCKED.
- * Only critical bug fixes are accepted during this migration phase.
- *
- * This file is being refactored to v2 standards.
- * Any non-critical changes will conflict with the ongoing work.
- *
- * 🔗 Context & Status:
- * - Contribution Hold: https://github.com/CherryHQ/cherry-studio/issues/10954
- * - v2 Refactor PR   : https://github.com/CherryHQ/cherry-studio/pull/10162
- * --------------------------------------------------------------------------
- */
 import { loggerService } from '@logger'
 import db from '@renderer/databases'
-import FileManager from '@renderer/services/FileManager'
 import store from '@renderer/store'
 import { updateTopicUpdatedAt } from '@renderer/store/assistants'
 import type { Message, MessageBlock } from '@renderer/types/newMessage'
-import isEmpty from 'lodash/isEmpty'
 
 import type { MessageDataSource } from './types'
 
 const logger = loggerService.withContext('DexieMessageDataSource')
+
+export interface FileCountDeltaSpec {
+  delta: number
+  deleteIfZero: boolean
+}
+
+export function collectBlockFileDecrements(blocks: readonly MessageBlock[]): Map<string, FileCountDeltaSpec> {
+  const deltas = new Map<string, FileCountDeltaSpec>()
+  for (const block of blocks) {
+    if (block.type !== 'file' && block.type !== 'image') {
+      continue
+    }
+    const file = (block as { file?: { id?: string } }).file
+    if (!file?.id) {
+      continue
+    }
+    const existing = deltas.get(file.id)
+    deltas.set(file.id, {
+      delta: (existing?.delta ?? 0) - 1,
+      deleteIfZero: true
+    })
+  }
+  return deltas
+}
+
+export interface ApplyFileCountDeltasOptions {
+  messageBlocksTable?: Pick<typeof db.message_blocks, 'where'>
+  excludingBlockIds?: Iterable<string>
+}
+
+export async function applyFileCountDeltasInTx(
+  filesTable: typeof db.files,
+  deltas: ReadonlyMap<string, FileCountDeltaSpec>,
+  options?: ApplyFileCountDeltasOptions
+): Promise<string[]> {
+  if (deltas.size === 0) {
+    return []
+  }
+
+  const fileIds = Array.from(deltas.keys())
+  const records = await filesTable.bulkGet(fileIds)
+  const idsToDelete: string[] = []
+  const attachmentsToDelete: string[] = []
+  const zeroCandidates: Array<{ fileId: string; record: NonNullable<(typeof records)[number]>; nextCount: number }> = []
+
+  for (let index = 0; index < fileIds.length; index += 1) {
+    const fileId = fileIds[index]
+    const spec = deltas.get(fileId)!
+    const record = records[index]
+    if (!record) {
+      logger.warn(`File ${fileId} not found for count update`)
+      continue
+    }
+
+    const nextCount = (record.count || 0) + spec.delta
+    if (nextCount <= 0 && spec.deleteIfZero) {
+      zeroCandidates.push({ fileId, record, nextCount })
+    } else {
+      const clampedCount = Math.max(0, nextCount)
+      await filesTable.update(fileId, { count: clampedCount })
+      logger.debug(`Updated file ${fileId} count to ${clampedCount}`)
+    }
+  }
+
+  if (zeroCandidates.length > 0) {
+    const messageBlocksTable = options?.messageBlocksTable ?? (filesTable === db.files ? db.message_blocks : undefined)
+    const survivingCounts = new Map<string, number>()
+
+    if (messageBlocksTable) {
+      const excludedIds = options?.excludingBlockIds ? new Set(options.excludingBlockIds) : undefined
+      const referencingBlocks = await messageBlocksTable
+        .where('file.id')
+        .anyOf(zeroCandidates.map((item) => item.fileId))
+        .toArray()
+      for (const block of referencingBlocks) {
+        if (excludedIds?.has(block.id)) {
+          continue
+        }
+        const refFileId = (block as { file?: { id?: string } }).file?.id
+        if (refFileId) {
+          survivingCounts.set(refFileId, (survivingCounts.get(refFileId) ?? 0) + 1)
+        }
+      }
+    }
+
+    for (const { fileId, record, nextCount } of zeroCandidates) {
+      const survivingCount = survivingCounts.get(fileId) ?? 0
+      if (survivingCount > 0) {
+        await filesTable.update(fileId, { count: survivingCount })
+        logger.info(`Self-healed file ${fileId} reference count to ${survivingCount} surviving block(s)`)
+      } else {
+        idsToDelete.push(fileId)
+        attachmentsToDelete.push(`${record.id}${record.ext}`)
+        logger.info(`Deleted file ${fileId} as reference count reached ${nextCount}`)
+      }
+    }
+  }
+
+  if (idsToDelete.length > 0) {
+    await filesTable.bulkDelete(idsToDelete)
+  }
+
+  return attachmentsToDelete
+}
+
+export async function purgeDetachedAttachments(attachmentNames: readonly string[]): Promise<void> {
+  if (attachmentNames.length === 0 || typeof window === 'undefined' || !window.api?.file?.delete) {
+    return
+  }
+  const results = await Promise.allSettled(attachmentNames.map((name) => window.api.file.delete(name)))
+  const failed = results.filter((item) => item.status === 'rejected')
+  if (failed.length > 0) {
+    logger.warn(`Attachment cleanup completed with ${failed.length} errors`, failed)
+  }
+}
 
 /**
  * Dexie-based implementation of MessageDataSource
@@ -51,7 +148,6 @@ export class DexieMessageDataSource implements MessageDataSource {
       const messageIds = messages.map((m) => m.id)
       const blocks = await db.message_blocks.where('messageId').anyOf(messageIds).toArray()
 
-      // Ensure block IDs are strings for consistency
       const messagesWithBlockIds = messages.map((m) => ({
         ...m,
         blocks: m.blocks?.map(String) || []
@@ -77,12 +173,10 @@ export class DexieMessageDataSource implements MessageDataSource {
   async appendMessage(topicId: string, message: Message, blocks: MessageBlock[], insertIndex?: number): Promise<void> {
     try {
       await db.transaction('rw', db.topics, db.message_blocks, async () => {
-        // Save blocks first
         if (blocks.length > 0) {
           await db.message_blocks.bulkPut(blocks)
         }
 
-        // Get or create topic
         let topic = await db.topics.get(topicId)
         if (!topic) {
           await db.topics.add({ id: topicId, messages: [] })
@@ -95,17 +189,13 @@ export class DexieMessageDataSource implements MessageDataSource {
 
         const updatedMessages = [...(topic.messages || [])]
 
-        // Check if message already exists
         const existingIndex = updatedMessages.findIndex((m) => m.id === message.id)
         if (existingIndex !== -1) {
           updatedMessages[existingIndex] = message
+        } else if (insertIndex !== undefined && insertIndex >= 0 && insertIndex <= updatedMessages.length) {
+          updatedMessages.splice(insertIndex, 0, message)
         } else {
-          // Insert at specific index or append
-          if (insertIndex !== undefined && insertIndex >= 0 && insertIndex <= updatedMessages.length) {
-            updatedMessages.splice(insertIndex, 0, message)
-          } else {
-            updatedMessages.push(message)
-          }
+          updatedMessages.push(message)
         }
 
         await db.topics.update(topicId, { messages: updatedMessages })
@@ -148,12 +238,10 @@ export class DexieMessageDataSource implements MessageDataSource {
   ): Promise<void> {
     try {
       await db.transaction('rw', db.topics, db.message_blocks, async () => {
-        // Update blocks
         if (blocksToUpdate.length > 0) {
           await db.message_blocks.bulkPut(blocksToUpdate)
         }
 
-        // Update message if there are actual changes beyond id and topicId
         const keysToUpdate = Object.keys(messageUpdates).filter((key) => key !== 'id' && key !== 'topicId')
         if (keysToUpdate.length > 0) {
           await db.topics
@@ -181,6 +269,7 @@ export class DexieMessageDataSource implements MessageDataSource {
 
   async deleteMessage(topicId: string, messageId: string): Promise<void> {
     try {
+      let attachmentsToDelete: string[] = []
       await db.transaction('rw', db.topics, db.message_blocks, db.files, async () => {
         const topic = await db.topics.get(topicId)
         if (!topic) return
@@ -191,27 +280,21 @@ export class DexieMessageDataSource implements MessageDataSource {
         const message = topic.messages[messageIndex]
         const blockIds = message.blocks || []
 
-        // Delete blocks and handle files
         if (blockIds.length > 0) {
           const blocks = await db.message_blocks.where('id').anyOf(blockIds).toArray()
-          const files = blocks
-            .filter((block) => block.type === 'file' || block.type === 'image')
-            .map((block: any) => block.file)
-            .filter((file) => file !== undefined)
-
-          // Clean up files
-          if (!isEmpty(files)) {
-            await Promise.all(files.map((file) => FileManager.deleteFile(file.id, false)))
-          }
-
+          const deltas = collectBlockFileDecrements(blocks)
+          attachmentsToDelete = await applyFileCountDeltasInTx(db.files, deltas, {
+            messageBlocksTable: db.message_blocks,
+            excludingBlockIds: blockIds
+          })
           await db.message_blocks.bulkDelete(blockIds)
         }
 
-        // Remove message from topic
         topic.messages.splice(messageIndex, 1)
         await db.topics.update(topicId, { messages: topic.messages })
       })
 
+      await purgeDetachedAttachments(attachmentsToDelete)
       store.dispatch(updateTopicUpdatedAt({ topicId }))
     } catch (error) {
       logger.error(`Failed to delete message ${messageId} from topic ${topicId}:`, error as Error)
@@ -221,43 +304,34 @@ export class DexieMessageDataSource implements MessageDataSource {
 
   async deleteMessages(topicId: string, messageIds: string[]): Promise<void> {
     try {
+      let attachmentsToDelete: string[] = []
+      const messageIdSet = new Set(messageIds)
       await db.transaction('rw', db.topics, db.message_blocks, db.files, async () => {
         const topic = await db.topics.get(topicId)
         if (!topic) return
 
-        // Collect all block IDs from messages to be deleted
         const allBlockIds: string[] = []
-        const messagesToDelete: Message[] = []
-
-        for (const messageId of messageIds) {
-          const message = topic.messages.find((m) => m.id === messageId)
-          if (message) {
-            messagesToDelete.push(message)
-            if (message.blocks && message.blocks.length > 0) {
-              allBlockIds.push(...message.blocks)
-            }
+        for (const message of topic.messages) {
+          if (messageIdSet.has(message.id) && message.blocks?.length) {
+            allBlockIds.push(...message.blocks)
           }
         }
 
-        // Delete blocks and handle files
         if (allBlockIds.length > 0) {
           const blocks = await db.message_blocks.where('id').anyOf(allBlockIds).toArray()
-          const files = blocks
-            .filter((block) => block.type === 'file' || block.type === 'image')
-            .map((block: any) => block.file)
-            .filter((file) => file !== undefined)
-
-          // Clean up files
-          if (!isEmpty(files)) {
-            await Promise.all(files.map((file) => FileManager.deleteFile(file.id, false)))
-          }
+          const deltas = collectBlockFileDecrements(blocks)
+          attachmentsToDelete = await applyFileCountDeltasInTx(db.files, deltas, {
+            messageBlocksTable: db.message_blocks,
+            excludingBlockIds: allBlockIds
+          })
           await db.message_blocks.bulkDelete(allBlockIds)
         }
 
-        // Remove messages from topic
-        const remainingMessages = topic.messages.filter((m) => !messageIds.includes(m.id))
+        const remainingMessages = topic.messages.filter((m) => !messageIdSet.has(m.id))
         await db.topics.update(topicId, { messages: remainingMessages })
       })
+
+      await purgeDetachedAttachments(attachmentsToDelete)
       store.dispatch(updateTopicUpdatedAt({ topicId }))
     } catch (error) {
       logger.error(`Failed to delete messages from topic ${topicId}:`, error as Error)
@@ -300,19 +374,18 @@ export class DexieMessageDataSource implements MessageDataSource {
     try {
       if (blockIds.length === 0) return
 
-      // Get blocks to find associated files
-      const blocks = await db.message_blocks.where('id').anyOf(blockIds).toArray()
-      const files = blocks
-        .filter((block) => block.type === 'file' || block.type === 'image')
-        .map((block: any) => block.file)
-        .filter((file) => file !== undefined)
+      let attachmentsToDelete: string[] = []
+      await db.transaction('rw', db.message_blocks, db.files, async () => {
+        const blocks = await db.message_blocks.where('id').anyOf(blockIds).toArray()
+        const deltas = collectBlockFileDecrements(blocks)
+        attachmentsToDelete = await applyFileCountDeltasInTx(db.files, deltas, {
+          messageBlocksTable: db.message_blocks,
+          excludingBlockIds: blockIds
+        })
+        await db.message_blocks.bulkDelete(blockIds)
+      })
 
-      // Clean up files
-      if (!isEmpty(files)) {
-        await Promise.all(files.map((file) => FileManager.deleteFile(file.id, false)))
-      }
-
-      await db.message_blocks.bulkDelete(blockIds)
+      await purgeDetachedAttachments(attachmentsToDelete)
     } catch (error) {
       logger.error('Failed to delete blocks:', error as Error)
       throw error
@@ -323,46 +396,27 @@ export class DexieMessageDataSource implements MessageDataSource {
 
   async clearMessages(topicId: string): Promise<void> {
     try {
-      // First, collect file information and block IDs within a read transaction
-      let blockIds: string[] = []
-      let files: any[] = []
+      let attachmentsToDelete: string[] = []
 
-      await db.transaction('r', db.topics, db.message_blocks, async () => {
+      await db.transaction('rw', db.topics, db.message_blocks, db.files, async () => {
         const topic = await db.topics.get(topicId)
         if (!topic) return
 
-        // Get all block IDs
-        blockIds = topic.messages.flatMap((m) => m.blocks || [])
-
-        // Get blocks and extract file info
+        const blockIds = topic.messages.flatMap((m) => m.blocks || [])
         if (blockIds.length > 0) {
           const blocks = await db.message_blocks.where('id').anyOf(blockIds).toArray()
-          files = blocks
-            .filter((block) => block.type === 'file' || block.type === 'image')
-            .map((block: any) => block.file)
-            .filter((file) => file !== undefined)
-        }
-      })
-
-      // Delete files outside the transaction to avoid transaction timeout
-      if (!isEmpty(files)) {
-        await Promise.all(files.map((file) => FileManager.deleteFile(file.id, false)))
-      }
-
-      // Perform the actual database cleanup in a separate write transaction
-      await db.transaction('rw', db.topics, db.message_blocks, async () => {
-        const topic = await db.topics.get(topicId)
-        if (!topic) return
-
-        // Delete blocks
-        if (blockIds.length > 0) {
+          const deltas = collectBlockFileDecrements(blocks)
+          attachmentsToDelete = await applyFileCountDeltasInTx(db.files, deltas, {
+            messageBlocksTable: db.message_blocks,
+            excludingBlockIds: blockIds
+          })
           await db.message_blocks.bulkDelete(blockIds)
         }
 
-        // Clear messages
         await db.topics.update(topicId, { messages: [] })
       })
 
+      await purgeDetachedAttachments(attachmentsToDelete)
       store.dispatch(updateTopicUpdatedAt({ topicId }))
     } catch (error) {
       logger.error(`Failed to clear messages for topic ${topicId}:`, error as Error)
@@ -395,39 +449,29 @@ export class DexieMessageDataSource implements MessageDataSource {
   // ============ File Operations ============
 
   async updateFileCount(fileId: string, delta: number, deleteIfZero: boolean = false): Promise<void> {
-    try {
-      await db.transaction('rw', db.files, async () => {
-        const file = await db.files.get(fileId)
-
-        if (!file) {
-          logger.warn(`File ${fileId} not found for count update`)
-          return
-        }
-
-        const newCount = (file.count || 0) + delta
-
-        if (newCount <= 0 && deleteIfZero) {
-          // Delete the file when count reaches 0 or below
-          await FileManager.deleteFile(fileId, false)
-          await db.files.delete(fileId)
-          logger.info(`Deleted file ${fileId} as reference count reached ${newCount}`)
-        } else {
-          // Update the count
-          await db.files.update(fileId, { count: Math.max(0, newCount) })
-          logger.debug(`Updated file ${fileId} count to ${Math.max(0, newCount)}`)
-        }
-      })
-    } catch (error) {
-      logger.error(`Failed to update file count for ${fileId}:`, error as Error)
-      throw error
-    }
+    await this.updateFileCounts([{ id: fileId, delta, deleteIfZero }])
   }
 
   async updateFileCounts(files: Array<{ id: string; delta: number; deleteIfZero?: boolean }>): Promise<void> {
+    if (files.length === 0) return
     try {
-      for (const file of files) {
-        await this.updateFileCount(file.id, file.delta, file.deleteIfZero || false)
+      const aggregated = new Map<string, FileCountDeltaSpec>()
+      for (const item of files) {
+        if (!item.id) continue
+        const prev = aggregated.get(item.id)
+        aggregated.set(item.id, {
+          delta: (prev?.delta ?? 0) + item.delta,
+          deleteIfZero: Boolean(prev?.deleteIfZero || item.deleteIfZero)
+        })
       }
+
+      let attachmentsToDelete: string[] = []
+      await db.transaction('rw', db.message_blocks, db.files, async () => {
+        attachmentsToDelete = await applyFileCountDeltasInTx(db.files, aggregated, {
+          messageBlocksTable: db.message_blocks
+        })
+      })
+      await purgeDetachedAttachments(attachmentsToDelete)
     } catch (error) {
       logger.error('Failed to update file counts:', error as Error)
       throw error

@@ -1,9 +1,5 @@
-import remarkParse from 'remark-parse'
-import remarkStringify from 'remark-stringify'
 import removeMarkdown from 'remove-markdown'
-import { unified } from 'unified'
 import type { Point, Position } from 'unist'
-import { visit } from 'unist-util-visit'
 
 /**
  * 更彻底的查找方法，递归搜索所有子元素
@@ -29,8 +25,9 @@ export const findCitationInChildren = (children: any): string => {
   return ''
 }
 
-// 检查是否包含潜在的 LaTeX 模式
-const containsLatexRegex = /\\\(.*?\\\)|\\\[.*?\\\]/s
+// O(N) fast check avoiding regex backtracking on long texts with unclosed delimiters
+const hasPotentialLatexDelimiters = (text: string): boolean =>
+  (text.includes('\\[') && text.includes('\\]')) || (text.includes('\\(') && text.includes('\\)'))
 
 /**
  * 转换 LaTeX 公式括号 `\[\]` 和 `\(\)` 为 Markdown 格式 `$$...$$` 和 `$...$`
@@ -46,9 +43,63 @@ const containsLatexRegex = /\\\(.*?\\\)|\\\[.*?\\\]/s
  * @param text 输入的 Markdown 文本
  * @returns 处理后的字符串
  */
+const isEscapedAt = (text: string, index: number): boolean => {
+  let backslashes = 0
+  for (let pos = index - 1; pos >= 0 && text.charCodeAt(pos) === 92; pos -= 1) {
+    backslashes += 1
+  }
+  return (backslashes & 1) === 1
+}
+
+const processMathDelimiters = (content: string, openDelim: string, closeDelim: string, wrapper: string): string => {
+  if (!content.includes(openDelim) || !content.includes(closeDelim)) {
+    return content
+  }
+
+  const openLen = openDelim.length
+  const closeLen = closeDelim.length
+  const openStack: number[] = []
+  const accepted: Array<[number, number]> = []
+  let nextOpen = content.indexOf(openDelim, 0)
+  let nextClose = content.indexOf(closeDelim, 0)
+
+  while (nextOpen !== -1 || nextClose !== -1) {
+    if (nextOpen !== -1 && (nextClose === -1 || nextOpen < nextClose)) {
+      if (!isEscapedAt(content, nextOpen)) {
+        openStack.push(nextOpen)
+      }
+      nextOpen = content.indexOf(openDelim, nextOpen + openLen)
+    } else {
+      if (!isEscapedAt(content, nextClose) && openStack.length > 0) {
+        const matchedOpen = openStack.pop()!
+        while (accepted.length > 0 && accepted[accepted.length - 1][0] > matchedOpen) {
+          accepted.pop()
+        }
+        accepted.push([matchedOpen, nextClose])
+      }
+      nextClose = content.indexOf(closeDelim, nextClose + closeLen)
+    }
+  }
+
+  if (accepted.length === 0) {
+    return content
+  }
+
+  const parts: string[] = []
+  let lastAppendPos = 0
+  for (const [openIdx, closeIdx] of accepted) {
+    parts.push(content.slice(lastAppendPos, openIdx), wrapper, content.slice(openIdx + openLen, closeIdx), wrapper)
+    lastAppendPos = closeIdx + closeLen
+  }
+  if (lastAppendPos < content.length) {
+    parts.push(content.slice(lastAppendPos))
+  }
+  return parts.join('')
+}
+
 export const processLatexBrackets = (text: string) => {
   // 没有 LaTeX 模式直接返回
-  if (!containsLatexRegex.test(text)) {
+  if (!hasPotentialLatexDelimiters(text)) {
     return text
   }
 
@@ -70,29 +121,9 @@ export const processLatexBrackets = (text: string) => {
       return `__CHERRY_STUDIO_PROTECTED_${index}__`
     })
 
-  // LaTeX 括号转换函数
-  const processMath = (content: string, openDelim: string, closeDelim: string, wrapper: string): string => {
-    let result = ''
-    let remaining = content
-
-    while (remaining.length > 0) {
-      const match = findLatexMatch(remaining, openDelim, closeDelim)
-      if (!match) {
-        result += remaining
-        break
-      }
-
-      result += match.pre
-      result += `${wrapper}${match.body}${wrapper}`
-      remaining = match.post
-    }
-
-    return result
-  }
-
   // 先处理块级公式，再处理内联公式
-  let result = processMath(processedContent, '\\[', '\\]', '$$')
-  result = processMath(result, '\\(', '\\)', '$')
+  let result = processMathDelimiters(processedContent, '\\[', '\\]', '$$')
+  result = processMathDelimiters(result, '\\(', '\\)', '$')
 
   // 还原被保护的内容
   result = result.replace(/__CHERRY_STUDIO_PROTECTED_(\d+)__/g, (match, indexStr) => {
@@ -106,57 +137,6 @@ export const processLatexBrackets = (text: string) => {
   })
 
   return result
-}
-
-/**
- * 查找 LaTeX 数学公式的匹配括号对
- *
- * 使用平衡括号算法处理嵌套结构，正确识别转义字符
- *
- * @param text 要搜索的文本
- * @param openDelim 开始分隔符 (如 '\[' 或 '\(')
- * @param closeDelim 结束分隔符 (如 '\]' 或 '\)')
- * @returns 匹配结果对象或 null
- */
-const findLatexMatch = (text: string, openDelim: string, closeDelim: string) => {
-  // 统计连续反斜杠：奇数个表示转义，偶数个表示未转义
-  const escaped = (i: number) => {
-    let count = 0
-    while (--i >= 0 && text[i] === '\\') count++
-    return count & 1
-  }
-
-  // 查找第一个有效的开始标记
-  for (let i = 0, n = text.length; i <= n - openDelim.length; i++) {
-    // 没有找到开始分隔符或被转义，跳过
-    if (!text.startsWith(openDelim, i) || escaped(i)) continue
-
-    // 处理嵌套结构
-    for (let j = i + openDelim.length, depth = 1; j <= n - closeDelim.length && depth; j++) {
-      // 计算当前位置对深度的影响：+1(开始), -1(结束), 0(无关)
-      const delta =
-        text.startsWith(openDelim, j) && !escaped(j) ? 1 : text.startsWith(closeDelim, j) && !escaped(j) ? -1 : 0
-
-      if (delta) {
-        depth += delta
-
-        // 找到了匹配的结束位置
-        if (!depth)
-          return {
-            start: i,
-            end: j + closeDelim.length,
-            pre: text.slice(0, i),
-            body: text.slice(i + openDelim.length, j),
-            post: text.slice(j + closeDelim.length)
-          }
-
-        // 跳过已处理的分隔符字符，避免重复检查
-        j += (delta > 0 ? openDelim : closeDelim).length - 1
-      }
-    }
-  }
-
-  return null
 }
 
 /**
@@ -207,7 +187,13 @@ export function getCodeBlockId(start?: Point): string | null {
  * @param newContent 修改后的代码内容
  * @returns 替换后的Markdown字符串
  */
-export function updateCodeBlock(raw: string, id: string, newContent: string): string {
+export async function updateCodeBlock(raw: string, id: string, newContent: string): Promise<string> {
+  const [{ unified }, { default: remarkParse }, { default: remarkStringify }, { visit }] = await Promise.all([
+    import('unified'),
+    import('remark-parse'),
+    import('remark-stringify'),
+    import('unist-util-visit')
+  ])
   const tree = unified().use(remarkParse).parse(raw)
   visit(tree, 'code', (node) => {
     const startIndex = getCodeBlockId(node.position?.start)

@@ -1,68 +1,75 @@
 import { loggerService } from '@logger'
 import db from '@renderer/databases'
 import i18n from '@renderer/i18n'
-import { fetchMessagesSummary } from '@renderer/services/ApiService'
+import {
+  applyFileCountDeltasInTx,
+  collectBlockFileDecrements,
+  purgeDetachedAttachments
+} from '@renderer/services/db/DexieMessageDataSource'
 import { EVENT_NAMES, EventEmitter } from '@renderer/services/EventService'
-import { safeDeleteFiles } from '@renderer/services/MessagesService'
 import store from '@renderer/store'
 import { updateTopic } from '@renderer/store/assistants'
+import { removeManyBlocks } from '@renderer/store/messageBlock'
+import { newMessagesActions } from '@renderer/store/newMessage'
 import { setNewlyRenamedTopics, setRenamingTopics } from '@renderer/store/runtime'
-import { loadTopicMessagesThunk } from '@renderer/store/thunk/messageThunk'
-import type { Assistant, FileMetadata, Topic } from '@renderer/types'
-import type { FileMessageBlock, ImageMessageBlock } from '@renderer/types/newMessage'
-import { MessageBlockType } from '@renderer/types/newMessage'
+import { collectTopicBlockIdsToEvict, loadTopicMessagesThunk } from '@renderer/store/thunk/messageThunk'
+import type { Assistant, Topic } from '@renderer/types'
 import { findMainTextBlocks } from '@renderer/utils/messageUtils/find'
 import { truncateText } from '@renderer/utils/naming'
-import find from 'lodash/find'
 import isEmpty from 'lodash/isEmpty'
-import { type Dispatch, type SetStateAction, useEffect, useState } from 'react'
+import { type Dispatch, type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { useAssistant } from './useAssistant'
 import { getStoreSetting } from './useSettings'
-
-let _activeTopic: Topic
-let _setActiveTopic: Dispatch<SetStateAction<Topic>>
 
 const logger = loggerService.withContext('useTopic')
 
 export function useActiveTopic(assistantId: string, topic?: Topic) {
   const { assistant } = useAssistant(assistantId)
-  const [activeTopic, setActiveTopic] = useState(topic || _activeTopic || assistant?.topics[0])
-
-  _activeTopic = activeTopic
-  _setActiveTopic = setActiveTopic
+  const [selectedTopicId, setSelectedTopicId] = useState<string | undefined>(() => {
+    if (topic?.id) return topic.id
+    const persistedCurrentId = store.getState().messages.currentTopicId
+    if (persistedCurrentId && assistant?.topics?.some((item) => item.id === persistedCurrentId)) {
+      return persistedCurrentId
+    }
+    return assistant?.topics?.[0]?.id
+  })
 
   useEffect(() => {
-    if (activeTopic) {
-      void store.dispatch(loadTopicMessagesThunk(activeTopic.id))
-      void EventEmitter.emit(EVENT_NAMES.CHANGE_TOPIC, activeTopic)
+    if (topic?.id) {
+      setSelectedTopicId(topic.id)
     }
-  }, [activeTopic])
+  }, [topic?.id])
+
+  const activeTopic = useMemo(() => {
+    const topics = assistant?.topics
+    if (!topics?.length) {
+      return topic as Topic
+    }
+    if (selectedTopicId) {
+      const matched = topics.find((item) => item.id === selectedTopicId)
+      if (matched) {
+        return matched
+      }
+    }
+    return topics[0]
+  }, [assistant?.topics, selectedTopicId, topic])
+
+  const activeTopicRef = useRef<Topic>(activeTopic)
+  activeTopicRef.current = activeTopic
+
+  const setActiveTopic: Dispatch<SetStateAction<Topic>> = useCallback((next) => {
+    const resolved = typeof next === 'function' ? next(activeTopicRef.current) : next
+    setSelectedTopicId(resolved?.id)
+  }, [])
 
   useEffect(() => {
-    // activeTopic not in assistant.topics
-    // 确保 assistant 和 assistant.topics 存在，避免在数据未完全加载时访问属性
-    if (
-      assistant &&
-      assistant.topics &&
-      Array.isArray(assistant.topics) &&
-      assistant.topics.length > 0 &&
-      !find(assistant.topics, { id: activeTopic?.id })
-    ) {
-      setActiveTopic(assistant.topics[0])
+    const current = activeTopicRef.current
+    if (current?.id) {
+      void store.dispatch(loadTopicMessagesThunk(current.id, false, { activate: true }))
+      void EventEmitter.emit(EVENT_NAMES.CHANGE_TOPIC, current)
     }
-  }, [activeTopic?.id, assistant])
-
-  useEffect(() => {
-    if (!assistant?.topics?.length || !activeTopic) {
-      return
-    }
-
-    const latestTopic = assistant.topics.find((item) => item.id === activeTopic.id)
-    if (latestTopic && latestTopic !== activeTopic) {
-      setActiveTopic(latestTopic)
-    }
-  }, [assistant?.topics, activeTopic])
+  }, [activeTopic?.id])
 
   return { activeTopic, setActiveTopic }
 }
@@ -137,9 +144,6 @@ export const autoRenameTopic = async (assistant: Assistant, topicId: string) => 
 
     const applyTopicName = (name: string) => {
       const data = { ...topic, name } as Topic
-      if (topic.id === _activeTopic.id) {
-        _setActiveTopic(data)
-      }
       store.dispatch(updateTopic({ assistantId: assistant.id, topic: data }))
     }
 
@@ -170,6 +174,7 @@ export const autoRenameTopic = async (assistant: Assistant, topicId: string) => 
     if (topic && topic.name === i18n.t('chat.default.topic.name') && topic.messages.length >= 2) {
       startTopicRenaming(topicId)
       try {
+        const { fetchMessagesSummary } = await import('@renderer/services/ApiService')
         const { text: summaryText, error } = await fetchMessagesSummary({ messages: topic.messages })
         if (summaryText) {
           applyTopicName(summaryText)
@@ -222,11 +227,20 @@ export const TopicManager = {
   },
 
   async clearTopicMessages(id: string): Promise<void> {
-    // 暂存需要删除的文件信息
-    let filesToDelete: FileMetadata[] = []
+    const reduxState = store.getState()
+    const cachedMsgIds = reduxState.messages.messageIdsByTopic[id] || []
+    const cachedBlockIds = collectTopicBlockIdsToEvict(reduxState, cachedMsgIds)
+    if (id in reduxState.messages.messageIdsByTopic) {
+      store.dispatch(newMessagesActions.clearTopicMessages(id))
+    }
+    if (cachedBlockIds.length > 0) {
+      store.dispatch(removeManyBlocks(cachedBlockIds))
+    }
+
+    let attachmentsToDelete: string[] = []
 
     try {
-      await db.transaction('rw', [db.topics, db.message_blocks], async () => {
+      await db.transaction('rw', [db.topics, db.message_blocks, db.files], async () => {
         const topic = await db.topics.get(id)
 
         if (!topic || !topic.messages || topic.messages.length === 0) {
@@ -236,18 +250,12 @@ export const TopicManager = {
         const blockIds = topic.messages.flatMap((message) => message.blocks || [])
 
         if (blockIds.length > 0) {
-          // 删除 block 之前先从 DB 里找出来
           const blocks = await db.message_blocks.where('id').anyOf(blockIds).toArray()
-
-          // 提取文件元数据
-          filesToDelete = blocks
-            .filter(
-              (block): block is ImageMessageBlock | FileMessageBlock =>
-                block.type === MessageBlockType.IMAGE || block.type === MessageBlockType.FILE
-            )
-            .map((block) => block.file)
-            .filter((file) => file !== undefined)
-
+          const deltas = collectBlockFileDecrements(blocks)
+          attachmentsToDelete = await applyFileCountDeltasInTx(db.files, deltas, {
+            messageBlocksTable: db.message_blocks,
+            excludingBlockIds: blockIds
+          })
           await db.message_blocks.bulkDelete(blockIds)
         }
 
@@ -258,9 +266,6 @@ export const TopicManager = {
       throw dbError
     }
 
-    // 删除文件
-    if (filesToDelete.length > 0) {
-      await safeDeleteFiles(filesToDelete)
-    }
+    await purgeDetachedAttachments(attachmentsToDelete)
   }
 }

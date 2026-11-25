@@ -1,14 +1,16 @@
 import { HStack } from '@renderer/components/Layout'
+import { registerActiveHistoryBackHandler } from '@renderer/services/mobile/back'
 import { useAppDispatch } from '@renderer/store'
+import { newMessagesActions } from '@renderer/store/newMessage'
 import { loadTopicMessagesThunk } from '@renderer/store/thunk/messageThunk'
 import type { Topic } from '@renderer/types'
 import type { Message } from '@renderer/types/newMessage'
 import type { InputRef } from 'antd'
-import { Divider, Input } from 'antd'
+import { Button, Divider, Input } from 'antd'
 import last from 'lodash/last'
-import { ChevronLeft, CornerDownLeft, Search } from 'lucide-react'
+import { ChevronLeft, CornerDownLeft, Search, X } from 'lucide-react'
 import type { FC } from 'react'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
@@ -19,39 +21,48 @@ import TopicsHistory from './components/TopicsHistory'
 
 type Route = 'topics' | 'topic' | 'search' | 'message'
 
-let _search = ''
-let _stack: Route[] = ['topics']
-let _topic: Topic | undefined
-let _message: Message | undefined
+interface HistoryPageProps {
+  onClose?: () => void
+}
 
-const HistoryPage: FC = () => {
+const HistoryPage: FC<HistoryPageProps> = ({ onClose }) => {
   const { t } = useTranslation()
-  const [search, setSearch] = useState(_search)
-  const [searchKeywords, setSearchKeywords] = useState(_search)
-  const [stack, setStack] = useState<Route[]>(_stack)
-  const [topic, setTopic] = useState<Topic | undefined>(_topic)
-  const [message, setMessage] = useState<Message | undefined>(_message)
+  const [search, setSearch] = useState('')
+  const [searchKeywords, setSearchKeywords] = useState('')
+  const [stack, setStack] = useState<Route[]>(['topics'])
+  const [topic, setTopic] = useState<Topic | undefined>(undefined)
+  const [message, setMessage] = useState<Message | undefined>(undefined)
   const inputRef = useRef<InputRef>(null)
+  const stackRef = useRef<Route[]>(stack)
+  stackRef.current = stack
   const dispatch = useAppDispatch()
 
-  _search = search
-  _stack = stack
-  _topic = topic
-  _message = message
-
-  const goBack = () => {
-    const _stack = [...stack]
-    const route = _stack.pop()
-    setStack(_stack)
-    route === 'search' && setSearch('')
-    route === 'topic' && setTopic(undefined)
-    route === 'message' && setMessage(undefined)
-  }
+  const goBack = useCallback(() => {
+    const nextStack = [...stackRef.current]
+    if (nextStack.length <= 1) {
+      return false
+    }
+    const route = nextStack.pop()
+    setStack(nextStack)
+    if (route === 'search') {
+      setSearch('')
+    }
+    if (route === 'topic') {
+      setTopic(undefined)
+      dispatch(newMessagesActions.setPreviewTopicId(null))
+    }
+    if (route === 'message') {
+      setMessage(undefined)
+      dispatch(newMessagesActions.setPreviewTopicId(null))
+    }
+    return true
+  }, [dispatch])
 
   const onSearch = () => {
     setSearchKeywords(search)
     setStack(['topics', 'search'])
     setTopic(undefined)
+    dispatch(newMessagesActions.setPreviewTopicId(null))
   }
 
   // topic 不包含 messages，用到的时候才会获取
@@ -60,11 +71,13 @@ const HistoryPage: FC = () => {
       window.toast.error(t('history.error.topic_not_found'))
       return
     }
+    dispatch(newMessagesActions.setPreviewTopicId(topic.id))
     setStack((prev) => [...prev, 'topic'])
     setTopic(topic)
   }
 
   const onMessageClick = (message: Message) => {
+    dispatch(newMessagesActions.setPreviewTopicId(message.topicId))
     void dispatch(loadTopicMessagesThunk(message.topicId))
     setStack(['topics', 'search', 'message'])
     setMessage(message)
@@ -73,10 +86,13 @@ const HistoryPage: FC = () => {
   const isShow = (route: Route) => (last(stack) === route ? 'flex' : 'none')
 
   useEffect(() => {
-    if (inputRef.current) {
-      inputRef.current.focus()
+    const unregister = registerActiveHistoryBackHandler(goBack)
+    inputRef.current?.focus()
+    return () => {
+      unregister()
+      dispatch(newMessagesActions.setPreviewTopicId(null))
     }
-  }, [])
+  }, [dispatch, goBack])
 
   return (
     <Container>
@@ -106,6 +122,7 @@ const HistoryPage: FC = () => {
           size="middle"
           onPressEnter={onSearch}
         />
+        {onClose && <Button type="text" aria-label={t('common.close')} icon={<X size={18} />} onClick={onClose} />}
       </HStack>
       <Divider style={{ margin: 0, marginTop: 4, borderBlockStartWidth: 0.5 }} />
 

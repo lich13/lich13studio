@@ -1,9 +1,10 @@
-import ImageViewer from '@renderer/components/ImageViewer'
 import FileManager from '@renderer/services/FileManager'
 import { type ImageMessageBlock, MessageBlockStatus } from '@renderer/types/newMessage'
 import { Skeleton } from 'antd'
-import React, { useEffect, useState } from 'react'
+import React, { Suspense, useEffect, useState } from 'react'
 import styled from 'styled-components'
+
+const ImageViewer = React.lazy(() => import('@renderer/components/ImageViewer'))
 
 interface Props {
   block: ImageMessageBlock
@@ -53,17 +54,19 @@ const ImageBlock: React.FC<Props> = ({ block, isSingle = false }) => {
 
     return (
       <Container>
-        {images.filter(Boolean).map((src, index) => (
-          <ImageViewer
-            src={src}
-            key={`image-${index}`}
-            style={
-              isSingle
-                ? { maxWidth: 500, maxHeight: 'min(500px, 50vh)', padding: 0, borderRadius: 8 }
-                : { width: 280, height: 280, objectFit: 'cover', padding: 0, borderRadius: 8 }
-            }
-          />
-        ))}
+        <Suspense fallback={null}>
+          {images.filter(Boolean).map((src, index) => (
+            <ImageViewer
+              src={src}
+              key={`image-${index}`}
+              style={
+                isSingle
+                  ? { maxWidth: 500, maxHeight: 'min(500px, 50vh)', padding: 0, borderRadius: 8 }
+                  : { width: 280, height: 280, objectFit: 'cover', padding: 0, borderRadius: 8 }
+              }
+            />
+          ))}
+        </Suspense>
       </Container>
     )
   }

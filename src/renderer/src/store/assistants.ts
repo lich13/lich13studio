@@ -17,13 +17,58 @@
 // @ts-nocheck
 import type { PayloadAction } from '@reduxjs/toolkit'
 import { createSelector, createSlice } from '@reduxjs/toolkit'
-import { DEFAULT_CONTEXTCOUNT, DEFAULT_TEMPERATURE } from '@renderer/config/constant'
-import { DEFAULT_ASSISTANT_SETTINGS, getDefaultAssistant, getDefaultTopic } from '@renderer/services/AssistantService'
+import { DEFAULT_CONTEXTCOUNT, DEFAULT_MAX_TOKENS, DEFAULT_TEMPERATURE } from '@renderer/config/constant'
+import i18n from '@renderer/i18n'
 import type { Assistant, AssistantPreset, AssistantSettings, Model, Topic } from '@renderer/types'
 import isEmpty from 'lodash/isEmpty'
 import uniqBy from 'lodash/uniqBy'
+import { v4 as uuid } from 'uuid'
 
 import type { RootState } from '.'
+
+export const DEFAULT_ASSISTANT_SETTINGS = {
+  maxTokens: DEFAULT_MAX_TOKENS,
+  enableMaxTokens: false,
+  temperature: DEFAULT_TEMPERATURE,
+  enableTemperature: false,
+  topP: 1,
+  enableTopP: false,
+  contextCount: DEFAULT_CONTEXTCOUNT,
+  defaultModel: undefined,
+  customParameters: [],
+  reasoning_effort: 'max',
+  reasoning_effort_cache: undefined,
+  qwenThinkMode: undefined,
+  toolUseMode: 'function',
+  maxToolCalls: 20,
+  enableMaxToolCalls: true
+} as const satisfies AssistantSettings
+
+export function getDefaultTopic(assistantId: string): Topic {
+  return {
+    id: uuid(),
+    assistantId,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    name: i18n.t('chat.default.topic.name'),
+    messages: [],
+    isNameManuallyEdited: false
+  }
+}
+
+export function getDefaultAssistant(): Assistant {
+  return {
+    id: 'default',
+    name: i18n.t('chat.default.name'),
+    emoji: '😀',
+    prompt: '',
+    topics: [getDefaultTopic('default')],
+    messages: [],
+    type: 'assistant',
+    regularPhrases: [],
+    settings: DEFAULT_ASSISTANT_SETTINGS
+  }
+}
 
 export interface AssistantsState {
   defaultAssistant: Assistant

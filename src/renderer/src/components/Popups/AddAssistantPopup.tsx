@@ -263,7 +263,11 @@ export default class AddAssistantPopup {
   }
   static show() {
     return new Promise<Assistant | undefined>((resolve) => {
-      TopView.show(<PopupContainer resolve={resolve} />, 'AddAssistantPopup')
+      const finish = (value?: Assistant) => {
+        resolve(value)
+        TopView.hide('AddAssistantPopup')
+      }
+      TopView.show(<PopupContainer resolve={finish} />, 'AddAssistantPopup', () => finish(undefined))
     })
   }
 }

@@ -53,7 +53,6 @@ const Messages: React.FC<MessagesProps> = ({ assistant, topic, setActiveTopic, o
   )
   const [loadedExtraCount, setLoadedExtraCount] = useState(0)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
-  const [isProcessingContext, setIsProcessingContext] = useState(false)
 
   const { addTopic } = useAssistant(assistant.id)
   const { messageNavigation } = useSettings()
@@ -67,6 +66,11 @@ const Messages: React.FC<MessagesProps> = ({ assistant, topic, setActiveTopic, o
 
   const messageElements = useRef<Map<string, HTMLElement>>(new Map())
   const messagesRef = useRef<Message[]>(messages)
+  const isProcessingContextRef = useRef(false)
+  const assistantRef = useRef(assistant)
+  const topicRef = useRef(topic)
+  assistantRef.current = assistant
+  topicRef.current = topic
   const prevTopicIdRef = useRef(topic.id)
 
   if (prevTopicIdRef.current !== topic.id) {
@@ -130,17 +134,17 @@ const Messages: React.FC<MessagesProps> = ({ assistant, topic, setActiveTopic, o
         })
       }),
       EventEmitter.on(EVENT_NAMES.NEW_CONTEXT, async () => {
-        if (isProcessingContext) return
-        setIsProcessingContext(true)
+        if (isProcessingContextRef.current) return
+        isProcessingContextRef.current = true
 
         try {
-          const messages = messagesRef.current
+          const currentMessages = messagesRef.current
 
-          if (messages.length === 0) {
+          if (currentMessages.length === 0) {
             return
           }
 
-          const lastMessage = last(messages)
+          const lastMessage = last(currentMessages)
 
           if (lastMessage?.type === 'clear') {
             await deleteMessage(lastMessage.id)
@@ -148,18 +152,26 @@ const Messages: React.FC<MessagesProps> = ({ assistant, topic, setActiveTopic, o
             return
           }
 
-          const { message: clearMessage } = getUserMessage({ assistant, topic, type: 'clear' })
-          dispatch(newMessagesActions.addMessage({ topicId: topic.id, message: clearMessage }))
-          await saveMessageAndBlocksToDB(topic.id, clearMessage, [])
+          const currentAssistant = assistantRef.current
+          const currentTopic = topicRef.current
+          const { message: clearMessage } = getUserMessage({
+            assistant: currentAssistant,
+            topic: currentTopic,
+            type: 'clear'
+          })
+          dispatch(newMessagesActions.addMessage({ topicId: currentTopic.id, message: clearMessage }))
+          await saveMessageAndBlocksToDB(currentTopic.id, clearMessage, [])
 
           scrollToBottom()
         } finally {
-          setIsProcessingContext(false)
+          isProcessingContextRef.current = false
         }
       }),
       EventEmitter.on(EVENT_NAMES.NEW_BRANCH, async (index: number) => {
-        const newTopic = getDefaultTopic(assistant.id)
-        newTopic.name = topic.name
+        const currentAssistant = assistantRef.current
+        const currentTopic = topicRef.current
+        const newTopic = getDefaultTopic(currentAssistant.id)
+        newTopic.name = currentTopic.name
         const currentMessages = messagesRef.current
 
         if (index < 0 || index > currentMessages.length) {
@@ -171,19 +183,16 @@ const Messages: React.FC<MessagesProps> = ({ assistant, topic, setActiveTopic, o
         addTopic(newTopic)
 
         // 2. Call the thunk to clone messages and update DB
-        const success = await createTopicBranch(topic.id, currentMessages.length - index, newTopic)
+        const success = await createTopicBranch(currentTopic.id, currentMessages.length - index, newTopic)
 
         if (success) {
           // 3. Set the new topic as active
           setActiveTopic(newTopic)
           // 4. Trigger auto-rename for the new topic
-          void autoRenameTopic(assistant, newTopic.id)
+          void autoRenameTopic(currentAssistant, newTopic.id)
         } else {
-          // Optional: Handle cloning failure (e.g., show an error message)
-          // You might want to remove the added topic if cloning fails
-          // removeTopic(newTopic.id); // Assuming you have a removeTopic function
           logger.error(`[NEW_BRANCH] Failed to create topic branch for topic ${newTopic.id}`)
-          window.toast.error(t('message.branch.error')) // Example error message
+          window.toast.error(t('message.branch.error'))
         }
       }),
       EventEmitter.on(
@@ -196,7 +205,7 @@ const Messages: React.FC<MessagesProps> = ({ assistant, topic, setActiveTopic, o
           // FIXME: 目前 error block 没有 content
           if (msgBlock && isTextLikeBlock(msgBlock) && msgBlock.type !== MessageBlockType.ERROR) {
             try {
-              const updatedRaw = updateCodeBlock(msgBlock.content, codeBlockId, newContent)
+              const updatedRaw = await updateCodeBlock(msgBlock.content, codeBlockId, newContent)
               const updatedBlock: MessageBlock = {
                 ...msgBlock,
                 content: updatedRaw,
@@ -204,7 +213,7 @@ const Messages: React.FC<MessagesProps> = ({ assistant, topic, setActiveTopic, o
               }
 
               dispatch(updateOneBlock({ id: msgBlockId, changes: { content: updatedRaw } }))
-              await dispatch(updateMessageAndBlocksThunk(topic.id, null, [updatedBlock]))
+              await dispatch(updateMessageAndBlocksThunk(topicRef.current.id, null, [updatedBlock]))
 
               window.toast.success(t('code_block.edit.save.success'))
             } catch (error) {
@@ -225,17 +234,28 @@ const Messages: React.FC<MessagesProps> = ({ assistant, topic, setActiveTopic, o
     ]
 
     return () => unsubscribes.forEach((unsub) => unsub())
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assistant, dispatch, scrollToBottom, topic, isProcessingContext])
+  }, [addTopic, clearTopic, createTopicBranch, deleteMessage, dispatch, scrollToBottom, setActiveTopic, t])
 
+  const contextCountSetting = assistant.settings?.contextCount
   useEffect(() => {
+    let cancelled = false
+    const currentAssistant = assistantRef.current
     void runAsyncFunction(async () => {
+      const tokensCount = await estimateHistoryTokens(currentAssistant, messages)
+      if (cancelled) return
       void EventEmitter.emit(EVENT_NAMES.ESTIMATED_TOKEN_COUNT, {
-        tokensCount: await estimateHistoryTokens(assistant, messages),
-        contextCount: getContextCount(assistant, messages)
+        tokensCount,
+        contextCount: getContextCount(currentAssistant, messages)
       })
-    }).then(() => onFirstUpdate?.())
-  }, [assistant, messages, onFirstUpdate])
+    }).then(() => {
+      if (!cancelled) {
+        onFirstUpdate?.()
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [assistant.id, assistant.prompt, contextCountSetting, messages, onFirstUpdate])
 
   const loadMoreMessages = useCallback(() => {
     if (!hasMore || isLoadingMore) return

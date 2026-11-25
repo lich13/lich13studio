@@ -50,7 +50,8 @@ export class ImagePreviewService {
               onVisibleChange: handleVisibilityChange
             }
           }),
-        'image-preview'
+        'image-preview',
+        () => handleVisibilityChange(false)
       )
     } catch (error) {
       logger.error('Failed to show image preview:', error as Error)

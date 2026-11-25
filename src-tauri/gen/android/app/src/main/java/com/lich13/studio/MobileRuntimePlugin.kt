@@ -112,6 +112,11 @@ class MobileRuntimePlugin(private val activity: Activity) : Plugin(activity) {
     }
     @Command fun endTask(invoke: Invoke) { BackgroundService.end(appContext, invoke.parseArgs(MobileArgs::class.java).id); invoke.resolve() }
     @Command fun stopTasks(invoke: Invoke) { BackgroundService.stopAll(appContext, "user-stop"); invoke.resolve() }
+    @Command fun takePendingImports(invoke: Invoke) {
+        val items = JSArray()
+        MainActivity.takePendingImports().forEach { items.put(it) }
+        invoke.resolve(JSObject().put("items", items))
+    }
     @Command fun taskState(invoke: Invoke) { invoke.resolve(JSObject().put("stoppedReason", BackgroundService.stoppedReason)) }
     @Command fun background(invoke: Invoke) {
         val active = currentActivity()

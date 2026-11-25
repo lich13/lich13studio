@@ -60,20 +60,6 @@ pub(crate) fn decrypt(bytes: &[u8], password: &str) -> Result<Vec<u8>, String> {
         .map_err(|_| "Incorrect password or damaged backup".into())
 }
 
-#[tauri::command]
-pub async fn encrypt_backup(bytes: Vec<u8>, password: String) -> Result<Vec<u8>, String> {
-    tauri::async_runtime::spawn_blocking(move || encrypt(&bytes, &Zeroizing::new(password)))
-        .await
-        .map_err(|_| "Backup encryption task failed")?
-}
-
-#[tauri::command]
-pub async fn decrypt_backup(bytes: Vec<u8>, password: String) -> Result<Vec<u8>, String> {
-    tauri::async_runtime::spawn_blocking(move || decrypt(&bytes, &Zeroizing::new(password)))
-        .await
-        .map_err(|_| "Backup decryption task failed")?
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

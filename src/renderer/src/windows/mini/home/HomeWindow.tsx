@@ -7,9 +7,7 @@ import db from '@renderer/databases'
 import { useDefaultAssistant } from '@renderer/hooks/useAssistant'
 import { useSettings } from '@renderer/hooks/useSettings'
 import i18n from '@renderer/i18n'
-import { fetchChatCompletion } from '@renderer/services/ApiService'
 import { getDefaultTopic } from '@renderer/services/AssistantService'
-import { ConversationService } from '@renderer/services/ConversationService'
 import FileManager from '@renderer/services/FileManager'
 import { getAssistantMessage, getUserMessage } from '@renderer/services/MessagesService'
 import PasteService from '@renderer/services/PasteService'
@@ -509,6 +507,10 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
         )
         // logger.debug('newAssistant', newAssistant)
 
+        const [{ ConversationService }, { fetchChatCompletion }] = await Promise.all([
+          import('@renderer/services/ConversationService'),
+          import('@renderer/services/ApiService')
+        ])
         const { modelMessages, uiMessages } = await ConversationService.prepareMessagesForModel(
           messagesForContext,
           newAssistant

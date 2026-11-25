@@ -69,6 +69,7 @@ const persistedReducer = persistReducer<RootState>(
     key: 'cherry-studio',
     storage: credentialStorageEnabled ? mobilePersistStorage : storage,
     version: 223,
+    throttle: 250,
     blacklist: ['runtime', 'messages', 'messageBlocks'],
     stateReconciler: reconcileActiveSlices,
     migrate
@@ -100,6 +101,9 @@ const isMiniWindowContext = () =>
     (!runtimeCapabilities.android && Boolean((window as any).__TAURI_INTERNALS__) && !isMainTauriWindow()))
 
 export const persistor = persistStore(store, undefined, () => {
+  if (typeof window === 'undefined') {
+    return
+  }
   if (!isMiniWindowContext()) {
     void import('@renderer/services/PlatformModelCatalogService').then(({ platformModelCatalogService }) =>
       platformModelCatalogService.initialize()
@@ -112,7 +116,9 @@ export const persistor = persistStore(store, undefined, () => {
 export const useAppDispatch = useDispatch.withTypes<AppDispatch>()
 export const useAppSelector = useSelector.withTypes<RootState>()
 export const useAppStore = useStore.withTypes<typeof store>()
-window.store = store
+if (typeof window !== 'undefined') {
+  window.store = store
+}
 
 export async function handleSaveData() {
   logger.info('Flushing redux persistor data')

@@ -26,17 +26,13 @@ import {
   setNavbarPosition,
   setSendMessageShortcut as _setSendMessageShortcut,
   setTargetLanguage,
-  setTestChannel as _setTestChannel,
-  setTestPlan as _setTestPlan,
   setTheme,
   setTopicPosition,
   setTray as _setTray,
   setTrayOnClose,
-  setUseSystemTitleBar as _setUseSystemTitleBar,
   setWindowStyle
 } from '@renderer/store/settings'
 import type { SidebarIcon, ThemeMode, TranslateLanguageCode } from '@renderer/types'
-import type { UpgradeChannel } from '@shared/config/constant'
 
 import { getMainProcessSettingUpdates } from './settingsSync'
 
@@ -104,17 +100,6 @@ export function useSettings() {
 
     setAutoCheckUpdate(isAutoUpdate: boolean) {
       dispatch(_setAutoCheckUpdate(isAutoUpdate))
-      void window.api.setAutoUpdate(isAutoUpdate)
-    },
-
-    setTestPlan(isTestPlan: boolean) {
-      dispatch(_setTestPlan(isTestPlan))
-      void window.api.setTestPlan(isTestPlan)
-    },
-
-    setTestChannel(channel: UpgradeChannel) {
-      dispatch(_setTestChannel(channel))
-      void window.api.setTestChannel(channel)
     },
 
     setTheme(theme: ThemeMode) {
@@ -131,10 +116,6 @@ export function useSettings() {
     },
     setAssistantIconType(assistantIconType: AssistantIconType) {
       dispatch(setAssistantIconType(assistantIconType))
-    },
-    setUseSystemTitleBar(useSystemTitleBar: boolean) {
-      dispatch(_setUseSystemTitleBar(useSystemTitleBar))
-      void window.api.setUseSystemTitleBar(useSystemTitleBar)
     }
   }
 }

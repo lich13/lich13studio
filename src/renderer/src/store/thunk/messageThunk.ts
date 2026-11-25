@@ -16,9 +16,13 @@
  */
 import { loggerService } from '@logger'
 import db from '@renderer/databases'
-import { transformMessagesAndFetch } from '@renderer/services/ApiService'
 import { dbService } from '@renderer/services/db'
-import FileManager from '@renderer/services/FileManager'
+import {
+  applyFileCountDeltasInTx,
+  collectBlockFileDecrements,
+  type FileCountDeltaSpec,
+  purgeDetachedAttachments
+} from '@renderer/services/db/DexieMessageDataSource'
 import { BlockManager } from '@renderer/services/messageStreaming/BlockManager'
 import { createCallbacks } from '@renderer/services/messageStreaming/callbacks'
 import { createStreamProcessor, type StreamProcessorCallbacks } from '@renderer/services/StreamProcessingService'
@@ -26,6 +30,7 @@ import {
   beginStream,
   createStreamTerminalGuard,
   finishStream,
+  getActiveStream,
   isCurrentStream,
   markStreamContent,
   setStreamAbort,
@@ -47,7 +52,6 @@ import { getTopicQueue, hasTopicPendingRequests, waitForTopicQueue } from '@rend
 import { getTopicFulfilledActiveTopicId, shouldMarkTopicFulfilled } from '@renderer/utils/topicStatus'
 import { defaultAppHeaders } from '@shared/utils'
 import { t } from 'i18next'
-import isEmpty from 'lodash/isEmpty'
 import throttle from 'lodash/throttle'
 import { LRUCache } from 'lru-cache'
 
@@ -385,27 +389,12 @@ const discardThrottledBlockUpdate = (id: string) => {
 }
 
 /**
- * 批量清理多个消息块。
+ * 批量清理多个消息块的节流队列与 Redux 实体（数据库与附件引用计数由调用方事务独占处理）。
  */
 export const cleanupMultipleBlocks = (dispatch: AppDispatch, blockIds: string[]) => {
   blockIds.forEach((id) => {
     discardThrottledBlockUpdate(id)
   })
-
-  const getBlocksFiles = async (blockIds: string[]) => {
-    const blocks = await db.message_blocks.where('id').anyOf(blockIds).toArray()
-    const files = blocks
-      .filter((block) => block.type === MessageBlockType.FILE || block.type === MessageBlockType.IMAGE)
-      .map((block) => block.file)
-      .filter((file): file is FileMetadata => file !== undefined)
-    return isEmpty(files) ? [] : files
-  }
-
-  const cleanupFiles = async (files: FileMetadata[]) => {
-    await Promise.all(files.map((file) => FileManager.deleteFile(file.id, false)))
-  }
-
-  void getBlocksFiles(blockIds).then(cleanupFiles)
 
   if (blockIds.length > 0) {
     dispatch(removeManyBlocks(blockIds))
@@ -604,6 +593,7 @@ const fetchAndProcessAssistantResponseImpl = async (
     }
     setStreamAbort(streamEntry, abortFn)
 
+    const { transformMessagesAndFetch } = await import('@renderer/services/ApiService')
     await transformMessagesAndFetch(
       {
         messages: messagesForContext,
@@ -886,11 +876,21 @@ export const resendMessageThunk =
       cleanupMultipleBlocks(dispatch, allBlockIdsToDelete)
 
       try {
-        if (allBlockIdsToDelete.length > 0) {
-          await db.message_blocks.bulkDelete(allBlockIdsToDelete)
-        }
         const finalMessagesToSave = selectMessagesForTopic(getState(), topicId)
-        await db.topics.update(topicId, { messages: finalMessagesToSave })
+        let attachmentsToDelete: string[] = []
+        await db.transaction('rw', db.topics, db.message_blocks, db.files, async () => {
+          if (allBlockIdsToDelete.length > 0) {
+            const blocks = await db.message_blocks.where('id').anyOf(allBlockIdsToDelete).toArray()
+            const deltas = collectBlockFileDecrements(blocks)
+            attachmentsToDelete = await applyFileCountDeltasInTx(db.files, deltas, {
+              messageBlocksTable: db.message_blocks,
+              excludingBlockIds: allBlockIdsToDelete
+            })
+            await db.message_blocks.bulkDelete(allBlockIdsToDelete)
+          }
+          await db.topics.update(topicId, { messages: finalMessagesToSave })
+        })
+        await purgeDetachedAttachments(attachmentsToDelete)
       } catch (dbError) {
         logger.error('[resendMessageThunk] Error updating database:', dbError as Error)
       }
@@ -1008,14 +1008,22 @@ export const regenerateAssistantResponseThunk =
       // Fetch the current state *after* Redux updates to get the latest message list
       // Use the selector to get the final ordered list of messages for the topic
       const finalMessagesToSave = selectMessagesForTopic(getState(), topicId)
+      let attachmentsToDelete: string[] = []
 
-      await db.transaction('rw', db.topics, db.message_blocks, async () => {
+      await db.transaction('rw', db.topics, db.message_blocks, db.files, async () => {
         // Use the result from the selector to update the DB
         await db.topics.update(topicId, { messages: finalMessagesToSave })
         if (blockIdsToDelete.length > 0) {
+          const blocks = await db.message_blocks.where('id').anyOf(blockIdsToDelete).toArray()
+          const deltas = collectBlockFileDecrements(blocks)
+          attachmentsToDelete = await applyFileCountDeltasInTx(db.files, deltas, {
+            messageBlocksTable: db.message_blocks,
+            excludingBlockIds: blockIdsToDelete
+          })
           await db.message_blocks.bulkDelete(blockIdsToDelete)
         }
       })
+      await purgeDetachedAttachments(attachmentsToDelete)
 
       // 8. Add fetch/process call to the queue
       const queue = getTopicQueue(topicId)
@@ -1346,11 +1354,17 @@ export const cloneMessagesToNewTopicThunk =
         if (clonedBlocks.length > 0) {
           await bulkAddBlocks(clonedBlocks)
         }
-        // Update file counts
-        const uniqueFiles = [...new Map(filesToUpdateCount.map((f) => [f.id, f])).values()]
-        for (const file of uniqueFiles) {
-          await updateFileCount(file.id, 1, false)
+        // Update file counts per cloned block reference (preserving multi-block multiplicity)
+        const fileIncrements = new Map<string, FileCountDeltaSpec>()
+        for (const file of filesToUpdateCount) {
+          if (!file.id) continue
+          const prev = fileIncrements.get(file.id)
+          fileIncrements.set(file.id, {
+            delta: (prev?.delta ?? 0) + 1,
+            deleteIfZero: false
+          })
         }
+        await applyFileCountDeltasInTx(db.files, fileIncrements)
       })
 
       // --- Update Redux State ---
@@ -1459,12 +1473,20 @@ export const removeBlocksThunk =
 
       // 2. Update database
       const finalMessagesToSave = selectMessagesForTopic(getState(), topicId)
-      await db.transaction('rw', db.topics, db.message_blocks, async () => {
+      let attachmentsToDelete: string[] = []
+      await db.transaction('rw', db.topics, db.message_blocks, db.files, async () => {
         await db.topics.update(topicId, { messages: finalMessagesToSave })
         if (blockIdsToRemove.length > 0) {
+          const blocks = await db.message_blocks.where('id').anyOf(blockIdsToRemove).toArray()
+          const deltas = collectBlockFileDecrements(blocks)
+          attachmentsToDelete = await applyFileCountDeltasInTx(db.files, deltas, {
+            messageBlocksTable: db.message_blocks,
+            excludingBlockIds: blockIdsToRemove
+          })
           await db.message_blocks.bulkDelete(blockIdsToRemove)
         }
       })
+      await purgeDetachedAttachments(attachmentsToDelete)
 
       dispatch(updateTopicUpdatedAt({ topicId }))
     } catch (error) {
@@ -1476,18 +1498,105 @@ export const removeBlocksThunk =
 //以下内容从原 messageThunk.v2.ts 迁移过来，原文件已经删除
 //原因：v2.ts并不是v2数据重构的一部分，而相关命名对v2重构造成重大误解，故两文件合并，以消除误解
 
+export const MAX_CACHED_REDUX_TOPICS = 12
+
+export function collectTopicBlockIdsToEvict(
+  state: Pick<RootState, 'messages' | 'messageBlocks'>,
+  messageIds: readonly string[]
+): string[] {
+  if (messageIds.length === 0) return []
+  const messageIdSet = new Set(messageIds)
+  const blockIds = new Set<string>()
+  for (const msgId of messageIds) {
+    const blocks = state.messages.entities[msgId]?.blocks
+    if (blocks) {
+      for (const blockId of blocks) blockIds.add(blockId)
+    }
+  }
+  const blockEntities = state.messageBlocks.entities as Record<string, MessageBlock | undefined>
+  for (const [blockId, block] of Object.entries(blockEntities)) {
+    if (block && messageIdSet.has(block.messageId)) {
+      blockIds.add(blockId)
+    }
+  }
+  return Array.from(blockIds)
+}
+
+export function evictInactiveTopicsFromRedux(
+  dispatch: AppDispatch,
+  getState: () => RootState,
+  maxCachedTopics: number = MAX_CACHED_REDUX_TOPICS,
+  protectedTopicId?: string
+): string[] {
+  const state = getState()
+  const cachedTopicIds = Object.keys(state.messages.messageIdsByTopic)
+  if (cachedTopicIds.length <= maxCachedTopics) {
+    return []
+  }
+
+  const lruOrder = state.messages.topicLruOrder?.length ? state.messages.topicLruOrder : cachedTopicIds
+  const orderedCandidates = [
+    ...cachedTopicIds.filter((id) => !lruOrder.includes(id)),
+    ...lruOrder.filter((id) => id in state.messages.messageIdsByTopic)
+  ]
+
+  let remainingCount = cachedTopicIds.length
+  const evicted: string[] = []
+
+  for (const candidateTopicId of orderedCandidates) {
+    if (remainingCount <= maxCachedTopics) {
+      break
+    }
+    if (
+      candidateTopicId === state.messages.currentTopicId ||
+      candidateTopicId === state.messages.previewTopicId ||
+      candidateTopicId === protectedTopicId ||
+      state.messages.loadingByTopic[candidateTopicId] ||
+      Boolean(getActiveStream(candidateTopicId))
+    ) {
+      continue
+    }
+
+    const messageIds = state.messages.messageIdsByTopic[candidateTopicId] || []
+    const hasActiveMessage = messageIds.some((msgId) => {
+      const status = state.messages.entities[msgId]?.status
+      return status === 'processing' || status === 'streaming' || status === 'pending'
+    })
+    if (hasActiveMessage) {
+      continue
+    }
+
+    const blockIdsToRemove = collectTopicBlockIdsToEvict(state, messageIds)
+    dispatch(newMessagesActions.clearTopicMessages(candidateTopicId))
+    if (blockIdsToRemove.length > 0) {
+      dispatch(removeManyBlocks(blockIdsToRemove))
+    }
+    evicted.push(candidateTopicId)
+    remainingCount -= 1
+  }
+
+  return evicted
+}
+
 /**
  * Load messages for a topic using unified DbService
  */
 export const loadTopicMessagesThunk =
-  (topicId: string, forceReload: boolean = false) =>
+  (topicId: string, forceReload: boolean = false, options?: { activate?: boolean }) =>
   async (dispatch: AppDispatch, getState: () => RootState) => {
     const state = getState()
+    const alreadyLoaded = Boolean(
+      state.messages.messageIdsByTopic[topicId] &&
+        (state.messages.messageIdsByTopic[topicId].length > 0 || !options?.activate)
+    )
 
-    dispatch(newMessagesActions.setCurrentTopicId(topicId))
+    if (options?.activate) {
+      dispatch(newMessagesActions.setCurrentTopicId(topicId))
+    }
 
     // Skip if already cached and not forcing reload
-    if (!forceReload && state.messages.messageIdsByTopic[topicId]) {
+    if (!forceReload && alreadyLoaded) {
+      evictInactiveTopicsFromRedux(dispatch, getState, MAX_CACHED_REDUX_TOPICS, topicId)
       return
     }
 
@@ -1533,9 +1642,9 @@ export const loadTopicMessagesThunk =
       dispatch(newMessagesActions.messagesReceived({ topicId, messages: pausedMessages }))
     } catch (error) {
       logger.error(`Failed to load messages for topic ${topicId}:`, error as Error)
-      // Could dispatch an error action here if needed
     } finally {
       dispatch(newMessagesActions.setTopicLoading({ topicId, loading: false }))
+      evictInactiveTopicsFromRedux(dispatch, getState, MAX_CACHED_REDUX_TOPICS, topicId)
     }
   }
 

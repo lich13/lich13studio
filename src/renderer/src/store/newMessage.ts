@@ -31,6 +31,8 @@ const messagesAdapter = createEntityAdapter<Message>()
 export interface MessagesState extends EntityState<Message, string> {
   messageIdsByTopic: Record<string, string[]> // Map: topicId -> ordered message IDs
   currentTopicId: string | null
+  previewTopicId: string | null
+  topicLruOrder: string[]
   loadingByTopic: Record<string, boolean>
   fulfilledByTopic: Record<string, boolean>
   displayCount: number
@@ -40,10 +42,26 @@ export interface MessagesState extends EntityState<Message, string> {
 const initialState: MessagesState = messagesAdapter.getInitialState({
   messageIdsByTopic: {},
   currentTopicId: null,
+  previewTopicId: null,
+  topicLruOrder: [],
   loadingByTopic: {},
   fulfilledByTopic: {},
   displayCount: 10
 })
+
+function touchTopicLru(state: MessagesState, topicId: string | null | undefined): void {
+  if (!topicId) return
+  if (!Array.isArray(state.topicLruOrder)) {
+    state.topicLruOrder = [topicId]
+    return
+  }
+  const idx = state.topicLruOrder.indexOf(topicId)
+  if (idx !== -1) {
+    if (idx === state.topicLruOrder.length - 1) return
+    state.topicLruOrder.splice(idx, 1)
+  }
+  state.topicLruOrder.push(topicId)
+}
 
 // Payload for receiving messages (used by loadTopicMessagesThunk)
 interface MessagesReceivedPayload {
@@ -103,9 +121,18 @@ const _messagesSlice: any = createSlice({
   reducers: {
     setCurrentTopicId(state, action: PayloadAction<string | null>) {
       state.currentTopicId = action.payload
-      if (action.payload && !(action.payload in state.messageIdsByTopic)) {
-        state.messageIdsByTopic[action.payload] = []
-        state.loadingByTopic[action.payload] = false
+      if (action.payload) {
+        if (!(action.payload in state.messageIdsByTopic)) {
+          state.messageIdsByTopic[action.payload] = []
+          state.loadingByTopic[action.payload] = false
+        }
+        touchTopicLru(state, action.payload)
+      }
+    },
+    setPreviewTopicId(state, action: PayloadAction<string | null>) {
+      state.previewTopicId = action.payload
+      if (action.payload) {
+        touchTopicLru(state, action.payload)
       }
     },
     setTopicLoading(state, action: PayloadAction<SetTopicLoadingPayload>) {
@@ -124,7 +151,7 @@ const _messagesSlice: any = createSlice({
       // @ts-ignore ts-2589 false positive
       messagesAdapter.upsertMany(state, messages)
       state.messageIdsByTopic[topicId] = messages.map((m) => m.id)
-      state.currentTopicId = topicId
+      touchTopicLru(state, topicId)
     },
     addMessage(state, action: PayloadAction<{ topicId: string; message: Message }>) {
       const { topicId, message } = action.payload
@@ -133,6 +160,7 @@ const _messagesSlice: any = createSlice({
         state.messageIdsByTopic[topicId] = []
       }
       state.messageIdsByTopic[topicId].push(message.id)
+      touchTopicLru(state, topicId)
       if (!(topicId in state.loadingByTopic)) {
         state.loadingByTopic[topicId] = false
       }
@@ -149,6 +177,7 @@ const _messagesSlice: any = createSlice({
       // Ensure index is within bounds
       const safeIndex = Math.max(0, Math.min(index, state.messageIdsByTopic[topicId].length))
       state.messageIdsByTopic[topicId].splice(safeIndex, 0, message.id) // Insert ID at specified index
+      touchTopicLru(state, topicId)
 
       if (!(topicId in state.loadingByTopic)) {
         state.loadingByTopic[topicId] = false
@@ -199,8 +228,11 @@ const _messagesSlice: any = createSlice({
         messagesAdapter.removeMany(state, idsToRemove)
       }
       delete state.messageIdsByTopic[topicId]
-      state.loadingByTopic[topicId] = false
-      state.fulfilledByTopic[topicId] = false
+      delete state.loadingByTopic[topicId]
+      delete state.fulfilledByTopic[topicId]
+      if (Array.isArray(state.topicLruOrder)) {
+        state.topicLruOrder = state.topicLruOrder.filter((id) => id !== topicId)
+      }
     },
     removeMessage(state, action: PayloadAction<RemoveMessagePayload>) {
       const { topicId, messageId } = action.payload

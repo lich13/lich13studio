@@ -313,44 +313,4 @@ export default class AiProvider {
       }
     }
   }
-
-  public getBaseURL(): string {
-    return this.actualProvider.apiHost || ''
-  }
-
-  public getApiKey(): string {
-    const apiKey = this.actualProvider.apiKey
-    if (!apiKey || apiKey.trim() === '') {
-      return ''
-    }
-
-    const keys = apiKey
-      .split(',')
-      .map((key) => key.trim())
-      .filter(Boolean)
-
-    if (keys.length === 0) {
-      return ''
-    }
-
-    if (keys.length === 1) {
-      return keys[0]
-    }
-
-    // Multi-key rotation
-    const keyName = `provider:${this.actualProvider.id}:last_used_key`
-    const lastUsedKey = window.keyv.get(keyName)
-
-    if (!lastUsedKey) {
-      window.keyv.set(keyName, keys[0])
-      return keys[0]
-    }
-
-    const currentIndex = keys.indexOf(lastUsedKey)
-    const nextIndex = (currentIndex + 1) % keys.length
-    const nextKey = keys[nextIndex]
-    window.keyv.set(keyName, nextKey)
-
-    return nextKey
-  }
 }

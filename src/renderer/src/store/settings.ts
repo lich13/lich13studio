@@ -483,12 +483,6 @@ const settingsSlice = createSlice({
     setAutoCheckUpdate: (state, action: PayloadAction<boolean>) => {
       state.autoCheckUpdate = action.payload
     },
-    setTestPlan: (state, action: PayloadAction<boolean>) => {
-      state.testPlan = action.payload
-    },
-    setTestChannel: (state, action: PayloadAction<UpgradeChannel>) => {
-      state.testChannel = action.payload
-    },
     setRenderInputMessageAsMarkdown: (state, action: PayloadAction<boolean>) => {
       state.renderInputMessageAsMarkdown = action.payload
     },
@@ -710,9 +704,6 @@ const settingsSlice = createSlice({
     setDisableHardwareAcceleration: (state, action: PayloadAction<boolean>) => {
       state.disableHardwareAcceleration = action.payload
     },
-    setUseSystemTitleBar: (state, action: PayloadAction<boolean>) => {
-      state.useSystemTitleBar = action.payload
-    },
     setOpenAISummaryText: (state, action: PayloadAction<OpenAIReasoningSummary>) => {
       state.openAI.summaryText = action.payload
     },
@@ -810,8 +801,6 @@ export const {
   setAssistantIconType,
   setPasteLongTextAsFile,
   setAutoCheckUpdate,
-  setTestPlan,
-  setTestChannel,
   setRenderInputMessageAsMarkdown,
   setSkipBackupFile,
   setWebdavHost,
@@ -870,7 +859,6 @@ export const {
   setConfirmDeleteMessage,
   setConfirmRegenerateMessage,
   setDisableHardwareAcceleration,
-  setUseSystemTitleBar,
   setOpenAISummaryText,
   setOpenAIVerbosity,
   setOpenAIStreamOptionsIncludeUsage,

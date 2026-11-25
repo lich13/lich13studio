@@ -70,6 +70,41 @@ pub extern "system" fn Java_com_lich13_studio_BackgroundService_cancelNativeTask
     TASK_EPOCH.fetch_add(1, Ordering::SeqCst);
     crate::cancel_all_http_requests();
 }
+
+#[cfg(target_os = "android")]
+#[no_mangle]
+pub extern "system" fn Java_com_lich13_studio_MainActivity_notifyProviderImportPending(
+    _env: *mut std::ffi::c_void,
+    _class: *mut std::ffi::c_void,
+) {
+    if let Some(app) = MOBILE_APP_HANDLE.get().cloned() {
+        // Dispatch off the Android UI thread so Wry's bounded(8) MainPipe channel
+        // cannot self-deadlock while the UI thread Looper is busy.
+        tauri::async_runtime::spawn(async move {
+            use tauri::Emitter;
+            let _ = app.emit("provider-import-pending", ());
+        });
+    }
+}
+
+#[cfg(target_os = "android")]
+#[no_mangle]
+pub extern "system" fn Java_com_lich13_studio_MainActivity_notifyBackPressed(
+    _env: *mut std::ffi::c_void,
+    _class: *mut std::ffi::c_void,
+) -> u8 {
+    if let Some(app) = MOBILE_APP_HANDLE.get() {
+        if app.get_webview_window("main").is_some() {
+            let app = app.clone();
+            tauri::async_runtime::spawn(async move {
+                use tauri::Emitter;
+                let _ = app.emit("mobile-back-pressed", ());
+            });
+            return 1;
+        }
+    }
+    0
+}
 use tauri::AppHandle;
 #[cfg(target_os = "android")]
 use tauri::Manager;
@@ -105,6 +140,7 @@ pub async fn mobile_command(
         "beginTask",
         "endTask",
         "stopTasks",
+        "takePendingImports",
         "taskState",
         "notificationPermission",
         "background",
@@ -146,12 +182,21 @@ mod commands {
     pub fn set_launch_on_boot(_enabled: bool) -> Result<bool, String> {
         Err("Desktop only".into())
     }
-    #[tauri::command]
-    pub fn is_launch_on_boot_enabled() -> bool {
-        false
+    pub(crate) async fn save_staged_file(
+        app: AppHandle,
+        file_name: String,
+        staged_path: &std::path::Path,
+    ) -> Result<String, String> {
+        let result = mobile_command(
+            app,
+            "saveFile".into(),
+            Some(serde_json::json!({"path": staged_path, "name": file_name})),
+        )
+        .await;
+        let _ = std::fs::remove_file(staged_path);
+        result.map(|value| value["uri"].as_str().unwrap_or_default().to_owned())
     }
-    #[tauri::command]
-    pub async fn save_file(
+    pub(crate) async fn save_file_bytes(
         app: AppHandle,
         file_name: String,
         bytes: Vec<u8>,
@@ -170,15 +215,23 @@ mod commands {
                 .unwrap_or_default()
                 .to_string_lossy()
         ));
-        std::fs::write(&path, bytes).map_err(|_| "Could not stage export")?;
-        let result = mobile_command(
-            app,
-            "saveFile".into(),
-            Some(serde_json::json!({"path": path, "name": file_name})),
-        )
-        .await;
-        let _ = std::fs::remove_file(&path);
-        result.map(|value| value["uri"].as_str().unwrap_or_default().to_owned())
+        let path_for_write = path.clone();
+        tauri::async_runtime::spawn_blocking(move || {
+            std::fs::write(&path_for_write, bytes)
+                .map_err(|_| String::from("Could not stage export"))
+        })
+        .await
+        .map_err(|_| String::from("Stage export task failed"))??;
+        save_staged_file(app, file_name, &path).await
+    }
+    #[tauri::command]
+    pub async fn save_file(
+        app: AppHandle,
+        request: tauri::ipc::Request<'_>,
+    ) -> Result<String, String> {
+        let file_name = crate::extract_decoded_header(request.headers(), "x-file-name")?;
+        let bytes = crate::extract_raw_ipc_bytes(&request)?;
+        save_file_bytes(app, file_name, bytes).await
     }
     #[tauri::command]
     pub async fn pick_folder() -> Option<String> {
@@ -200,11 +253,11 @@ mod commands {
             .map(|_| true)
     }
     #[tauri::command]
-    pub fn list_capture_windows() -> Vec<CaptureWindowInfo> {
+    pub async fn list_capture_windows() -> Vec<CaptureWindowInfo> {
         Vec::new()
     }
     #[tauri::command]
-    pub fn capture_window(_window_id: u32) -> Result<Vec<u8>, String> {
+    pub async fn capture_window(_window_id: u32) -> Result<tauri::ipc::Response, String> {
         Err("Desktop only".into())
     }
     #[tauri::command]

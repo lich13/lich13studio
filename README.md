@@ -1,6 +1,6 @@
 # lich13studio
 
-基于 Tauri 的 macOS、Windows 与 Android AI 工作区，源自 [Cherry Studio](https://github.com/CherryHQ/cherry-studio)。当前版本 **0.1.42**，使用 AGPL-3.0，保留上游版权和第三方许可，详见 [NOTICE](NOTICE.md)。
+基于 Tauri 的 macOS、Windows 与 Android AI 工作区，源自 [Cherry Studio](https://github.com/CherryHQ/cherry-studio)。当前版本 **0.1.43**，使用 AGPL-3.0，保留上游版权和第三方许可，详见 [NOTICE](NOTICE.md)。
 
 ## 功能范围
 
@@ -8,9 +8,9 @@
 - OpenAI、grok、Anthropic 三平台共享模型目录；模型与提供商分别选择，不自动替换提供商。OpenAI、grok 使用 Responses，Anthropic 使用 Messages。
 - 官方公开模型目录与 CLI 版本自动同步，支持离线缓存和手动检查。
 - 图片附件、本地／WebDAV 备份及恢复。含凭据备份必须设置密码；默认备份不含凭据。
-- 桌面托盘与快捷助手；Android 支持 Android 12（API 31）以上、ARM64，提供后台任务通知和停止操作。
+- 桌面托盘与快捷助手；Android 支持 Android 12（API 31）以上、ARM64，提供后台任务通知、停止操作及 `ccswitch://v1/import` 服务商连接导入（含系统链接唤起与剪贴板粘贴入口；桌面端不注册该自定义协议以免抢占本机 CC Switch）。
 
-已移除模型测试、链接导入接管、内置翻译、知识库／RAG、助手市场、MCP、网页搜索、健康探测和手机导出服务器。旧记录及迁移兼容类型继续保留，不代表相关功能重新启用。
+已移除模型测试、桌面端链接接管、内置翻译、知识库／RAG、助手市场、MCP、网页搜索、健康探测和手机导出服务器。旧记录及迁移兼容类型继续保留，不代表相关功能重新启用。
 
 ## 数据与隐私
 
@@ -43,7 +43,7 @@ React 界面由 `vite.config.ts` 构建到 `out/renderer`，Tauri／Rust 负责�
 
 - [文档索引](docs/README.md)、[开发与检查](docs/zh/guides/development.md)、[Android 构建](docs/android.md)
 - [当前范围](docs/scope-freeze.md)、[模块地图](docs/module-map.md)、[架构](docs/architecture-lite.md)、[迁移规则](docs/migration-notes.md)
-- [最新发布说明](docs/releases/v0.1.42.zh-CN.md)、[早期版本记录](docs/releases/early-versions.zh-CN.md)
+- [最新发布说明](docs/releases/v0.1.43.zh-CN.md)、[早期版本记录](docs/releases/early-versions.zh-CN.md)
 - [贡献指南](CONTRIBUTING.md)、[问题反馈](https://github.com/lich13/lich13studio/issues)、[安全报告](SECURITY.md)
 
 手动执行 `release-build.yml` 时留空 version 只构建制品；推送标签或填写 version 会发布 Release。

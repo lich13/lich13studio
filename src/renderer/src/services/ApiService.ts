@@ -8,7 +8,7 @@ import { buildProviderOptions } from '@renderer/aiCore/utils/options'
 import { isFunctionCallingModel } from '@renderer/config/models'
 import { getStoreSetting } from '@renderer/hooks/useSettings'
 import i18n from '@renderer/i18n'
-import type { Assistant, Model, Provider } from '@renderer/types'
+import type { Assistant, Provider } from '@renderer/types'
 import { type FetchChatCompletionParams, isSystemProvider } from '@renderer/types'
 import { ChunkType } from '@renderer/types/chunk'
 import type { Message } from '@renderer/types/newMessage'
@@ -268,104 +268,8 @@ export async function fetchMessagesSummary({
   }
 }
 
-// export async function fetchSearchSummary({ messages, assistant }: { messages: Message[]; assistant: Assistant }) {
-//   const model = getQuickModel() || assistant.model || getDefaultModel()
-//   const provider = getProviderByModel(model)
-
-//   if (!hasApiKey(provider)) {
-//     return null
-//   }
-
-//   const topicId = messages?.find((message) => message.topicId)?.topicId || undefined
-
-//   const AI = new AiProvider(provider)
-
-//   const params: CompletionsParams = {
-//     callType: 'search',
-//     messages: messages,
-//     assistant,
-//     streamOutput: false,
-//     topicId
-//   }
-
-//   return await AI.completionsForTrace(params)
-// }
-
-export async function fetchGenerate({
-  prompt,
-  content,
-  model
-}: {
-  prompt: string
-  content: string
-  model?: Model
-}): Promise<string> {
-  if (!model) {
-    model = getDefaultModel()
-  }
-  if (!model) {
-    return ''
-  }
-  const provider = getProviderByModel(model)
-
-  if (!hasApiKey(provider)) {
-    return ''
-  }
-
-  // Apply API key rotation
-  // NOTE: Shallow copy is intentional. Provider objects are not mutated by downstream code.
-  // Nested properties (if any) are never modified after creation.
-  const providerWithRotatedKey = {
-    ...provider,
-    apiKey: getRotatedApiKey(provider)
-  }
-
-  const AI = new AiProvider(model, providerWithRotatedKey)
-
-  const assistant = getDefaultAssistant()
-  assistant.model = model
-  assistant.prompt = prompt
-
-  // const params: CompletionsParams = {
-  //   callType: 'generate',
-  //   messages: content,
-  //   assistant,
-  //   streamOutput: false
-  // }
-
-  const middlewareConfig: AiSdkMiddlewareConfig = {
-    streamOutput: false,
-    chatRequestMode: 'non-stream',
-    enableReasoning: false,
-    isPromptToolUse: false,
-    isSupportedToolUse: false,
-    enableGenerateImage: false,
-    enableUrlContext: false
-  }
-
-  try {
-    const result = await AI.completions(
-      model.id,
-      {
-        system: prompt,
-        prompt: content
-      },
-      {
-        ...middlewareConfig,
-        assistant,
-        callType: 'generate'
-      }
-    )
-
-    return result.getText() || ''
-  } catch (error: any) {
-    return ''
-  }
-}
-
 export function hasApiKey(provider: Provider) {
   if (!provider) return false
-  if (provider.id === 'cherryai') return true
   if (
     (isSystemProvider(provider) && NOT_SUPPORT_API_KEY_PROVIDERS.includes(provider.id)) ||
     NOT_SUPPORT_API_KEY_PROVIDER_TYPES.includes(provider.type)

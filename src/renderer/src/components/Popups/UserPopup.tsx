@@ -196,15 +196,11 @@ export default class UserPopup {
   }
   static show() {
     return new Promise<any>((resolve) => {
-      TopView.show(
-        <PopupContainer
-          resolve={(v) => {
-            resolve(v)
-            this.hide()
-          }}
-        />,
-        'UserPopup'
-      )
+      const finish = (v: any = {}) => {
+        resolve(v)
+        this.hide()
+      }
+      TopView.show(<PopupContainer resolve={finish} />, 'UserPopup', () => finish({}))
     })
   }
 }

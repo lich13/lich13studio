@@ -500,4 +500,139 @@ describe('SearchResults global scan, sorting, and top-K snippet hydration', () =
 
     expect(scanned?.candidates.map((c) => c.blockId)).toEqual(['blk-md-1', 'blk-md-2'])
   })
+
+  it('sorts multi-term query candidates primarily by createdAtMs (newest/oldest) and uses matchedTermCount only as equal-timestamp tie-breaker', async () => {
+    const topic: Topic = {
+      id: 'topic-multi',
+      assistantId: 'assistant-1',
+      name: 'Multi Term Topic',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      messages: []
+    }
+    const storeTopicsMap = new Map<string, Topic>([['topic-multi', topic]])
+    const messages: Message[] = [
+      {
+        id: 'msg-older-both',
+        role: 'assistant',
+        assistantId: 'assistant-1',
+        topicId: 'topic-multi',
+        createdAt: '2026-01-01T00:01:00.000Z',
+        status: 'success' as any,
+        blocks: ['blk-older-both']
+      },
+      {
+        id: 'msg-tie-single',
+        role: 'assistant',
+        assistantId: 'assistant-1',
+        topicId: 'topic-multi',
+        createdAt: '2026-01-01T00:05:00.000Z',
+        status: 'success' as any,
+        blocks: ['blk-tie-single']
+      },
+      {
+        id: 'msg-tie-both',
+        role: 'assistant',
+        assistantId: 'assistant-1',
+        topicId: 'topic-multi',
+        createdAt: '2026-01-01T00:05:00.000Z',
+        status: 'success' as any,
+        blocks: ['blk-tie-both']
+      },
+      {
+        id: 'msg-newer-single',
+        role: 'assistant',
+        assistantId: 'assistant-1',
+        topicId: 'topic-multi',
+        createdAt: '2026-01-01T00:10:00.000Z',
+        status: 'success' as any,
+        blocks: ['blk-newer-single']
+      }
+    ]
+    const blocks: MessageBlock[] = [
+      {
+        id: 'blk-older-both',
+        messageId: 'msg-older-both',
+        type: MessageBlockType.MAIN_TEXT,
+        content: 'Contains both alpha and beta terms',
+        createdAt: '2026-01-01T00:01:00.000Z',
+        status: MessageBlockStatus.SUCCESS
+      } as MessageBlock,
+      {
+        id: 'blk-tie-single',
+        messageId: 'msg-tie-single',
+        type: MessageBlockType.MAIN_TEXT,
+        content: 'Equal timestamp with alpha only',
+        createdAt: '2026-01-01T00:05:00.000Z',
+        status: MessageBlockStatus.SUCCESS
+      } as MessageBlock,
+      {
+        id: 'blk-tie-both',
+        messageId: 'msg-tie-both',
+        type: MessageBlockType.MAIN_TEXT,
+        content: 'Equal timestamp with alpha and beta',
+        createdAt: '2026-01-01T00:05:00.000Z',
+        status: MessageBlockStatus.SUCCESS
+      } as MessageBlock,
+      {
+        id: 'blk-newer-single',
+        messageId: 'msg-newer-single',
+        type: MessageBlockType.MAIN_TEXT,
+        content: 'Contains only alpha term',
+        createdAt: '2026-01-01T00:10:00.000Z',
+        status: MessageBlockStatus.SUCCESS
+      } as MessageBlock
+    ]
+
+    const { database } = createFakeSearchDb(blocks, [{ id: 'topic-multi', messages }])
+    const scanned = await scanHistoryMatches({
+      database,
+      keywords: 'alpha beta',
+      matchMode: 'whole-word',
+      storeTopicsMap,
+      isCancelled: () => false
+    })
+
+    const newestResults = await selectAndHydrateTopSearchResults({
+      database,
+      candidates: scanned!.candidates,
+      terms: scanned!.terms,
+      matchMode: 'whole-word',
+      sortOrder: 'newest',
+      isCancelled: () => false
+    })
+    expect(newestResults?.map((r) => r.blockId)).toEqual([
+      'blk-newer-single',
+      'blk-tie-both',
+      'blk-tie-single',
+      'blk-older-both'
+    ])
+
+    // Top-K limit in newest mode keeps newest 1-term hit instead of evicting it behind older multi-term hits
+    const newestTopOne = await selectAndHydrateTopSearchResults({
+      database,
+      candidates: scanned!.candidates,
+      terms: scanned!.terms,
+      matchMode: 'whole-word',
+      sortOrder: 'newest',
+      limit: 1,
+      isCancelled: () => false
+    })
+    expect(newestTopOne?.map((r) => r.blockId)).toEqual(['blk-newer-single'])
+
+    const oldestResults = await selectAndHydrateTopSearchResults({
+      database,
+      candidates: scanned!.candidates,
+      terms: scanned!.terms,
+      matchMode: 'whole-word',
+      sortOrder: 'oldest',
+      isCancelled: () => false
+    })
+    expect(oldestResults?.map((r) => r.blockId)).toEqual([
+      'blk-older-both',
+      'blk-tie-both',
+      'blk-tie-single',
+      'blk-newer-single'
+    ])
+  })
 })

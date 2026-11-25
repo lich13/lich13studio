@@ -51,8 +51,6 @@ export type AnthropicWebSearchResultBlock = {
 
 export * from './file'
 
-import * as z from 'zod'
-
 import type { StreamTextParams } from './aiCoreTypes'
 import type { Chunk } from './chunk'
 import type { FileMetadata } from './file'
@@ -318,15 +316,7 @@ export type ModelType = 'text' | 'vision' | 'embedding' | 'reasoning' | 'functio
 export type ModelTag = Exclude<ModelType, 'text'> | 'free'
 
 // "image-generation" is also openai endpoint, but specifically for image generation.
-export const EndPointTypeSchema = z.enum([
-  'openai',
-  'openai-response',
-  'anthropic',
-  'gemini',
-  'image-generation',
-  'jina-rerank'
-])
-export type EndpointType = z.infer<typeof EndPointTypeSchema>
+export type EndpointType = 'openai' | 'openai-response' | 'anthropic' | 'gemini' | 'image-generation' | 'jina-rerank'
 
 export type ModelPricing = {
   input_per_million_tokens: number
@@ -597,6 +587,18 @@ export type WebDavConfig = {
   userAgent?: string
 }
 
+export interface BackupFile {
+  fileName: string
+  modifiedTime: string
+  size: number
+}
+
+export interface ProgressData {
+  stage: string
+  progress: number
+  total: number
+}
+
 export type AppInfo = {
   version: string
   appPath: string
@@ -770,9 +772,7 @@ export const WEB_SEARCH_SOURCE = {
   AISDK: 'ai-sdk'
 } as const
 
-export const WebSearchSourceSchema = z.enum(objectValues(WEB_SEARCH_SOURCE))
-
-export type WebSearchSource = z.infer<typeof WebSearchSourceSchema>
+export type WebSearchSource = (typeof WEB_SEARCH_SOURCE)[keyof typeof WEB_SEARCH_SOURCE]
 
 export type WebSearchResponse = {
   results?: WebSearchResults

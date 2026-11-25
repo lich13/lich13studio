@@ -10,9 +10,10 @@ import Sidebar from './components/app/Sidebar'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import NavigationHandler from './handler/NavigationHandler'
 import { useOnboardingState } from './hooks/useOnboardingState'
-import HomePage from './pages/home/HomePage'
 
+const HomePage = lazy(() => import('./pages/home/HomePage'))
 const OnboardingPage = lazy(() => import('./pages/onboarding').then((mod) => ({ default: mod.OnboardingPage })))
+const ProviderImportHandler = lazy(() => import('./components/ProviderImportHandler'))
 const SettingsPage = lazy(() => import('./pages/settings/SettingsPage'))
 
 const Router: FC = () => {
@@ -32,23 +33,26 @@ const Router: FC = () => {
     )
   }, [])
 
-  if (!onboardingCompleted) {
-    return (
-      <HashRouter>
-        {runtimeCapabilities.android && <MobileBackHandler />}
+  return (
+    <HashRouter>
+      {runtimeCapabilities.android && <MobileBackHandler />}
+      {runtimeCapabilities.android && (
+        <Suspense fallback={null}>
+          <ProviderImportHandler />
+        </Suspense>
+      )}
+      {onboardingCompleted ? (
+        <>
+          {!runtimeCapabilities.android && <Sidebar />}
+          {routes}
+          {runtimeCapabilities.android && <MobileNavigation />}
+          <NavigationHandler />
+        </>
+      ) : (
         <Suspense fallback={null}>
           <OnboardingPage onComplete={completeOnboarding} />
         </Suspense>
-      </HashRouter>
-    )
-  }
-
-  return (
-    <HashRouter>
-      {!runtimeCapabilities.android && <Sidebar />}
-      {routes}
-      {runtimeCapabilities.android && <MobileNavigation />}
-      <NavigationHandler />
+      )}
     </HashRouter>
   )
 }

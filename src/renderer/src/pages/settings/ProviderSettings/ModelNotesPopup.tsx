@@ -71,16 +71,11 @@ export default class ModelNotesPopup {
   }
   static show(props: ShowParams) {
     return new Promise<any>((resolve) => {
-      TopView.show(
-        <PopupContainer
-          {...props}
-          resolve={(v) => {
-            resolve(v)
-            this.hide()
-          }}
-        />,
-        'ModelNotesPopup'
-      )
+      const finish = (v: any = {}) => {
+        resolve(v)
+        this.hide()
+      }
+      TopView.show(<PopupContainer {...props} resolve={finish} />, 'ModelNotesPopup', () => finish({}))
     })
   }
 }

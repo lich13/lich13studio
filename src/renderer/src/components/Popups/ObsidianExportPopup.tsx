@@ -19,6 +19,10 @@ export default class ObsidianExportPopup {
   }
   static show(options: ObsidianExportOptions): Promise<boolean> {
     return new Promise((resolve) => {
+      const finish = (v: boolean) => {
+        resolve(v)
+        ObsidianExportPopup.hide()
+      }
       TopView.show(
         <PopupContainer
           title={options.title}
@@ -29,12 +33,10 @@ export default class ObsidianExportPopup {
           rawContent={options.rawContent}
           obsidianTags={''}
           open={true}
-          resolve={(v) => {
-            resolve(v)
-            ObsidianExportPopup.hide()
-          }}
+          resolve={finish}
         />,
-        'ObsidianExportPopup'
+        'ObsidianExportPopup',
+        () => finish(false)
       )
     })
   }

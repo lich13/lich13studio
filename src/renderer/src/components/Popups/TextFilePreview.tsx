@@ -91,17 +91,14 @@ export default class TextFilePreviewPopup {
   }
   static show(text: string, title: string, extension?: string) {
     return new Promise<any>((resolve) => {
+      const finish = (v: any = {}) => {
+        resolve(v)
+        TopView.hide('TextFilePreviewPopup')
+      }
       TopView.show(
-        <PopupContainer
-          text={text}
-          title={title}
-          extension={extension}
-          resolve={(v) => {
-            resolve(v)
-            TopView.hide('TextFilePreviewPopup')
-          }}
-        />,
-        'TextFilePreviewPopup'
+        <PopupContainer text={text} title={title} extension={extension} resolve={finish} />,
+        'TextFilePreviewPopup',
+        () => finish({})
       )
     })
   }

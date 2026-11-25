@@ -53,16 +53,11 @@ export default class ApiKeyListPopup {
 
   static show(props: ShowParams) {
     return new Promise<any>((resolve) => {
-      TopView.show(
-        <PopupContainer
-          {...props}
-          resolve={(v) => {
-            resolve(v)
-            TopView.hide(TopViewKey)
-          }}
-        />,
-        TopViewKey
-      )
+      const finish = (v: any = null) => {
+        resolve(v)
+        TopView.hide(TopViewKey)
+      }
+      TopView.show(<PopupContainer {...props} resolve={finish} />, TopViewKey, () => finish(null))
     })
   }
 }

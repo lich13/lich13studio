@@ -33,6 +33,9 @@ export function requestBackupPassword(): Promise<string | null> {
         </Modal>
       )
     }
-    TopView.show(<Dialog />, id)
+    TopView.show(<Dialog />, id, () => {
+      TopView.hide(id)
+      resolve(null)
+    })
   })
 }

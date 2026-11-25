@@ -11,6 +11,7 @@ import { createRoot } from 'react-dom/client'
 import { ErrorBoundary } from 'react-error-boundary'
 
 import { initializeMobileCredentials } from './services/mobile/credentials'
+import { reconcilePendingBackupRestore } from './services/restoreReconciliation'
 
 let secureStorageFailed = false
 const App = lazy(async () => {
@@ -20,6 +21,7 @@ const App = lazy(async () => {
     secureStorageFailed = true
     throw error
   }
+  await reconcilePendingBackupRestore()
   return import('./App')
 })
 

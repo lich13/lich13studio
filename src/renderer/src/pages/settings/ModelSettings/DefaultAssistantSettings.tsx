@@ -374,15 +374,11 @@ export default class DefaultAssistantSettingsPopup {
   }
   static show() {
     return new Promise<any>((resolve) => {
-      TopView.show(
-        <PopupContainer
-          resolve={(v) => {
-            resolve(v)
-            TopView.hide(TopViewKey)
-          }}
-        />,
-        TopViewKey
-      )
+      const finish = (v: any = {}) => {
+        resolve(v)
+        TopView.hide(TopViewKey)
+      }
+      TopView.show(<PopupContainer resolve={finish} />, TopViewKey, () => finish({}))
     })
   }
 }

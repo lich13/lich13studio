@@ -11,7 +11,6 @@ import { useInPlaceEdit } from '@renderer/hooks/useInPlaceEdit'
 import { modelGenerating } from '@renderer/hooks/useRuntime'
 import { useSettings } from '@renderer/hooks/useSettings'
 import { finishTopicRenaming, startTopicRenaming, TopicManager } from '@renderer/hooks/useTopic'
-import { fetchMessagesSummary } from '@renderer/services/ApiService'
 import { getDefaultTopic } from '@renderer/services/AssistantService'
 import { EVENT_NAMES, EventEmitter } from '@renderer/services/EventService'
 import type { RootState } from '@renderer/store'
@@ -242,6 +241,7 @@ export const Topics: React.FC<Props> = ({ assistant: _assistant, activeTopic, se
           if (messages.length >= 2) {
             startTopicRenaming(topic.id)
             try {
+              const { fetchMessagesSummary } = await import('@renderer/services/ApiService')
               const { text: summaryText, error } = await fetchMessagesSummary({ messages })
               if (summaryText) {
                 const updatedTopic = { ...topic, name: summaryText, isNameManuallyEdited: false }

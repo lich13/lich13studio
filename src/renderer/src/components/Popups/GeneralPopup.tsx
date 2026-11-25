@@ -2,7 +2,7 @@ import { TopView } from '@renderer/components/TopView'
 import type { ModalProps } from 'antd'
 import { Modal as AntdModal } from 'antd'
 import type { ReactNode } from 'react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import styled from 'styled-components'
 
 interface ShowParams extends ModalProps {
@@ -13,32 +13,51 @@ interface Props extends ShowParams {
   resolve: (data: any) => void
 }
 
-const PopupContainer: React.FC<Props> = ({ content, resolve, ...rest }) => {
+const activeClosers: Array<() => void> = []
+
+const PopupContainer: React.FC<Props> = ({
+  content,
+  resolve,
+  onOk: userOnOk,
+  onCancel: userOnCancel,
+  afterClose: userAfterClose,
+  ...rest
+}) => {
   const [open, setOpen] = useState(true)
 
-  const onOk = () => {
+  const onOk: ModalProps['onOk'] = (e) => {
+    userOnOk?.(e)
     setOpen(false)
   }
 
-  const onCancel = () => {
+  const onCancel: ModalProps['onCancel'] = (e) => {
+    userOnCancel?.(e)
     setOpen(false)
   }
 
   const onClose = () => {
+    userAfterClose?.()
     resolve({})
   }
 
-  GeneralPopup.hide = onCancel
+  useEffect(() => {
+    const close = () => setOpen(false)
+    activeClosers.push(close)
+    return () => {
+      const index = activeClosers.lastIndexOf(close)
+      if (index !== -1) activeClosers.splice(index, 1)
+    }
+  }, [])
 
   return (
     <Modal
+      {...rest}
       open={open}
       onOk={onOk}
       onCancel={onCancel}
       afterClose={onClose}
-      transitionName="animation-move-down"
-      centered
-      {...rest}>
+      transitionName={rest.transitionName ?? 'animation-move-down'}
+      centered={rest.centered ?? true}>
       {content}
     </Modal>
   )
@@ -56,20 +75,24 @@ const TopViewKey = 'GeneralPopup'
 export default class GeneralPopup {
   static topviewId = 0
   static hide() {
-    TopView.hide(TopViewKey)
+    const closeTop = activeClosers.at(-1)
+    if (closeTop) {
+      closeTop()
+    } else if (TopView.peekId()?.startsWith(`${TopViewKey}-`)) {
+      TopView.back()
+    }
   }
   static show(props: ShowParams) {
+    const id = `${TopViewKey}-${++GeneralPopup.topviewId}`
     return new Promise<any>((resolve) => {
-      TopView.show(
-        <PopupContainer
-          {...props}
-          resolve={(v) => {
-            resolve(v)
-            TopView.hide(TopViewKey)
-          }}
-        />,
-        TopViewKey
-      )
+      let settled = false
+      const finish = (v: any = {}) => {
+        if (settled) return
+        settled = true
+        TopView.hide(id)
+        resolve(v)
+      }
+      TopView.show(<PopupContainer {...props} resolve={finish} />, id, () => finish({}))
     })
   }
 }

@@ -1,4 +1,5 @@
-import type { Assistant } from '@renderer/types'
+import type { Assistant, FileMetadata } from '@renderer/types'
+import { FILE_TYPE } from '@renderer/types'
 import type { Message } from '@renderer/types/newMessage'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -17,7 +18,7 @@ vi.mock('@renderer/utils/messageUtils/find', () => ({
   getThinkingContent: () => ''
 }))
 
-import { estimateMessagesUsage } from './TokenService'
+import { estimateMessagesUsage, estimateUserPromptUsage } from './TokenService'
 
 const createMockMessage = (id: string, role: 'user' | 'assistant', text: string): Message =>
   ({
@@ -88,5 +89,24 @@ describe('TokenService.estimateMessagesUsage', () => {
     })
 
     expect(second.prompt_tokens).not.toBe(first.prompt_tokens)
+  })
+
+  it('never produces negative total_tokens for <700B small images and keeps completion_tokens at 0 for user prompts', async () => {
+    const tinyImage = {
+      id: 'img-tiny',
+      name: 'tiny.png',
+      origin_name: 'tiny.png',
+      path: '/tmp/tiny.png',
+      size: 120,
+      ext: '.png',
+      type: FILE_TYPE.IMAGE,
+      created_at: '2026-01-01T00:00:00.000Z',
+      count: 1
+    } satisfies FileMetadata
+
+    const usage = await estimateUserPromptUsage({ content: '', files: [tinyImage] })
+    expect(usage.prompt_tokens).toBeGreaterThanOrEqual(1)
+    expect(usage.completion_tokens).toBe(0)
+    expect(usage.total_tokens).toBe(usage.prompt_tokens)
   })
 })

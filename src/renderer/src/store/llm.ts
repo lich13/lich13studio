@@ -30,6 +30,7 @@ import {
   catalogModel,
   createPlatformModels,
   inferProviderPlatform,
+  PLATFORM_NAMES,
   type PlatformModel,
   type PlatformModels,
   type ProviderPlatform,
@@ -82,6 +83,11 @@ export interface LlmState {
   quickAssistantId: string
   settings: LlmSettings
 }
+
+export type LlmImportSnapshot = Pick<
+  LlmState,
+  'providers' | 'platformModels' | 'modelCatalogExclusions' | 'defaultModel'
+>
 
 export const initialState: LlmState = {
   defaultModel: undefined,
@@ -185,6 +191,39 @@ const llmSlice = createSlice({
     },
     setCliVersion: (state, action: PayloadAction<{ platform: ProviderPlatform; cache: CliVersionCache }>) => {
       state.cliVersions[action.payload.platform] = action.payload.cache
+    },
+    importPlatformProvider: (
+      state,
+      action: PayloadAction<{ provider: Provider; models: string[]; primaryModel?: string }>
+    ) => {
+      const { provider, models, primaryModel } = action.payload
+      ProviderTypeSchema.parse(provider.type)
+      const platform = inferProviderPlatform(provider)
+      const catalog = state.platformModels[platform]
+      state.modelCatalogExclusions ??= emptyCatalogExclusions()
+      state.modelCatalogExclusions[platform] = state.modelCatalogExclusions[platform].filter(
+        (id) => !models.includes(id)
+      )
+      for (const id of models) {
+        if (!catalog.some((model) => model.id === id)) {
+          catalog.push({ id, name: id, group: PLATFORM_NAMES[platform] })
+        }
+      }
+      if (!state.providers.some((existing) => existing.id === provider.id)) {
+        const normalized = storedProvider(provider)
+        normalized.apiHost = normalizeProviderEndpoint(normalized.apiHost)
+        state.providers.unshift(normalized)
+      }
+      if (!state.defaultModel?.id) {
+        const selected = catalog.find((model) => model.id === primaryModel) ?? catalog[0]
+        if (selected) state.defaultModel = { ...selected, provider: provider.id }
+      }
+    },
+    restoreLlmImportSnapshot: (state, action: PayloadAction<LlmImportSnapshot>) => {
+      state.providers = action.payload.providers
+      state.platformModels = action.payload.platformModels
+      state.modelCatalogExclusions = action.payload.modelCatalogExclusions
+      state.defaultModel = action.payload.defaultModel
     },
     addModel: (state, action: PayloadAction<{ providerId: string; model: Model }>) => {
       const provider = state.providers.find((p) => p.id === action.payload.providerId)
@@ -299,6 +338,8 @@ export const {
   applyPlatformCatalog,
   setPlatformModels,
   setCliVersion,
+  importPlatformProvider,
+  restoreLlmImportSnapshot,
   updateProvider,
   updateProviders,
   addProvider,

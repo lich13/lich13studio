@@ -1,3 +1,4 @@
+import { runtimeCapabilities, toBinaryIpcPayload } from '@renderer/services/mobile/runtime'
 import { invoke } from '@tauri-apps/api/core'
 
 export interface BackupOptions {
@@ -26,9 +27,16 @@ export async function exportPortableBackup(fileName: string, skipBackupFile: boo
   }
 }
 
-export async function decryptPortableBackup(bytes: number[]) {
+export async function decryptPortableBackup(bytes: Uint8Array | number[]) {
   const { requestBackupPassword } = await import('@renderer/components/Popups/BackupPasswordPopup')
   const password = await requestBackupPassword()
   if (password === null) return null
-  return invoke<string | number[]>('restore_encrypted_backup_archive', { bytes, password })
+  const rawBytes = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes)
+  return invoke<string | number[]>(
+    'restore_encrypted_backup_archive',
+    toBinaryIpcPayload(rawBytes, runtimeCapabilities.android),
+    {
+      headers: { 'x-backup-password': encodeURIComponent(password) }
+    }
+  )
 }

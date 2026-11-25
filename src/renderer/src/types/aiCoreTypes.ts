@@ -1,6 +1,5 @@
 import type { NotUndefined } from '@types'
 import type { generateText, ModelMessage, streamText } from 'ai'
-import * as z from 'zod'
 
 /**
  * 渲染器侧参数类型（不包含 model 和 messages，因为它们会单独处理）
@@ -48,7 +47,7 @@ export type OpenAICompletionsStreamOptions = {
   include_obfuscation?: boolean
 }
 
-const AiSdkParamsSchema = z.enum([
+const AI_SDK_PARAMS = [
   'maxOutputTokens',
   'temperature',
   'topP',
@@ -57,10 +56,12 @@ const AiSdkParamsSchema = z.enum([
   'frequencyPenalty',
   'stopSequences',
   'seed'
-])
+] as const
 
-export type AiSdkParam = z.infer<typeof AiSdkParamsSchema>
+export type AiSdkParam = (typeof AI_SDK_PARAMS)[number]
+
+const AI_SDK_PARAM_SET: ReadonlySet<string> = new Set(AI_SDK_PARAMS)
 
 export const isAiSdkParam = (param: string): param is AiSdkParam => {
-  return AiSdkParamsSchema.safeParse(param).success
+  return AI_SDK_PARAM_SET.has(param)
 }

@@ -1,9 +1,3 @@
-/**
- * 对于需要动态获取的翻译文本：
- * 1. 储存 key -> i18n-key 的 keyMap
- * 2. 通过函数翻译文本
- */
-
 import { loggerService } from '@logger'
 
 import i18n from './index'
@@ -92,15 +86,6 @@ const providerKeyMap = {
   zai: 'provider.zai'
 } as const
 
-/**
- * 获取内置供应商的本地化标签
- * @param id - 供应商的id
- * @returns 本地化后的供应商名称
- * @remarks
- * 该函数仅用于获取内置供应商的 i18n label
- *
- * 对于可能处理自定义供应商的情况，使用 getProviderName 或 getFancyProviderName 更安全
- */
 export const getProviderLabel = (id: string): string => {
   return getLabel(providerKeyMap, id)
 }
@@ -131,166 +116,24 @@ const restoreProgressKeyMap = {
   restoring_database: 'restore.progress.restoring_database',
   title: 'restore.progress.title',
   validating: 'restore.progress.validating'
-}
+} as const
 
 export const getRestoreProgressLabel = (key: string): string => {
   return getLabel(restoreProgressKeyMap, key)
 }
 
-const titleKeyMap = {
-  // TODO: update i18n key
-  store: 'title.store',
-  apps: 'title.apps',
-  code: 'title.code',
-  files: 'title.files',
-  home: 'title.home',
-  knowledge: 'title.knowledge',
-  launchpad: 'title.launchpad',
-  memories: 'title.memories',
-  notes: 'title.notes',
-  paintings: 'title.paintings',
-  settings: 'title.settings',
-  translate: 'title.translate',
-  openclaw: 'openclaw.title',
-  agents: 'agent.sidebar_title'
-} as const
-
-export const getTitleLabel = (key: string): string => {
-  return getLabel(titleKeyMap, key)
-}
-
-const themeModeKeyMap = {
-  dark: 'settings.theme.dark',
-  light: 'settings.theme.light',
-  system: 'settings.theme.system'
-} as const
-
-export const getThemeModeLabel = (key: string): string => {
-  return getLabel(themeModeKeyMap, key)
-}
-
-// const sidebarIconKeyMap = {
-//   assistants: t('assistants.title'),
-//   store: t('assistants.presets.title'),
-//   paintings: t('paintings.title'),
-//   translate: t('translate.title'),
-//   minapp: t('minapp.title'),
-//   knowledge: t('knowledge.title'),
-//   files: t('files.title'),
-//   code_tools: t('code.title'),
-//   notes: t('notes.title')
-// } as const
-
 const sidebarIconKeyMap = {
   assistants: 'assistants.title',
   agents: 'agent.sidebar_title',
   store: 'assistants.presets.title',
-  paintings: 'paintings.title',
   translate: 'translate.title',
-  minapp: 'minapp.title',
   knowledge: 'knowledge.title',
   files: 'files.title',
-  code_tools: 'code.title',
-  notes: 'notes.title',
-  openclaw: 'openclaw.title'
+  code_tools: 'code.title'
 } as const
 
 export const getSidebarIconLabel = (key: string): string => {
   return getLabel(sidebarIconKeyMap, key)
-}
-
-const shortcutKeyMap = {
-  action: 'settings.shortcuts.action',
-  actions: 'settings.shortcuts.actions',
-  clear_shortcut: 'settings.shortcuts.clear_shortcut',
-  clear_topic: 'settings.shortcuts.clear_topic',
-  rename_topic: 'settings.shortcuts.rename_topic',
-  copy_last_message: 'settings.shortcuts.copy_last_message',
-  edit_last_user_message: 'settings.shortcuts.edit_last_user_message',
-  enabled: 'settings.shortcuts.enabled',
-  exit_fullscreen: 'settings.shortcuts.exit_fullscreen',
-  label: 'settings.shortcuts.label',
-  mini_window: 'settings.shortcuts.mini_window',
-  new_topic: 'settings.shortcuts.new_topic',
-  press_shortcut: 'settings.shortcuts.press_shortcut',
-  reset_defaults: 'settings.shortcuts.reset_defaults',
-  reset_defaults_confirm: 'settings.shortcuts.reset_defaults_confirm',
-  reset_to_default: 'settings.shortcuts.reset_to_default',
-  search_message: 'settings.shortcuts.search_message',
-  search_message_in_chat: 'settings.shortcuts.search_message_in_chat',
-  select_model: 'settings.shortcuts.select_model',
-  selection_assistant_select_text: 'settings.shortcuts.selection_assistant_select_text',
-  selection_assistant_toggle: 'settings.shortcuts.selection_assistant_toggle',
-  show_app: 'settings.shortcuts.show_app',
-  show_settings: 'settings.shortcuts.show_settings',
-  title: 'settings.shortcuts.title',
-  toggle_new_context: 'settings.shortcuts.toggle_new_context',
-  toggle_show_assistants: 'settings.shortcuts.toggle_show_assistants',
-  toggle_show_topics: 'settings.shortcuts.toggle_show_topics',
-  zoom_in: 'settings.shortcuts.zoom_in',
-  zoom_out: 'settings.shortcuts.zoom_out',
-  zoom_reset: 'settings.shortcuts.zoom_reset'
-} as const
-
-export const getShortcutLabel = (key: string): string => {
-  return getLabel(shortcutKeyMap, key)
-}
-
-const selectionDescriptionKeyMap = {
-  linux: 'selection.settings.toolbar.trigger_mode.description_note.linux',
-  mac: 'selection.settings.toolbar.trigger_mode.description_note.mac',
-  windows: 'selection.settings.toolbar.trigger_mode.description_note.windows'
-} as const
-
-export const getSelectionDescriptionLabel = (key: string): string => {
-  return getLabel(selectionDescriptionKeyMap, key)
-}
-
-const paintingsImageSizeOptionsKeyMap = {
-  auto: 'paintings.image_size_options.auto'
-} as const
-
-export const getPaintingsImageSizeOptionsLabel = (key: string): string => {
-  return paintingsImageSizeOptionsKeyMap[key] ? getLabel(paintingsImageSizeOptionsKeyMap, key) : key
-}
-
-const paintingsQualityOptionsKeyMap = {
-  auto: 'paintings.quality_options.auto',
-  high: 'paintings.quality_options.high',
-  low: 'paintings.quality_options.low',
-  medium: 'paintings.quality_options.medium'
-} as const
-
-export const getPaintingsQualityOptionsLabel = (key: string): string => {
-  return getLabel(paintingsQualityOptionsKeyMap, key)
-}
-
-const paintingsModerationOptionsKeyMap = {
-  auto: 'paintings.moderation_options.auto',
-  low: 'paintings.moderation_options.low'
-} as const
-
-export const getPaintingsModerationOptionsLabel = (key: string): string => {
-  return getLabel(paintingsModerationOptionsKeyMap, key)
-}
-
-const paintingsBackgroundOptionsKeyMap = {
-  auto: 'paintings.background_options.auto',
-  opaque: 'paintings.background_options.opaque',
-  transparent: 'paintings.background_options.transparent'
-} as const
-
-export const getPaintingsBackgroundOptionsLabel = (key: string): string => {
-  return getLabel(paintingsBackgroundOptionsKeyMap, key)
-}
-
-const miniappsStatusKeyMap = {
-  visible: 'settings.miniapps.visible',
-  disabled: 'settings.miniapps.disabled'
-} as const
-
-export const getMiniappsStatusLabel = (key: string): string => {
-  return getLabel(miniappsStatusKeyMap, key)
 }
 
 const httpMessageKeyMap = {
@@ -307,14 +150,4 @@ const httpMessageKeyMap = {
 
 export const getHttpMessageLabel = (key: string): string => {
   return getLabel(httpMessageKeyMap, key)
-}
-
-const fileFieldKeyMap = {
-  created_at: 'files.created_at',
-  size: 'files.size',
-  name: 'files.name'
-} as const
-
-export const getFileFieldLabel = (key: string): string => {
-  return getLabel(fileFieldKeyMap, key)
 }

@@ -4,7 +4,6 @@ import CodeEditor from '@renderer/components/CodeEditor'
 import EditableNumber from '@renderer/components/EditableNumber'
 import { DeleteIcon, ResetIcon } from '@renderer/components/Icons'
 import { HStack } from '@renderer/components/Layout'
-import { SelectChatModelPopup } from '@renderer/components/Popups/SelectModelPopup'
 import Selector from '@renderer/components/Selector'
 import {
   DEFAULT_CONTEXTCOUNT,
@@ -218,6 +217,7 @@ const AssistantModelSettings: FC<Props> = ({ assistant, updateAssistant, updateA
 
   const onSelectModel = useCallback(async () => {
     const currentModel = defaultModel ? assistant?.model : undefined
+    const { SelectChatModelPopup } = await import('@renderer/components/Popups/SelectModelPopup')
     const selectedModel = await SelectChatModelPopup.show({ model: currentModel, filter: modelFilter })
     if (selectedModel) {
       updateAssistant({
@@ -226,16 +226,8 @@ const AssistantModelSettings: FC<Props> = ({ assistant, updateAssistant, updateA
         modelSelection: undefined,
         defaultModel: selectedModel
       })
-      // TODO: 移除根据模型自动修改参数的逻辑
-      if (selectedModel.name.includes('kimi-k2')) {
-        setTemperature(0.6)
-        setTimeoutTimer('onSelectModel_1', () => updateAssistantSettings({ temperature: 0.6 }), 500)
-      } else if (selectedModel.name.includes('moonshot')) {
-        setTemperature(0.3)
-        setTimeoutTimer('onSelectModel_2', () => updateAssistantSettings({ temperature: 0.3 }), 500)
-      }
     }
-  }, [assistant, defaultModel, setTimeoutTimer, updateAssistant, updateAssistantSettings])
+  }, [assistant, defaultModel, updateAssistant])
 
   useEffect(() => {
     return () => updateAssistantSettings({ customParameters: customParametersRef.current })

@@ -12,7 +12,7 @@ import {
 } from '@renderer/utils/keywordSearch'
 import { List, Segmented, Spin, Typography } from 'antd'
 import type { FC } from 'react'
-import { memo, useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSelector } from 'react-redux'
 import styled from 'styled-components'
@@ -31,6 +31,7 @@ export type SearchMatchCandidate = {
   message: Message
   topic: Topic
   createdAtMs: number
+  matchedTermCount?: number
 }
 
 type SearchDatabase = Pick<typeof db, 'message_blocks' | 'topics'>
@@ -227,7 +228,7 @@ export async function scanHistoryMatches({
 
   const lowerTerms = terms.map((term) => term.toLowerCase())
   const searchRegexes = buildKeywordRegexes(terms, { matchMode, flags: 'i' })
-  const matchedRefs: Array<{ blockId: string; messageId: string }> = []
+  const matchedRefs: Array<{ blockId: string; messageId: string; matchedTermCount: number }> = []
   const neededMessageIds = new Set<string>()
 
   await database.message_blocks
@@ -239,20 +240,20 @@ export async function scanHistoryMatches({
       }
       const rawLower = block.content.toLowerCase()
       const hasDirectTerm = lowerTerms.some((term) => rawLower.includes(term))
-      if (
-        !hasDirectTerm &&
-        (!MARKDOWN_OR_HTML_CHAR_REGEX.test(block.content) ||
-          !lowerTerms.some((term) => containsOrderedChars(rawLower, term)))
-      ) {
+      const hasMarkdownOrHtml = MARKDOWN_OR_HTML_CHAR_REGEX.test(block.content)
+      if (!hasDirectTerm && (!hasMarkdownOrHtml || !lowerTerms.some((term) => containsOrderedChars(rawLower, term)))) {
         return
       }
-      const searchableContent = stripMarkdownFormatting(block.content)
-      const isMatched = searchRegexes.some((regex) => {
+      const searchableContent = hasMarkdownOrHtml ? stripMarkdownFormatting(block.content) : block.content
+      let matchedTermCount = 0
+      for (const regex of searchRegexes) {
         regex.lastIndex = 0
-        return regex.test(searchableContent)
-      })
-      if (isMatched) {
-        matchedRefs.push({ blockId: block.id, messageId: block.messageId })
+        if (regex.test(searchableContent)) {
+          matchedTermCount += 1
+        }
+      }
+      if (matchedTermCount > 0) {
+        matchedRefs.push({ blockId: block.id, messageId: block.messageId, matchedTermCount })
         neededMessageIds.add(block.messageId)
       }
     })
@@ -300,7 +301,8 @@ export async function scanHistoryMatches({
       blockId: ref.blockId,
       message,
       topic,
-      createdAtMs: Date.parse(message.createdAt) || 0
+      createdAtMs: Date.parse(message.createdAt) || 0,
+      matchedTermCount: ref.matchedTermCount
     })
   }
 
@@ -333,6 +335,11 @@ export async function selectAndHydrateTopSearchResults({
     .sort((a, b) => {
       if (a.createdAtMs !== b.createdAtMs) {
         return sortOrder === 'newest' ? b.createdAtMs - a.createdAtMs : a.createdAtMs - b.createdAtMs
+      }
+      const aMatched = a.matchedTermCount ?? 1
+      const bMatched = b.matchedTermCount ?? 1
+      if (aMatched !== bMatched) {
+        return bMatched - aMatched
       }
       return a.message.id.localeCompare(b.message.id) || a.blockId.localeCompare(b.blockId)
     })
@@ -492,11 +499,16 @@ const SearchResults: FC<Props> = ({ keywords, onMessageClick, onTopicClick, ...p
       .catch(() => {})
   }
 
+  const highlightRegex = useMemo(
+    () => buildKeywordUnionRegex(searchTerms, { matchMode, flags: 'gi' }),
+    [searchTerms, matchMode]
+  )
+
   const highlightText = (text: string) => {
-    const highlightRegex = buildKeywordUnionRegex(searchTerms, { matchMode, flags: 'gi' })
     if (!highlightRegex) {
       return <span>{text}</span>
     }
+    highlightRegex.lastIndex = 0
 
     const parts: React.ReactNode[] = []
     let lastIndex = 0

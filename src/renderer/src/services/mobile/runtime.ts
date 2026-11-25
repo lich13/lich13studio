@@ -29,3 +29,21 @@ export function desktopCredentialStoreAvailable(): boolean {
 export function isMainTauriWindow(): boolean {
   return (window as any).__TAURI_INTERNALS__?.metadata?.currentWindow?.label === 'main'
 }
+
+export function encodeBytesToBase64(bytes: Uint8Array): string {
+  if (bytes.byteLength === 0) return ''
+  const chunkSize = 0x8000
+  const parts: string[] = []
+  for (let offset = 0; offset < bytes.byteLength; offset += chunkSize) {
+    parts.push(String.fromCharCode(...bytes.subarray(offset, offset + chunkSize)))
+  }
+  return btoa(parts.join(''))
+}
+
+/** Desktop custom-protocol IPC accepts raw Uint8Array; Android postMessage IPC requires JSON-wrapped base64. */
+export function toBinaryIpcPayload(
+  bytes: Uint8Array,
+  isAndroid = runtimeCapabilities.android
+): Uint8Array | { base64: string } {
+  return isAndroid ? { base64: encodeBytesToBase64(bytes) } : bytes
+}

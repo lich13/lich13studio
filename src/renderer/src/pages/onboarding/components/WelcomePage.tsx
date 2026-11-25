@@ -1,8 +1,10 @@
 import { loggerService } from '@logger'
 import AppLogo from '@renderer/assets/images/logo.png'
+import { runtimeCapabilities } from '@renderer/services/mobile/runtime'
 import { useAppStore } from '@renderer/store'
 import { resolveProviders } from '@shared/platforms'
 import { Button } from 'antd'
+import { Link2 } from 'lucide-react'
 import type { FC } from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -49,6 +51,21 @@ const WelcomePage: FC<WelcomePageProps> = ({ setStep, setProviderConfigured }) =
         <Button type="primary" size="large" block className="h-12 rounded-lg" onClick={handleConfigureProviders}>
           {t('settings.provider.add.title')}
         </Button>
+
+        {runtimeCapabilities.android && (
+          <Button
+            size="large"
+            block
+            icon={<Link2 size={18} />}
+            className="h-12 rounded-lg"
+            onClick={() => {
+              void import('@renderer/pages/settings/ProviderSettings/ProviderImportPopup').then(
+                ({ promptManualProviderImport }) => promptManualProviderImport()
+              )
+            }}>
+            {t('settings.provider.import_link')}
+          </Button>
+        )}
       </div>
     </div>
   )

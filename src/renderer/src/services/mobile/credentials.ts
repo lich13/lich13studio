@@ -47,6 +47,7 @@ let secrets: SecretMap = {}
 let committedSecrets: SecretMap | null = null
 let initialized = false
 let tail = Promise.resolve()
+let lastPersistError: unknown = null
 const isRef = (value: unknown): value is string => typeof value === 'string' && value.startsWith(PREFIX)
 
 function hasAllSecrets(storeMap: SecretMap | null, subset: SecretMap): boolean {
@@ -87,14 +88,26 @@ export const credentialStorageEnabled = runtimeCapabilities.android || desktopCr
 
 function redactState(value: string) {
   const nextSecrets: SecretMap = {}
-  const oldEntries = Object.entries(secrets)
+  const refBySerializedSecret = new Map<string, string>()
+  for (const [existingRef, previous] of Object.entries(secrets)) {
+    const serialized = JSON.stringify(previous)
+    if (serialized !== undefined && !refBySerializedSecret.has(serialized)) {
+      refBySerializedSecret.set(serialized, existingRef)
+    }
+  }
+
   const redacted = mapCredentials(value, (secret) => {
     if (secret === '' || secret == null || (typeof secret === 'object' && !Object.keys(secret).length)) return secret
     const resolved = isRef(secret) ? secrets[secret] : secret
     if (resolved === undefined) throw new Error('Credential unavailable')
-    const ref =
-      oldEntries.find(([, previous]) => JSON.stringify(previous) === JSON.stringify(resolved))?.[0] ||
-      `${PREFIX}${crypto.randomUUID()}`
+    const serialized = JSON.stringify(resolved)
+    let ref = serialized !== undefined ? refBySerializedSecret.get(serialized) : undefined
+    if (!ref) {
+      ref = `${PREFIX}${crypto.randomUUID()}`
+      if (serialized !== undefined) {
+        refBySerializedSecret.set(serialized, ref)
+      }
+    }
     nextSecrets[ref] = resolved
     return ref
   }) as string
@@ -217,6 +230,15 @@ export async function initializeMobileCredentials() {
   initialized = true
 }
 
+export async function assertPersistCommitted(): Promise<void> {
+  await tail
+  if (lastPersistError !== null) {
+    const error = lastPersistError
+    lastPersistError = null
+    throw error instanceof Error ? error : new Error('Failed to persist credentials')
+  }
+}
+
 export const mobilePersistStorage = {
   async getItem(key: string) {
     await initializeMobileCredentials()
@@ -224,11 +246,21 @@ export const mobilePersistStorage = {
     return value === null ? null : hydrateCredentials(value)
   },
   setItem(key: string, value: string) {
-    const write = tail.then(async () => {
-      await initializeMobileCredentials()
-      if (runtimeCapabilities.android) await savePrivateState(key, value)
-      else await saveDesktopState(key, value, false)
-    })
+    const write = tail
+      .then(async () => {
+        await initializeMobileCredentials()
+        if (runtimeCapabilities.android) await savePrivateState(key, value)
+        else await saveDesktopState(key, value, false)
+        if (key === 'persist:cherry-studio') {
+          lastPersistError = null
+        }
+      })
+      .catch((error) => {
+        if (key === 'persist:cherry-studio') {
+          lastPersistError = error
+        }
+        throw error
+      })
     tail = write.catch(() => {})
     return write
   },

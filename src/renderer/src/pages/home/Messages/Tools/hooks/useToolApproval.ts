@@ -1,6 +1,6 @@
 import type { ToolMessageBlock } from '@renderer/types/newMessage'
 
-import { useAgentToolApproval } from './useAgentToolApproval'
+const noop = () => {}
 
 /**
  * Unified tool approval state
@@ -29,7 +29,14 @@ export interface ToolApprovalActions {
 }
 
 export function useToolApproval(block: ToolMessageBlock): ToolApprovalState & ToolApprovalActions {
-  return useAgentToolApproval(block)
+  void block
+  return {
+    isWaiting: false,
+    isExecuting: false,
+    isSubmitting: false,
+    confirm: noop,
+    cancel: noop
+  }
 }
 
 /**
@@ -39,5 +46,3 @@ export function isBlockWaitingApproval(block: ToolMessageBlock): boolean {
   const response = block.metadata?.rawMcpToolResponse
   return response?.tool.type !== 'mcp' && !response?.tool.name.startsWith('mcp__') && response?.status === 'pending'
 }
-
-export { useAgentToolApproval, type UseAgentToolApprovalOptions } from './useAgentToolApproval'

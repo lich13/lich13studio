@@ -1,6 +1,8 @@
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons'
+import { useMobileBack } from '@renderer/services/mobile/back'
 import { Button } from 'antd'
 import type { FC } from 'react'
+import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 
 interface Props {
@@ -12,6 +14,21 @@ interface Props {
 }
 
 const ConfirmDialog: FC<Props> = ({ x, y, message, onConfirm, onCancel }) => {
+  useMobileBack(true, onCancel)
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.isComposing || event.keyCode === 229) return
+      if (event.key === 'Escape' && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
+        event.preventDefault()
+        event.stopPropagation()
+        onCancel()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [onCancel])
+
   if (typeof document === 'undefined') {
     return null
   }
@@ -20,6 +37,9 @@ const ConfirmDialog: FC<Props> = ({ x, y, message, onConfirm, onCancel }) => {
     <>
       <div className="fixed inset-0 z-[99998] bg-transparent" onClick={onCancel} />
       <div
+        role="dialog"
+        aria-modal="true"
+        data-confirm-dialog="true"
         className="-translate-x-1/2 -translate-y-full fixed z-[99999] mt-[-8px] transform"
         style={{
           left: `${x}px`,

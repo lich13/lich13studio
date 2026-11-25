@@ -13,7 +13,7 @@ use futures_util::StreamExt;
 use image::codecs::png::PngEncoder;
 #[cfg(not(target_os = "android"))]
 use image::{ColorType, ImageEncoder};
-use reqwest::header::{HeaderName, HeaderValue, CONTENT_TYPE, USER_AGENT};
+use reqwest::header::{HeaderName, HeaderValue, CONTENT_LENGTH, CONTENT_TYPE, USER_AGENT};
 use reqwest::{Client, Method};
 use roxmltree::Document;
 use serde::{Deserialize, Serialize};
@@ -27,7 +27,7 @@ use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs;
 use std::fs::File;
-use std::io::{BufWriter, Cursor, Read, Seek, Write};
+use std::io::{BufReader, BufWriter, Cursor, Read, Seek, Write};
 use std::path::{Component, Path, PathBuf};
 use std::process::Command as StdCommand;
 #[cfg(not(target_os = "android"))]
@@ -728,27 +728,6 @@ fn disable_auto_launch() -> Result<(), String> {
 }
 
 #[cfg(not(target_os = "android"))]
-fn is_auto_launch_enabled() -> Result<bool, String> {
-    with_auto_launch_lock(|| {
-        let app_path = current_auto_launch_path()?;
-
-        #[cfg(target_os = "macos")]
-        {
-            build_auto_launch(&app_path)?
-                .is_enabled()
-                .map_err(|error| format!("Failed to check macOS login item: {error}"))
-        }
-
-        #[cfg(not(target_os = "macos"))]
-        {
-            build_auto_launch(&app_path)?
-                .is_enabled()
-                .map_err(|error| format!("Failed to check auto launch: {error}"))
-        }
-    })
-}
-
-#[cfg(not(target_os = "android"))]
 fn show_and_focus_main_window(app: &AppHandle) -> Result<(), String> {
     request_main_window(app, ShowReason::User)
 }
@@ -1307,48 +1286,163 @@ fn downloads_dir() -> Result<PathBuf, String> {
     Ok(path)
 }
 
+pub(crate) fn percent_decode_bytes(encoded: &str) -> Result<Vec<u8>, String> {
+    let raw = encoded.as_bytes();
+    let mut out = Vec::with_capacity(raw.len());
+    let mut idx = 0;
+    while idx < raw.len() {
+        if raw[idx] == b'%' {
+            if idx + 2 >= raw.len() {
+                return Err(String::from("Invalid percent-encoded IPC header"));
+            }
+            let hi = (raw[idx + 1] as char)
+                .to_digit(16)
+                .ok_or_else(|| String::from("Invalid percent-encoded IPC header"))?;
+            let lo = (raw[idx + 2] as char)
+                .to_digit(16)
+                .ok_or_else(|| String::from("Invalid percent-encoded IPC header"))?;
+            out.push(((hi << 4) | lo) as u8);
+            idx += 3;
+        } else {
+            out.push(raw[idx]);
+            idx += 1;
+        }
+    }
+    Ok(out)
+}
+
+pub(crate) fn extract_decoded_header(
+    headers: &tauri::http::HeaderMap,
+    name: &str,
+) -> Result<String, String> {
+    let value = headers
+        .get(name)
+        .ok_or_else(|| format!("Missing required IPC header: {name}"))?
+        .to_str()
+        .map_err(|_| format!("Invalid ASCII in IPC header: {name}"))?;
+    let bytes = percent_decode_bytes(value)?;
+    String::from_utf8(bytes).map_err(|_| format!("Invalid UTF-8 in IPC header: {name}"))
+}
+
+pub(crate) fn extract_zeroizing_header(
+    headers: &tauri::http::HeaderMap,
+    name: &str,
+) -> Result<zeroize::Zeroizing<String>, String> {
+    let value = headers
+        .get(name)
+        .ok_or_else(|| format!("Missing required IPC header: {name}"))?
+        .to_str()
+        .map_err(|_| format!("Invalid ASCII in IPC header: {name}"))?;
+    let decoded = zeroize::Zeroizing::new(percent_decode_bytes(value)?);
+    let mut raw_vec = Vec::with_capacity(decoded.len());
+    raw_vec.extend_from_slice(&decoded);
+    match String::from_utf8(raw_vec) {
+        Ok(secret) => Ok(zeroize::Zeroizing::new(secret)),
+        Err(err) => {
+            let mut bad = err.into_bytes();
+            zeroize::Zeroize::zeroize(&mut bad);
+            Err(format!("Invalid UTF-8 in IPC header: {name}"))
+        }
+    }
+}
+
+pub(crate) fn extract_raw_ipc_bytes(request: &tauri::ipc::Request<'_>) -> Result<Vec<u8>, String> {
+    extract_ipc_body_bytes(request.body())
+}
+
+fn extract_ipc_body_bytes(body: &tauri::ipc::InvokeBody) -> Result<Vec<u8>, String> {
+    match body {
+        tauri::ipc::InvokeBody::Raw(bytes) => Ok(bytes.clone()),
+        // Android WebView IPC uses postMessage and always delivers InvokeBody::Json.
+        // Accept base64-wrapped payloads from Android as well as byte arrays from postMessage fallback.
+        tauri::ipc::InvokeBody::Json(Value::Object(map)) => {
+            let Some(encoded) = map.get("base64").and_then(Value::as_str) else {
+                return Err(String::from("Expected raw or base64 binary IPC payload"));
+            };
+            if encoded.trim().is_empty() {
+                return Ok(Vec::new());
+            }
+            decode_base64_payload(encoded)
+        }
+        tauri::ipc::InvokeBody::Json(Value::Array(items)) => {
+            let mut out = Vec::with_capacity(items.len());
+            for item in items {
+                let byte = item
+                    .as_u64()
+                    .and_then(|n| u8::try_from(n).ok())
+                    .ok_or_else(|| String::from("Invalid byte in IPC payload array"))?;
+                out.push(byte);
+            }
+            Ok(out)
+        }
+        tauri::ipc::InvokeBody::Json(_) => Err(String::from("Expected raw binary IPC payload")),
+    }
+}
+
+struct TempFileGuard(PathBuf);
+
+impl Drop for TempFileGuard {
+    fn drop(&mut self) {
+        let _ = fs::remove_file(&self.0);
+    }
+}
+
+#[cfg(not(target_os = "android"))]
+async fn pick_save_file_path(file_name: &str) -> Option<PathBuf> {
+    rfd::AsyncFileDialog::new()
+        .set_file_name(file_name)
+        .save_file()
+        .await
+        .map(|handle| handle.path().to_path_buf())
+}
+
 #[cfg(not(target_os = "android"))]
 async fn save_file_bytes(file_name: String, bytes: Vec<u8>) -> Result<String, String> {
-    let handle = rfd::AsyncFileDialog::new()
-        .set_file_name(file_name.as_str())
-        .save_file()
-        .await;
-
-    let Some(file_handle) = handle else {
+    let Some(file_path) = pick_save_file_path(&file_name).await else {
         return Ok(String::new());
     };
 
-    let file_path = file_handle.path().to_path_buf();
-    fs::write(&file_path, bytes).map_err(|error| error.to_string())?;
+    let written_path = file_path.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        fs::write(&written_path, bytes).map_err(|error| error.to_string())
+    })
+    .await
+    .map_err(|_| String::from("Save file task failed"))??;
     Ok(file_path.display().to_string())
 }
 
 #[tauri::command]
 #[cfg(not(target_os = "android"))]
-async fn save_file(file_name: String, bytes: Vec<u8>) -> Result<String, String> {
+async fn save_file(request: tauri::ipc::Request<'_>) -> Result<String, String> {
+    let file_name = extract_decoded_header(request.headers(), "x-file-name")?;
+    let bytes = extract_raw_ipc_bytes(&request)?;
     save_file_bytes(file_name, bytes).await
 }
 
 #[tauri::command]
-fn save_base64_image(data: String) -> Result<TauriFileMetadata, String> {
-    let decoded = decode_base64_image_payload(&data)?;
-    let id = Uuid::new_v4().to_string();
-    let file_name = format!("{}{}", id, decoded.extension);
-    let path = files_dir()?.join(&file_name);
+async fn save_base64_image(data: String) -> Result<TauriFileMetadata, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let decoded = decode_base64_image_payload(&data)?;
+        let id = Uuid::new_v4().to_string();
+        let file_name = format!("{}{}", id, decoded.extension);
+        let path = files_dir()?.join(&file_name);
 
-    fs::write(&path, &decoded.bytes).map_err(|error| error.to_string())?;
+        fs::write(&path, &decoded.bytes).map_err(|error| error.to_string())?;
 
-    Ok(TauriFileMetadata {
-        id,
-        name: file_name.clone(),
-        origin_name: file_name,
-        path: path.display().to_string(),
-        size: decoded.bytes.len() as u64,
-        ext: decoded.extension.clone(),
-        file_type: file_type_from_extension(&decoded.extension).to_string(),
-        created_at: chrono::Utc::now().to_rfc3339(),
-        count: 1,
+        Ok(TauriFileMetadata {
+            id,
+            name: file_name.clone(),
+            origin_name: file_name,
+            path: path.display().to_string(),
+            size: decoded.bytes.len() as u64,
+            ext: decoded.extension.clone(),
+            file_type: file_type_from_extension(&decoded.extension).to_string(),
+            created_at: chrono::Utc::now().to_rfc3339(),
+            count: 1,
+        })
     })
+    .await
+    .map_err(|_| String::from("Save base64 image task failed"))?
 }
 
 fn normalize_base_url(url: &str) -> String {
@@ -1716,7 +1810,18 @@ async fn webdav_client(config: &BackupWebDavConfig) -> Result<Client, String> {
     Ok(client)
 }
 
-async fn upload_webdav(config: &BackupWebDavConfig, payload: Vec<u8>) -> Result<String, String> {
+const MAX_WEBDAV_ARCHIVE_BYTES: u64 = 4 * 1024 * 1024 * 1024;
+
+async fn upload_webdav_file(
+    config: &BackupWebDavConfig,
+    archive_path: &Path,
+    content_length: u64,
+) -> Result<String, String> {
+    if content_length > MAX_WEBDAV_ARCHIVE_BYTES {
+        return Err(String::from(
+            "WebDAV backup archive exceeds maximum supported size",
+        ));
+    }
     let raw_file_name = config
         .file_name
         .as_deref()
@@ -1726,10 +1831,40 @@ async fn upload_webdav(config: &BackupWebDavConfig, payload: Vec<u8>) -> Result<
     let client = webdav_client(config).await?;
     let target = format!("{}/{}", normalize_base_url(&config.url), safe_name);
 
+    let file = File::open(archive_path).map_err(|error| error.to_string())?;
+    let body_stream = futures_util::stream::unfold(Some(file), |reader_opt| async move {
+        let mut reader = reader_opt?;
+        let chunk_res = tauri::async_runtime::spawn_blocking(
+            move || -> Result<(File, Option<Vec<u8>>), std::io::Error> {
+                let mut buf = vec![0u8; 64 * 1024];
+                let read = reader.read(&mut buf)?;
+                if read == 0 {
+                    Ok((reader, None))
+                } else {
+                    buf.truncate(read);
+                    Ok((reader, Some(buf)))
+                }
+            },
+        )
+        .await;
+        match chunk_res {
+            Ok(Ok((_, None))) => None,
+            Ok(Ok((next_reader, Some(chunk)))) => {
+                Some((Ok::<Vec<u8>, std::io::Error>(chunk), Some(next_reader)))
+            }
+            Ok(Err(io_err)) => Some((Err(io_err), None)),
+            Err(_) => Some((
+                Err(std::io::Error::other("WebDAV upload read task failed")),
+                None,
+            )),
+        }
+    });
+
     let mut request = client
         .put(&target)
         .basic_auth(&config.username, Some(&config.password))
-        .header(CONTENT_TYPE, "application/zip");
+        .header(CONTENT_TYPE, "application/zip")
+        .header(CONTENT_LENGTH, content_length);
 
     if let Some(user_agent) = config
         .user_agent
@@ -1740,7 +1875,7 @@ async fn upload_webdav(config: &BackupWebDavConfig, payload: Vec<u8>) -> Result<
     }
 
     request
-        .body(payload)
+        .body(reqwest::Body::wrap_stream(body_stream))
         .send()
         .await
         .map_err(|error| error.to_string())?
@@ -1750,7 +1885,11 @@ async fn upload_webdav(config: &BackupWebDavConfig, payload: Vec<u8>) -> Result<
     Ok(target)
 }
 
-async fn download_webdav(config: &BackupWebDavConfig) -> Result<Vec<u8>, String> {
+async fn download_webdav_to_file(
+    config: &BackupWebDavConfig,
+    dest_path: &Path,
+) -> Result<(), String> {
+    const MAX_WEBDAV_RESTORE_BYTES: u64 = MAX_WEBDAV_ARCHIVE_BYTES;
     let raw_file_name = config
         .file_name
         .as_deref()
@@ -1771,17 +1910,66 @@ async fn download_webdav(config: &BackupWebDavConfig) -> Result<Vec<u8>, String>
         request = request.header(USER_AGENT, user_agent);
     }
 
-    let payload = request
+    let response = request
         .send()
         .await
         .map_err(|error| error.to_string())?
         .error_for_status()
-        .map_err(|error| error.to_string())?
-        .bytes()
-        .await
         .map_err(|error| error.to_string())?;
 
-    Ok(payload.to_vec())
+    if let Some(len) = response.content_length() {
+        if len > MAX_WEBDAV_RESTORE_BYTES {
+            return Err(String::from(
+                "Remote WebDAV backup exceeds maximum supported size",
+            ));
+        }
+    }
+
+    let dest = dest_path.to_path_buf();
+    let writer = tauri::async_runtime::spawn_blocking(move || {
+        File::create(&dest)
+            .map(BufWriter::new)
+            .map_err(|error| error.to_string())
+    })
+    .await
+    .map_err(|_| String::from("WebDAV download file task failed"))??;
+
+    let mut stream = response.bytes_stream();
+    let mut writer_opt = Some(writer);
+    let mut total_written = 0u64;
+
+    while let Some(chunk) = stream.next().await {
+        let bytes = chunk.map_err(|error| error.to_string())?;
+        total_written = total_written.saturating_add(bytes.len() as u64);
+        if total_written > MAX_WEBDAV_RESTORE_BYTES {
+            return Err(String::from(
+                "Remote WebDAV backup exceeds maximum supported size",
+            ));
+        }
+        let mut current_writer = writer_opt
+            .take()
+            .ok_or_else(|| String::from("WebDAV download writer unavailable"))?;
+        current_writer =
+            tauri::async_runtime::spawn_blocking(move || -> Result<BufWriter<File>, String> {
+                current_writer
+                    .write_all(&bytes)
+                    .map_err(|error| error.to_string())?;
+                Ok(current_writer)
+            })
+            .await
+            .map_err(|_| String::from("WebDAV download write task failed"))??;
+        writer_opt = Some(current_writer);
+    }
+
+    if let Some(mut final_writer) = writer_opt {
+        tauri::async_runtime::spawn_blocking(move || {
+            final_writer.flush().map_err(|error| error.to_string())
+        })
+        .await
+        .map_err(|_| String::from("WebDAV download flush task failed"))??;
+    }
+
+    Ok(())
 }
 
 fn parse_webdav_listing(xml: &str) -> Result<Vec<RemoteBackupFileInfo>, String> {
@@ -1888,72 +2076,6 @@ async fn list_webdav(config: &BackupWebDavConfig) -> Result<Vec<RemoteBackupFile
 
     let payload = response.text().await.map_err(|error| error.to_string())?;
     parse_webdav_listing(&payload)
-}
-
-async fn check_webdav(config: &BackupWebDavConfig) -> Result<bool, String> {
-    let client = webdav_client(config).await?;
-    let target = normalize_base_url(&config.url);
-    let body = r#"<?xml version="1.0" encoding="utf-8" ?><propfind xmlns="DAV:"><prop><displayname/></prop></propfind>"#;
-
-    let mut request = client
-        .request(
-            reqwest::Method::from_bytes(b"PROPFIND").map_err(|error| error.to_string())?,
-            &target,
-        )
-        .basic_auth(&config.username, Some(&config.password))
-        .header("Depth", "0")
-        .header(CONTENT_TYPE, "application/xml")
-        .body(body.to_string());
-
-    if let Some(user_agent) = config
-        .user_agent
-        .as_ref()
-        .filter(|value| !value.trim().is_empty())
-    {
-        request = request.header(USER_AGENT, user_agent);
-    }
-
-    let response = request.send().await.map_err(|error| error.to_string())?;
-
-    Ok(response.status().is_success())
-}
-
-async fn create_webdav_folder(config: &BackupWebDavConfig, dir_path: &str) -> Result<bool, String> {
-    let client = webdav_client(config).await?;
-    let mut current = normalize_base_url(&config.url);
-
-    for segment in dir_path
-        .split('/')
-        .filter(|segment| !segment.trim().is_empty())
-    {
-        current = format!("{}/{}", current, segment);
-        let mut request = client
-            .request(
-                reqwest::Method::from_bytes(b"MKCOL").map_err(|error| error.to_string())?,
-                &current,
-            )
-            .basic_auth(&config.username, Some(&config.password));
-
-        if let Some(user_agent) = config
-            .user_agent
-            .as_ref()
-            .filter(|value| !value.trim().is_empty())
-        {
-            request = request.header(USER_AGENT, user_agent);
-        }
-
-        let response = request.send().await.map_err(|error| error.to_string())?;
-
-        let status = response.status();
-        if !(status.is_success() || status.as_u16() == 405) {
-            return Err(format!(
-                "Failed to create WebDAV directory: HTTP {}",
-                status
-            ));
-        }
-    }
-
-    Ok(true)
 }
 
 fn validate_safe_backup_file_name(file_name: &str) -> Result<&str, String> {
@@ -2128,21 +2250,27 @@ fn system_device_type() -> &'static str {
     }
 }
 
+static CACHED_SYSTEM_HOSTNAME: OnceLock<String> = OnceLock::new();
+
 fn system_hostname() -> String {
-    std::env::var("COMPUTERNAME")
-        .or_else(|_| std::env::var("HOSTNAME"))
-        .ok()
-        .filter(|value| !value.trim().is_empty())
-        .or_else(|| {
-            hidden_std_command("hostname")
-                .output()
+    CACHED_SYSTEM_HOSTNAME
+        .get_or_init(|| {
+            std::env::var("COMPUTERNAME")
+                .or_else(|_| std::env::var("HOSTNAME"))
                 .ok()
-                .filter(|output| output.status.success())
-                .and_then(|output| String::from_utf8(output.stdout).ok())
-                .map(|value| value.trim().to_string())
-                .filter(|value| !value.is_empty())
+                .filter(|value| !value.trim().is_empty())
+                .or_else(|| {
+                    hidden_std_command("hostname")
+                        .output()
+                        .ok()
+                        .filter(|output| output.status.success())
+                        .and_then(|output| String::from_utf8(output.stdout).ok())
+                        .map(|value| value.trim().to_string())
+                        .filter(|value| !value.is_empty())
+                })
+                .unwrap_or_else(|| String::from("unknown"))
         })
-        .unwrap_or_else(|| String::from("unknown"))
+        .clone()
 }
 
 const EXTERNAL_URL_SCHEMES: [&str; 4] = ["http", "https", "mailto", "tel"];
@@ -2601,7 +2729,145 @@ fn validate_backup_payload(payload: &str) -> Result<(), String> {
     validate_backup_value(&data)
 }
 
-static PENDING_BACKUP_RESTORE: OnceLock<Mutex<Option<(PathBuf, PathBuf, bool)>>> = OnceLock::new();
+const RESTORE_PENDING_MARKER_FILE: &str = ".restore-pending.json";
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+struct PendingRestoreMarker {
+    previous_dir_name: String,
+    existed: bool,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct ActivePendingRestore {
+    restore_id: String,
+    current: PathBuf,
+    previous: PathBuf,
+    existed: bool,
+}
+
+fn is_valid_previous_dir_name(name: &str) -> bool {
+    !name.is_empty()
+        && name.starts_with("restore-previous-")
+        && name.len() > "restore-previous-".len()
+        && !name.contains(['/', '\\'])
+        && !name.contains("..")
+}
+
+fn read_pending_restore_marker(app_data_root: &Path) -> Option<PendingRestoreMarker> {
+    let marker_path = app_data_root.join(RESTORE_PENDING_MARKER_FILE);
+    let raw_marker = fs::read_to_string(marker_path).ok()?;
+    let marker = serde_json::from_str::<PendingRestoreMarker>(&raw_marker).ok()?;
+    is_valid_previous_dir_name(&marker.previous_dir_name).then_some(marker)
+}
+
+fn active_restore_from_marker(
+    app_data_root: &Path,
+    marker: PendingRestoreMarker,
+) -> ActivePendingRestore {
+    let previous = app_data_root.join(&marker.previous_dir_name);
+    ActivePendingRestore {
+        restore_id: marker.previous_dir_name,
+        current: app_data_root.join("Data"),
+        previous,
+        existed: marker.existed,
+    }
+}
+
+fn write_pending_restore_marker(
+    app_data_root: &Path,
+    marker: &PendingRestoreMarker,
+) -> Result<(), String> {
+    let marker_path = app_data_root.join(RESTORE_PENDING_MARKER_FILE);
+    let temp_path = app_data_root.join(format!(
+        ".{RESTORE_PENDING_MARKER_FILE}.tmp-{}",
+        Uuid::new_v4()
+    ));
+    let encoded = serde_json::to_vec(marker).map_err(|error| error.to_string())?;
+    fs::write(&temp_path, encoded).map_err(|_| String::from("Cannot write restore journal"))?;
+    if let Err(error) = fs::rename(&temp_path, &marker_path) {
+        let _ = fs::remove_file(&temp_path);
+        return Err(error.to_string());
+    }
+    Ok(())
+}
+
+fn remove_pending_restore_marker_for_data_dir(data_root: &Path) {
+    if let Some(parent) = data_root.parent() {
+        let _ = fs::remove_file(parent.join(RESTORE_PENDING_MARKER_FILE));
+    }
+}
+
+static PENDING_BACKUP_RESTORE: OnceLock<Mutex<Option<ActivePendingRestore>>> = OnceLock::new();
+
+fn finish_backup_restore_target(target: &ActivePendingRestore, commit: bool) -> Result<(), String> {
+    if commit {
+        if target.existed && target.previous.exists() {
+            fs::remove_dir_all(&target.previous).map_err(|_| "Cannot remove restore staging")?;
+        }
+    } else if target.existed {
+        if target.previous.exists() {
+            if target.current.exists() {
+                fs::remove_dir_all(&target.current)
+                    .map_err(|_| "Cannot roll back restored files")?;
+            }
+            fs::rename(&target.previous, &target.current)
+                .map_err(|_| "Cannot restore previous files")?;
+        }
+    } else if target.current.exists() {
+        fs::remove_dir_all(&target.current).map_err(|_| "Cannot roll back restored files")?;
+    }
+    remove_pending_restore_marker_for_data_dir(&target.current);
+    Ok(())
+}
+
+#[cfg(test)]
+fn get_pending_restore_id_in_dir(app_data_root: &Path) -> Option<String> {
+    let data_root = app_data_root.join("Data");
+    if let Ok(pending) = PENDING_BACKUP_RESTORE.get_or_init(Default::default).lock() {
+        if let Some(active) = pending.as_ref() {
+            if active.current == data_root {
+                return Some(active.restore_id.clone());
+            }
+        }
+    }
+    read_pending_restore_marker(app_data_root).map(|marker| marker.previous_dir_name)
+}
+
+#[cfg(test)]
+fn finish_backup_restore_in_dir(app_data_root: &Path, commit: bool) -> Result<(), String> {
+    let mut pending = PENDING_BACKUP_RESTORE
+        .get_or_init(Default::default)
+        .lock()
+        .map_err(|_| "Restore lock unavailable")?;
+    let data_root = app_data_root.join("Data");
+    if let Some(active) = pending.as_ref() {
+        if active.current == data_root {
+            let target = active.clone();
+            finish_backup_restore_target(&target, commit)?;
+            *pending = None;
+            return Ok(());
+        }
+    }
+    if let Some(marker) = read_pending_restore_marker(app_data_root) {
+        let target = active_restore_from_marker(app_data_root, marker);
+        finish_backup_restore_target(&target, commit)?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn get_pending_restore_id() -> Result<Option<String>, String> {
+    let pending = PENDING_BACKUP_RESTORE
+        .get_or_init(Default::default)
+        .lock()
+        .map_err(|_| "Restore lock unavailable")?;
+    if let Some(active) = pending.as_ref() {
+        return Ok(Some(active.restore_id.clone()));
+    }
+    drop(pending);
+    let app_root = app_data_dir()?;
+    Ok(read_pending_restore_marker(&app_root).map(|marker| marker.previous_dir_name))
+}
 
 #[tauri::command]
 fn finish_backup_restore(commit: bool) -> Result<(), String> {
@@ -2609,23 +2875,127 @@ fn finish_backup_restore(commit: bool) -> Result<(), String> {
         .get_or_init(Default::default)
         .lock()
         .map_err(|_| "Restore lock unavailable")?;
-    let Some((current, previous, existed)) = pending.as_ref() else {
+    if let Some(target) = pending.clone() {
+        finish_backup_restore_target(&target, commit)?;
+        *pending = None;
         return Ok(());
-    };
-    if commit {
-        if *existed && previous.exists() {
-            fs::remove_dir_all(previous).map_err(|_| "Cannot remove restore staging")?;
+    }
+    let app_root = app_data_dir()?;
+    if let Some(marker) = read_pending_restore_marker(&app_root) {
+        let target = active_restore_from_marker(&app_root, marker);
+        finish_backup_restore_target(&target, commit)?;
+    }
+    Ok(())
+}
+
+fn recover_and_cleanup_storage_in_dir(
+    app_data_root: &Path,
+    cache_root: Option<&Path>,
+    stale_tmp_max_age: Duration,
+) -> Result<Option<ActivePendingRestore>, String> {
+    let mut deferred_restore: Option<ActivePendingRestore> = None;
+
+    if app_data_root.exists() {
+        let raw_data_dir = app_data_root.join("Data");
+        let marker_path = app_data_root.join(RESTORE_PENDING_MARKER_FILE);
+        if marker_path.is_file() {
+            if let Some(marker) = read_pending_restore_marker(app_data_root) {
+                let prev_path = app_data_root.join(&marker.previous_dir_name);
+                if !raw_data_dir.exists() {
+                    // Crash occurred before staging was swapped into Data/; IndexedDB could not have committed.
+                    if marker.existed && prev_path.exists() {
+                        fs::rename(&prev_path, &raw_data_dir).map_err(|error| error.to_string())?;
+                    }
+                    let _ = fs::remove_file(&marker_path);
+                } else if marker.existed && !prev_path.exists() {
+                    // Previous files were already purged during finish_backup_restore(true) before marker removal.
+                    let _ = fs::remove_file(&marker_path);
+                } else {
+                    // Data/ exists alongside .restore-pending.json: defer commit vs. rollback until
+                    // startup reconciles against IndexedDB's committed restoreId.
+                    deferred_restore = Some(active_restore_from_marker(app_data_root, marker));
+                }
+            } else {
+                let _ = fs::remove_file(&marker_path);
+            }
         }
-    } else {
-        if current.exists() {
-            fs::remove_dir_all(current).map_err(|_| "Cannot roll back restored files")?;
+
+        let mut previous_dirs = Vec::new();
+        let mut staging_dirs = Vec::new();
+        let mut stale_tmp_files = Vec::new();
+        let now = SystemTime::now();
+        let protected_prev_name = deferred_restore
+            .as_ref()
+            .map(|pending| pending.restore_id.as_str());
+
+        for entry in fs::read_dir(app_data_root).map_err(|error| error.to_string())? {
+            let entry = entry.map_err(|error| error.to_string())?;
+            let path = entry.path();
+            let name = entry.file_name();
+            let name_str = name.to_string_lossy();
+            let Ok(file_type) = entry.file_type() else {
+                continue;
+            };
+
+            if file_type.is_dir() {
+                if name_str.starts_with("restore-previous-") {
+                    if protected_prev_name != Some(name_str.as_ref()) {
+                        previous_dirs.push(path);
+                    }
+                } else if name_str.starts_with("restore-staging-") {
+                    staging_dirs.push(path);
+                }
+            } else if file_type.is_file() && name_str.contains(".tmp-") {
+                let is_stale = entry
+                    .metadata()
+                    .ok()
+                    .and_then(|meta| meta.modified().ok())
+                    .and_then(|modified| now.duration_since(modified).ok())
+                    .map(|age| age >= stale_tmp_max_age)
+                    .unwrap_or(false);
+                if is_stale {
+                    stale_tmp_files.push(path);
+                }
+            }
         }
-        if *existed {
-            fs::rename(previous, current).map_err(|_| "Cannot restore previous files")?;
+
+        // Fallback: If Data/ is missing and a unique restore-previous-* exists without a marker, roll it back.
+        if deferred_restore.is_none() && !raw_data_dir.exists() && previous_dirs.len() == 1 {
+            fs::rename(&previous_dirs[0], &raw_data_dir).map_err(|error| error.to_string())?;
+            previous_dirs.clear();
+        }
+
+        // Purge orphan staging directories and stale temp files; only purge unprotected restore-previous-* when Data/ exists.
+        for dir in staging_dirs {
+            let _ = fs::remove_dir_all(dir);
+        }
+        if raw_data_dir.exists() {
+            for dir in previous_dirs {
+                let _ = fs::remove_dir_all(dir);
+            }
+        }
+        for tmp_file in stale_tmp_files {
+            let _ = fs::remove_file(tmp_file);
         }
     }
-    *pending = None;
-    Ok(())
+
+    if let Some(cache_dir) = cache_root {
+        let exports_dir = cache_dir.join("exports");
+        if exports_dir.exists() {
+            if let Ok(entries) = fs::read_dir(&exports_dir) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if path.is_dir() {
+                        let _ = fs::remove_dir_all(path);
+                    } else {
+                        let _ = fs::remove_file(path);
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(deferred_restore)
 }
 
 fn extract_backup_archive(bytes: &[u8]) -> Result<String, String> {
@@ -2633,14 +3003,30 @@ fn extract_backup_archive(bytes: &[u8]) -> Result<String, String> {
 }
 
 fn extract_backup_archive_to(bytes: &[u8], data_root: &Path) -> Result<String, String> {
+    extract_backup_archive_from_reader(Cursor::new(bytes), data_root)
+}
+
+fn extract_backup_archive_from_file(
+    archive_path: &Path,
+    data_root: &Path,
+) -> Result<String, String> {
+    let file = File::open(archive_path).map_err(|_| String::from("Invalid backup archive"))?;
+    extract_backup_archive_from_reader(BufReader::new(file), data_root)
+}
+
+fn extract_backup_archive_from_reader<R: Read + Seek>(
+    reader: R,
+    data_root: &Path,
+) -> Result<String, String> {
     let mut pending = PENDING_BACKUP_RESTORE
         .get_or_init(Default::default)
         .lock()
         .map_err(|_| "Restore lock unavailable")?;
-    if pending.is_some() {
+    let parent = data_root.parent().ok_or("Invalid data directory")?;
+    if pending.is_some() || read_pending_restore_marker(parent).is_some() {
         return Err("A backup restore is already active".into());
     }
-    let mut archive = ZipArchive::new(Cursor::new(bytes)).map_err(|_| "Invalid backup archive")?;
+    let mut archive = ZipArchive::new(reader).map_err(|_| "Invalid backup archive")?;
     let mut payload = String::new();
     archive
         .by_name("data.json")
@@ -2649,9 +3035,9 @@ fn extract_backup_archive_to(bytes: &[u8], data_root: &Path) -> Result<String, S
         .read_to_string(&mut payload)
         .map_err(|_| "Invalid backup data")?;
     validate_backup_payload(&payload)?;
-    let parent = data_root.parent().ok_or("Invalid data directory")?;
+    let previous_dir_name = format!("restore-previous-{}", Uuid::new_v4());
     let staging = parent.join(format!("restore-staging-{}", Uuid::new_v4()));
-    let previous = parent.join(format!("restore-previous-{}", Uuid::new_v4()));
+    let previous = parent.join(&previous_dir_name);
     fs::create_dir_all(&staging).map_err(|_| "Cannot stage backup")?;
     let result = (|| -> Result<bool, String> {
         let mut has_data = false;
@@ -2692,17 +3078,35 @@ fn extract_backup_archive_to(bytes: &[u8], data_root: &Path) -> Result<String, S
     };
     if has_data {
         let existed = data_root.exists();
-        if existed {
-            fs::rename(data_root, &previous).map_err(|_| "Cannot prepare backup restore")?;
+        if let Err(error) = write_pending_restore_marker(
+            parent,
+            &PendingRestoreMarker {
+                previous_dir_name: previous_dir_name.clone(),
+                existed,
+            },
+        ) {
+            let _ = fs::remove_dir_all(&staging);
+            return Err(error);
+        }
+        if existed && fs::rename(data_root, &previous).is_err() {
+            remove_pending_restore_marker_for_data_dir(data_root);
+            let _ = fs::remove_dir_all(&staging);
+            return Err("Cannot prepare backup restore".into());
         }
         if fs::rename(&staging, data_root).is_err() {
             if existed {
                 let _ = fs::rename(&previous, data_root);
             }
+            remove_pending_restore_marker_for_data_dir(data_root);
             let _ = fs::remove_dir_all(&staging);
             return Err("Cannot commit backup restore".into());
         }
-        *pending = Some((data_root.to_path_buf(), previous, existed));
+        *pending = Some(ActivePendingRestore {
+            restore_id: previous_dir_name,
+            current: data_root.to_path_buf(),
+            previous,
+            existed,
+        });
     } else {
         let _ = fs::remove_dir_all(staging);
     }
@@ -2718,27 +3122,60 @@ async fn export_portable_backup_archive(
     password: Option<String>,
 ) -> Result<String, String> {
     let safe_name = validate_safe_backup_file_name(&file_name)?.to_string();
-    let bytes = tauri::async_runtime::spawn_blocking(move || -> Result<Vec<u8>, String> {
-        validate_backup_value(&state)?;
-        let archive = create_backup_archive_bytes(&state, include_files)?;
-        if let Some(secret) = password {
+    if let Some(secret) = password {
+        let bytes = tauri::async_runtime::spawn_blocking(move || -> Result<Vec<u8>, String> {
+            validate_backup_value(&state)?;
+            let archive = create_backup_archive_bytes(&state, include_files)?;
             let zeroized = zeroize::Zeroizing::new(secret);
             backup_crypto::encrypt(&archive, &zeroized)
-        } else {
-            Ok(archive)
+        })
+        .await
+        .map_err(|_| String::from("Backup archive task failed"))??;
+
+        #[cfg(target_os = "android")]
+        {
+            return mobile::save_file_bytes(app, safe_name, bytes).await;
         }
-    })
-    .await
-    .map_err(|_| String::from("Backup archive task failed"))??;
+        #[cfg(not(target_os = "android"))]
+        {
+            let _ = app;
+            return save_file_bytes(safe_name, bytes).await;
+        }
+    }
 
     #[cfg(target_os = "android")]
     {
-        mobile::save_file(app, safe_name, bytes).await
+        let export_dir = app
+            .path()
+            .app_cache_dir()
+            .map_err(|_| String::from("Could not resolve cache directory"))?
+            .join("exports");
+        fs::create_dir_all(&export_dir).map_err(|_| String::from("Could not stage export"))?;
+        let staged_path = export_dir.join(format!("{}-{}", Uuid::new_v4(), safe_name));
+        let _guard = TempFileGuard(staged_path.clone());
+        let target_for_write = staged_path.clone();
+        tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
+            validate_backup_value(&state)?;
+            write_backup_archive_to_file(&target_for_write, &state, include_files, &data_dir()?)
+        })
+        .await
+        .map_err(|_| String::from("Backup archive task failed"))??;
+        mobile::save_staged_file(app, safe_name, &staged_path).await
     }
     #[cfg(not(target_os = "android"))]
     {
         let _ = app;
-        save_file_bytes(safe_name, bytes).await
+        validate_backup_value(&state)?;
+        let Some(file_path) = pick_save_file_path(&safe_name).await else {
+            return Ok(String::new());
+        };
+        let target_for_write = file_path.clone();
+        tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
+            write_backup_archive_to_file(&target_for_write, &state, include_files, &data_dir()?)
+        })
+        .await
+        .map_err(|_| String::from("Backup archive task failed"))??;
+        Ok(file_path.display().to_string())
     }
 }
 
@@ -2768,8 +3205,7 @@ fn resolve_attachment_in_root(root: &Path, name: &str) -> Result<PathBuf, String
     Ok(canonical)
 }
 
-#[tauri::command]
-fn persist_attachment(name: String, bytes: Vec<u8>) -> Result<String, String> {
+fn persist_attachment_bytes(name: &str, bytes: &[u8]) -> Result<String, String> {
     if name.is_empty() || name.contains(['/', '\\']) || name == "." || name == ".." {
         return Err("Invalid attachment name".into());
     }
@@ -2779,10 +3215,23 @@ fn persist_attachment(name: String, bytes: Vec<u8>) -> Result<String, String> {
 }
 
 #[tauri::command]
-fn read_attachment(name: String) -> Result<tauri::ipc::Response, String> {
-    let root = files_dir()?;
-    let path = resolve_attachment_in_root(&root, &name)?;
-    let bytes = fs::read(path).map_err(|_| String::from("Could not read attachment"))?;
+async fn persist_attachment(request: tauri::ipc::Request<'_>) -> Result<String, String> {
+    let name = extract_decoded_header(request.headers(), "x-file-name")?;
+    let bytes = extract_raw_ipc_bytes(&request)?;
+    tauri::async_runtime::spawn_blocking(move || persist_attachment_bytes(&name, &bytes))
+        .await
+        .map_err(|_| String::from("Persist attachment task failed"))?
+}
+
+#[tauri::command]
+async fn read_attachment(name: String) -> Result<tauri::ipc::Response, String> {
+    let bytes = tauri::async_runtime::spawn_blocking(move || -> Result<Vec<u8>, String> {
+        let root = files_dir()?;
+        let path = resolve_attachment_in_root(&root, &name)?;
+        fs::read(path).map_err(|_| String::from("Could not read attachment"))
+    })
+    .await
+    .map_err(|_| String::from("Read attachment task failed"))??;
     Ok(tauri::ipc::Response::new(bytes))
 }
 
@@ -2820,13 +3269,17 @@ fn clear_attachments_in_root(root: &Path) -> Result<u64, String> {
 }
 
 #[tauri::command]
-fn delete_attachment(name: String) -> Result<bool, String> {
-    delete_attachment_in_root(&files_dir()?, &name)
+async fn delete_attachment(name: String) -> Result<bool, String> {
+    tauri::async_runtime::spawn_blocking(move || delete_attachment_in_root(&files_dir()?, &name))
+        .await
+        .map_err(|_| String::from("Delete attachment task failed"))?
 }
 
 #[tauri::command]
-fn clear_attachments() -> Result<u64, String> {
-    clear_attachments_in_root(&files_dir()?)
+async fn clear_attachments() -> Result<u64, String> {
+    tauri::async_runtime::spawn_blocking(|| clear_attachments_in_root(&files_dir()?))
+        .await
+        .map_err(|_| String::from("Clear attachments task failed"))?
 }
 
 #[cfg(not(target_os = "android"))]
@@ -2987,12 +3440,6 @@ fn set_launch_on_boot(enabled: bool) -> Result<bool, String> {
 }
 
 #[tauri::command]
-#[cfg(not(target_os = "android"))]
-fn is_launch_on_boot_enabled() -> Result<bool, String> {
-    is_auto_launch_enabled()
-}
-
-#[tauri::command]
 fn is_startup_silent() -> bool {
     STARTED_SILENTLY.load(Ordering::SeqCst)
 }
@@ -3000,21 +3447,41 @@ fn is_startup_silent() -> bool {
 #[tauri::command]
 async fn webdav_backup(state: Value, config: BackupWebDavConfig) -> Result<String, String> {
     let include_files = !config.skip_backup_file.unwrap_or(false);
-    let payload = tauri::async_runtime::spawn_blocking(move || -> Result<Vec<u8>, String> {
+    let app_root = app_data_dir()?;
+    fs::create_dir_all(&app_root).map_err(|error| error.to_string())?;
+    let temp_path = app_root.join(format!(".webdav-upload.tmp-{}", Uuid::new_v4()));
+    let _guard = TempFileGuard(temp_path.clone());
+    let temp_for_write = temp_path.clone();
+    let content_length = tauri::async_runtime::spawn_blocking(move || -> Result<u64, String> {
         validate_backup_value(&state)?;
-        create_backup_archive_bytes(&state, include_files)
+        let file = File::create(&temp_for_write).map_err(|error| error.to_string())?;
+        let mut writer =
+            write_backup_archive(BufWriter::new(file), &state, include_files, &data_dir()?)?;
+        writer.flush().map_err(|error| error.to_string())?;
+        drop(writer);
+        fs::metadata(&temp_for_write)
+            .map(|meta| meta.len())
+            .map_err(|error| error.to_string())
     })
     .await
     .map_err(|_| String::from("Backup archive task failed"))??;
-    upload_webdav(&config, payload).await
+
+    upload_webdav_file(&config, &temp_path, content_length).await
 }
 
 #[tauri::command]
 async fn webdav_restore(config: BackupWebDavConfig) -> Result<String, String> {
-    let bytes = download_webdav(&config).await?;
-    tauri::async_runtime::spawn_blocking(move || extract_backup_archive(&bytes))
-        .await
-        .map_err(|_| String::from("Backup restore task failed"))?
+    let app_root = app_data_dir()?;
+    fs::create_dir_all(&app_root).map_err(|error| error.to_string())?;
+    let temp_path = app_root.join(format!(".webdav-download.tmp-{}", Uuid::new_v4()));
+    let _guard = TempFileGuard(temp_path.clone());
+    download_webdav_to_file(&config, &temp_path).await?;
+    let temp_for_extract = temp_path.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        extract_backup_archive_from_file(&temp_for_extract, &data_dir()?)
+    })
+    .await
+    .map_err(|_| String::from("Backup restore task failed"))?
 }
 
 #[tauri::command]
@@ -3030,8 +3497,10 @@ fn get_obsidian_vaults() -> Result<Vec<ObsidianVaultInfo>, String> {
 }
 
 #[tauri::command]
-fn get_obsidian_files(vault_name: String) -> Result<Vec<ObsidianFileInfo>, String> {
-    obsidian_files(&vault_name)
+async fn get_obsidian_files(vault_name: String) -> Result<Vec<ObsidianFileInfo>, String> {
+    tauri::async_runtime::spawn_blocking(move || obsidian_files(&vault_name))
+        .await
+        .map_err(|_| String::from("Obsidian files scan task failed"))?
 }
 
 #[tauri::command]
@@ -3082,23 +3551,32 @@ async fn open_external_url(url: String) -> Result<bool, String> {
 
 #[tauri::command]
 #[cfg(not(target_os = "android"))]
-fn list_capture_windows() -> Result<Vec<CaptureWindowInfo>, String> {
-    ensure_screen_capture_access()?;
-    capture_windows()
+async fn list_capture_windows() -> Result<Vec<CaptureWindowInfo>, String> {
+    tauri::async_runtime::spawn_blocking(|| {
+        ensure_screen_capture_access()?;
+        capture_windows()
+    })
+    .await
+    .map_err(|_| String::from("List capture windows task failed"))?
 }
 
 #[tauri::command]
 #[cfg(not(target_os = "android"))]
-fn capture_window(window_id: u32) -> Result<Vec<u8>, String> {
-    ensure_screen_capture_access()?;
-    let window = CaptureWindow::all()
-        .map_err(|error| error.to_string())?
-        .into_iter()
-        .find(|window| window.id().ok() == Some(window_id))
-        .ok_or_else(|| String::from("Target window not found"))?;
+async fn capture_window(window_id: u32) -> Result<tauri::ipc::Response, String> {
+    let png_bytes = tauri::async_runtime::spawn_blocking(move || -> Result<Vec<u8>, String> {
+        ensure_screen_capture_access()?;
+        let window = CaptureWindow::all()
+            .map_err(|error| error.to_string())?
+            .into_iter()
+            .find(|window| window.id().ok() == Some(window_id))
+            .ok_or_else(|| String::from("Target window not found"))?;
 
-    let image = window.capture_image().map_err(|error| error.to_string())?;
-    encode_png(image)
+        let image = window.capture_image().map_err(|error| error.to_string())?;
+        encode_png(image)
+    })
+    .await
+    .map_err(|_| String::from("Capture window task failed"))??;
+    Ok(tauri::ipc::Response::new(png_bytes))
 }
 
 #[tauri::command]
@@ -3155,8 +3633,7 @@ async fn restore_from_local_backup(
             return extract_backup_archive(&decrypted);
         }
         if lower_name.ends_with(".zip") {
-            let bytes = fs::read(&file_path).map_err(|error| error.to_string())?;
-            return extract_backup_archive(&bytes);
+            return extract_backup_archive_from_file(&file_path, &data_dir()?);
         }
 
         let raw = fs::read_to_string(&file_path).map_err(|error| error.to_string())?;
@@ -3168,7 +3645,9 @@ async fn restore_from_local_backup(
 }
 
 #[tauri::command]
-async fn restore_backup_archive(file_name: String, bytes: Vec<u8>) -> Result<String, String> {
+async fn restore_backup_archive(request: tauri::ipc::Request<'_>) -> Result<String, String> {
+    let file_name = extract_decoded_header(request.headers(), "x-file-name")?;
+    let bytes = extract_raw_ipc_bytes(&request)?;
     tauri::async_runtime::spawn_blocking(move || {
         decode_portable_backup(&file_name, &bytes, &data_dir()?)
     })
@@ -3178,12 +3657,12 @@ async fn restore_backup_archive(file_name: String, bytes: Vec<u8>) -> Result<Str
 
 #[tauri::command]
 async fn restore_encrypted_backup_archive(
-    bytes: Vec<u8>,
-    password: String,
+    request: tauri::ipc::Request<'_>,
 ) -> Result<String, String> {
+    let password = extract_zeroizing_header(request.headers(), "x-backup-password")?;
+    let bytes = extract_raw_ipc_bytes(&request)?;
     tauri::async_runtime::spawn_blocking(move || {
-        let zeroized = zeroize::Zeroizing::new(password);
-        let decrypted = backup_crypto::decrypt(&bytes, &zeroized)?;
+        let decrypted = backup_crypto::decrypt(&bytes, &password)?;
         extract_backup_archive(&decrypted)
     })
     .await
@@ -3281,16 +3760,6 @@ async fn list_webdav_files(
     config: BackupWebDavConfig,
 ) -> Result<Vec<RemoteBackupFileInfo>, String> {
     list_webdav(&config).await
-}
-
-#[tauri::command]
-async fn check_webdav_connection(config: BackupWebDavConfig) -> Result<bool, String> {
-    check_webdav(&config).await
-}
-
-#[tauri::command]
-async fn create_webdav_directory(config: BackupWebDavConfig, path: String) -> Result<bool, String> {
-    create_webdav_folder(&config, &path).await
 }
 
 #[tauri::command]
@@ -3413,6 +3882,22 @@ pub fn run() {
                 fs::create_dir_all(&path)?;
                 let _ = MOBILE_DATA_DIR.set(path);
             }
+            if let Ok(app_root) = app_data_dir() {
+                let cache_root = app.path().app_cache_dir().ok();
+                if let Ok(Some(pending_restore)) = recover_and_cleanup_storage_in_dir(
+                    &app_root,
+                    cache_root.as_deref(),
+                    Duration::from_secs(3600),
+                ) {
+                    if let Ok(mut slot) =
+                        PENDING_BACKUP_RESTORE.get_or_init(Default::default).lock()
+                    {
+                        if slot.is_none() {
+                            *slot = Some(pending_restore);
+                        }
+                    }
+                }
+            }
             #[cfg(not(target_os = "android"))]
             let initial_window_state = {
                 // Capture provenance during Tauri's Ready callback, while the launch
@@ -3493,8 +3978,6 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             mobile::mobile_command,
-            backup_crypto::encrypt_backup,
-            backup_crypto::decrypt_backup,
             app_info,
             secure_store::read_secure_credentials,
             secure_store::write_secure_credentials,
@@ -3503,9 +3986,9 @@ pub fn run() {
             get_hostname,
             set_runtime_setting,
             set_launch_on_boot,
-            is_launch_on_boot_enabled,
             is_startup_silent,
             export_portable_backup_archive,
+            get_pending_restore_id,
             finish_backup_restore,
             persist_attachment,
             read_attachment,
@@ -3527,8 +4010,6 @@ pub fn run() {
             list_local_backup_files,
             delete_local_backup_file,
             list_webdav_files,
-            check_webdav_connection,
-            create_webdav_directory,
             delete_webdav_file,
             webdav_backup,
             webdav_restore,
@@ -3657,12 +4138,17 @@ mod tests {
             skip_backup_file: Some(true),
             user_agent: None,
         };
+        let unused_archive = PathBuf::from("unused.zip");
         assert_eq!(
-            upload_webdav(&bad_config, vec![1, 2, 3]).await.unwrap_err(),
+            upload_webdav_file(&bad_config, &unused_archive, 3)
+                .await
+                .unwrap_err(),
             "Invalid backup file name"
         );
         assert_eq!(
-            download_webdav(&bad_config).await.unwrap_err(),
+            download_webdav_to_file(&bad_config, &unused_archive)
+                .await
+                .unwrap_err(),
             "Invalid backup file name"
         );
     }
@@ -3757,12 +4243,8 @@ mod tests {
         zip.start_file("data.json", zip_file_options()).unwrap();
         zip.write_all(payload.to_string().as_bytes()).unwrap();
         let bytes = zip.finish().unwrap().into_inner();
-        let encrypted = backup_crypto::encrypt_backup(bytes, "fixture password".into())
-            .await
-            .unwrap();
-        let decrypted = backup_crypto::decrypt_backup(encrypted, "fixture password".into())
-            .await
-            .unwrap();
+        let encrypted = backup_crypto::encrypt(&bytes, "fixture password").unwrap();
+        let decrypted = backup_crypto::decrypt(&encrypted, "fixture password").unwrap();
         let restored =
             decode_portable_backup("android.lich13backup", &decrypted, &directory.join("Data"))
                 .unwrap();
@@ -4124,5 +4606,268 @@ mod tests {
         assert_eq!(attachment, "streamed attachment");
 
         fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn decodes_uri_encoded_unicode_ipc_headers_and_zeroizes_passwords() {
+        let mut headers = tauri::http::HeaderMap::new();
+        headers.insert(
+            "x-file-name",
+            HeaderValue::from_static(
+                "%E8%81%8A%E5%A4%A9%E5%A4%87%E4%BB%BD%20%F0%9F%9A%80.lich13backup",
+            ),
+        );
+        headers.insert(
+            "x-backup-password",
+            HeaderValue::from_static("%E5%AF%86%E9%91%B0%232026%25!"),
+        );
+
+        assert_eq!(
+            extract_decoded_header(&headers, "x-file-name").unwrap(),
+            "聊天备份 🚀.lich13backup"
+        );
+        let secret = extract_zeroizing_header(&headers, "x-backup-password").unwrap();
+        assert_eq!(secret.as_str(), "密鑰#2026%!");
+
+        headers.insert("x-bad", HeaderValue::from_static("%E8%ZZ"));
+        assert!(extract_decoded_header(&headers, "x-bad").is_err());
+    }
+
+    #[test]
+    fn startup_storage_recovery_rolls_back_unique_restore_previous_before_purging_orphans() {
+        let root = std::env::temp_dir().join(format!("lich13-crash-rollback-{}", Uuid::new_v4()));
+        let cache = root.join("Cache");
+        let prev_files = root.join("restore-previous-crashed").join("Files");
+        let staging_dir = root.join("restore-staging-orphan");
+        let exports_dir = cache.join("exports");
+        fs::create_dir_all(&prev_files).unwrap();
+        fs::create_dir_all(&staging_dir).unwrap();
+        fs::create_dir_all(&exports_dir).unwrap();
+        fs::write(prev_files.join("rescued.pdf"), b"rescued-bytes").unwrap();
+        fs::write(staging_dir.join("partial.bin"), b"staging").unwrap();
+        fs::write(exports_dir.join("leftover.zip"), b"export").unwrap();
+        fs::write(root.join(".webdav-upload.tmp-stale"), b"tmp").unwrap();
+
+        // Simulate crash where Data/ was renamed to restore-previous-crashed and staging rename never completed.
+        recover_and_cleanup_storage_in_dir(&root, Some(&cache), Duration::ZERO).unwrap();
+
+        assert_eq!(
+            fs::read(root.join("Data").join("Files").join("rescued.pdf")).unwrap(),
+            b"rescued-bytes"
+        );
+        assert!(!root.join("restore-previous-crashed").exists());
+        assert!(!staging_dir.exists());
+        assert!(!root.join(".webdav-upload.tmp-stale").exists());
+        assert_eq!(fs::read_dir(&exports_dir).unwrap().count(), 0);
+
+        // When Data/ already exists, leftover restore-previous-* and restore-staging-* are purged without overwriting Data/.
+        let leftover_prev = root.join("restore-previous-stale");
+        fs::create_dir_all(&leftover_prev).unwrap();
+        fs::write(leftover_prev.join("old.txt"), b"old").unwrap();
+        recover_and_cleanup_storage_in_dir(&root, Some(&cache), Duration::from_secs(3600)).unwrap();
+
+        assert!(!leftover_prev.exists());
+        assert_eq!(
+            fs::read(root.join("Data").join("Files").join("rescued.pdf")).unwrap(),
+            b"rescued-bytes"
+        );
+
+        // Case A: Crash AFTER staging was swapped into Data/ but BEFORE IndexedDB committed.
+        // Rust setup() must keep BOTH Data/ and restore-previous-* intact until IndexedDB reconciliation.
+        let uncommitted_prev_name = "restore-previous-uncommitted";
+        let uncommitted_prev = root.join(uncommitted_prev_name).join("Files");
+        let unrelated_prev = root.join("restore-previous-unrelated-orphan");
+        fs::create_dir_all(&uncommitted_prev).unwrap();
+        fs::create_dir_all(&unrelated_prev).unwrap();
+        fs::write(uncommitted_prev.join("original.pdf"), b"original-bytes").unwrap();
+        fs::write(unrelated_prev.join("stale.bin"), b"stale").unwrap();
+        fs::remove_dir_all(root.join("Data")).unwrap();
+        fs::create_dir_all(root.join("Data").join("Files")).unwrap();
+        fs::write(
+            root.join("Data").join("Files").join("uncommitted.pdf"),
+            b"new-uncommitted",
+        )
+        .unwrap();
+        write_pending_restore_marker(
+            &root,
+            &PendingRestoreMarker {
+                previous_dir_name: uncommitted_prev_name.to_string(),
+                existed: true,
+            },
+        )
+        .unwrap();
+
+        let deferred =
+            recover_and_cleanup_storage_in_dir(&root, Some(&cache), Duration::from_secs(3600))
+                .unwrap()
+                .expect("expected deferred pending restore");
+        assert_eq!(deferred.restore_id, uncommitted_prev_name);
+        assert_eq!(
+            get_pending_restore_id_in_dir(&root).as_deref(),
+            Some(uncommitted_prev_name)
+        );
+        // Unrelated orphan previous dir is purged, while active restore-previous-* and Data/ remain intact.
+        assert!(!unrelated_prev.exists());
+        assert!(root.join(uncommitted_prev_name).exists());
+        assert!(root
+            .join("Data")
+            .join("Files")
+            .join("uncommitted.pdf")
+            .exists());
+        assert!(root.join(RESTORE_PENDING_MARKER_FILE).is_file());
+
+        // Reconcile with commit = false (IndexedDB did NOT commit restoreId): rolls restore-previous-* back to Data/.
+        finish_backup_restore_in_dir(&root, false).unwrap();
+        assert_eq!(
+            fs::read(root.join("Data").join("Files").join("original.pdf")).unwrap(),
+            b"original-bytes"
+        );
+        assert!(!root
+            .join("Data")
+            .join("Files")
+            .join("uncommitted.pdf")
+            .exists());
+        assert!(!root.join(uncommitted_prev_name).exists());
+        assert!(!root.join(RESTORE_PENDING_MARKER_FILE).exists());
+        assert_eq!(get_pending_restore_id_in_dir(&root), None);
+
+        // Case B: Crash AFTER IndexedDB committed restoreId (before finish_backup_restore(true) or after partial failure).
+        let committed_prev_name = "restore-previous-committed";
+        let committed_prev = root.join(committed_prev_name).join("Files");
+        fs::create_dir_all(&committed_prev).unwrap();
+        fs::write(committed_prev.join("old-attachment.pdf"), b"old-bytes").unwrap();
+        fs::remove_dir_all(root.join("Data")).unwrap();
+        fs::create_dir_all(root.join("Data").join("Files")).unwrap();
+        fs::write(
+            root.join("Data")
+                .join("Files")
+                .join("restored-attachment.pdf"),
+            b"new-committed-bytes",
+        )
+        .unwrap();
+        write_pending_restore_marker(
+            &root,
+            &PendingRestoreMarker {
+                previous_dir_name: committed_prev_name.to_string(),
+                existed: true,
+            },
+        )
+        .unwrap();
+
+        let deferred_committed =
+            recover_and_cleanup_storage_in_dir(&root, Some(&cache), Duration::from_secs(3600))
+                .unwrap()
+                .expect("expected deferred committed restore");
+        assert_eq!(deferred_committed.restore_id, committed_prev_name);
+        assert!(root.join(committed_prev_name).exists());
+        assert_eq!(
+            fs::read(
+                root.join("Data")
+                    .join("Files")
+                    .join("restored-attachment.pdf")
+            )
+            .unwrap(),
+            b"new-committed-bytes"
+        );
+
+        // Reconcile with commit = true (IndexedDB DID commit restoreId): keeps new Data/ and deletes restore-previous-*.
+        finish_backup_restore_in_dir(&root, true).unwrap();
+        assert_eq!(
+            fs::read(
+                root.join("Data")
+                    .join("Files")
+                    .join("restored-attachment.pdf")
+            )
+            .unwrap(),
+            b"new-committed-bytes"
+        );
+        assert!(!root
+            .join("Data")
+            .join("Files")
+            .join("old-attachment.pdf")
+            .exists());
+        assert!(!root.join(committed_prev_name).exists());
+        assert!(!root.join(RESTORE_PENDING_MARKER_FILE).exists());
+
+        // Case C: Fresh install (existed = false) crashing after IndexedDB commit preserves Data/; crashing before commit removes Data/.
+        write_pending_restore_marker(
+            &root,
+            &PendingRestoreMarker {
+                previous_dir_name: "restore-previous-fresh-committed".to_string(),
+                existed: false,
+            },
+        )
+        .unwrap();
+        assert!(
+            recover_and_cleanup_storage_in_dir(&root, Some(&cache), Duration::from_secs(3600))
+                .unwrap()
+                .is_some()
+        );
+        finish_backup_restore_in_dir(&root, true).unwrap();
+        assert!(root
+            .join("Data")
+            .join("Files")
+            .join("restored-attachment.pdf")
+            .exists());
+
+        write_pending_restore_marker(
+            &root,
+            &PendingRestoreMarker {
+                previous_dir_name: "restore-previous-fresh-aborted".to_string(),
+                existed: false,
+            },
+        )
+        .unwrap();
+        assert!(
+            recover_and_cleanup_storage_in_dir(&root, Some(&cache), Duration::from_secs(3600))
+                .unwrap()
+                .is_some()
+        );
+        finish_backup_restore_in_dir(&root, false).unwrap();
+        assert!(!root.join("Data").exists());
+        assert!(!root.join(RESTORE_PENDING_MARKER_FILE).exists());
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[tokio::test]
+    async fn binary_ipc_decoder_accepts_raw_desktop_and_android_base64_and_webdav_enforces_size_cap(
+    ) {
+        assert_eq!(
+            extract_ipc_body_bytes(&tauri::ipc::InvokeBody::Raw(vec![1, 2, 3])).unwrap(),
+            vec![1, 2, 3]
+        );
+        assert_eq!(
+            extract_ipc_body_bytes(&tauri::ipc::InvokeBody::Json(json!({ "base64": "AQID" })))
+                .unwrap(),
+            vec![1, 2, 3]
+        );
+        assert_eq!(
+            extract_ipc_body_bytes(&tauri::ipc::InvokeBody::Json(json!({ "base64": "" }))).unwrap(),
+            Vec::<u8>::new()
+        );
+        assert_eq!(
+            extract_ipc_body_bytes(&tauri::ipc::InvokeBody::Json(json!([4, 5, 6]))).unwrap(),
+            vec![4, 5, 6]
+        );
+        assert!(
+            extract_ipc_body_bytes(&tauri::ipc::InvokeBody::Json(json!({ "wrong": 1 }))).is_err()
+        );
+
+        let err = upload_webdav_file(
+            &BackupWebDavConfig {
+                url: "https://webdav.example.invalid/backups".into(),
+                username: "u".into(),
+                password: "p".into(),
+                file_name: Some("lich13studio.zip".into()),
+                skip_backup_file: None,
+                user_agent: None,
+            },
+            Path::new("/tmp/nonexistent.zip"),
+            MAX_WEBDAV_ARCHIVE_BYTES + 1,
+        )
+        .await
+        .unwrap_err();
+        assert!(err.contains("exceeds maximum supported size"));
     }
 }
