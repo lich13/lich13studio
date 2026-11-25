@@ -3403,6 +3403,7 @@ pub fn run() {
                 let path = app.path().app_data_dir()?;
                 fs::create_dir_all(&path)?;
                 let _ = MOBILE_DATA_DIR.set(path);
+                mobile::set_app_handle(app.handle().clone());
             }
             // An isolated desktop debug bundle exercises cross-platform restore without
             // touching the installed application's files. Compiled out of releases.
@@ -3554,10 +3555,30 @@ pub fn run() {
         app.set_activation_policy(tauri::ActivationPolicy::Prohibited);
         app
     };
+    #[cfg(target_os = "android")]
+    {
+        // Keep the Android event loop alive across Activity destruction instead of calling
+        // std::process::exit(0) from Tao during WryActivity.onDestroy(), so Activity teardown,
+        // AndroidJUnitRunner reporting, and cached-process relaunches complete cleanly.
+        let _ = app.run_return(|_app, event| match event {
+            RunEvent::WindowEvent {
+                label,
+                event: WindowEvent::Destroyed,
+                ..
+            } if label == "main" => {
+                mobile::notify_main_window_destroyed();
+            }
+            RunEvent::ExitRequested {
+                code: None, api, ..
+            } => {
+                api.prevent_exit();
+            }
+            _ => {}
+        });
+    }
+    #[cfg(not(target_os = "android"))]
     app.run(|app, event| {
-        #[cfg(not(target_os = "android"))]
         handle_run_event(app, &event);
-        let _ = (app, event);
     });
 }
 

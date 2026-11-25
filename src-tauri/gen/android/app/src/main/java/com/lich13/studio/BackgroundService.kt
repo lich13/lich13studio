@@ -13,6 +13,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 class BackgroundService : Service() {
     companion object {
+        init { System.loadLibrary("lich13studio_lib") }
         val tasks = ConcurrentHashMap.newKeySet<String>()
         @Volatile var stoppedReason: String? = null
         private val stateLock = Any()
@@ -31,7 +32,10 @@ class BackgroundService : Service() {
             }
             cancelNativeTasks()
             MainActivity.web.get()?.post {
-                MainActivity.web.get()?.evaluateJavascript("window.dispatchEvent(new CustomEvent('mobile-tasks-stopped',{detail:${JSONObject.quote(reason)}}))", null)
+                val webView = MainActivity.web.get()
+                if (webView != null && webView.isAttachedToWindow) {
+                    webView.evaluateJavascript("window.dispatchEvent(new CustomEvent('mobile-tasks-stopped',{detail:${JSONObject.quote(reason)}}))", null)
+                }
             }
             if (shouldStopService) {
                 context.stopService(Intent(context, BackgroundService::class.java))

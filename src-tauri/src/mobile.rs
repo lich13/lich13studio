@@ -5,6 +5,63 @@ use std::sync::atomic::Ordering;
 pub static TASK_EPOCH: AtomicU64 = AtomicU64::new(0);
 
 #[cfg(target_os = "android")]
+static MOBILE_APP_HANDLE: std::sync::OnceLock<AppHandle> = std::sync::OnceLock::new();
+#[cfg(target_os = "android")]
+static MAIN_WINDOW_DESTROYED: tokio::sync::Notify = tokio::sync::Notify::const_new();
+
+#[cfg(target_os = "android")]
+pub fn set_app_handle(app: AppHandle) {
+    let _ = MOBILE_APP_HANDLE.set(app);
+}
+
+#[cfg(target_os = "android")]
+pub fn notify_main_window_destroyed() {
+    MAIN_WINDOW_DESTROYED.notify_waiters();
+}
+
+#[cfg(target_os = "android")]
+#[no_mangle]
+pub extern "system" fn Java_com_lich13_studio_MainActivity_recreateMainWindow(
+    _env: *mut std::ffi::c_void,
+    _class: *mut std::ffi::c_void,
+) {
+    tauri::async_runtime::spawn(async {
+        let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(5);
+        let app = loop {
+            if let Some(app) = MOBILE_APP_HANDLE.get() {
+                break app.clone();
+            }
+            if tokio::time::Instant::now() >= deadline {
+                return;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        };
+        while app.get_webview_window("main").is_some() {
+            let notified = MAIN_WINDOW_DESTROYED.notified();
+            tokio::pin!(notified);
+            notified.as_mut().enable();
+            if app.get_webview_window("main").is_none() {
+                break;
+            }
+            if tokio::time::Instant::now() >= deadline {
+                return;
+            }
+            let _ = tokio::time::timeout(std::time::Duration::from_millis(50), notified).await;
+        }
+        let _ = tauri::async_runtime::spawn_blocking(move || {
+            if app.get_webview_window("main").is_none() {
+                if let Some(config) = app.config().app.windows.iter().find(|w| w.label == "main") {
+                    if let Ok(builder) = tauri::WebviewWindowBuilder::from_config(&app, config) {
+                        let _ = builder.build();
+                    }
+                }
+            }
+        })
+        .await;
+    });
+}
+
+#[cfg(target_os = "android")]
 #[no_mangle]
 pub extern "system" fn Java_com_lich13_studio_BackgroundService_cancelNativeTasks(
     _env: *mut std::ffi::c_void,

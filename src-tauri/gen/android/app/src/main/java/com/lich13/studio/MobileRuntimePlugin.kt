@@ -12,6 +12,7 @@ import android.security.keystore.KeyProperties
 import android.util.AtomicFile
 import android.util.Base64
 import androidx.activity.result.ActivityResult
+import androidx.appcompat.app.AppCompatActivity
 import app.tauri.annotation.*
 import app.tauri.plugin.*
 import java.io.File
@@ -27,16 +28,21 @@ class MobileArgs { var id: String = ""; var value: String = ""; var path: String
 
 @TauriPlugin(permissions = [Permission(strings = [Manifest.permission.POST_NOTIFICATIONS], alias = "taskNotifications")])
 class MobileRuntimePlugin(private val activity: Activity) : Plugin(activity) {
+    private val appContext = activity.applicationContext
+    @Volatile private var resumedActivity: Activity? = null
     private val alias = "lich13studio.credentials.v1"
     private val credentialLock = Any()
     private val store = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
     private val notificationRequests = mutableListOf<Invoke>()
-    private fun notificationsGranted() = activity.getSystemService(NotificationManager::class.java).areNotificationsEnabled()
+    private fun currentActivity(): Activity = resumedActivity ?: PluginManager.activity ?: activity
+    override fun onResume(activity: AppCompatActivity) { resumedActivity = activity }
+    override fun onDestroy(activity: AppCompatActivity) { if (resumedActivity === activity) resumedActivity = null }
+    private fun notificationsGranted() = appContext.getSystemService(NotificationManager::class.java).areNotificationsEnabled()
     @Command fun notificationPermission(invoke: Invoke) {
         val request = invoke.parseArgs(MobileArgs::class.java).request
-        activity.runOnUiThread {
+        currentActivity().runOnUiThread {
             // Always resolve already-granted requests, including concurrent callers.
-            if (!request || Build.VERSION.SDK_INT < 33 || activity.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+            if (!request || Build.VERSION.SDK_INT < 33 || appContext.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
                 invoke.resolve(JSObject().put("granted", notificationsGranted()))
             } else {
                 notificationRequests.add(invoke)
@@ -54,7 +60,7 @@ class MobileRuntimePlugin(private val activity: Activity) : Plugin(activity) {
         val result = JSObject().put("granted", notificationsGranted())
         pending.forEach { it.resolve(result) }
     }
-    private fun file() = AtomicFile(File(activity.noBackupFilesDir, "credentials-v1.json"))
+    private fun file() = AtomicFile(File(appContext.noBackupFilesDir, "credentials-v1.json"))
     private fun secret(create: Boolean): SecretKey {
         (store.getKey(alias, null) as? SecretKey)?.let { return it }
         check(create)
@@ -101,18 +107,21 @@ class MobileRuntimePlugin(private val activity: Activity) : Plugin(activity) {
         catch (_: Exception) { invoke.reject("安全存储删除失败") }
     }
     @Command fun beginTask(invoke: Invoke) {
-        try { BackgroundService.begin(activity, invoke.parseArgs(MobileArgs::class.java).id); invoke.resolve() }
+        try { BackgroundService.begin(appContext, invoke.parseArgs(MobileArgs::class.java).id); invoke.resolve() }
         catch (_: Exception) { invoke.reject("无法启动后台任务") }
     }
-    @Command fun endTask(invoke: Invoke) { BackgroundService.end(activity, invoke.parseArgs(MobileArgs::class.java).id); invoke.resolve() }
-    @Command fun stopTasks(invoke: Invoke) { BackgroundService.stopAll(activity, "user-stop"); invoke.resolve() }
+    @Command fun endTask(invoke: Invoke) { BackgroundService.end(appContext, invoke.parseArgs(MobileArgs::class.java).id); invoke.resolve() }
+    @Command fun stopTasks(invoke: Invoke) { BackgroundService.stopAll(appContext, "user-stop"); invoke.resolve() }
     @Command fun taskState(invoke: Invoke) { invoke.resolve(JSObject().put("stoppedReason", BackgroundService.stoppedReason)) }
-    @Command fun background(invoke: Invoke) { activity.runOnUiThread { activity.moveTaskToBack(true); invoke.resolve() } }
+    @Command fun background(invoke: Invoke) {
+        val active = currentActivity()
+        active.runOnUiThread { active.moveTaskToBack(true); invoke.resolve() }
+    }
     @Command fun openUrl(invoke: Invoke) {
         try {
             val uri = Uri.parse(invoke.parseArgs(MobileArgs::class.java).url)
             require(uri.scheme in listOf("https", "http", "mailto", "tel"))
-            activity.startActivity(Intent(Intent.ACTION_VIEW, uri)); invoke.resolve()
+            currentActivity().startActivity(Intent(Intent.ACTION_VIEW, uri)); invoke.resolve()
         } catch (_: Exception) { invoke.reject("无法打开链接") }
     }
     @Command fun saveFile(invoke: Invoke) {
@@ -125,8 +134,8 @@ class MobileRuntimePlugin(private val activity: Activity) : Plugin(activity) {
             val uri = result.data?.data
             if (result.resultCode != Activity.RESULT_OK || uri == null) { invoke.resolve(JSObject().put("uri", "")); return }
             val source = File(invoke.parseArgs(MobileArgs::class.java).path)
-            require(source.canonicalPath.startsWith(activity.filesDir.parentFile!!.canonicalPath + "/"))
-            activity.contentResolver.openOutputStream(uri, "wt")!!.use { output -> source.inputStream().use { it.copyTo(output) } }
+            require(source.canonicalPath.startsWith(appContext.filesDir.parentFile!!.canonicalPath + "/"))
+            appContext.contentResolver.openOutputStream(uri, "wt")!!.use { output -> source.inputStream().use { it.copyTo(output) } }
             invoke.resolve(JSObject().put("uri", uri.toString()))
         } catch (_: Exception) { invoke.reject("文件导出失败") }
     }

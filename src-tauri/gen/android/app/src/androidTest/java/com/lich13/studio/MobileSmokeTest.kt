@@ -61,7 +61,12 @@ class MobileSmokeTest {
         val latch = CountDownLatch(1)
         var result: String? = null
         instrumentation.runOnMainSync {
-            MainActivity.web.get()?.evaluateJavascript(source) { result = it; latch.countDown() } ?: latch.countDown()
+            val web = MainActivity.web.get()
+            if (web != null && web.isAttachedToWindow) {
+                web.evaluateJavascript(source) { result = it; latch.countDown() }
+            } else {
+                latch.countDown()
+            }
         }
         assertTrue("WebView did not respond", latch.await(10, TimeUnit.SECONDS))
         return result?.let { JSONTokener(it).nextValue() }
@@ -228,6 +233,34 @@ class MobileSmokeTest {
         val vault = File(context.noBackupFilesDir, "credentials-v1.json")
         assertTrue(vault.isFile)
         assertFalse(vault.readText().contains("ci-only-model-key"))
-        assertNull(activity().intent.data)
+        val launched = activity()
+        assertNull(launched.intent.data)
+        instrumentation.runOnMainSync { launched.finish() }
+        waitFor("activity destroyed cleanly") {
+            var destroyed = false
+            instrumentation.runOnMainSync {
+                destroyed = launched.isDestroyed && MainActivity.web.get() == null
+            }
+            destroyed
+        }
+        instrumentation.waitForIdleSync()
+        context.startActivity(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        waitFor("cached process relaunched activity") {
+            var relaunched = false
+            instrumentation.runOnMainSync {
+                val resumed = ActivityLifecycleMonitorRegistry.getInstance()
+                    .getActivitiesInStage(Stage.RESUMED)
+                    .filterIsInstance<MainActivity>()
+                    .singleOrNull()
+                relaunched = resumed != null && resumed !== launched
+            }
+            relaunched
+        }
+        waitFor("cached process relaunched renderer") { js("!!document.querySelector('#home-page')") == true }
+        assertEquals(false, js("JSON.stringify(localStorage).includes('ci-only-model-key')"))
+        assertEquals(true, js("$providers.find(p=>p.name==='Android CI provider').apiKey.startsWith('lich13-secret:')"))
+        js("window.__vaultCheck='pending';void window.__TAURI_INTERNALS__.invoke('mobile_command',{command:'readCredentials'}).then(r=>{const parsed=JSON.parse(r.value);window.__vaultCheck=Object.keys(parsed).length>0?'ok':'empty'},()=>window.__vaultCheck='error')")
+        waitFor("credentials readable after cached relaunch") { js("window.__vaultCheck") == "ok" }
+        js("delete window.__vaultCheck")
     }
 }
