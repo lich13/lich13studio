@@ -8,27 +8,21 @@ import { useDefaultAssistant } from '@renderer/hooks/useAssistant'
 import { useSettings } from '@renderer/hooks/useSettings'
 import i18n from '@renderer/i18n'
 import { getDefaultTopic } from '@renderer/services/AssistantService'
+import { dbService } from '@renderer/services/db'
 import FileManager from '@renderer/services/FileManager'
 import { getAssistantMessage, getUserMessage } from '@renderer/services/MessagesService'
 import PasteService from '@renderer/services/PasteService'
-import store, { useAppSelector } from '@renderer/store'
+import store, { refreshMiniWindowPersistedState, useAppSelector } from '@renderer/store'
 import { addTopic } from '@renderer/store/assistants'
 import { updateOneBlock, upsertManyBlocks, upsertOneBlock } from '@renderer/store/messageBlock'
 import { newMessagesActions, selectMessagesForTopic } from '@renderer/store/newMessage'
-import {
-  bulkAddBlocks,
-  cancelThrottledBlockUpdate,
-  saveMessageAndBlocksToDB,
-  throttledBlockUpdate,
-  updateMessage,
-  updateSingleBlock
-} from '@renderer/store/thunk/messageThunk'
+import { cancelThrottledBlockUpdate, throttledBlockUpdate } from '@renderer/store/thunk/messageThunk'
 import type { FileMetadata, Topic } from '@renderer/types'
 import { FILE_TYPE, ThemeMode } from '@renderer/types'
 import type { Chunk } from '@renderer/types/chunk'
 import { ChunkType } from '@renderer/types/chunk'
 import { AssistantMessageStatus, type Message, type MessageBlock, MessageBlockStatus } from '@renderer/types/newMessage'
-import { abortCompletion } from '@renderer/utils/abortController'
+import { abortCompletion, addAbortController, removeAbortController } from '@renderer/utils/abortController'
 import { isAbortError } from '@renderer/utils/error'
 import { createMainTextBlock, createThinkingBlock } from '@renderer/utils/messageUtils/create'
 import { getMainTextContent } from '@renderer/utils/messageUtils/find'
@@ -171,7 +165,7 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
   }, [files])
 
   useEffect(() => {
-    void i18n.changeLanguage(defaultLanguage)
+    void i18n.changeLanguage(language || defaultLanguage)
   }, [language])
 
   const focusInput = useCallback(() => {
@@ -206,6 +200,7 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
   }, [focusInput])
 
   const onWindowShow = useCallback(async () => {
+    await refreshMiniWindowPersistedState()
     await readClipboard()
     focusInput()
   }, [readClipboard, focusInput])
@@ -344,13 +339,27 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
     (modelSelection: ModelProviderSelection) => {
       const model = selectionModelReference(modelSelection, llm)
       updateDefaultAssistant({ ...defaultAssistant, modelSelection, model })
-      setFiles((prevFiles) => (getMiniWindowSupportExts({ ...currentAssistant, model }).length ? prevFiles : []))
+      setFiles((prevFiles) => {
+        if (getMiniWindowSupportExts({ ...currentAssistant, model }).length) {
+          return prevFiles
+        }
+        if (prevFiles.length > 0) {
+          void FileManager.cleanupUncommittedDraftFiles(prevFiles)
+        }
+        return []
+      })
     },
     [llm, currentAssistant, defaultAssistant, updateDefaultAssistant]
   )
 
   const removeFile = useCallback((fileId: string) => {
-    setFiles((prevFiles) => prevFiles.filter((file) => file.id !== fileId))
+    setFiles((prevFiles) => {
+      const removed = prevFiles.filter((file) => file.id === fileId)
+      if (removed.length > 0) {
+        void FileManager.cleanupUncommittedDraftFiles(removed)
+      }
+      return prevFiles.filter((file) => file.id !== fileId)
+    })
   }, [])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -390,6 +399,8 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
       let persistQueue = Promise.resolve()
       let isCurrentRequest = () => false
       let finishCurrentRequest = () => undefined
+      let registeredAskId = ''
+      let registeredAbortFn: (() => void) | undefined
       const queueMiniWindowPersist = (task: () => Promise<void>, label: string) => {
         persistQueue = persistQueue
           .then(task)
@@ -412,7 +423,7 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
           files: uploadedFiles
         })
 
-        await saveMessageAndBlocksToDB(topicId, userMessage, blocks)
+        await dbService.appendMessage(topicId, userMessage, blocks)
         store.dispatch(newMessagesActions.addMessage({ topicId, message: userMessage }))
         store.dispatch(upsertManyBlocks(blocks))
 
@@ -437,12 +448,12 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
           currentAskId.current = ''
         }
 
-        await saveMessageAndBlocksToDB(topicId, assistantMessage, [])
+        await dbService.appendMessage(topicId, assistantMessage, [])
         store.dispatch(newMessagesActions.addMessage({ topicId, message: assistantMessage }))
 
         const persistAssistantMessageUpdate = (updates: Partial<Message>, label: string) => {
           assistantMessage = { ...assistantMessage, ...updates }
-          queueMiniWindowPersist(() => updateMessage(topicId, assistantMessage.id, updates), label)
+          queueMiniWindowPersist(() => dbService.updateMessage(topicId, assistantMessage.id, updates), label)
         }
 
         const updateAssistantMessageWithBlock = (block: MessageBlock) => {
@@ -458,15 +469,15 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
           queueMiniWindowPersist(
             () =>
               Promise.all([
-                bulkAddBlocks([block]),
-                updateMessage(topicId, assistantMessage.id, { blocks: assistantMessage.blocks })
+                dbService.bulkAddBlocks([block]),
+                dbService.updateMessage(topicId, assistantMessage.id, { blocks: assistantMessage.blocks })
               ]).then(() => undefined),
             'assistant block'
           )
         }
 
         const persistBlockUpdate = (blockId: string, changes: Partial<MessageBlock>, label: string) => {
-          queueMiniWindowPersist(() => updateSingleBlock(blockId, changes), label)
+          queueMiniWindowPersist(() => dbService.updateSingleBlock(blockId, changes), label)
         }
 
         const allMessagesForTopic = selectMessagesForTopic(store.getState(), topicId)
@@ -511,17 +522,19 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
           import('@renderer/services/ConversationService'),
           import('@renderer/services/ApiService')
         ])
-        const { modelMessages, uiMessages } = await ConversationService.prepareMessagesForModel(
-          messagesForContext,
-          newAssistant
-        )
+        const { modelMessages } = await ConversationService.prepareMessagesForModel(messagesForContext, newAssistant)
+
+        const abortController = new AbortController()
+        const abortFn = () => abortController.abort()
+        registeredAskId = requestAskId
+        registeredAbortFn = abortFn
+        addAbortController(requestAskId, abortFn)
 
         await fetchChatCompletion({
           messages: modelMessages,
           assistant: newAssistant,
-          requestOptions: {},
+          requestOptions: { signal: abortController.signal },
           topicId,
-          uiMessages: uiMessages,
           onChunkReceived: (chunk: Chunk) => {
             switch (chunk.type) {
               case ChunkType.THINKING_START:
@@ -646,20 +659,20 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
                     { status: isAborted ? MessageBlockStatus.PAUSED : MessageBlockStatus.ERROR },
                     'error block'
                   )
-                  const nextStatus = isAborted ? AssistantMessageStatus.PAUSED : AssistantMessageStatus.SUCCESS
-                  store.dispatch(
-                    newMessagesActions.updateMessage({
-                      topicId,
-                      messageId: assistantMessage.id,
-                      updates: {
-                        status: nextStatus
-                      }
-                    })
-                  )
-                  persistAssistantMessageUpdate({ status: nextStatus }, 'assistant error status')
                 }
+                const nextStatus = isAborted ? AssistantMessageStatus.PAUSED : AssistantMessageStatus.ERROR
+                store.dispatch(
+                  newMessagesActions.updateMessage({
+                    topicId,
+                    messageId: assistantMessage.id,
+                    updates: {
+                      status: nextStatus
+                    }
+                  })
+                )
+                persistAssistantMessageUpdate({ status: nextStatus }, 'assistant error status')
                 if (!isAborted) {
-                  throw new Error(chunk.error.message)
+                  throw new Error(chunk.error?.message || String(chunk.error || ''))
                 }
                 thinkingStartTime = null
                 thinkingBlockId = null
@@ -691,6 +704,9 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
         }
         logger.error('Error fetching result:', err as Error)
       } finally {
+        if (registeredAskId && registeredAbortFn) {
+          removeAbortController(registeredAskId, registeredAbortFn)
+        }
         await persistQueue
         finishCurrentRequest()
       }
@@ -733,7 +749,12 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
       setIsFirstMessage(resetState.isFirstMessage)
       setUserInputText(resetState.userInputText)
       setClipboardText(resetState.clipboardText)
-      setFiles(resetState.files)
+      setFiles((prevFiles) => {
+        if (prevFiles.length > 0) {
+          void FileManager.cleanupUncommittedDraftFiles(prevFiles)
+        }
+        return resetState.files
+      })
       setFilePreviewUrls(resetState.filePreviewUrls)
       setCaptureWindows(resetState.captureWindows)
       setIsLoading(resetState.isLoading)
@@ -760,7 +781,7 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
     if (!currentTopic.current) return
 
     const messages = selectMessagesForTopic(store.getState(), currentTopic.current.id)
-    const lastMessage = last(messages) as Message | undefined
+    const lastMessage = last(messages)
 
     if (lastMessage) {
       const content = getMainTextContent(lastMessage)
@@ -799,14 +820,9 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
 
   const header = (
     <MiniHeader>
-      <BrandArea>
-        {currentAssistant.model ? <ModelAvatar model={currentAssistant.model} size={22} /> : <ImageIcon size={18} />}
-        <BrandText>
-          <BrandTitle title="lich13studio">lich13studio</BrandTitle>
-          <BrandSubTitle title={t('miniwindow.header.default_assistant')}>
-            {t('miniwindow.header.default_assistant')}
-          </BrandSubTitle>
-        </BrandText>
+      <BrandArea title="lich13studio">
+        {currentAssistant.model ? <ModelAvatar model={currentAssistant.model} size={20} /> : <ImageIcon size={18} />}
+        <BrandTitle>lich13studio</BrandTitle>
       </BrandArea>
       <HeaderActions className="nodrag">
         <ModelProviderSelect
@@ -916,7 +932,7 @@ const Container = styled.div<{ $draggable: boolean }>`
 
 const MiniHeader = styled.header`
   display: grid;
-  grid-template-columns: minmax(0, 22%) minmax(0, 1fr) 30px;
+  grid-template-columns: auto minmax(0, 1fr) 30px;
   flex-shrink: 0;
   min-width: 0;
   align-items: center;
@@ -928,18 +944,11 @@ const MiniHeader = styled.header`
 const BrandArea = styled.div`
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
   overflow: hidden;
 
   > :first-child { flex-shrink: 0; }
-`
-
-const BrandText = styled.div`
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  line-height: 1.15;
 `
 
 const BrandTitle = styled.div`
@@ -947,14 +956,6 @@ const BrandTitle = styled.div`
   color: var(--color-text);
   font-size: 13px;
   font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-`
-
-const BrandSubTitle = styled.div`
-  overflow: hidden;
-  color: var(--color-text-secondary);
-  font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
 `

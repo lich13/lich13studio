@@ -46,6 +46,11 @@ export const isCurrentStream = (entry: ActiveStreamEntry): boolean => {
   return current?.generation === entry.generation
 }
 
+export const isStreamAcceptingChunks = (entry: ActiveStreamEntry): boolean => {
+  if (!isCurrentStream(entry)) return false
+  return entry.phase === 'queued' || entry.phase === 'connecting' || entry.phase === 'streaming'
+}
+
 export const setStreamPhase = (entry: ActiveStreamEntry, phase: StreamLifecycle): void => {
   if (isCurrentStream(entry)) {
     entry.phase = phase
@@ -75,6 +80,7 @@ export const finishStream = (entry: ActiveStreamEntry, reason: StreamTerminalRea
 export const abortStream = (entry: ActiveStreamEntry): void => {
   if (!isCurrentStream(entry)) return
   entry.phase = 'aborted'
+  activeStreams.delete(entry.topicId)
   entry.abort?.()
 }
 

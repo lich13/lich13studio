@@ -158,7 +158,22 @@ interface InputbarToolsProviderProps {
 
 export const InputbarToolsProvider: React.FC<InputbarToolsProviderProps> = ({ children, initialState, actions }) => {
   // Core state
-  const [files, setFiles] = useState<FileMetadata[]>(initialState?.files || [])
+  const [files, _setFiles] = useState<FileMetadata[]>(initialState?.files || [])
+  const setFiles: React.Dispatch<React.SetStateAction<FileMetadata[]>> = useCallback((updater) => {
+    _setFiles((prevFiles) => {
+      const nextFiles = typeof updater === 'function' ? updater(prevFiles) : updater
+      if (prevFiles.length > 0) {
+        const nextIds = new Set(nextFiles.map((file) => file.id))
+        const removed = prevFiles.filter((file) => !nextIds.has(file.id))
+        if (removed.length > 0) {
+          void import('@renderer/services/FileManager').then(({ default: FileManager }) =>
+            FileManager.cleanupUncommittedDraftFiles(removed)
+          )
+        }
+      }
+      return nextFiles
+    })
+  }, [])
   const [mentionedModels, setMentionedModels] = useState<Model[]>(initialState?.mentionedModels || [])
   const [isExpanded, setIsExpanded] = useState(initialState?.isExpanded || false)
 
@@ -281,7 +296,7 @@ export const InputbarToolsProvider: React.FC<InputbarToolsProviderProps> = ({ ch
       toolsRegistry: toolsRegistryAPI,
       triggers: triggersAPI
     }),
-    [stableActions, toolsRegistryAPI, triggersAPI]
+    [setFiles, stableActions, toolsRegistryAPI, triggersAPI]
   )
 
   // Internal Dispatch (contains setCouldAddImageFile and setExtensions)

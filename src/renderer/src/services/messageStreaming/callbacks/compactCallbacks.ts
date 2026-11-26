@@ -1,6 +1,7 @@
 import { loggerService } from '@logger'
+import { dbService } from '@renderer/services/db'
 import type { AppDispatch, RootState } from '@renderer/store'
-import { updateOneBlock } from '@renderer/store/messageBlock'
+import { removeOneBlock, updateOneBlock } from '@renderer/store/messageBlock'
 import { newMessagesActions } from '@renderer/store/newMessage'
 import type { MainTextMessageBlock } from '@renderer/types/newMessage'
 import { MessageBlockStatus, MessageBlockType } from '@renderer/types/newMessage'
@@ -150,7 +151,7 @@ export const createCompactCallbacks = (deps: CompactCallbacksDeps) => {
       blockManager.activeBlockInfo = null
       blockManager.lastBlockType = MessageBlockType.COMPACT
 
-      // Remove the current block (the one with XML tags) from message.blocks
+      // Remove the current block (the one with XML tags) from message.blocks, Redux, and DB
       const currentState = getState()
       const currentMessage = currentState.messages.entities[assistantMsgId]
       if (currentMessage && currentMessage.blocks) {
@@ -162,6 +163,12 @@ export const createCompactCallbacks = (deps: CompactCallbacksDeps) => {
             updates: { blocks: updatedBlocks }
           })
         )
+      }
+      if (currentMainTextBlockId && currentMainTextBlockId !== summaryBlockId) {
+        dispatch(removeOneBlock(currentMainTextBlockId))
+        await dbService.deleteBlocks([currentMainTextBlockId]).catch((error) => {
+          logger.warn('Failed to delete replaced compact text block:', error as Error)
+        })
       }
 
       // Save to DB

@@ -8,11 +8,13 @@ const codeBlockSpy = vi.fn(({ children, className }: any) =>
   createElement('code', { 'data-testid': 'code-block', className }, children)
 )
 
+const mockSettings = {
+  mathEngine: 'KaTeX' as string,
+  mathEnableSingleDollar: true
+}
+
 vi.mock('@renderer/hooks/useSettings', () => ({
-  useSettings: () => ({
-    mathEngine: 'KaTeX',
-    mathEnableSingleDollar: true
-  })
+  useSettings: () => mockSettings
 }))
 
 vi.mock('react-i18next', () => ({
@@ -96,6 +98,14 @@ describe('Markdown lazy KaTeX hydration & fenced math compatibility', () => {
     })
 
     expect(container.querySelectorAll('.katex-display').length).toBe(1)
+
+    // Legacy MathJax configuration gracefully maps to KaTeX
+    mockSettings.mathEngine = 'MathJax'
+    await act(async () => {
+      root.render(createElement(Markdown, { block: makeBlock('3', 'Legacy $a + b = c$') }))
+    })
+    expect(container.querySelectorAll('.katex').length).toBeGreaterThanOrEqual(1)
+    mockSettings.mathEngine = 'KaTeX'
 
     await act(async () => {
       root.unmount()

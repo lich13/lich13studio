@@ -1,16 +1,19 @@
 import { Tooltip } from 'antd'
+import { Brain } from 'lucide-react'
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
-const ReasoningIcon: FC<React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>> = (props) => {
+const ReasoningIcon: FC<React.HTMLAttributes<HTMLDivElement>> = (props) => {
   const { t } = useTranslation()
 
   return (
-    <Container>
+    <Container {...props}>
       <Tooltip title={t('models.type.reasoning')} placement="top">
-        <Icon className="iconfont icon-thinking" {...(props as any)} />
+        <IconWrap>
+          <Brain size={15} className="lucide-custom" />
+        </IconWrap>
       </Tooltip>
     </Container>
   )
@@ -22,9 +25,10 @@ const Container = styled.div`
   align-items: center;
 `
 
-const Icon = styled.i`
+const IconWrap = styled.span`
+  display: inline-flex;
+  align-items: center;
   color: var(--color-link);
-  font-size: 16px;
   margin-right: 6px;
 `
 

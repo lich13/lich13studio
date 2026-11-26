@@ -1,11 +1,10 @@
 /**
- * PDF Compatibility Plugin
+ * PDF Compatibility Middleware
  *
- * Converts PDF FileParts to TextParts for providers that don't support native PDF input.
+ * Converts PDF FileParts to TextParts for providers/models that don't support native PDF input.
  * Extracts text directly from the FilePart's base64 data using pdf-parse.
  */
 import type { LanguageModelV3FilePart, LanguageModelV3Message } from '@ai-sdk/provider'
-import { definePlugin } from '@cherrystudio/ai-core/core/plugins'
 import { loggerService } from '@logger'
 import { resolveModelCapabilities } from '@renderer/config/models/capabilities'
 import type { Model, Provider, ProviderType } from '@renderer/types'
@@ -17,12 +16,6 @@ const logger = loggerService.withContext('pdfCompatibilityPlugin')
 
 type ContentPart = Exclude<LanguageModelV3Message['content'], string>[number]
 
-/**
- * Provider types whose API natively supports PDF file input.
- * Only first-party provider protocols (OpenAI, Anthropic, Google) are included.
- * Aggregators (new-api, gateway) and generic 'openai' type are excluded
- * because they may route to backends that don't support the 'file' part type.
- */
 const PDF_NATIVE_PROVIDER_TYPES = new Set<ProviderType>(['openai-response', 'anthropic'])
 
 function isPdfFilePart(part: ContentPart): part is LanguageModelV3FilePart & { mediaType: 'application/pdf' } {
@@ -30,11 +23,10 @@ function isPdfFilePart(part: ContentPart): part is LanguageModelV3FilePart & { m
 }
 
 export function supportsNativePdf(provider: Provider, model: Model): boolean {
-  // Image input alone does not imply native document input.
   return PDF_NATIVE_PROVIDER_TYPES.has(provider.type) && resolveModelCapabilities(model).fileInput
 }
 
-function pdfCompatibilityMiddleware(provider: Provider, model: Model): LanguageModelMiddleware {
+export function createPdfCompatibilityMiddleware(provider: Provider, model: Model): LanguageModelMiddleware {
   return {
     specificationVersion: 'v3',
     transformParams: async ({ params }) => {
@@ -85,13 +77,3 @@ function pdfCompatibilityMiddleware(provider: Provider, model: Model): LanguageM
     }
   }
 }
-
-export const createPdfCompatibilityPlugin = (provider: Provider, model: Model) =>
-  definePlugin({
-    name: 'pdfCompatibility',
-    enforce: 'pre',
-    configureContext: (context) => {
-      context.middlewares = context.middlewares || []
-      context.middlewares.push(pdfCompatibilityMiddleware(provider, model))
-    }
-  })

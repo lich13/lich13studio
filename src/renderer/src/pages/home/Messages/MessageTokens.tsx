@@ -3,6 +3,7 @@ import { EVENT_NAMES, EventEmitter } from '@renderer/services/EventService'
 import type { Message } from '@renderer/types/newMessage'
 import { Popover } from 'antd'
 import { t } from 'i18next'
+import { ArrowDown, ArrowUp } from 'lucide-react'
 import styled from 'styled-components'
 
 interface MessageTokensProps {
@@ -79,8 +80,14 @@ const MessageTokens: React.FC<MessageTokensProps> = ({ message }) => {
       <span className="tokens">
         Tokens:
         <span>{message?.usage?.total_tokens}</span>
-        <span>↑{message?.usage?.prompt_tokens}</span>
-        <span>↓{message?.usage?.completion_tokens}</span>
+        <span className="token-dir">
+          <ArrowUp size={10} className="lucide-custom" />
+          {message?.usage?.prompt_tokens}
+        </span>
+        <span className="token-dir">
+          <ArrowDown size={10} className="lucide-custom" />
+          {message?.usage?.completion_tokens}
+        </span>
         <span>{getPriceString()}</span>
       </span>
     )
@@ -103,13 +110,25 @@ const MessageTokens: React.FC<MessageTokensProps> = ({ message }) => {
 
 const MessageMetadata = styled.div`
   font-size: 10px;
+  font-variant-numeric: tabular-nums;
   color: var(--color-text-3);
   user-select: text;
   cursor: pointer;
   text-align: right;
 
+  .tokens {
+    display: inline-flex;
+    align-items: center;
+  }
+
   .tokens span {
     padding: 0 2px;
+  }
+
+  .tokens .token-dir {
+    display: inline-flex;
+    align-items: center;
+    gap: 1px;
   }
 `
 

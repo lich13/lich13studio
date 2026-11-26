@@ -88,11 +88,6 @@ const Tag = styled.div<{ $color: string; $size: number; $closable: boolean; $cli
   white-space: nowrap;
   position: relative;
   cursor: ${({ $clickable }) => ($clickable ? 'pointer' : 'auto')};
-  .iconfont {
-    font-size: ${({ $size }) => $size}px;
-    color: ${({ $color }) => $color};
-  }
-
   transition: opacity 0.2s ease;
   &:hover {
     opacity: ${({ $clickable }) => ($clickable ? 0.8 : 1)};

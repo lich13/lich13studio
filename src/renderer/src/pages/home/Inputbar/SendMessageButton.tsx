@@ -1,5 +1,5 @@
 import { ActionIconButton } from '@renderer/components/Buttons'
-import { CirclePause } from 'lucide-react'
+import { ArrowUp, CirclePause } from 'lucide-react'
 import type { FC, KeyboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -34,29 +34,29 @@ const SendMessageButton: FC<Props> = ({ disabled, sendMessage, isLoading = false
         aria-label={t('chat.input.pause')}
         title={t('chat.input.pause')}
         style={{ marginRight: -2 }}>
-        <CirclePause size={20} color="var(--color-error)" />
+        <CirclePause size={20} className="lucide-custom" color="var(--color-error)" />
       </ActionIconButton>
     )
   }
 
   return (
-    <i
-      className="iconfont icon-ic_send"
+    <button
+      type="button"
       onClick={disabled ? undefined : sendMessage}
       onKeyDown={handleKeyDown}
-      role="button"
       aria-label={t('chat.input.send')}
       aria-disabled={disabled}
-      tabIndex={disabled ? -1 : 0}
+      disabled={disabled}
+      title={t('chat.input.send')}
+      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-none p-0 transition-all duration-150"
       style={{
         cursor: disabled ? 'not-allowed' : 'pointer',
-        color: disabled ? 'var(--color-text-3)' : 'var(--color-primary)',
-        fontSize: 22,
-        transition: 'all 0.2s',
-        marginTop: 1,
-        marginRight: 2
-      }}
-    />
+        backgroundColor: disabled ? 'var(--color-background-mute)' : 'var(--color-primary)',
+        color: disabled ? 'var(--color-text-3)' : '#ffffff',
+        marginRight: 1
+      }}>
+      <ArrowUp size={16} strokeWidth={2.25} className="lucide-custom" />
+    </button>
   )
 }
 

@@ -11,19 +11,6 @@ const NavbarIcon = styled.div`
   align-items: center;
   transition: all 0.2s ease-in-out;
   cursor: pointer;
-  .iconfont {
-    font-size: 18px;
-    color: var(--color-icon);
-    &.icon-a-addchat {
-      font-size: 20px;
-    }
-    &.icon-a-darkmode {
-      font-size: 20px;
-    }
-    &.icon-appstore {
-      font-size: 20px;
-    }
-  }
   .anticon {
     color: var(--color-icon);
     font-size: 16px;

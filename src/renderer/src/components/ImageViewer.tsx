@@ -15,7 +15,6 @@ import { convertImageToPng } from '@renderer/utils/image'
 import { parseDataUrl } from '@shared/utils'
 import type { ImageProps as AntImageProps } from 'antd'
 import { Dropdown, Image as AntImage, Space } from 'antd'
-import { Base64 } from 'js-base64'
 import { DownloadIcon } from 'lucide-react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -43,8 +42,12 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ src, style, ...props }) => {
         if (!parseResult || !parseResult.mediaType || !parseResult.isBase64) {
           throw new Error('Invalid base64 image format')
         }
-        const byteArray = Base64.toUint8Array(parseResult.data)
-        blob = new Blob([byteArray.slice()], { type: parseResult.mediaType })
+        const rawBinary = atob(parseResult.data)
+        const byteArray = new Uint8Array(rawBinary.length)
+        for (let i = 0; i < rawBinary.length; i += 1) {
+          byteArray[i] = rawBinary.charCodeAt(i)
+        }
+        blob = new Blob([byteArray], { type: parseResult.mediaType })
       } else if (src.startsWith('file://')) {
         const filePath = src.replace(/^file:\/\//i, '')
         const binary = await window.api.file.binaryImage(filePath)

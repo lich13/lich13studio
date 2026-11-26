@@ -8,13 +8,18 @@ import { BlockManager } from '@renderer/services/messageStreaming/BlockManager'
 import messageBlocksReducer, { upsertManyBlocks, upsertOneBlock } from '@renderer/store/messageBlock'
 import messagesReducer, { newMessagesActions } from '@renderer/store/newMessage'
 import {
+  buildPausedBlockChanges,
   cleanupMultipleBlocks,
+  clearTopicMessagesThunk,
   collectTopicBlockIdsToEvict,
+  deleteMessageGroupThunk,
+  deleteSingleMessageThunk,
   evictInactiveTopicsFromRedux,
-  loadTopicMessagesThunk
+  loadTopicMessagesThunk,
+  sendMessage,
+  shouldMarkTopicFulfilled
 } from '@renderer/store/thunk/messageThunk'
 import { AssistantMessageStatus, MessageBlockStatus, MessageBlockType } from '@renderer/types/newMessage'
-import { getTopicFulfilledActiveTopicId, shouldMarkTopicFulfilled } from '@renderer/utils/topicStatus'
 import { describe, expect, it, vi } from 'vitest'
 
 describe('message thunk topic fulfilled state & streaming block flush invariants', () => {
@@ -28,10 +33,6 @@ describe('message thunk topic fulfilled state & streaming block flush invariants
 
   it('shows an unread marker when no active topic is known', () => {
     expect(shouldMarkTopicFulfilled('topic-2', null)).toBe(true)
-  })
-
-  it('uses the visible active topic over the internal loaded topic when deciding unread state', () => {
-    expect(getTopicFulfilledActiveTopicId('visible-topic', 'loaded-background-topic')).toBe('visible-topic')
   })
 
   it('flushes deferred rAF Redux updates before block completion or block-type transition so fields and DB writes are never lost', () => {
@@ -393,5 +394,262 @@ describe('message thunk topic fulfilled state & streaming block flush invariants
       }
     } as any
     expect(collectTopicBlockIdsToEvict(state, ['msg-1']).sort()).toEqual(['blk-listed', 'blk-orphan'])
+  })
+
+  it('propagates user-message appendMessage errors in sendMessage before adding to Redux or starting assistant generation', async () => {
+    const appendSpy = vi.spyOn(dbService, 'appendMessage').mockRejectedValueOnce(new Error('QuotaExceededError'))
+
+    let messagesState = messagesReducer(undefined, { type: '@@INIT' })
+    let messageBlocksState = messageBlocksReducer(undefined, { type: '@@INIT' })
+    const getState = () => ({ messages: messagesState, messageBlocks: messageBlocksState }) as any
+    const dispatch = vi.fn((action: any) => {
+      if (typeof action === 'function') return action(dispatch, getState)
+      if (typeof action?.type === 'string') {
+        if (action.type.startsWith('newMessages/')) messagesState = messagesReducer(messagesState, action)
+        if (action.type.startsWith('messageBlocks/'))
+          messageBlocksState = messageBlocksReducer(messageBlocksState, action)
+      }
+      return action
+    })
+
+    const userMsg = {
+      id: 'user-msg-fail',
+      role: 'user',
+      assistantId: 'ast-1',
+      topicId: 'topic-send',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      blocks: ['blk-user-1']
+    } as any
+    const userBlocks = [
+      {
+        id: 'blk-user-1',
+        messageId: 'user-msg-fail',
+        type: MessageBlockType.MAIN_TEXT,
+        content: 'important draft',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        status: MessageBlockStatus.SUCCESS
+      } as any
+    ]
+
+    await expect(
+      sendMessage(userMsg, userBlocks, { id: 'ast-1', topics: [] } as any, 'topic-send')(dispatch as any, getState)
+    ).rejects.toThrow('QuotaExceededError')
+
+    expect(appendSpy).toHaveBeenCalledTimes(1)
+    expect(messagesState.entities['user-msg-fail']).toBeUndefined()
+    expect(messageBlocksState.entities['blk-user-1']).toBeUndefined()
+    appendSpy.mockRestore()
+  })
+
+  it('keeps blocks and messages in Redux when Dexie delete/clear fails, and removes both once Dexie succeeds', async () => {
+    let messagesState = messagesReducer(
+      undefined,
+      newMessagesActions.messagesReceived({
+        topicId: 'topic-del',
+        messages: [
+          {
+            id: 'u1',
+            askId: 'u1',
+            role: 'user',
+            assistantId: 'ast-1',
+            topicId: 'topic-del',
+            createdAt: '2026-01-01T00:00:00.000Z',
+            blocks: ['b-u1']
+          } as any,
+          {
+            id: 'a1',
+            askId: 'u1',
+            role: 'assistant',
+            assistantId: 'ast-1',
+            topicId: 'topic-del',
+            createdAt: '2026-01-01T00:00:01.000Z',
+            status: AssistantMessageStatus.SUCCESS,
+            blocks: ['b-a1']
+          } as any
+        ]
+      })
+    )
+    let messageBlocksState = messageBlocksReducer(
+      undefined,
+      upsertManyBlocks([
+        {
+          id: 'b-u1',
+          messageId: 'u1',
+          type: MessageBlockType.MAIN_TEXT,
+          content: 'question',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          status: MessageBlockStatus.SUCCESS
+        } as any,
+        {
+          id: 'b-a1',
+          messageId: 'a1',
+          type: MessageBlockType.MAIN_TEXT,
+          content: 'answer',
+          createdAt: '2026-01-01T00:00:01.000Z',
+          status: MessageBlockStatus.SUCCESS
+        } as any
+      ])
+    )
+    const getState = () => ({ messages: messagesState, messageBlocks: messageBlocksState }) as any
+    const dispatch = vi.fn((action: any) => {
+      if (typeof action === 'function') return action(dispatch, getState)
+      if (typeof action?.type === 'string') {
+        if (action.type.startsWith('newMessages/')) messagesState = messagesReducer(messagesState, action)
+        if (action.type.startsWith('messageBlocks/'))
+          messageBlocksState = messageBlocksReducer(messageBlocksState, action)
+      }
+      return action
+    })
+
+    const delSingleSpy = vi.spyOn(dbService, 'deleteMessage').mockRejectedValueOnce(new Error('DexieReadOnlyError'))
+    const delGroupSpy = vi.spyOn(dbService, 'deleteMessages').mockRejectedValueOnce(new Error('DexieTxAborted'))
+    const clearSpy = vi.spyOn(dbService, 'clearMessages').mockRejectedValueOnce(new Error('DexieClearFailed'))
+
+    await deleteSingleMessageThunk('topic-del', 'a1')(dispatch as any, getState)
+    expect(messageBlocksState.entities['b-a1']).toBeDefined()
+    expect(messagesState.entities.a1).toBeDefined()
+
+    await deleteMessageGroupThunk('topic-del', 'u1')(dispatch as any, getState)
+    expect(messageBlocksState.entities['b-u1']).toBeDefined()
+    expect(messageBlocksState.entities['b-a1']).toBeDefined()
+    expect(messagesState.messageIdsByTopic['topic-del']).toEqual(['u1', 'a1'])
+
+    await clearTopicMessagesThunk('topic-del')(dispatch as any, getState)
+    expect(messageBlocksState.entities['b-u1']).toBeDefined()
+    expect(messageBlocksState.entities['b-a1']).toBeDefined()
+    expect(messagesState.messageIdsByTopic['topic-del']).toEqual(['u1', 'a1'])
+
+    // Now succeed on deleteSingleMessageThunk (even if stream abort upserted an error block while Dexie awaited)
+    delSingleSpy.mockImplementationOnce(async () => {
+      dispatch(
+        upsertOneBlock({
+          id: 'b-a1-abort-err',
+          messageId: 'a1',
+          type: MessageBlockType.ERROR,
+          content: 'aborted',
+          createdAt: '2026-01-01T00:00:02.000Z',
+          status: MessageBlockStatus.SUCCESS
+        } as any)
+      )
+    })
+    await deleteSingleMessageThunk('topic-del', 'a1')(dispatch as any, getState)
+    expect(messageBlocksState.entities['b-a1']).toBeUndefined()
+    expect(messageBlocksState.entities['b-a1-abort-err']).toBeUndefined()
+    expect(messagesState.entities.a1).toBeUndefined()
+    expect(messageBlocksState.entities['b-u1']).toBeDefined()
+
+    clearSpy.mockResolvedValueOnce(undefined)
+    await clearTopicMessagesThunk('topic-del')(dispatch as any, getState)
+    expect(messageBlocksState.entities['b-u1']).toBeUndefined()
+    expect(messagesState.messageIdsByTopic['topic-del']).toBeUndefined()
+
+    delSingleSpy.mockRestore()
+    delGroupSpy.mockRestore()
+    clearSpy.mockRestore()
+  })
+
+  it('marks non-terminal ToolMessageBlock rawMcpToolResponse.status as cancelled when pausing or recovering stale streams', async () => {
+    const invokingToolBlock = {
+      id: 'blk-tool-invoking',
+      messageId: 'msg-stale',
+      type: MessageBlockType.TOOL,
+      toolId: 'call-1',
+      status: MessageBlockStatus.PENDING,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      metadata: {
+        rawMcpToolResponse: {
+          id: 'call-1',
+          toolUseId: 'call-1',
+          tool: { id: 'search', name: 'search', type: 'builtin' },
+          arguments: { q: 'test' },
+          status: 'invoking'
+        }
+      }
+    } as any
+    const doneToolBlock = {
+      ...invokingToolBlock,
+      id: 'blk-tool-done',
+      status: MessageBlockStatus.SUCCESS,
+      metadata: {
+        rawMcpToolResponse: {
+          ...invokingToolBlock.metadata.rawMcpToolResponse,
+          id: 'call-2',
+          status: 'done'
+        }
+      }
+    }
+
+    expect(buildPausedBlockChanges(invokingToolBlock)).toEqual({
+      status: MessageBlockStatus.PAUSED,
+      metadata: {
+        rawMcpToolResponse: expect.objectContaining({ status: 'cancelled' })
+      }
+    })
+    // Also cancels tool blocks whose rawMcpToolResponse.status is still undefined
+    expect(
+      buildPausedBlockChanges({
+        ...invokingToolBlock,
+        status: MessageBlockStatus.SUCCESS,
+        metadata: {
+          rawMcpToolResponse: {
+            ...invokingToolBlock.metadata.rawMcpToolResponse,
+            status: undefined
+          }
+        }
+      })
+    ).toEqual({
+      status: MessageBlockStatus.SUCCESS,
+      metadata: {
+        rawMcpToolResponse: expect.objectContaining({ status: 'cancelled' })
+      }
+    })
+    expect(buildPausedBlockChanges(doneToolBlock)).toBeNull()
+
+    const fetchSpy = vi.spyOn(dbService, 'fetchMessages').mockResolvedValueOnce({
+      messages: [
+        {
+          id: 'msg-stale',
+          role: 'assistant',
+          assistantId: 'ast-1',
+          topicId: 'topic-stale',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          status: AssistantMessageStatus.PROCESSING,
+          blocks: ['blk-tool-invoking', 'blk-tool-done']
+        } as any
+      ],
+      blocks: [invokingToolBlock, doneToolBlock]
+    })
+    const updateBlocksSpy = vi.spyOn(dbService, 'updateBlocks').mockResolvedValueOnce(undefined)
+    const updateMsgSpy = vi.spyOn(dbService, 'updateMessage').mockResolvedValueOnce(undefined)
+
+    let messagesState = messagesReducer(undefined, { type: '@@INIT' })
+    let messageBlocksState = messageBlocksReducer(undefined, { type: '@@INIT' })
+    const getState = () => ({ messages: messagesState, messageBlocks: messageBlocksState }) as any
+    const dispatch = vi.fn((action: any) => {
+      if (typeof action === 'function') return action(dispatch, getState)
+      if (typeof action?.type === 'string') {
+        if (action.type.startsWith('newMessages/')) messagesState = messagesReducer(messagesState, action)
+        if (action.type.startsWith('messageBlocks/'))
+          messageBlocksState = messageBlocksReducer(messageBlocksState, action)
+      }
+      return action
+    })
+
+    await loadTopicMessagesThunk('topic-stale', true)(dispatch as any, getState)
+    expect(messageBlocksState.entities['blk-tool-invoking']).toMatchObject({
+      status: MessageBlockStatus.PAUSED,
+      metadata: { rawMcpToolResponse: expect.objectContaining({ status: 'cancelled' }) }
+    })
+    expect(updateBlocksSpy).toHaveBeenCalledWith([
+      expect.objectContaining({
+        id: 'blk-tool-invoking',
+        status: MessageBlockStatus.PAUSED,
+        metadata: { rawMcpToolResponse: expect.objectContaining({ status: 'cancelled' }) }
+      })
+    ])
+
+    fetchSpy.mockRestore()
+    updateBlocksSpy.mockRestore()
+    updateMsgSpy.mockRestore()
   })
 })

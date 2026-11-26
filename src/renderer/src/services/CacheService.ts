@@ -4,6 +4,8 @@ interface CacheItem<T> {
   duration: number
 }
 
+const MAX_CACHE_ENTRIES = 256
+
 export class CacheService {
   private static cache: Map<string, CacheItem<any>> = new Map()
 
@@ -14,11 +16,23 @@ export class CacheService {
    * @param duration Cache duration (in milliseconds)
    */
   static set<T>(key: string, data: T, duration: number): void {
+    if (data === '' || data === null || data === undefined || (Array.isArray(data) && data.length === 0)) {
+      this.remove(key)
+      return
+    }
+    if (this.cache.has(key)) {
+      this.cache.delete(key)
+    }
     this.cache.set(key, {
       data,
       timestamp: Date.now(),
       duration
     })
+    while (this.cache.size > MAX_CACHE_ENTRIES) {
+      const oldestKey = this.cache.keys().next().value
+      if (oldestKey === undefined) break
+      this.cache.delete(oldestKey)
+    }
   }
 
   /**

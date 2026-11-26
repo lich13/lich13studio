@@ -58,11 +58,16 @@ export const createTextCallbacks = (deps: TextCallbacksDependencies) => {
         ? (getState().messageBlocks.entities[citationBlockId] as CitationMessageBlock).response?.source
         : undefined
       if (text) {
-        const blockChanges: Partial<MessageBlock> = {
-          content: text,
-          status: MessageBlockStatus.STREAMING,
-          citationReferences: citationBlockId ? [{ citationBlockId, citationBlockSource }] : []
-        }
+        const blockChanges: Partial<MessageBlock> = citationBlockId
+          ? {
+              content: text,
+              status: MessageBlockStatus.STREAMING,
+              citationReferences: [{ citationBlockId, citationBlockSource }]
+            }
+          : {
+              content: text,
+              status: MessageBlockStatus.STREAMING
+            }
         blockManager.smartBlockUpdate(mainTextBlockId!, blockChanges, MessageBlockType.MAIN_TEXT)
       }
       // Collect thoughtSignature from providerMetadata for Gemini

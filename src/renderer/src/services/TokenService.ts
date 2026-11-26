@@ -153,9 +153,18 @@ export async function estimateMessageUsage(message: Partial<Message>): Promise<U
   const content = getMainTextContent(message as Message)
   const reasoningContent = getThinkingContent(message as Message)
   const combinedContent = [content, reasoningContent].filter((s) => s !== undefined).join(' ')
-  const tokens = estimateTextTokens(combinedContent)
   const effectiveImageTokens = imageTokens > 0 ? Math.max(1, imageTokens - 7) : 0
-  const totalTokens = tokens + effectiveImageTokens
+  const cacheKey = message.id
+    ? `msg-usage|${message.id}|${message.updatedAt ?? message.createdAt ?? ''}|${combinedContent.length}:${hashTextFnv1a(combinedContent)}|${effectiveImageTokens}`
+    : ''
+  let totalTokens = cacheKey ? getCachedMessageTokens(cacheKey) : undefined
+  if (totalTokens === undefined) {
+    const tokens = estimateTextTokens(combinedContent)
+    totalTokens = tokens + effectiveImageTokens
+    if (cacheKey) {
+      setCachedMessageTokens(cacheKey, totalTokens)
+    }
+  }
   const isUserMessage = message.role === 'user'
 
   return {

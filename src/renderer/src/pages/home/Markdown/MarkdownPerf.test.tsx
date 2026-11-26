@@ -38,7 +38,9 @@ import CodeViewer from '@renderer/components/CodeViewer'
 import { processLatexBrackets } from '@renderer/utils/markdown'
 
 import CodeBlock, { areCodeBlockPropsEqual } from './CodeBlock'
-import { splitStreamingMarkdownPrefix } from './Markdown'
+import { createStreamingMarkdownScanner, splitStreamingMarkdownPrefix } from './Markdown'
+import { createSlugger } from './plugins/rehypeHeadingIds'
+import { areTablePropsEqual, extractTableMarkdown } from './Table'
 
 describe('Pure removeAllTopics reducer & Markdown/CodeViewer optimizations', () => {
   afterEach(() => {
@@ -271,5 +273,180 @@ describe('Pure removeAllTopics reducer & Markdown/CodeViewer optimizations', () 
       root.unmount()
     })
     addDocListenerSpy.mockRestore()
+  })
+
+  it('keeps incremental createStreamingMarkdownScanner exact chunk-by-chunk across straddling tags, late ref-links, and resets', () => {
+    const prose = 'Incremental paragraph with `code` and <divider-token> safe tag.\n\n'.repeat(30)
+    const codeFence = '```ts\nexport function calc(x: number) {\n  return x * 2;\n}\n```\n\n'
+    const mathAndSvg = '$$\na^2 + b^2 = c^2\n$$\n\n<svg viewBox="0 0 8 8"><rect width="4" height="4" /></svg>\n\n'
+    const tailProse = 'Final explanation paragraph with more text.\n\n'.repeat(20)
+    const fullSafeDoc = prose + codeFence + mathAndSvg + tailProse
+
+    const scanner = createStreamingMarkdownScanner()
+    for (let pos = 17; pos <= fullSafeDoc.length; pos += 37) {
+      const prefixSlice = fullSafeDoc.slice(0, pos)
+      expect(scanner.scan(prefixSlice)).toEqual(splitStreamingMarkdownPrefix(prefixSlice))
+    }
+
+    // Late reference-style link definition invalidates split immediately
+    const withLateRef = `${fullSafeDoc}\n[ref-late]: https://example.invalid\n`
+    expect(scanner.scan(withLateRef)).toEqual({ prefix: '', tail: withLateRef })
+
+    // Replacing content with a fresh safe document resets scanner state cleanly
+    const freshDoc = 'Fresh regenerated reply paragraph.\n\n'.repeat(65)
+    expect(scanner.scan(freshDoc)).toEqual(splitStreamingMarkdownPrefix(freshDoc))
+    expect(scanner.scan(freshDoc).prefix.length).toBeGreaterThan(1024)
+  })
+
+  it('detects same-length cell edits in areTablePropsEqual while skipping unchanged table re-renders', () => {
+    const position = {
+      start: { line: 3, column: 1, offset: 20 },
+      end: { line: 5, column: 10, offset: 52 }
+    }
+    const prevProps = {
+      blockId: 'blk-tbl',
+      lineOffset: 4,
+      charOffset: 120,
+      node: { position },
+      children: createElement('tbody', null, createElement('tr', null, createElement('td', null, 'cell-a')))
+    }
+    const nextUnchanged = {
+      blockId: 'blk-tbl',
+      lineOffset: 4,
+      charOffset: 120,
+      node: { position: { start: { ...position.start }, end: { ...position.end } } },
+      children: createElement('tbody', null, createElement('tr', null, createElement('td', null, 'cell-a')))
+    }
+    const nextSameLenEdited = {
+      ...nextUnchanged,
+      children: createElement('tbody', null, createElement('tr', null, createElement('td', null, 'cell-b')))
+    }
+
+    expect(areTablePropsEqual(prevProps, nextUnchanged)).toBe(true)
+    expect(areTablePropsEqual(prevProps, nextSameLenEdited)).toBe(false)
+  })
+
+  it('extracts exact table markdown after <svg> blank-line stripping or \\(...\\) inline math and continues heading slugs across segments', () => {
+    const rawWithSvgAndMath = [
+      '<svg viewBox="0 0 10 10">',
+      '',
+      '<rect width="4" height="4" />',
+      '',
+      '</svg>',
+      '',
+      'Inline math \\(a + b\\) before table.',
+      '',
+      '| Name | Score |',
+      '| --- | --- |',
+      '| Alice | 99 |'
+    ].join('\n')
+    const processed = rawWithSvgAndMath.replace('\\(a + b\\)', '$a + b$').replace(/(<svg[\s\S]*?<\/svg>)/g, (m) =>
+      m
+        .split('\n')
+        .filter((l) => l.trim() !== '')
+        .join('\n')
+    )
+    const tableMd = '| Name | Score |\n| --- | --- |\n| Alice | 99 |'
+    const startOffset = processed.indexOf(tableMd)
+    const endOffset = startOffset + tableMd.length
+
+    expect(
+      extractTableMarkdown(
+        'blk-svg-tbl',
+        { start: { line: 7, column: 1, offset: startOffset }, end: { line: 9, column: 15, offset: endOffset } },
+        0,
+        0,
+        processed
+      )
+    ).toBe(tableMd)
+
+    const seg0Slugger = createSlugger()
+    expect(seg0Slugger.slug('Overview')).toBe('overview-0')
+    const seg1Slugger = createSlugger(new Map([['overview', 1]]))
+    expect(seg1Slugger.slug('Overview')).toBe('overview-1')
+  })
+
+  it('scans unclosed single-line streaming paragraphs in linear O(N) time while matching full-rescan across multi-char boundary tokens', () => {
+    // 1. Adversarial boundary-straddling single-line paragraph (step 3 & step 7) followed by paragraph break
+    const intro = 'Introductory closed paragraph before long single-line stream.\n\n'.repeat(30)
+    const boundaryRichSingleLine =
+      'Start prose with \\\\[escaped\\\\] and \\[a + b\\] and \\(c + d\\) and ``double ` tick`` and `code` ' +
+      'and <!-- xml comment --!> and <![CDATA[ raw <svg> ]]> and <svg viewBox="0 0 8 8"><path d="M0 0" /></svg> ' +
+      'and $x_1 + x_2$ and [inline link](https://example.invalid) '.repeat(12) +
+      '\n\n' +
+      'Trailing paragraph after single-line closes.\n\n'.repeat(20)
+
+    const doc = intro + boundaryRichSingleLine
+    for (const step of [3, 7]) {
+      const scanner = createStreamingMarkdownScanner()
+      for (let pos = step; pos <= doc.length; pos += step) {
+        const slice = doc.slice(0, pos)
+        expect(scanner.scan(slice)).toEqual(splitStreamingMarkdownPrefix(slice))
+      }
+    }
+
+    // 2. Linear-time O(N) streaming append benchmark on a 45,000-char single line with NO newline
+    const chunkUnit = 'Streaming single-line token with $x$ and `k` and \\(y\\) prose segment. '
+    const totalChunks = 650 // ~46,800 chars without any '\n'
+    const pureSingleLineScanner = createStreamingMarkdownScanner()
+    let acc = ''
+    const t0 = performance.now()
+    for (let i = 0; i < totalChunks; i += 1) {
+      acc += chunkUnit
+      const res = pureSingleLineScanner.scan(acc)
+      expect(res.prefix).toBe('')
+      expect(res.tail.length).toBe(acc.length)
+    }
+    // Now close the 46k single line with \n\n and append another paragraph: split must activate immediately!
+    acc += `\n\n${'Subsequent paragraph after long single line.\n\n'.repeat(15)}`
+    const finalSplit = pureSingleLineScanner.scan(acc)
+    const elapsedMs = performance.now() - t0
+
+    expect(finalSplit).toEqual(splitStreamingMarkdownPrefix(acc))
+    expect(finalSplit.prefix.length).toBeGreaterThan(40000)
+    expect(elapsedMs).toBeLessThan(250)
+
+    // 3. Adversarial 1-char / 2-char chunk boundaries across list markers ("-" -> "- item", "1" -> "1. item"),
+    // setext underlines ("=" -> "===" vs "=== prose"), and consecutive long lines ("25k line 1\n25k line 2")
+    const listAndSetextDoc = [
+      'Closed intro paragraph.\n\n'.repeat(35),
+      '1. Ordered list item streamed char-by-char with a long tail ' + 'x'.repeat(450),
+      '',
+      '   Indented continuation paragraph inside loose ordered list ' + 'y'.repeat(120),
+      '',
+      '- Bullet item streamed char-by-char with a long tail ' + 'z'.repeat(450),
+      '',
+      '   Indented bullet continuation paragraph ' + 'w'.repeat(120),
+      '',
+      'Heading candidate line',
+      '===' + ' '.repeat(420),
+      '',
+      '='.repeat(80) + ' not a setext underline ' + 'q'.repeat(380),
+      '',
+      'Final trailing paragraph.\n\n'.repeat(15)
+    ].join('\n')
+
+    for (const step of [1, 2, 5]) {
+      const fineScanner = createStreamingMarkdownScanner()
+      for (let pos = 1600; pos <= listAndSetextDoc.length; pos += step) {
+        const slice = listAndSetextDoc.slice(0, pos)
+        expect(fineScanner.scan(slice)).toEqual(splitStreamingMarkdownPrefix(slice))
+      }
+    }
+
+    // Consecutive long lines ("25k line 1\n25k bullet line 2") must stay linear O(N) without rescanning line 1
+    const twoLongLinesScanner = createStreamingMarkdownScanner()
+    let twoLinesAcc = 'First long line before single newline: '
+    for (let i = 0; i < 350; i += 1) {
+      twoLinesAcc += chunkUnit
+      twoLongLinesScanner.scan(twoLinesAcc)
+    }
+    twoLinesAcc += '\n\n- '
+    const tTwoLines = performance.now()
+    for (let i = 0; i < 350; i += 1) {
+      twoLinesAcc += chunkUnit
+      expect(twoLongLinesScanner.scan(twoLinesAcc)).toEqual({ prefix: '', tail: twoLinesAcc })
+    }
+    expect(performance.now() - tTwoLines).toBeLessThan(250)
   })
 })

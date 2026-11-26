@@ -1,7 +1,6 @@
 import { loggerService } from '@logger'
 import { DEFAULT_CONTEXTCOUNT, MAX_CONTEXT_COUNT, UNLIMITED_CONTEXT_COUNT } from '@renderer/config/constant'
 import { getTopicById } from '@renderer/hooks/useTopic'
-import i18n from '@renderer/i18n'
 import store from '@renderer/store'
 import { removeManyBlocks } from '@renderer/store/messageBlock'
 import { selectMessagesForTopic } from '@renderer/store/newMessage'
@@ -22,7 +21,7 @@ import { filterContextMessages } from '@renderer/utils/messageUtils/filters'
 import { getMainTextContent } from '@renderer/utils/messageUtils/find'
 import dayjs from 'dayjs'
 import { t } from 'i18next'
-import type { NavigateFunction } from 'react-router'
+import type { NavigateFunction } from 'react-router-dom'
 
 import { getAssistantById, getAssistantProvider, getDefaultModel } from './AssistantService'
 import { EVENT_NAMES, EventEmitter } from './EventService'
@@ -51,17 +50,7 @@ export function getContextCount(assistant: Assistant, messages: Message[]) {
   }
 }
 
-export function isGenerating() {
-  return new Promise((resolve, reject) => {
-    const generating = store.getState().runtime.generating
-    generating && window.toast.warning(i18n.t('message.switch.disabled'))
-    generating ? reject(false) : resolve(true)
-  })
-}
-
 export async function locateToMessage(navigate: NavigateFunction, message: Message) {
-  await isGenerating()
-
   const { default: SearchPopup } = await import('@renderer/components/Popups/SearchPopup')
   SearchPopup.hide()
   const assistant = getAssistantById(message.assistantId)

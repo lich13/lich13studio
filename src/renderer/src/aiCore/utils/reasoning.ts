@@ -2,7 +2,13 @@ import { findTokenLimit } from '@renderer/config/models'
 import { getStoreSetting } from '@renderer/hooks/useSettings'
 import type { Assistant, Model } from '@renderer/types'
 import { findOfficialModel } from '@shared/modelCatalog/runtime'
-import { anthropicEffort, anthropicThinkingMode, normalizeReasoningEffort, thinkingBudget } from '@shared/reasoning'
+import {
+  anthropicEffort,
+  anthropicThinkingMode,
+  normalizeReasoningEffort,
+  REASONING_EFFORTS,
+  thinkingBudget
+} from '@shared/reasoning'
 
 export function getOpenAIReasoningParams(assistant: Assistant, _model: Model) {
   const levels = findOfficialModel(_model.id)?.efforts
@@ -13,11 +19,7 @@ export function getOpenAIReasoningParams(assistant: Assistant, _model: Model) {
         ? requested
         : ([...levels]
             .reverse()
-            .find(
-              (level) =>
-                ['low', 'medium', 'high', 'xhigh', 'max'].indexOf(level) <=
-                ['low', 'medium', 'high', 'xhigh', 'max'].indexOf(requested)
-            ) ?? levels[0])
+            .find((level) => REASONING_EFFORTS.indexOf(level) <= REASONING_EFFORTS.indexOf(requested)) ?? levels[0])
       : requested,
     reasoningSummary: getStoreSetting('openAI')?.summaryText
   }

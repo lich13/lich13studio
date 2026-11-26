@@ -8,7 +8,11 @@ import { providerFetch } from '@shared/providerFetch'
 import { defaultAppHeaders } from '@shared/utils'
 
 import type { ProviderConfig } from '../types'
-import { getAiSdkProviderId } from './factory'
+
+export function getAiSdkProviderId(provider: Provider): 'openai' | 'anthropic' {
+  const type = ProviderTypeSchema.parse(provider.type)
+  return type === 'anthropic' ? 'anthropic' : 'openai'
+}
 
 export function formatProviderApiHost(provider: Provider): Provider {
   ProviderTypeSchema.parse(provider.type)
@@ -39,13 +43,5 @@ export function providerToAiSdkConfig(
 }
 
 export function getActualProvider(model: Model): Provider {
-  return adaptProvider({ provider: getProviderByModel(model), model })
-}
-
-export function adaptProvider({ provider }: { provider: Provider; model?: Model }): Provider {
-  return formatProviderApiHost(provider)
-}
-
-export function isModernSdkSupported(provider: Provider): boolean {
-  return ProviderTypeSchema.safeParse(provider.type).success
+  return formatProviderApiHost(getProviderByModel(model))
 }

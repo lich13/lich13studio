@@ -5,6 +5,10 @@ const dbMocks = vi.hoisted(() => {
   const blocksList: any[] = []
   const dbObj: any = {
     files: {
+      add: vi.fn(async (file: any) => {
+        filesMap.set(file.id, file)
+        return file.id
+      }),
       get: vi.fn(async (id: string) => filesMap.get(id)),
       bulkGet: vi.fn(async (ids: string[]) => ids.map((id) => filesMap.get(id))),
       update: vi.fn(async (id: string, changes: Record<string, any>) => {
@@ -31,8 +35,15 @@ const dbMocks = vi.hoisted(() => {
   return { filesMap, blocksList, dbObj }
 })
 
+const loggerMocks = vi.hoisted(() => ({
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  debug: vi.fn()
+}))
+
 vi.mock('@logger', () => ({
-  loggerService: { withContext: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }) }
+  loggerService: { withContext: () => loggerMocks }
 }))
 vi.mock('@renderer/databases', () => ({ default: dbMocks.dbObj }))
 vi.mock('@renderer/i18n', () => ({ default: { t: (key: string) => key } }))
@@ -89,5 +100,63 @@ describe('attachment previews', () => {
     await FileManager.deleteFile('f-shared', false)
     expect(dbMocks.filesMap.has('f-shared')).toBe(false)
     expect(window.api.file.delete).toHaveBeenCalledWith('f-shared.pdf')
+  })
+
+  it('protects in-flight uploadFile attachments from concurrent cleanupUncommittedDraftFiles while purging dropped drafts', async () => {
+    let resolveUpload!: (file: FileMetadata) => void
+    ;(window.api.file as any).upload = vi.fn(
+      () =>
+        new Promise<FileMetadata>((resolve) => {
+          resolveUpload = resolve
+        })
+    )
+
+    const uploadingDraft = { id: 'draft-inflight', ext: '.png', count: 1 } as FileMetadata
+    const droppedDraft = { id: 'draft-dropped', ext: '.jpg', count: 1 } as FileMetadata
+
+    const uploadPromise = FileManager.uploadFile(uploadingDraft)
+    await FileManager.cleanupUncommittedDraftFiles([uploadingDraft, droppedDraft])
+
+    expect(window.api.file.delete).toHaveBeenCalledTimes(1)
+    expect(window.api.file.delete).toHaveBeenCalledWith('draft-dropped.jpg')
+
+    resolveUpload(uploadingDraft)
+    await uploadPromise
+    expect(dbMocks.filesMap.has('draft-inflight')).toBe(true)
+
+    await FileManager.cleanupUncommittedDraftFiles([uploadingDraft])
+    expect(window.api.file.delete).toHaveBeenCalledTimes(1)
+  })
+
+  it('logs only non-sensitive summary fields (type, size, ext) in uploadFile and deleteFile without leaking paths or filenames', async () => {
+    loggerMocks.info.mockClear()
+    const sensitiveFile = {
+      id: 'f-sensitive',
+      name: 'f-sensitive.pdf',
+      origin_name: 'Alice_Private_Tax_Return_2026.pdf',
+      path: '/Users/alice/Desktop/Confidential/Alice_Private_Tax_Return_2026.pdf',
+      size: 4096,
+      ext: '.pdf',
+      type: 'document' as any,
+      created_at: '2026-01-01T00:00:00.000Z',
+      count: 1
+    } as FileMetadata
+    ;(window.api.file as any).upload = vi.fn(async () => ({
+      ...sensitiveFile,
+      path: '/Users/alice/Library/Application Support/com.lich13.studio/Data/Files/f-sensitive.pdf'
+    }))
+
+    await FileManager.uploadFile(sensitiveFile)
+    await FileManager.deleteFile('f-sensitive', true)
+
+    const serializedLogs = JSON.stringify(loggerMocks.info.mock.calls)
+    expect(serializedLogs).not.toContain('Alice_Private_Tax_Return_2026')
+    expect(serializedLogs).not.toContain('/Users/alice')
+    expect(serializedLogs).not.toContain('f-sensitive.pdf')
+    expect(loggerMocks.info).toHaveBeenCalledWith('Uploading file:', {
+      type: 'document',
+      size: 4096,
+      ext: '.pdf'
+    })
   })
 })

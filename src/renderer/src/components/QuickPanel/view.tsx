@@ -7,7 +7,7 @@ import { classNames } from '@renderer/utils'
 import { Flex } from 'antd'
 import { t } from 'i18next'
 import debounce from 'lodash/debounce'
-import { Check } from 'lucide-react'
+import { ArrowLeftRight, ArrowUpDown, Check, CornerDownLeft } from 'lucide-react'
 import React, { use, useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import styled from 'styled-components'
 
@@ -768,7 +768,8 @@ export const QuickPanelView: React.FC<Props> = ({ setInputText }) => {
             <span>ESC {t('settings.quickPanel.close')}</span>
 
             <Flex align="center" gap={4}>
-              ▲▼ {t('settings.quickPanel.select')}
+              <ArrowUpDown size={11} className="lucide-custom" />
+              {t('settings.quickPanel.select')}
             </Flex>
 
             {footerWidth >= 500 && (
@@ -777,7 +778,7 @@ export const QuickPanelView: React.FC<Props> = ({ setInputText }) => {
                   <span style={{ color: isAssistiveKeyPressed ? 'var(--color-primary)' : 'var(--color-text-3)' }}>
                     {ASSISTIVE_KEY}
                   </span>
-                  + ▲▼ {t('settings.quickPanel.page')}
+                  + <ArrowUpDown size={11} className="lucide-custom" /> {t('settings.quickPanel.page')}
                 </Flex>
 
                 {canForwardAndBackward && (
@@ -785,14 +786,15 @@ export const QuickPanelView: React.FC<Props> = ({ setInputText }) => {
                     <span style={{ color: isAssistiveKeyPressed ? 'var(--color-primary)' : 'var(--color-text-3)' }}>
                       {ASSISTIVE_KEY}
                     </span>
-                    + ◀︎▶︎ {t('settings.quickPanel.back')}/{t('settings.quickPanel.forward')}
+                    + <ArrowLeftRight size={11} className="lucide-custom" /> {t('settings.quickPanel.back')}/
+                    {t('settings.quickPanel.forward')}
                   </Flex>
                 )}
               </>
             )}
 
             <Flex align="center" gap={4}>
-              ↩︎ {t('settings.quickPanel.confirm')}
+              <CornerDownLeft size={11} className="lucide-custom" /> {t('settings.quickPanel.confirm')}
             </Flex>
           </QuickPanelFooterTips>
         </QuickPanelFooter>

@@ -54,6 +54,7 @@ const ErrorMessage: React.FC<{ block: ErrorMessageBlock }> = ({ block }) => {
         />
       )
     }
+    return t(i18nKey)
   }
 
   if (i18n.exists(errorKey)) {
@@ -124,7 +125,7 @@ const MessageErrorInfo: React.FC<{ block: ErrorMessageBlock; message: Message }>
       {/* Close button */}
       <button
         type="button"
-        className="absolute top-2 right-2 flex h-5.5 w-5.5 cursor-pointer items-center justify-center rounded border-none bg-transparent opacity-0 transition-all duration-150 hover:bg-[color-mix(in_srgb,var(--color-error)_12%,transparent)] hover:text-(--color-error) group-hover:opacity-100"
+        className="absolute top-1.5 right-1.5 flex h-7 w-7 cursor-pointer items-center justify-center rounded border-none bg-transparent opacity-100 transition-all duration-150 hover:bg-[color-mix(in_srgb,var(--color-error)_12%,transparent)] hover:text-(--color-error) focus-visible:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
         onClick={onRemoveBlock}
         aria-label="close"
         title={t('common.close')}>
@@ -136,7 +137,7 @@ const MessageErrorInfo: React.FC<{ block: ErrorMessageBlock; message: Message }>
         <div className="flex shrink-0 items-center justify-center" style={{ color: 'var(--color-error)' }}>
           <AlertTriangle size={15} />
         </div>
-        <div className="pr-5 font-semibold text-[13px] leading-[1.4]" style={{ color: 'var(--color-error)' }}>
+        <div className="pr-7 font-semibold text-[13px] leading-[1.4]" style={{ color: 'var(--color-error)' }}>
           {t(classification.i18nKey)}
         </div>
       </div>
@@ -145,7 +146,7 @@ const MessageErrorInfo: React.FC<{ block: ErrorMessageBlock; message: Message }>
       <div
         className="wrap-break-word ml-5.75 line-clamp-3 text-xs leading-normal [&_a]:text-(--color-link)"
         style={{ color: 'var(--color-text-2)' }}>
-        {block.error?.message || <ErrorMessage block={block} />}
+        <ErrorMessage block={block} />
       </div>
 
       {/* Footer */}

@@ -1,3 +1,4 @@
-export { DbService, dbService } from './DbService'
-export { DexieMessageDataSource } from './DexieMessageDataSource'
-export type { MessageDataSource } from './types'
+import { DexieMessageDataSource } from './DexieMessageDataSource'
+
+export const dbService = new DexieMessageDataSource()
+export { DexieMessageDataSource }

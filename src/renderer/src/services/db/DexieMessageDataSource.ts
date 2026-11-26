@@ -4,8 +4,6 @@ import store from '@renderer/store'
 import { updateTopicUpdatedAt } from '@renderer/store/assistants'
 import type { Message, MessageBlock } from '@renderer/types/newMessage'
 
-import type { MessageDataSource } from './types'
-
 const logger = loggerService.withContext('DexieMessageDataSource')
 
 export interface FileCountDeltaSpec {
@@ -127,7 +125,7 @@ export async function purgeDetachedAttachments(attachmentNames: readonly string[
  * Dexie-based implementation of MessageDataSource
  * Handles local IndexedDB storage for regular chat messages
  */
-export class DexieMessageDataSource implements MessageDataSource {
+export class DexieMessageDataSource {
   // ============ Read Operations ============
 
   async fetchMessages(topicId: string): Promise<{
@@ -170,8 +168,18 @@ export class DexieMessageDataSource implements MessageDataSource {
   }
 
   // ============ Write Operations ============
-  async appendMessage(topicId: string, message: Message, blocks: MessageBlock[], insertIndex?: number): Promise<void> {
+  async appendMessage(
+    topicId: string,
+    message: Message,
+    blocks: MessageBlock[],
+    insertIndex: number = -1
+  ): Promise<void> {
     try {
+      const blockIds = blocks.map((block) => block.id)
+      const shouldSyncBlocks =
+        blockIds.length > 0 && (!message.blocks || blockIds.some((id, index) => message.blocks?.[index] !== id))
+      const messageWithBlocks = shouldSyncBlocks ? { ...message, blocks: blockIds } : message
+
       await db.transaction('rw', db.topics, db.message_blocks, async () => {
         if (blocks.length > 0) {
           await db.message_blocks.bulkPut(blocks)
@@ -189,13 +197,13 @@ export class DexieMessageDataSource implements MessageDataSource {
 
         const updatedMessages = [...(topic.messages || [])]
 
-        const existingIndex = updatedMessages.findIndex((m) => m.id === message.id)
+        const existingIndex = updatedMessages.findIndex((m) => m.id === messageWithBlocks.id)
         if (existingIndex !== -1) {
-          updatedMessages[existingIndex] = message
-        } else if (insertIndex !== undefined && insertIndex >= 0 && insertIndex <= updatedMessages.length) {
-          updatedMessages.splice(insertIndex, 0, message)
+          updatedMessages[existingIndex] = messageWithBlocks
+        } else if (insertIndex >= 0 && insertIndex <= updatedMessages.length) {
+          updatedMessages.splice(insertIndex, 0, messageWithBlocks)
         } else {
-          updatedMessages.push(message)
+          updatedMessages.push(messageWithBlocks)
         }
 
         await db.topics.update(topicId, { messages: updatedMessages })
@@ -211,20 +219,14 @@ export class DexieMessageDataSource implements MessageDataSource {
   async updateMessage(topicId: string, messageId: string, updates: Partial<Message>): Promise<void> {
     try {
       await db.transaction('rw', db.topics, async () => {
-        await db.topics
-          .where('id')
-          .equals(topicId)
-          .modify((topic) => {
-            if (!topic || !topic.messages) return
-
-            const messageIndex = topic.messages.findIndex((m) => m.id === messageId)
-            if (messageIndex !== -1) {
-              Object.assign(topic.messages[messageIndex], updates)
-            }
-          })
+        const topic = await db.topics.get(topicId)
+        if (!topic?.messages) return
+        const messageIndex = topic.messages.findIndex((m) => m.id === messageId)
+        if (messageIndex === -1) return
+        const updatedMessages = [...topic.messages]
+        updatedMessages[messageIndex] = { ...updatedMessages[messageIndex], ...updates }
+        await db.topics.put({ ...topic, messages: updatedMessages })
       })
-
-      store.dispatch(updateTopicUpdatedAt({ topicId }))
     } catch (error) {
       logger.error(`Failed to update message ${messageId} in topic ${topicId}:`, error as Error)
       throw error
@@ -244,23 +246,19 @@ export class DexieMessageDataSource implements MessageDataSource {
 
         const keysToUpdate = Object.keys(messageUpdates).filter((key) => key !== 'id' && key !== 'topicId')
         if (keysToUpdate.length > 0) {
-          await db.topics
-            .where('id')
-            .equals(topicId)
-            .modify((topic) => {
-              if (!topic || !topic.messages) return
-
-              const messageIndex = topic.messages.findIndex((m) => m.id === messageUpdates.id)
-              if (messageIndex !== -1) {
-                keysToUpdate.forEach((key) => {
-                  ;(topic.messages[messageIndex] as any)[key] = (messageUpdates as any)[key]
-                })
-              }
-            })
+          const topic = await db.topics.get(topicId)
+          if (!topic?.messages) return
+          const messageIndex = topic.messages.findIndex((m) => m.id === messageUpdates.id)
+          if (messageIndex === -1) return
+          const updatedMessages = [...topic.messages]
+          const nextMsg = { ...updatedMessages[messageIndex] }
+          keysToUpdate.forEach((key) => {
+            ;(nextMsg as any)[key] = (messageUpdates as any)[key]
+          })
+          updatedMessages[messageIndex] = nextMsg
+          await db.topics.put({ ...topic, messages: updatedMessages })
         }
       })
-
-      store.dispatch(updateTopicUpdatedAt({ topicId }))
     } catch (error) {
       logger.error(`Failed to update message and blocks for ${messageUpdates.id}:`, error as Error)
       throw error

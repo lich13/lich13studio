@@ -12,8 +12,16 @@ export function clearSearchHighlights() {
 export function setSearchHighlights(ranges: Range[], current?: Range) {
   clearSearchHighlights()
   if (globalThis.CSS?.highlights && typeof Highlight !== 'undefined') {
-    CSS.highlights.set('search-matches', new Highlight(...ranges))
-    if (current) CSS.highlights.set('current-match', new Highlight(current))
+    const matchHighlight = new Highlight()
+    for (const range of ranges) {
+      matchHighlight.add(range)
+    }
+    CSS.highlights.set('search-matches', matchHighlight)
+    if (current) {
+      const currentHighlight = new Highlight()
+      currentHighlight.add(current)
+      CSS.highlights.set('current-match', currentHighlight)
+    }
   } else if (current) {
     // System WebViews before Chromium 105 have no CSS Custom Highlight API.
     // Keep search navigation working without mutating React-owned message nodes.

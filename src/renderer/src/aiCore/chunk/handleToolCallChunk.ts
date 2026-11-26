@@ -26,41 +26,16 @@ export type ToolcallsMap = {
  * 工具调用处理器类
  */
 export class ToolCallChunkHandler {
-  private static globalActiveToolCalls = new Map<string, ToolcallsMap>()
+  private activeToolCalls = new Map<string, ToolcallsMap>()
 
-  private activeToolCalls = ToolCallChunkHandler.globalActiveToolCalls
   constructor(private onChunk: (chunk: Chunk) => void) {}
 
-  /**
-   * 内部静态方法：添加活跃工具调用的核心逻辑
-   */
-  private static addActiveToolCallImpl(toolCallId: string, map: ToolcallsMap): boolean {
-    if (!ToolCallChunkHandler.globalActiveToolCalls.has(toolCallId)) {
-      ToolCallChunkHandler.globalActiveToolCalls.set(toolCallId, map)
+  private addActiveToolCall(toolCallId: string, map: ToolcallsMap): boolean {
+    if (!this.activeToolCalls.has(toolCallId)) {
+      this.activeToolCalls.set(toolCallId, map)
       return true
     }
     return false
-  }
-
-  /**
-   * 实例方法：添加活跃工具调用
-   */
-  private addActiveToolCall(toolCallId: string, map: ToolcallsMap): boolean {
-    return ToolCallChunkHandler.addActiveToolCallImpl(toolCallId, map)
-  }
-
-  /**
-   * 获取全局活跃的工具调用
-   */
-  public static getActiveToolCalls() {
-    return ToolCallChunkHandler.globalActiveToolCalls
-  }
-
-  /**
-   * 静态方法：添加活跃工具调用（外部访问）
-   */
-  public static addActiveToolCall(toolCallId: string, map: ToolcallsMap): boolean {
-    return ToolCallChunkHandler.addActiveToolCallImpl(toolCallId, map)
   }
 
   /**
@@ -389,8 +364,6 @@ export class ToolCallChunkHandler {
     }
   }
 }
-
-export const addActiveToolCall = ToolCallChunkHandler.addActiveToolCall.bind(ToolCallChunkHandler)
 
 /**
  * 从工具输出中提取图片并验证通用结果结构

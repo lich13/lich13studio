@@ -1,6 +1,36 @@
-import Emittery from 'emittery'
+type EventListener<T = any> = (eventData: T) => void | Promise<void>
 
-export const EventEmitter = new Emittery()
+class TypedEventEmitter {
+  private readonly listeners = new Map<string, Set<EventListener>>()
+
+  on<T = any>(eventName: string, listener: EventListener<T>): () => void {
+    let bucket = this.listeners.get(eventName)
+    if (!bucket) {
+      bucket = new Set()
+      this.listeners.set(eventName, bucket)
+    }
+    bucket.add(listener as EventListener)
+    return () => this.off(eventName, listener)
+  }
+
+  off<T = any>(eventName: string, listener: EventListener<T>): void {
+    const bucket = this.listeners.get(eventName)
+    if (!bucket) return
+    bucket.delete(listener as EventListener)
+    if (bucket.size === 0) {
+      this.listeners.delete(eventName)
+    }
+  }
+
+  async emit<T = any>(eventName: string, eventData?: T): Promise<void> {
+    await Promise.resolve()
+    const bucket = this.listeners.get(eventName)
+    if (!bucket || bucket.size === 0) return
+    await Promise.all(Array.from(bucket, (listener) => listener(eventData)))
+  }
+}
+
+export const EventEmitter = new TypedEventEmitter()
 
 export const EVENT_NAMES = {
   PLUGINS_UPDATED: 'PLUGINS_UPDATED',

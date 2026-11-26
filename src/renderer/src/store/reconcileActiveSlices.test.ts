@@ -19,8 +19,14 @@ vi.mock('@renderer/services/mobile/credentials', () => ({
   mobilePersistStorage: storage
 }))
 
-import { reconcileActiveSlices } from './index'
+import store, {
+  createPersistStorageAdapter,
+  persistor,
+  reconcileActiveSlices,
+  refreshMiniWindowPersistedState
+} from './index'
 import migrate from './migrate'
+import { setMathEngine } from './settings'
 
 describe('reconcileActiveSlices and lazy store migration', () => {
   it('strips retired slice keys from inbound persisted state without triggering combineReducers warnings', () => {
@@ -103,5 +109,77 @@ describe('reconcileActiveSlices and lazy store migration', () => {
     expect(legacy.llm.providers).toEqual([])
     expect(legacy.settings.language).toBe('zh-CN')
     expect(legacy.settings.chatRequestMode).toBe('stream')
+  })
+
+  it('refreshes mini window persisted state with migration while protecting live synced state inside throttle window', async () => {
+    const originalHref = window.location.href
+    window.history.replaceState({}, '', '/miniWindow.html')
+    try {
+      const staleSnapshot = JSON.stringify({
+        settings: JSON.stringify({ ...store.getState().settings, mathEngine: 'MathJax', fontSize: 18 }),
+        _persist: JSON.stringify({ version: 223, rehydrated: true })
+      })
+      localStorage.setItem('persist:cherry-studio', staleSnapshot)
+
+      // Live action inside throttle window (<400ms) must not be clobbered by disk snapshot
+      store.dispatch(setMathEngine('none'))
+      await refreshMiniWindowPersistedState()
+      expect(store.getState().settings.mathEngine).toBe('none')
+
+      // Advance past throttle window: changed disk snapshot runs migrate ('MathJax' -> 'KaTeX') and rehydrates once
+      const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 1000)
+      try {
+        await refreshMiniWindowPersistedState()
+        expect(store.getState().settings.mathEngine).toBe('KaTeX')
+        expect(store.getState().settings.fontSize).toBe(18)
+
+        // Subsequent show with identical raw snapshot is a 0-cost no-op
+        const prevSettingsRef = store.getState().settings
+        await refreshMiniWindowPersistedState()
+        expect(store.getState().settings).toBe(prevSettingsRef)
+      } finally {
+        nowSpy.mockRestore()
+      }
+    } finally {
+      window.history.replaceState({}, '', originalHref)
+      localStorage.removeItem('persist:cherry-studio')
+    }
+  })
+
+  it('gives MiniWindow a strictly read-only storage adapter so REHYDRATE and flush never overwrite MainWindow state', async () => {
+    const underlying = {
+      getItem: vi.fn(async () => '{"settings":"{}"}'),
+      setItem: vi.fn(async () => {}),
+      removeItem: vi.fn(async () => {})
+    }
+    let miniMode = true
+    const adapter = createPersistStorageAdapter(underlying as any, () => miniMode)
+
+    await expect(adapter.getItem('persist:cherry-studio')).resolves.toBe('{"settings":"{}"}')
+    await adapter.setItem('persist:cherry-studio', '{"settings":"{\\"theme\\":\\"light\\"}"}')
+    await adapter.removeItem('persist:cherry-studio')
+    expect(underlying.setItem).not.toHaveBeenCalled()
+    expect(underlying.removeItem).not.toHaveBeenCalled()
+
+    miniMode = false
+    await adapter.setItem('persist:cherry-studio', '{"settings":"{\\"theme\\":\\"dark\\"}"}')
+    expect(underlying.setItem).toHaveBeenCalledTimes(1)
+
+    // Also verify real store + persistor.flush() in MiniWindow context never mutates localStorage['persist:cherry-studio']
+    const originalHref = window.location.href
+    window.history.replaceState({}, '', '/miniWindow.html')
+    const mainWindowSaved = JSON.stringify({
+      settings: JSON.stringify({ ...store.getState().settings, fontSize: 22 }),
+      _persist: JSON.stringify({ version: 223, rehydrated: true })
+    })
+    localStorage.setItem('persist:cherry-studio', mainWindowSaved)
+    try {
+      store.dispatch(setMathEngine('none'))
+      await persistor.flush()
+      expect(localStorage.getItem('persist:cherry-studio')).toBe(mainWindowSaved)
+    } finally {
+      window.history.replaceState({}, '', originalHref)
+      localStorage.removeItem('persist:cherry-studio')
+    }
   })
 })

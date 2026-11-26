@@ -117,7 +117,7 @@ vi.mock('./PortableBackupService', () => ({
   exportPortableBackup: vi.fn()
 }))
 
-import { handleData } from './BackupService'
+import { handleData, restoreFromLocal, restoreFromWebdav } from './BackupService'
 import { reconcilePendingBackupRestore, RESTORE_COMMITTED_SETTING_ID } from './restoreReconciliation'
 
 function makeValidBackupPayload() {
@@ -176,7 +176,6 @@ describe('BackupService handleData atomic restoreId journal & crash reconciliati
     let markerDuringFinishCall: { id: string; value: unknown } | undefined
 
     mocks.invoke.mockImplementation(async (cmd: string) => {
-      if (cmd === 'get_pending_restore_id') return activeRestoreId
       if (cmd === 'finish_backup_restore') {
         markerDuringFinishCall = await mocks.dbObj.settings.get(RESTORE_COMMITTED_SETTING_ID)
         throw new Error('Simulated crash / EBUSY before marker removal')
@@ -184,8 +183,9 @@ describe('BackupService handleData atomic restoreId journal & crash reconciliati
       return undefined
     })
 
-    await handleData(makeValidBackupPayload())
+    await handleData(makeValidBackupPayload(), { restoreId: activeRestoreId })
 
+    expect(mocks.invoke).not.toHaveBeenCalledWith('get_pending_restore_id')
     // Marker was written atomically inside the transaction before finish_backup_restore(true) ran
     expect(markerDuringFinishCall).toEqual({
       id: RESTORE_COMMITTED_SETTING_ID,
@@ -209,34 +209,73 @@ describe('BackupService handleData atomic restoreId journal & crash reconciliati
     })
 
     expect(outcome).toBe('committed')
-    expect(startupInvoke).toHaveBeenCalledWith('finish_backup_restore', { commit: true })
+    expect(startupInvoke).toHaveBeenCalledWith('finish_backup_restore', {
+      commit: true,
+      restoreId: activeRestoreId
+    })
     expect(await mocks.dbObj.settings.get(RESTORE_COMMITTED_SETTING_ID)).toBeUndefined()
   })
 
   it('cleans up committed restoreId marker after normal finish_backup_restore(true) and rolls back cleanly on pre-commit failure', async () => {
     const activeRestoreId = 'restore-previous-clean-run'
-    mocks.invoke.mockImplementation(async (cmd: string) => {
-      if (cmd === 'get_pending_restore_id') return activeRestoreId
-      return undefined
-    })
+    mocks.invoke.mockResolvedValue(undefined)
 
-    await handleData(makeValidBackupPayload())
-    expect(mocks.invoke).toHaveBeenCalledWith('finish_backup_restore', { commit: true })
+    await handleData(makeValidBackupPayload(), { restoreId: activeRestoreId })
+    expect(mocks.invoke).toHaveBeenCalledWith('finish_backup_restore', {
+      commit: true,
+      restoreId: activeRestoreId
+    })
     expect(await mocks.dbObj.settings.get(RESTORE_COMMITTED_SETTING_ID)).toBeUndefined()
     expect(await mocks.dbObj.settings.get('user-pref')).toEqual({ id: 'user-pref', value: 'yes' })
 
     // Now simulate a restore that fails mid-transaction BEFORE IndexedDB commit
     const failedRestoreId = 'restore-previous-tx-aborted'
-    mocks.invoke.mockReset()
-    mocks.invoke.mockImplementation(async (cmd: string) => {
-      if (cmd === 'get_pending_restore_id') return failedRestoreId
-      return undefined
-    })
+    mocks.invoke.mockReset().mockResolvedValue(undefined)
     mocks.dbObj.topics.bulkAdd.mockRejectedValueOnce(new Error('ConstraintError'))
 
-    await expect(handleData(makeValidBackupPayload())).rejects.toThrow('ConstraintError')
-    expect(mocks.invoke).toHaveBeenCalledWith('finish_backup_restore', { commit: false })
+    await expect(handleData(makeValidBackupPayload(), { restoreId: failedRestoreId })).rejects.toThrow(
+      'ConstraintError'
+    )
+    expect(mocks.invoke).toHaveBeenCalledWith('finish_backup_restore', {
+      commit: false,
+      restoreId: failedRestoreId
+    })
     // Transaction rolled back: failedRestoreId is NOT committed in IndexedDB
     expect(await mocks.dbObj.settings.get(RESTORE_COMMITTED_SETTING_ID)).toBeUndefined()
+  })
+
+  it('skips finish_backup_restore when no files were staged (restoreId: null) and passes explicit restoreId from unpack IPC', async () => {
+    mocks.invoke.mockResolvedValue(undefined)
+
+    // 1. Restore with no staged Data/ (e.g. .json/.bak or skipBackupFile zip) must NEVER touch finish_backup_restore
+    await handleData(makeValidBackupPayload())
+    expect(mocks.invoke).not.toHaveBeenCalledWith('finish_backup_restore', expect.anything())
+    expect(mocks.invoke).not.toHaveBeenCalledWith('get_pending_restore_id')
+
+    // Validation failure with no staged restoreId also must NEVER call finish_backup_restore
+    mocks.invoke.mockClear()
+    await expect(handleData({ version: 5, localStorage: {}, indexedDB: {} })).rejects.toThrow()
+    expect(mocks.invoke).not.toHaveBeenCalledWith('finish_backup_restore', expect.anything())
+
+    // 2. Local/WebDAV unpack returning { payload, restoreId } threads exact restoreId to rollback on malformed JSON
+    const unpackedId = 'restore-previous-from-unpack-ipc'
+    ;(window as any).api.resolvePath = vi.fn(async () => '/backups')
+    ;(window as any).api.backup = {
+      restoreFromLocalBackup: vi.fn(async () => ({ payload: '{malformed-json', restoreId: unpackedId })),
+      restoreFromWebdav: vi.fn(async () => ({
+        payload: JSON.stringify(makeValidBackupPayload()),
+        restoreId: null
+      }))
+    }
+
+    await expect(restoreFromLocal('lich13studio.zip')).rejects.toThrow()
+    expect(mocks.invoke).toHaveBeenCalledWith('finish_backup_restore', {
+      commit: false,
+      restoreId: unpackedId
+    })
+
+    mocks.invoke.mockClear()
+    await restoreFromWebdav('lich13studio-nodata.zip')
+    expect(mocks.invoke).not.toHaveBeenCalledWith('finish_backup_restore', expect.anything())
   })
 })

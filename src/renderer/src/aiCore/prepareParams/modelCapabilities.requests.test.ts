@@ -65,15 +65,11 @@ vi.mock('@renderer/services/ReasoningUsageService', () => ({
 }))
 vi.mock('@renderer/utils/prompt', () => ({ replacePromptVariables: (text: string) => text }))
 vi.mock('@renderer/utils/provider', () => ({
-  isAwsBedrockProvider: () => false,
-  isSupportUrlContextProvider: () => false,
-  isVertexProvider: () => false,
-  isOllamaProvider: () => false,
-  isSupportEnableThinkingProvider: () => false
+  isSupportUrlContextProvider: () => false
 }))
-vi.mock('@renderer/aiCore/plugins/PluginBuilder', () => ({ buildPlugins: () => [] }))
+vi.mock('@renderer/aiCore/plugins/PluginBuilder', () => ({ buildMiddlewares: () => [] }))
 vi.mock('@renderer/aiCore/plugins/pdfCompatibilityPlugin', () => ({
-  createPdfCompatibilityPlugin: () => ({ name: 'noop' })
+  createPdfCompatibilityMiddleware: () => ({ specificationVersion: 'v3' })
 }))
 vi.mock('@renderer/aiCore/plugins/anthropicCachePlugin', () => ({}))
 vi.mock('@renderer/aiCore/prepareParams/fileProcessor', () => ({
@@ -126,7 +122,6 @@ vi.mock('@logger', () => ({
   }
 }))
 
-import { extensionRegistry } from '@cherrystudio/ai-core/provider'
 import AiProvider from '@renderer/aiCore/AiProvider'
 import { buildStreamTextParams } from '@renderer/aiCore/prepareParams/parameterBuilder'
 import { clearReasoningCapabilityCache } from '@renderer/aiCore/utils/reasoningFallback'
@@ -229,14 +224,9 @@ function imageConversation(): Message[] {
 function middleware(assistant: Assistant) {
   return {
     assistant,
-    streamOutput: true,
     enableReasoning: false,
     reasoningMode: 'disabled' as const,
-    isPromptToolUse: false,
-    isSupportedToolUse: false,
-    enableGenerateImage: false,
-    enableUrlContext: false,
-    callType: 'chat'
+    enableUrlContext: false
   }
 }
 
@@ -253,7 +243,6 @@ beforeEach(() => {
   fixture.catalog = { providers: [], platformModels: { openai: [], grok: [], anthropic: [] } }
   executorFixture.createExecutor = undefined
   clearReasoningCapabilityCache()
-  for (const id of ['openai', 'anthropic']) extensionRegistry.get(id)?.clearCache()
 })
 
 afterEach(() => {

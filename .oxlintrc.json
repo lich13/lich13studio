@@ -14,8 +14,6 @@
     "tests/**",
     ".yarn/**",
     ".gitignore",
-    "scripts/cloudflare-worker.js",
-    "src/renderer/src/ui/**",
     "packages/**/dist",
     "eslint.config.mjs"
   ],
@@ -27,7 +25,7 @@
       "env": {
         "node": true
       },
-      "files": ["resources/scripts/**", "scripts/**", "playwright.config.ts", "vite.config.ts"]
+      "files": ["scripts/**", "vite.config.ts"]
     },
     {
       "env": {

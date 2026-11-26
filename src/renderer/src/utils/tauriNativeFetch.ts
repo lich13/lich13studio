@@ -1,6 +1,7 @@
 import type { FetchFunction } from '@ai-sdk/provider-utils'
 import { loggerService } from '@logger'
 import { backgroundTasks } from '@renderer/services/mobile/BackgroundTaskService'
+import { runtimeCapabilities } from '@renderer/services/mobile/runtime'
 
 const logger = loggerService.withContext('TauriNativeFetch')
 
@@ -19,6 +20,7 @@ type NativeHttpRequest = {
   method: string
   headers: NativeHttpHeader[]
   body?: number[]
+  bodyBase64?: string
   bodyText?: string
   taskEpoch?: number
 }
@@ -40,13 +42,24 @@ type NativeHttpChunkEvent = {
 
 const NATIVE_HTTP_CHUNK_EVENT = 'native_http_chunk'
 
+type TauriListenOptions = {
+  target?: { kind: 'WebviewWindow'; label: string }
+}
+
+type RawListenFn = (
+  event: string,
+  handler: (event: TauriListenEvent) => void,
+  options?: TauriListenOptions
+) => Promise<() => void>
+
 type TauriApis = {
   invoke: (cmd: string, args?: Record<string, unknown>) => Promise<any>
-  listen: (event: string, handler: (event: TauriListenEvent) => void) => Promise<() => void>
+  rawListen: RawListenFn
+  listenChunkEvents: (handler: (event: TauriListenEvent) => void) => Promise<() => void>
 }
 
 const activeChunkReceivers = new Map<string, (payload: NativeHttpChunkEvent) => void>()
-let sharedListenFn: TauriApis['listen'] | null = null
+let sharedListenFn: RawListenFn | null = null
 let sharedUnlisten: (() => void) | null = null
 let sharedListenPromise: Promise<void> | null = null
 
@@ -65,7 +78,7 @@ async function registerChunkReceiver(
   requestId: string,
   receiver: (payload: NativeHttpChunkEvent) => void
 ): Promise<() => void> {
-  if (sharedListenFn && sharedListenFn !== apis.listen) {
+  if (sharedListenFn && sharedListenFn !== apis.rawListen) {
     resetSharedListener()
     activeChunkReceivers.clear()
   }
@@ -75,15 +88,16 @@ async function registerChunkReceiver(
   try {
     if (!sharedUnlisten) {
       if (!sharedListenPromise) {
-        const targetListen = apis.listen
-        sharedListenFn = targetListen
-        sharedListenPromise = targetListen(NATIVE_HTTP_CHUNK_EVENT, (event) => {
-          const payload = event.payload
-          const handler = payload?.requestId ? activeChunkReceivers.get(payload.requestId) : undefined
-          handler?.(payload)
-        })
+        const targetRawListen = apis.rawListen
+        sharedListenFn = targetRawListen
+        sharedListenPromise = apis
+          .listenChunkEvents((event) => {
+            const payload = event.payload
+            const handler = payload?.requestId ? activeChunkReceivers.get(payload.requestId) : undefined
+            handler?.(payload)
+          })
           .then((unlisten) => {
-            if (activeChunkReceivers.size === 0 || sharedListenFn !== targetListen) {
+            if (activeChunkReceivers.size === 0 || sharedListenFn !== targetRawListen) {
               unlisten()
               return
             }
@@ -114,6 +128,15 @@ async function registerChunkReceiver(
   }
 }
 
+function encodeBytesToBase64(bytes: Uint8Array): string {
+  const CHUNK_SIZE = 0x8000
+  const parts: string[] = []
+  for (let offset = 0; offset < bytes.length; offset += CHUNK_SIZE) {
+    parts.push(String.fromCharCode(...bytes.subarray(offset, offset + CHUNK_SIZE)))
+  }
+  return btoa(parts.join(''))
+}
+
 function decodeChunkBytes(chunk: string | number[] | undefined): Uint8Array | null {
   if (!chunk || chunk.length === 0) {
     return null
@@ -130,17 +153,36 @@ function decodeChunkBytes(chunk: string | number[] | undefined): Uint8Array | nu
 }
 
 function getTauriApis(): TauriApis | null {
-  const tauri = (window as any).__TAURI__
+  const win = window as any
+  const tauri = win.__TAURI__
   const invoke = tauri?.core?.invoke
-  const listen = tauri?.event?.listen
+  const rawListen = tauri?.event?.listen as RawListenFn | undefined
 
-  if (typeof invoke !== 'function' || typeof listen !== 'function') {
+  if (typeof invoke !== 'function' || typeof rawListen !== 'function') {
     return null
   }
 
+  const currentWebviewLabel: string | undefined = !runtimeCapabilities.android
+    ? (win.__TAURI_INTERNALS__?.metadata?.currentWebview?.label ??
+      win.__TAURI_INTERNALS__?.metadata?.currentWindow?.label)
+    : undefined
+
+  const getCurrentWebviewWindow = tauri?.webviewWindow?.getCurrentWebviewWindow
+
   return {
     invoke: invoke as TauriApis['invoke'],
-    listen: listen as TauriApis['listen']
+    rawListen,
+    listenChunkEvents: (handler) => {
+      if (currentWebviewLabel && typeof getCurrentWebviewWindow === 'function') {
+        return getCurrentWebviewWindow().listen(NATIVE_HTTP_CHUNK_EVENT, handler)
+      }
+      if (currentWebviewLabel) {
+        return rawListen(NATIVE_HTTP_CHUNK_EVENT, handler, {
+          target: { kind: 'WebviewWindow', label: currentWebviewLabel }
+        })
+      }
+      return rawListen(NATIVE_HTTP_CHUNK_EVENT, handler)
+    }
   }
 }
 
@@ -235,6 +277,8 @@ async function tauriNativeFetch(input: RequestInfo | URL, init?: RequestInit): P
     }
   }
 
+  const useAndroidReplay = runtimeCapabilities.android
+
   const cleanup = () => {
     clearAckTimer()
     if (unregisterReceiver) {
@@ -242,7 +286,9 @@ async function tauriNativeFetch(input: RequestInfo | URL, init?: RequestInit): P
       unregisterReceiver = null
     }
     request.signal.removeEventListener('abort', onAbort)
-    document.removeEventListener('visibilitychange', resumeDelivery)
+    if (useAndroidReplay) {
+      document.removeEventListener('visibilitychange', resumeDelivery)
+    }
   }
 
   const onAbort = () => {
@@ -320,7 +366,9 @@ async function tauriNativeFetch(input: RequestInfo | URL, init?: RequestInit): P
     if (!document.hidden) void replay().catch(() => {})
   }
 
-  document.addEventListener('visibilitychange', resumeDelivery)
+  if (useAndroidReplay) {
+    document.addEventListener('visibilitychange', resumeDelivery)
+  }
   let bodyBuffer: Uint8Array | undefined
   let bodyText: string | undefined
   try {
@@ -356,7 +404,7 @@ async function tauriNativeFetch(input: RequestInfo | URL, init?: RequestInit): P
         return headers
       })().entries()
     ).map(([name, value]) => ({ name, value })),
-    body: bodyBuffer && bodyBuffer.length > 0 ? Array.from(bodyBuffer) : undefined,
+    bodyBase64: bodyBuffer && bodyBuffer.length > 0 ? encodeBytesToBase64(bodyBuffer) : undefined,
     bodyText
   }
 

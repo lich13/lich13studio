@@ -1,11 +1,9 @@
 import { createAnthropic } from '@ai-sdk/anthropic'
 import { createOpenAI } from '@ai-sdk/openai'
+import { createExecutor } from '@cherrystudio/ai-core'
 import type { Assistant, Model, Provider } from '@renderer/types'
 import { REASONING_EFFORTS, type ReasoningMode } from '@shared/reasoning'
 import { describe, expect, it, vi } from 'vitest'
-
-import { extensionRegistry } from '../../../../../packages/aiCore/src/core/providers/core/ExtensionRegistry'
-import { createExecutor } from '../../../../../packages/aiCore/src/core/runtime'
 
 vi.mock('@renderer/hooks/useSettings', () => ({ getStoreSetting: () => ({}) }))
 vi.mock('@renderer/config/models', () => ({
@@ -82,7 +80,6 @@ describe('actual SDK HTTP reasoning payloads', () => {
   it.each(['openai', 'anthropic'] as const)(
     'initializes the %s executor without application extension side effects',
     async (id) => {
-      extensionRegistry.clear()
       const requests: string[] = []
       const executor = await createExecutor(id, {
         apiKey: 'simulation-only',

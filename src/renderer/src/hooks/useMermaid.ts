@@ -29,14 +29,17 @@ const loadMermaidModule = async () => {
   return mermaidLoadPromise
 }
 
-export const useMermaid = () => {
+export const useMermaid = (enabled = true) => {
   const { theme } = useTheme()
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(enabled && !mermaidModule)
   const [error, setError] = useState<string | null>(null)
   const [forceRenderKey, setForceRenderKey] = useState(0)
 
   // 初始化 mermaid 并监听主题变化
   useEffect(() => {
+    if (!enabled) {
+      return
+    }
     let mounted = true
 
     const initialize = async () => {
@@ -68,7 +71,7 @@ export const useMermaid = () => {
     return () => {
       mounted = false
     }
-  }, [theme])
+  }, [enabled, theme])
 
   return {
     mermaid: mermaidModule,

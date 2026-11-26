@@ -1,52 +1,10 @@
 import type { HexColor } from '@renderer/types'
 import { isHexColor } from '@renderer/types'
-import { clsx } from 'clsx'
+import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 
-type ClassValue = string | number | boolean | undefined | null | ClassDictionary | ClassArray
-
-interface ClassDictionary {
-  [id: string]: any
-}
-
-interface ClassArray extends Array<ClassValue> {}
-
-/**
- * 生成 class 字符串
- *
- * Examples:
- * classNames('foo', 'bar'); // => 'foo bar'
- * classNames('foo', { bar: true }); // => 'foo bar'
- * classNames({ foo: true, bar: false }); // => 'foo'
- * classNames(['foo', 'bar']); // => 'foo bar'
- * classNames('foo', null, 'bar'); // => 'foo bar'
- * classNames({ message: true, 'message-assistant': true }); // => 'message message-assistant'
- * @param {ClassValue[]} args
- * @returns {string}
- */
 export function classNames(...args: ClassValue[]): string {
-  const classes: string[] = []
-
-  args.forEach((arg) => {
-    if (!arg) return
-
-    if (typeof arg === 'string' || typeof arg === 'number') {
-      classes.push(arg.toString())
-    } else if (Array.isArray(arg)) {
-      const inner = classNames(...arg)
-      if (inner) {
-        classes.push(inner)
-      }
-    } else if (typeof arg === 'object') {
-      Object.entries(arg).forEach(([key, value]) => {
-        if (value) {
-          classes.push(key)
-        }
-      })
-    }
-  })
-
-  return classes.filter(Boolean).join(' ')
+  return clsx(...args)
 }
 
 function checkHexColor(value: string) {
@@ -144,66 +102,6 @@ export function getForegroundColor(backgroundColor: HexColor): HexColor {
 
   return luminance > 0.179 ? '#000000' : '#FFFFFF'
 }
-
-// 用于ts方式控制响应式样式，暂时没用上
-// 目前应该设计到lg就足够
-// 应该和 file://./../assets/styles/responsive.scss 保持一致
-/**
- * 断点配置对象，定义了不同屏幕尺寸的最小宽度（单位：像素）
- *
- * @property {number} xs - 超小屏幕断点，起始于 0px
- * @property {number} sm - 小屏幕断点，起始于 576px
- * @property {number} md - 中等屏幕断点，起始于 768px
- * @property {number} lg - 大屏幕断点，起始于 1080px
- * @property {number} xl - 超大屏幕断点，起始于 1200px
- * @property {number} xxl - 超超大屏幕断点，起始于 1400px
- */
-// export const breakpoints = {
-//   xs: 0,
-//   sm: 576,
-//   md: 768,
-//   lg: 1080,
-//   xl: 1200,
-//   xxl: 1400
-// } as const
-
-// type MediaQueryFunction = (styles: string) => string
-// type MediaQueries = Record<keyof typeof breakpoints, MediaQueryFunction>
-
-/**
- * 媒体查询工具对象，用于生成响应式样式的媒体查询字符串
- *
- * @example
- * // 使用示例：
- * ```ts
- * const styles = {
- *   color: 'red',
- *   [media.md]: `
- *     color: blue;
- *   `,
- *   [media.lg]: `
- *     color: green;
- *   `
- * }
- * ```
- *
- * 生成的CSS将包含：
- * ```css
- *   color: red;
- *   @media (max-width: 768px) { color: blue; }
- *   @media (max-width: 992px) { color: green; }
- * ```
- */
-// Not using for now
-// export const media = objectKeys(breakpoints).reduce<MediaQueries>((acc, label) => {
-//   const key = label
-//   acc[key] = (styles: string): string => `
-//     @media (max-width: ${breakpoints[key]}px) {
-//       ${styles}
-//     }
-//   `
-//   return acc
-// }, {} as MediaQueries)
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))

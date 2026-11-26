@@ -3506,6 +3506,16 @@
       "import_save_failed": "Could not save provider credentials to secure storage. Please try again.",
       "import_success": "Provider imported.",
       "import_too_large": "Import link is too large or too many imports are pending. Nothing was imported; check the link and try again.",
+      "keychain_migrated": {
+        "action_backup": "Open Backup & Restore",
+        "action_headers": "Edit Custom Headers",
+        "action_provider": "Open Provider Settings",
+        "description": "OS Keychain prompts have been removed and legacy keychain references were safely cleared ({{items}}). Re-enter them once or restore an encrypted backup.",
+        "field_api_key": "API Key",
+        "field_extra_headers": "Custom Headers",
+        "field_webdav": "WebDAV Password",
+        "title": "Credentials Moved to Isolated Local Store"
+      },
       "misc": "Other",
       "notes": {
         "markdown_editor_default_value": "Preview area",

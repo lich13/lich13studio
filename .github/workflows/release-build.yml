@@ -103,7 +103,6 @@ jobs:
           - label: macOS arm64
             os: macos-latest
             rust_target: aarch64-apple-darwin
-            prepare_cmd: node scripts/prepare-tauri-bundled-binary.mjs --target aarch64-apple-darwin
             build_cmd: pnpm dlx @tauri-apps/cli@2.12.5 build --ci --config src-tauri/tauri.conf.json --bundles dmg --target aarch64-apple-darwin
             postprocess_cmd: bash scripts/postprocess-macos-dmg.sh src-tauri/target/aarch64-apple-darwin/release/bundle/dmg lich13studio
             artifact_name: macos-dmg-arm64
@@ -111,7 +110,6 @@ jobs:
           - label: Windows x64
             os: windows-latest
             rust_target: x86_64-pc-windows-msvc
-            prepare_cmd: node scripts/prepare-tauri-bundled-binary.mjs --target x86_64-pc-windows-msvc
             build_cmd: pnpm dlx @tauri-apps/cli@2.12.5 build --ci --config src-tauri/tauri.conf.json --bundles nsis --target x86_64-pc-windows-msvc
             postprocess_cmd: ''
             artifact_name: windows-exe-x64
@@ -175,9 +173,6 @@ jobs:
         with:
           name: frontend-assets
           path: out
-
-      - name: Prepare bundled binary
-        run: ${{ matrix.prepare_cmd }}
 
       - name: Test native commands
         run: pnpm ci:rust

@@ -11,22 +11,37 @@ interface Props {
   expanded: boolean
 }
 
-const ThinkingEffect: React.FC<Props> = ({ isThinking, thinkingTimeText, content, expanded }) => {
-  const messages = useMemo(() => {
-    const allLines = (content || '').split('\n')
-    const newMessages = isThinking ? allLines.slice(0, -1) : allLines
-    return newMessages.filter((line) => line.trim() !== '')
-  }, [content, isThinking])
+const extractRecentThinkingLines = (raw: string, isThinking: boolean, maxLines = 5): string[] => {
+  if (!raw) return []
+  let end = isThinking ? raw.lastIndexOf('\n') : raw.length
+  if (end <= 0) return []
+  const recent: string[] = []
+  while (end > 0 && recent.length < maxLines) {
+    const prevNewline = raw.lastIndexOf('\n', end - 1)
+    const start = prevNewline === -1 ? 0 : prevNewline + 1
+    const line = raw.slice(start, end)
+    if (line.trim() !== '') {
+      recent.push(line)
+    }
+    end = prevNewline
+  }
+  recent.reverse()
+  return recent
+}
 
-  const showThinking = useMemo(() => {
-    return isThinking && !expanded
-  }, [expanded, isThinking])
+const ThinkingEffect: React.FC<Props> = ({ isThinking, thinkingTimeText, content, expanded }) => {
+  const showThinking = isThinking && !expanded
+
+  const messages = useMemo(() => {
+    if (!showThinking) return []
+    return extractRecentThinkingLines(content || '', isThinking, 5)
+  }, [content, isThinking, showThinking])
 
   const LINE_HEIGHT = 14
 
   const containerHeight = useMemo(() => {
     if (!showThinking || messages.length < 1) return 38
-    return Math.min(75, Math.max(messages.length + 1, 2) * LINE_HEIGHT + 25)
+    return Math.min(68, Math.max(messages.length + 1, 2) * LINE_HEIGHT + 24)
   }, [showThinking, messages.length])
 
   return (
@@ -34,8 +49,8 @@ const ThinkingEffect: React.FC<Props> = ({ isThinking, thinkingTimeText, content
       <LoadingContainer>
         <motion.div variants={lightbulbVariants} animate={isThinking ? 'active' : 'idle'} initial="idle">
           <Lightbulb
-            size={!showThinking || messages.length < 2 ? 20 : 30}
-            style={{ transition: 'width,height, 150ms' }}
+            size={!showThinking || messages.length < 2 ? 20 : 26}
+            style={{ transition: 'width 150ms, height 150ms' }}
           />
         </motion.div>
       </LoadingContainer>
@@ -43,7 +58,7 @@ const ThinkingEffect: React.FC<Props> = ({ isThinking, thinkingTimeText, content
       <TextContainer>
         <Title className={!showThinking || !messages.length ? 'showThinking' : ''}>{thinkingTimeText}</Title>
 
-        {showThinking && (
+        {showThinking && messages.length > 0 && (
           <Content>
             <Messages
               style={{
@@ -59,11 +74,9 @@ const ThinkingEffect: React.FC<Props> = ({ isThinking, thinkingTimeText, content
                 duration: 0.15,
                 ease: 'linear'
               }}>
-              {messages.map((message, index) => {
-                if (index < messages.length - 5) return null
-
-                return <Message key={index}>{message}</Message>
-              })}
+              {messages.map((message, index) => (
+                <Message key={index}>{message}</Message>
+              ))}
             </Messages>
           </Content>
         )}
@@ -83,7 +96,7 @@ const ThinkingContainer = styled.div`
   display: flex;
   align-items: center;
   border: 0.5px solid var(--color-border);
-  transition: height, border-radius, 150ms;
+  transition: height 150ms, border-radius 150ms;
   pointer-events: none;
   user-select: none;
   &.expanded {
@@ -97,6 +110,7 @@ const Title = styled.div`
   font-size: 14px;
   line-height: 14px;
   font-weight: 500;
+  font-variant-numeric: tabular-nums;
   padding: 10px 0;
   z-index: 99;
   transition: padding-top 150ms;

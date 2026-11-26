@@ -12,13 +12,14 @@ import { useTimer } from '@renderer/hooks/useTimer'
 import { autoRenameTopic } from '@renderer/hooks/useTopic'
 import SelectionBox from '@renderer/pages/home/Messages/SelectionBox'
 import { getDefaultTopic } from '@renderer/services/AssistantService'
+import { dbService } from '@renderer/services/db'
 import { EVENT_NAMES, EventEmitter } from '@renderer/services/EventService'
 import { getContextCount, getGroupedMessages, getUserMessage } from '@renderer/services/MessagesService'
 import { estimateHistoryTokens } from '@renderer/services/TokenService'
 import store, { useAppDispatch } from '@renderer/store'
 import { messageBlocksSelectors, updateOneBlock } from '@renderer/store/messageBlock'
 import { newMessagesActions } from '@renderer/store/newMessage'
-import { saveMessageAndBlocksToDB, updateMessageAndBlocksThunk } from '@renderer/store/thunk/messageThunk'
+import { updateMessageAndBlocksThunk } from '@renderer/store/thunk/messageThunk'
 import type { Assistant, Topic } from '@renderer/types'
 import type { MessageBlock } from '@renderer/types/newMessage'
 import { type Message, MessageBlockType } from '@renderer/types/newMessage'
@@ -159,8 +160,8 @@ const Messages: React.FC<MessagesProps> = ({ assistant, topic, setActiveTopic, o
             topic: currentTopic,
             type: 'clear'
           })
+          await dbService.appendMessage(currentTopic.id, clearMessage, [])
           dispatch(newMessagesActions.addMessage({ topicId: currentTopic.id, message: clearMessage }))
-          await saveMessageAndBlocksToDB(currentTopic.id, clearMessage, [])
 
           scrollToBottom()
         } finally {
@@ -286,7 +287,7 @@ const Messages: React.FC<MessagesProps> = ({ assistant, topic, setActiveTopic, o
   }, [hasMore, isLoadingMore, scrollContainerRef, setTimeoutTimer])
 
   useShortcut('copy_last_message', () => {
-    const lastMessage = last(messages) as Message | undefined
+    const lastMessage = last(messages)
     if (lastMessage) {
       void navigator.clipboard.writeText(getMainTextContent(lastMessage))
       window.toast.success(t('message.copy.success'))
@@ -324,8 +325,22 @@ const Messages: React.FC<MessagesProps> = ({ assistant, topic, setActiveTopic, o
     )
   }, [messages.length, scrollToBottom, setTimeoutTimer, topic.id])
 
+  const prevGroupArraysRef = useRef<Map<string, (Message & { index: number })[]>>(new Map())
   const groupedMessages = useMemo(() => {
-    return Object.entries(getGroupedMessages(displayMessages))
+    const rawEntries = Object.entries(getGroupedMessages(displayMessages))
+    const prevMap = prevGroupArraysRef.current
+    const nextMap = new Map<string, (Message & { index: number })[]>()
+    const stabilized = rawEntries.map(([key, group]) => {
+      const prevGroup = prevMap.get(key)
+      if (prevGroup && prevGroup.length === group.length && prevGroup.every((item, idx) => item === group[idx])) {
+        nextMap.set(key, prevGroup)
+        return [key, prevGroup] as [string, (Message & { index: number })[]]
+      }
+      nextMap.set(key, group)
+      return [key, group] as [string, (Message & { index: number })[]]
+    })
+    prevGroupArraysRef.current = nextMap
+    return stabilized
   }, [displayMessages])
 
   const handleMessagesScroll = useCallback(() => {

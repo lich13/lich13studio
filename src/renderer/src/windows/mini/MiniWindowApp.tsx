@@ -11,6 +11,7 @@ import { PersistGate } from 'redux-persist/integration/react'
 
 import AntdProvider from '../../context/AntdProvider'
 import { CodeStyleProvider } from '../../context/CodeStyleProvider'
+import StyleSheetManager from '../../context/StyleSheetManager'
 import { ThemeProvider } from '../../context/ThemeProvider'
 import HomeWindow from './home/HomeWindow'
 
@@ -23,17 +24,19 @@ function MiniWindow(): React.ReactElement {
 
   return (
     <Provider store={store}>
-      <ThemeProvider>
-        <AntdProvider>
-          <CodeStyleProvider>
-            <PersistGate loading={null} persistor={persistor}>
-              <ErrorBoundary>
-                <HomeWindow />
-              </ErrorBoundary>
-            </PersistGate>
-          </CodeStyleProvider>
-        </AntdProvider>
-      </ThemeProvider>
+      <StyleSheetManager>
+        <ThemeProvider>
+          <AntdProvider>
+            <CodeStyleProvider>
+              <PersistGate loading={null} persistor={persistor}>
+                <ErrorBoundary>
+                  <HomeWindow />
+                </ErrorBoundary>
+              </PersistGate>
+            </CodeStyleProvider>
+          </AntdProvider>
+        </ThemeProvider>
+      </StyleSheetManager>
     </Provider>
   )
 }

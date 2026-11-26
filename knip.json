@@ -5,9 +5,7 @@
       "entry": [
         "src/renderer/src/workers/*.worker.ts",
         "scripts/android-signing.mjs",
-        "scripts/feishu-notify.ts",
-        "scripts/update-model-capabilities.mjs",
-        "scripts/prepare-tauri-bundled-binary.mjs"
+        "scripts/update-model-capabilities.mjs"
       ],
       "project": [
         "src/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}",
@@ -22,7 +20,7 @@
       }
     },
     "packages/aiCore": {
-      "entry": ["src/index.ts", "src/core/plugins/built-in/index.ts", "src/core/providers/index.ts"],
+      "entry": ["src/index.ts"],
       "project": ["src/**/*.ts"]
     }
   }

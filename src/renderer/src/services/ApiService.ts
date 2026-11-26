@@ -5,7 +5,6 @@ import { loggerService } from '@logger'
 import { buildStreamTextParams } from '@renderer/aiCore/prepareParams'
 import type { AiSdkMiddlewareConfig } from '@renderer/aiCore/types/middlewareConfig'
 import { buildProviderOptions } from '@renderer/aiCore/utils/options'
-import { isFunctionCallingModel } from '@renderer/config/models'
 import { getStoreSetting } from '@renderer/hooks/useSettings'
 import i18n from '@renderer/i18n'
 import type { Assistant, Provider } from '@renderer/types'
@@ -17,7 +16,7 @@ import { getErrorMessage } from '@renderer/utils/error'
 import { purifyMarkdownImages } from '@renderer/utils/markdown'
 import { findFileBlocks, getMainTextContent } from '@renderer/utils/messageUtils/find'
 import { containsSupportedVariables, replacePromptVariables } from '@renderer/utils/prompt'
-import { NOT_SUPPORT_API_KEY_PROVIDER_TYPES, NOT_SUPPORT_API_KEY_PROVIDERS } from '@renderer/utils/provider'
+import { NOT_SUPPORT_API_KEY_PROVIDERS } from '@renderer/utils/provider'
 import type { ReasoningMode } from '@shared/reasoning'
 
 import { AiProvider } from '../aiCore'
@@ -49,8 +48,7 @@ export async function transformMessagesAndFetch(
     blockManager: BlockManager
     assistantMsgId: string
     callbacks: StreamProcessorCallbacks
-    topicId?: string // 添加 topicId 用于 trace
-    allowedTools?: string[]
+    topicId?: string
     options: {
       signal?: AbortSignal
       headers?: Record<string, string>
@@ -64,18 +62,15 @@ export async function transformMessagesAndFetch(
 
   try {
     assistant.model = requireCurrentModel(assistant.model || getDefaultModel(), true)
-    const { modelMessages, uiMessages } = await ConversationService.prepareMessagesForModel(messages, assistant)
+    const { modelMessages } = await ConversationService.prepareMessagesForModel(messages, assistant)
 
-    // replace prompt variables
     assistant.prompt = await replacePromptVariables(assistant.prompt, assistant.model?.name)
 
     await fetchChatCompletion({
       messages: modelMessages,
-      assistant: assistant,
+      assistant,
       topicId: request.topicId,
-      allowedTools: request.allowedTools,
       requestOptions: request.options,
-      uiMessages,
       onChunkReceived
     })
   } catch (error: any) {
@@ -92,9 +87,7 @@ export async function fetchChatCompletion({
   assistant,
   requestOptions,
   onChunkReceived,
-  topicId,
-  uiMessages,
-  allowedTools
+  topicId
 }: FetchChatCompletionParams) {
   assistant = { ...assistant, model: requireCurrentModel(assistant.model || getDefaultModel(), true) }
   logger.info('fetchChatCompletion called with detailed context', {
@@ -107,9 +100,6 @@ export async function fetchChatCompletion({
     modelName: assistant.model?.name
   })
 
-  // Get base provider and apply API key rotation
-  // NOTE: Shallow copy is intentional. Provider objects are not mutated by downstream code.
-  // Nested properties (if any) are never modified after creation.
   const baseProvider = getProviderByModel(assistant.model || getDefaultModel())
   const providerWithRotatedKey = {
     ...baseProvider,
@@ -130,37 +120,26 @@ export async function fetchChatCompletion({
     ]
   }
 
-  // 使用 transformParameters 模块构建参数
   const {
     params: aiSdkParams,
     modelId,
     capabilities
   } = await buildStreamTextParams(messages, assistant, provider, {
-    allowedTools,
     requestOptions
   })
 
   const middlewareConfig: AiSdkMiddlewareConfig = {
-    streamOutput: (requestOptions?.chatRequestMode ?? getStoreSetting('chatRequestMode') ?? 'stream') === 'stream',
     chatRequestMode: requestOptions?.chatRequestMode ?? getStoreSetting('chatRequestMode') ?? 'stream',
     onChunk: onChunkReceived,
     enableReasoning: capabilities.enableReasoning,
     reasoningMode: requestOptions?.reasoningMode,
     textDeltaMode: requestOptions?.textDeltaMode,
-    isPromptToolUse: false,
-    isSupportedToolUse: isFunctionCallingModel(assistant.model),
-    enableGenerateImage: capabilities.enableGenerateImage,
-    enableUrlContext: capabilities.enableUrlContext,
-    uiMessages
+    enableUrlContext: capabilities.enableUrlContext
   }
 
-  // --- Call AI Completions ---
   await AI.completions(modelId, aiSdkParams, {
     ...middlewareConfig,
-    assistant,
-    topicId,
-    callType: 'chat',
-    uiMessages
+    assistant
   })
 }
 
@@ -196,8 +175,6 @@ export async function fetchMessagesSummary({
   const AI = new AiProvider(model, providerWithRotatedKey)
   const actualProvider = AI.getActualProvider()
 
-  const topicId = messages?.find((message) => message.topicId)?.topicId || ''
-
   // LLM对多条消息的总结有问题，用单条结构化的消息表示会话内容会更好
   const structredMessages = contextMessages.map((message) => {
     const structredMessage = {
@@ -232,8 +209,7 @@ export async function fetchMessagesSummary({
   } satisfies Assistant
 
   const { providerOptions, standardParams } = buildProviderOptions(summaryAssistant, model, actualProvider, {
-    enableReasoning: false,
-    enableGenerateImage: false
+    enableReasoning: false
   })
 
   const llmMessages = {
@@ -244,20 +220,14 @@ export async function fetchMessagesSummary({
   }
 
   const middlewareConfig: AiSdkMiddlewareConfig = {
-    streamOutput: false,
     chatRequestMode: 'non-stream',
     enableReasoning: false,
-    isPromptToolUse: false,
-    isSupportedToolUse: false,
-    enableGenerateImage: false,
     enableUrlContext: false
   }
   try {
     const { getText } = await AI.completions(model.id, llmMessages, {
       ...middlewareConfig,
-      assistant: summaryAssistant,
-      topicId,
-      callType: 'summary'
+      assistant: summaryAssistant
     })
 
     const text = getText()
@@ -270,11 +240,7 @@ export async function fetchMessagesSummary({
 
 export function hasApiKey(provider: Provider) {
   if (!provider) return false
-  if (
-    (isSystemProvider(provider) && NOT_SUPPORT_API_KEY_PROVIDERS.includes(provider.id)) ||
-    NOT_SUPPORT_API_KEY_PROVIDER_TYPES.includes(provider.type)
-  )
-    return true
+  if (isSystemProvider(provider) && NOT_SUPPORT_API_KEY_PROVIDERS.includes(provider.id)) return true
   return Boolean(provider.apiKey && provider.apiKey.trim().length > 0)
 }
 

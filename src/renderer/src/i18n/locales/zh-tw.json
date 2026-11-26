@@ -3506,6 +3506,16 @@
       "import_save_failed": "無法將憑據寫入安全儲存，未儲存服務商，請重試。",
       "import_success": "服務商已匯入",
       "import_too_large": "匯入連結過長或待處理的匯入過多，已拒絕且未匯入任何內容。請檢查連結後重試。",
+      "keychain_migrated": {
+        "action_backup": "前往備份與還原",
+        "action_headers": "編輯自訂請求標頭",
+        "action_provider": "前往服務商設定",
+        "description": "新版已移除系統鑰匙圈授權彈窗，舊版鑰匙圈引用已安全清空（{{items}}）。請重新填寫一次，或還原升級前的加密備份。",
+        "field_api_key": "API Key",
+        "field_extra_headers": "自訂請求標頭",
+        "field_webdav": "WebDAV 密碼",
+        "title": "憑據儲存已切換至本機隔離檔案"
+      },
       "misc": "其他",
       "notes": {
         "markdown_editor_default_value": "預覽區域",

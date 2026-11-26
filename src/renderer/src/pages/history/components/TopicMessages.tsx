@@ -8,7 +8,7 @@ import { useTimer } from '@renderer/hooks/useTimer'
 import { getTopicById } from '@renderer/hooks/useTopic'
 import { getAssistantById } from '@renderer/services/AssistantService'
 import { EVENT_NAMES, EventEmitter } from '@renderer/services/EventService'
-import { isGenerating, locateToMessage } from '@renderer/services/MessagesService'
+import { locateToMessage } from '@renderer/services/MessagesService'
 import NavigationService from '@renderer/services/NavigationService'
 import type { Topic } from '@renderer/types'
 import { classNames, runAsyncFunction } from '@renderer/utils'
@@ -48,8 +48,7 @@ const TopicMessages: FC<Props> = ({ topic: _topic, ...props }) => {
     return null
   }
 
-  const onContinueChat = async (topic: Topic) => {
-    await isGenerating()
+  const onContinueChat = (topic: Topic) => {
     SearchPopup.hide()
     const assistant = getAssistantById(topic.assistantId)
     navigate('/', { state: { assistant, topic } })

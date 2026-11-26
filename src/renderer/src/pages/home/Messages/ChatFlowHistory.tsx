@@ -11,7 +11,6 @@ import { useTimer } from '@renderer/hooks/useTimer'
 import { EVENT_NAMES, EventEmitter } from '@renderer/services/EventService'
 import type { RootState } from '@renderer/store'
 import { selectMessagesForTopic } from '@renderer/store/newMessage'
-import type { Model } from '@renderer/types'
 import { isEmoji } from '@renderer/utils'
 import { getMainTextContent } from '@renderer/utils/messageUtils/find'
 import type { Edge, Node, NodeTypes } from '@xyflow/react'
@@ -60,15 +59,15 @@ const CustomNode: FC<{ data: any }> = ({ data }) => {
   const nodeType = data.type
   let borderColor = 'var(--color-border)'
   let title = ''
-  let backgroundColor = 'var(--bg-color)'
-  let gradientColor = 'rgba(0, 0, 0, 0.03)'
+  let backgroundColor = 'var(--color-background)'
+  let gradientColor = 'var(--color-background-soft)'
   let avatar: React.ReactNode | null = null
 
   // 根据消息类型设置不同的样式和图标
   if (nodeType === 'user') {
     borderColor = 'var(--color-icon)'
-    backgroundColor = 'rgba(var(--color-info-rgb), 0.03)'
-    gradientColor = 'rgba(var(--color-info-rgb), 0.08)'
+    backgroundColor = 'color-mix(in srgb, var(--color-link) 4%, var(--color-background))'
+    gradientColor = 'color-mix(in srgb, var(--color-link) 10%, var(--color-background))'
     title = data.userName || t('chat.history.user_node')
 
     // 用户头像
@@ -79,12 +78,12 @@ const CustomNode: FC<{ data: any }> = ({ data }) => {
         avatar = <Avatar src={data.userAvatar} alt={title} />
       }
     } else {
-      avatar = <Avatar icon={<UserOutlined />} style={{ backgroundColor: 'var(--color-info)' }} />
+      avatar = <Avatar icon={<UserOutlined />} style={{ backgroundColor: 'var(--color-link)' }} />
     }
   } else if (nodeType === 'assistant') {
     borderColor = 'var(--color-primary)'
-    backgroundColor = 'rgba(var(--color-primary-rgb), 0.03)'
-    gradientColor = 'rgba(var(--color-primary-rgb), 0.08)'
+    backgroundColor = 'color-mix(in srgb, var(--color-primary) 4%, var(--color-background))'
+    gradientColor = 'color-mix(in srgb, var(--color-primary) 10%, var(--color-background))'
     title = `${data.model || t('chat.history.assistant_node')}`
 
     // 模型头像
@@ -158,7 +157,7 @@ const CustomNode: FC<{ data: any }> = ({ data }) => {
         style={{
           borderColor,
           background: `linear-gradient(135deg, ${backgroundColor} 0%, ${gradientColor} 100%)`,
-          boxShadow: `0 4px 10px rgba(0, 0, 0, 0.1), 0 0 0 2px ${borderColor}40`
+          boxShadow: `0 4px 10px rgba(0, 0, 0, 0.1), 0 0 0 2px color-mix(in srgb, ${borderColor} 25%, transparent)`
         }}
         onClick={handleNodeClick}>
         <Handle type="target" position={Position.Top} style={handleStyle} isConnectable={false} />
@@ -331,7 +330,7 @@ const ChatFlowHistory: FC<ChatFlowHistoryProps> = ({ conversationId }) => {
         const modelId = (aMsg.model && aMsg.model.id) || ''
 
         // 完整的模型信息
-        const modelInfo = aMsg.model as Model | undefined
+        const modelInfo = aMsg.model
 
         flowNodes.push({
           id: assistantNodeId,
@@ -418,7 +417,7 @@ const ChatFlowHistory: FC<ChatFlowHistoryProps> = ({ conversationId }) => {
         const modelId = (aMsg.model && aMsg.model.id) || ''
 
         // 完整的模型信息
-        const modelInfo = aMsg.model as Model | undefined
+        const modelInfo = aMsg.model
 
         flowNodes.push({
           id: assistantNodeId,
@@ -509,7 +508,7 @@ const ChatFlowHistory: FC<ChatFlowHistoryProps> = ({ conversationId }) => {
                 nodeStrokeWidth={3}
                 zoomable
                 pannable
-                nodeColor={(node) => (node.data.type === 'user' ? 'var(--color-info)' : 'var(--color-primary)')}
+                nodeColor={(node) => (node.data.type === 'user' ? 'var(--color-link)' : 'var(--color-primary)')}
               />
             </ReactFlow>
           </div>
@@ -573,7 +572,7 @@ const CustomNodeContainer = styled.div`
     transform: translateY(-2px);
     box-shadow:
       0 6px 10px rgba(0, 0, 0, 0.1),
-      0 0 0 2px ${(props) => props.style?.borderColor || 'var(--color-border)'}80 !important;
+      0 0 0 2px color-mix(in srgb, ${(props) => props.style?.borderColor || 'var(--color-border)'} 50%, transparent) !important;
     filter: brightness(1.02);
   }
 
@@ -589,7 +588,7 @@ const NodeHeader = styled.div`
   font-weight: bold;
   margin-bottom: 8px;
   padding-bottom: 8px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+  border-bottom: 1px solid var(--color-border);
   color: var(--color-text);
   display: flex;
   align-items: center;

@@ -1,5 +1,5 @@
 import store from '@renderer/store'
-import { applyPlatformCatalog } from '@renderer/store/llm'
+import { applyPlatformCatalog, applyPlatformCatalogs } from '@renderer/store/llm'
 import { getTauriNativeFetch } from '@renderer/utils/tauriNativeFetch'
 import { bundledModelCatalogs } from '@shared/modelCatalog/runtime'
 import { fetchPlatformModelCatalog } from '@shared/modelCatalog/sources'
@@ -59,17 +59,21 @@ export class PlatformModelCatalogService {
   private listeners = new Set<() => void>()
   private pending = new Map<ProviderPlatform, Promise<void>>()
   private initialization?: Promise<void>
+  private readonly apply: (snapshot: PlatformModelCatalogSnapshot, broadcast?: boolean) => void
+  private readonly hasCustomApply: boolean
   constructor(
     private readonly storage: ModelCatalogStorage = new CatalogStorage(),
     private readonly fetcher: typeof fetch = (input, init) => (getTauriNativeFetch() ?? fetch)(input, init),
     private readonly now: () => number = Date.now,
-    private readonly apply: (snapshot: PlatformModelCatalogSnapshot, broadcast?: boolean) => void = (
-      snapshot,
-      broadcast = true
-    ) => {
-      store.dispatch({ ...applyPlatformCatalog(snapshot), ...(!broadcast ? { meta: { fromSync: true } } : {}) })
-    }
-  ) {}
+    apply?: (snapshot: PlatformModelCatalogSnapshot, broadcast?: boolean) => void
+  ) {
+    this.hasCustomApply = Boolean(apply)
+    this.apply =
+      apply ??
+      ((snapshot, broadcast = true) => {
+        store.dispatch({ ...applyPlatformCatalog(snapshot), ...(!broadcast ? { meta: { fromSync: true } } : {}) })
+      })
+  }
 
   getSnapshot = (platform: ProviderPlatform) => this.states[platform]
   subscribe = (listener: () => void) => {
@@ -90,6 +94,7 @@ export class PlatformModelCatalogService {
 
   initialize(): Promise<void> {
     this.initialization ??= (async () => {
+      const resolvedSnapshots: PlatformModelCatalogSnapshot[] = []
       await Promise.allSettled(
         PROVIDER_PLATFORMS.map(async (platform) => {
           let active = this.states[platform]
@@ -122,10 +127,17 @@ export class PlatformModelCatalogService {
           } catch {
             /* Corrupt/disposable cache falls back to the bundled snapshot. */
           }
-          this.apply(active.snapshot, false)
+          if (this.hasCustomApply) {
+            this.apply(active.snapshot, false)
+          } else {
+            resolvedSnapshots.push(active.snapshot)
+          }
           this.update(platform, active)
         })
       )
+      if (!this.hasCustomApply && resolvedSnapshots.length > 0) {
+        store.dispatch({ ...applyPlatformCatalogs(resolvedSnapshots), meta: { fromSync: true } })
+      }
     })()
     return this.initialization
   }

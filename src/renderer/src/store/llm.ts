@@ -182,12 +182,28 @@ const llmSlice = createSlice({
     },
     applyPlatformCatalog: (state, action: PayloadAction<PlatformModelCatalogSnapshot>) => {
       const { platform, models } = action.payload
-      state.platformModels[platform] = mergeCatalogModels(
+      const merged = mergeCatalogModels(
         state.platformModels[platform],
         models,
         state.modelCatalogExclusions?.[platform] ?? [],
         platform
       )
+      if (JSON.stringify(state.platformModels[platform]) !== JSON.stringify(merged)) {
+        state.platformModels[platform] = merged
+      }
+    },
+    applyPlatformCatalogs: (state, action: PayloadAction<PlatformModelCatalogSnapshot[]>) => {
+      for (const { platform, models } of action.payload) {
+        const merged = mergeCatalogModels(
+          state.platformModels[platform],
+          models,
+          state.modelCatalogExclusions?.[platform] ?? [],
+          platform
+        )
+        if (JSON.stringify(state.platformModels[platform]) !== JSON.stringify(merged)) {
+          state.platformModels[platform] = merged
+        }
+      }
     },
     setCliVersion: (state, action: PayloadAction<{ platform: ProviderPlatform; cache: CliVersionCache }>) => {
       state.cliVersions[action.payload.platform] = action.payload.cache
@@ -336,6 +352,7 @@ const llmSlice = createSlice({
 
 export const {
   applyPlatformCatalog,
+  applyPlatformCatalogs,
   setPlatformModels,
   setCliVersion,
   importPlatformProvider,

@@ -1,7 +1,12 @@
-import type { FC } from 'react'
+import { Wrench } from 'lucide-react'
+import type { FC, HTMLAttributes } from 'react'
 
-const ToolIcon: FC<React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>> = (props) => {
-  return <i {...props} className={`iconfont icon-plugin ${props.className}`} />
+const ToolIcon: FC<HTMLAttributes<HTMLSpanElement>> = ({ className, ...props }) => {
+  return (
+    <span {...props} className={`inline-flex items-center justify-center ${className ?? ''}`.trim()}>
+      <Wrench size={14} className="lucide-custom" />
+    </span>
+  )
 }
 
 export default ToolIcon

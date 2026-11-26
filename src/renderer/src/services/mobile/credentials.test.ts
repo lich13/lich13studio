@@ -8,6 +8,7 @@ const native = vi.hoisted(() => ({
   writeCount: 0,
   failAtWrite: 0,
   desktop: false,
+  isMainWindow: true,
   desktopJson: '{}' as string | null,
   desktopFailWrite: false,
   invoke: vi.fn<(command: string, args?: Record<string, unknown>) => Promise<unknown>>(),
@@ -19,7 +20,7 @@ vi.mock('@tauri-apps/api/core', () => ({ invoke: native.invoke }))
 vi.mock('./runtime', () => ({
   mobileCommand: native.command,
   desktopCredentialStoreAvailable: () => native.desktop,
-  isMainTauriWindow: () => true,
+  isMainTauriWindow: () => native.isMainWindow,
   runtimeCapabilities: {
     get android() {
       return native.android
@@ -128,6 +129,7 @@ beforeEach(async () => {
   native.writeCount = 0
   native.failAtWrite = 0
   native.desktop = false
+  native.isMainWindow = true
   native.desktopJson = '{}'
   native.desktopFailWrite = false
   native.invoke.mockReset()
@@ -208,12 +210,16 @@ describe('stripCredentials', () => {
     })
   })
 
-  it('recognizes case variants and preserves noncredential headers', () => {
+  it('recognizes case variants, historical privateKey fields, and redacted array/object references', () => {
     expect(
       credentials.stripCredentials({
         API_KEY: 'fixture-key',
         apiKeys: ['fixture-key-a', 'fixture-key-b'],
         WebDAVPass: 'fixture-password',
+        serviceAccount: {
+          privateKey: '-----BEGIN PRIVATE KEY-----\nfixture\n-----END PRIVATE KEY-----',
+          clientEmail: 'bot@example.invalid'
+        },
         headers: { authorization: 'fixture-authorization', 'x-api-key': 'fixture-header-key', Accept: 'text/plain' },
         extra_headers: { 'X-Arbitrary-Header': 'fixture-custom-value' }
       })
@@ -221,8 +227,23 @@ describe('stripCredentials', () => {
       API_KEY: '',
       apiKeys: [],
       WebDAVPass: '',
+      serviceAccount: { privateKey: '', clientEmail: 'bot@example.invalid' },
       headers: { authorization: '', 'x-api-key': '', Accept: 'text/plain' },
       extra_headers: {}
+    })
+
+    expect(
+      credentials.stripCredentials({
+        apiKey: `${REF_PREFIX}k1`,
+        apiKeys: `${REF_PREFIX}k2`,
+        extra_headers: `${REF_PREFIX}k3`,
+        credentials: `${REF_PREFIX}k4`
+      })
+    ).toEqual({
+      apiKey: '',
+      apiKeys: [],
+      extra_headers: {},
+      credentials: {}
     })
   })
 
@@ -231,6 +252,49 @@ describe('stripCredentials', () => {
     const original = structuredClone(state)
     credentials.stripCredentials(state)
     expect(state).toEqual(original)
+  })
+
+  it('strips credentials inside retired legacy Redux slices (ocr, copilot, nutstore, preprocess, openclaw, codeTools, translate, mcp)', () => {
+    const legacySerialized = JSON.stringify({
+      llm: JSON.stringify({ providers: [{ id: 'p1', apiKey: 'llm-secret' }] }),
+      ocr: JSON.stringify({ providers: [{ id: 'ocr-p', apiKey: 'ocr-secret-key' }] }),
+      copilot: JSON.stringify({ headers: { Authorization: 'Bearer copilot-secret' }, accessToken: 'ghu_123' }),
+      nutstore: JSON.stringify({ nutstoreToken: 'nutstore-secret' }),
+      preprocess: JSON.stringify({ providers: [{ id: 'doc2x', apiKey: 'preprocess-secret' }] }),
+      openclaw: JSON.stringify({ gatewayToken: 'openclaw-secret' }),
+      codeTools: JSON.stringify({
+        apiKey: 'codetools-secret',
+        environmentVariables: { OPENAI_API_KEY: 'env-openai-secret' }
+      }),
+      translate: JSON.stringify({ providers: [{ id: 'deepl', apiKey: 'translate-secret-key' }] }),
+      mcp: JSON.stringify({ servers: [{ env: { ANTHROPIC_API_KEY: 'mcp-env-secret' } }] }),
+      messages: JSON.stringify([{ role: 'user', content: chatBodies[0] }])
+    })
+    const stripped = credentials.stripCredentials({ [PERSIST_KEY]: legacySerialized })
+    for (const secret of [
+      'llm-secret',
+      'ocr-secret-key',
+      'copilot-secret',
+      'ghu_123',
+      'nutstore-secret',
+      'preprocess-secret',
+      'openclaw-secret',
+      'codetools-secret',
+      'env-openai-secret',
+      'translate-secret-key',
+      'mcp-env-secret'
+    ]) {
+      expect(stripped[PERSIST_KEY]).not.toContain(secret)
+    }
+    const parsedOuter = JSON.parse(stripped[PERSIST_KEY])
+    expect(JSON.parse(parsedOuter.ocr)).toEqual({ providers: [{ id: 'ocr-p', apiKey: '' }] })
+    expect(JSON.parse(parsedOuter.copilot)).toEqual({ headers: { Authorization: '' }, accessToken: '' })
+    expect(JSON.parse(parsedOuter.translate)).toEqual({ providers: [{ id: 'deepl', apiKey: '' }] })
+    expect(JSON.parse(parsedOuter.codeTools)).toEqual({
+      apiKey: '',
+      environmentVariables: { OPENAI_API_KEY: '' }
+    })
+    expect(JSON.parse(parsedOuter.messages)).toEqual([{ role: 'user', content: chatBodies[0] }])
   })
 })
 
@@ -418,15 +482,16 @@ describe('mobilePersistStorage', () => {
   })
 })
 
-describe('desktop OS credential store', () => {
-  async function startDesktop() {
+describe('desktop local credential store (zero OS keychain)', () => {
+  async function startDesktop(isMainWindow = true) {
     native.android = false
     native.desktop = true
+    native.isMainWindow = isMainWindow
     vi.resetModules()
     credentials = await import('./credentials')
   }
 
-  it('migrates plaintext into the OS store only after a successful write and is idempotent', async () => {
+  it('migrates plaintext into credentials.json only after a successful write and is idempotent', async () => {
     const state = createState()
     memoryStorage.setItem(PERSIST_KEY, encodeState(state))
     await startDesktop()
@@ -449,33 +514,108 @@ describe('desktop OS credential store', () => {
     expect(decodeState((await credentials.mobilePersistStorage.getItem(PERSIST_KEY))!)).toEqual(state)
   })
 
-  it('keeps plaintext and warns when the OS store is unavailable (headless Linux)', async () => {
-    const previous = encodeState(createState())
-    memoryStorage.setItem(PERSIST_KEY, previous)
-    native.desktopJson = null
-    await startDesktop()
+  it('self-heals dangling legacy keychain references on upgrade and records affected providers/fields', async () => {
+    const legacy = createState() as any
+    legacy.llm.providers[0].name = 'OpenAI Prod'
+    legacy.llm.providers[0].apiKey = `${REF_PREFIX}old-keychain-key`
+    legacy.llm.providers[0].apiKeys = `${REF_PREFIX}old-keychain-keys`
+    legacy.llm.providers[0].extra_headers = `${REF_PREFIX}old-keychain-headers`
+    legacy.llm.providers[1].name = 'AnthropicKeep'
+    legacy.settings.webdavPass = `${REF_PREFIX}old-webdav-pass`
+    memoryStorage.setItem(PERSIST_KEY, encodeState(legacy))
+    native.desktopJson = '{}'
+
+    await startDesktop(true)
     await credentials.initializeMobileCredentials()
-    expect(memoryStorage.getItem(PERSIST_KEY)).toBe(previous)
-    const next = createState()
-    next.settings.theme = 'light'
-    await credentials.mobilePersistStorage.setItem(PERSIST_KEY, encodeState(next))
-    expect(memoryStorage.getItem(PERSIST_KEY)).toBe(encodeState(next))
-    expect(decodeState((await credentials.mobilePersistStorage.getItem(PERSIST_KEY))!)).toEqual(next)
+
+    const notice = credentials.consumeDesktopCredentialResetNotice()
+    expect(notice).toEqual({
+      providers: [
+        {
+          id: 'provider-a',
+          name: 'OpenAI Prod',
+          apiKey: true,
+          extraHeaders: true
+        }
+      ],
+      webdav: true,
+      clearedCount: 4
+    })
+    expect(credentials.consumeDesktopCredentialResetNotice()).toBeNull()
+
+    const hydrated = decodeState((await credentials.mobilePersistStorage.getItem(PERSIST_KEY))!) as any
+    expect(hydrated.llm.providers[0].apiKey).toBe('')
+    expect(hydrated.llm.providers[0].apiKeys).toEqual([])
+    expect(hydrated.llm.providers[0].extra_headers).toEqual({})
+    expect(hydrated.llm.providers[1].apiKey).toBe('fixture-provider-b-key')
+    expect(hydrated.settings.webdavPass).toBe('')
+    expect(hydrated.messages).toEqual(legacy.messages)
   })
 
-  it('never drops credentials when a secure write fails after migration', async () => {
+  it('persists desktop reset notice when MiniWindow initializes first or MainWindow reloads before consuming', async () => {
+    const legacy = createState() as any
+    legacy.llm.providers[0].name = 'OpenAI MiniFirst'
+    legacy.llm.providers[0].apiKey = `${REF_PREFIX}dangling-mini-first`
+    legacy.settings.webdavPass = `${REF_PREFIX}dangling-webdav-mini-first`
+    memoryStorage.setItem(PERSIST_KEY, encodeState(legacy))
+    native.desktopJson = '{}'
+
+    // 1. MiniWindow initializes BEFORE MainWindow: never mutates persist:cherry-studio or credentials.json,
+    // heals dangling refs in-memory on getItem, and records deduplicated notice for MainWindow
+    const rawBeforeMini = memoryStorage.getItem(PERSIST_KEY)
+    await startDesktop(false)
+    await credentials.initializeMobileCredentials()
+    expect(memoryStorage.getItem(PERSIST_KEY)).toBe(rawBeforeMini)
+    expect(native.invoke.mock.calls.filter(([cmd]) => cmd === 'write_secure_credentials')).toHaveLength(0)
+    const miniHydrated = decodeState((await credentials.mobilePersistStorage.getItem(PERSIST_KEY))!) as any
+    expect(miniHydrated.llm.providers[0].apiKey).toBe('')
+    expect(miniHydrated.settings.webdavPass).toBe('')
+    expect(memoryStorage.getItem(PERSIST_KEY)).toBe(rawBeforeMini)
+    // MiniWindow must never consume MainWindow's notice
+    expect(credentials.consumeDesktopCredentialResetNotice()).toBeNull()
+
+    // 2. MainWindow starts afterwards, heals persist:cherry-studio on disk WITHOUT double-counting clearedCount
+    await startDesktop(true)
+    await credentials.initializeMobileCredentials()
+    // Simulate MainWindow reloading once BEFORE NavigationHandler consumes the notice
+    await startDesktop(true)
+    await credentials.initializeMobileCredentials()
+
+    const notice = credentials.consumeDesktopCredentialResetNotice()
+    expect(notice).toEqual({
+      providers: [
+        {
+          id: 'provider-a',
+          name: 'OpenAI MiniFirst',
+          apiKey: true,
+          extraHeaders: false
+        }
+      ],
+      webdav: true,
+      clearedCount: 2
+    })
+    expect(credentials.consumeDesktopCredentialResetNotice()).toBeNull()
+  })
+
+  it('propagates desktop write failures to assertPersistCommitted without leaking plaintext to localStorage', async () => {
     await startDesktop()
     const state = createState()
     await credentials.mobilePersistStorage.setItem(PERSIST_KEY, encodeState(state))
+    await expect(credentials.assertPersistCommitted()).resolves.toBeUndefined()
+
+    const previousPersisted = memoryStorage.getItem(PERSIST_KEY)
     native.desktopFailWrite = true
     const next = createState()
-    next.llm.providers[0].apiKey = 'fixture-replacement-key'
-    await credentials.mobilePersistStorage.setItem(PERSIST_KEY, encodeState(next))
-    expect(decodeState(memoryStorage.getItem(PERSIST_KEY)!)).toEqual(next)
-    expect(decodeState((await credentials.mobilePersistStorage.getItem(PERSIST_KEY))!)).toEqual(next)
+    next.llm.providers[0].apiKey = 'fixture-uncommitted-secret'
+    await expect(credentials.mobilePersistStorage.setItem(PERSIST_KEY, encodeState(next))).rejects.toThrow(
+      /unavailable/
+    )
+    await expect(credentials.assertPersistCommitted()).rejects.toThrow(/unavailable/)
+    expect(memoryStorage.getItem(PERSIST_KEY)).toBe(previousPersisted)
+    expect(memoryStorage.getItem(PERSIST_KEY)).not.toContain('fixture-uncommitted-secret')
   })
 
-  it('refuses to start without the store when local data holds references, leaving data intact', async () => {
+  it('refuses to start when credentials.json itself is unreadable, leaving localStorage untouched', async () => {
     await startDesktop()
     await credentials.mobilePersistStorage.setItem(PERSIST_KEY, encodeState(createState()))
     const referenced = memoryStorage.getItem(PERSIST_KEY)
@@ -486,12 +626,38 @@ describe('desktop OS credential store', () => {
     expect(memoryStorage.getItem(PERSIST_KEY)).toBe(referenced)
   })
 
-  it('excludes credentials from backups by default', async () => {
-    await startDesktop()
+  it('synchronizes main and mini windows via credentials.json without OS keychain calls or mini-window pruning', async () => {
+    await startDesktop(true)
     const state = createState()
     await credentials.mobilePersistStorage.setItem(PERSIST_KEY, encodeState(state))
+
+    // Simulate mini window starting while credentials.json also holds an extra ref
+    native.desktopJson = JSON.stringify({
+      ...JSON.parse(native.desktopJson!),
+      [`${REF_PREFIX}main-extra`]: 'keep-me'
+    })
+    await startDesktop(false)
+    await credentials.initializeMobileCredentials()
+    expect(JSON.parse(native.desktopJson)?.[`${REF_PREFIX}main-extra`]).toBe('keep-me')
+    expect(native.command).not.toHaveBeenCalled()
+    expect(decodeState((await credentials.mobilePersistStorage.getItem(PERSIST_KEY))!)).toEqual(state)
+  })
+
+  it('excludes credentials and historical privateKeys from ordinary backups while hydrating encrypted backups', async () => {
+    await startDesktop()
+    const state = createState() as any
+    state.llm.settings = {
+      vertexai: { serviceAccount: { privateKey: 'fixture-vertex-private-key', clientEmail: 'svc@example.invalid' } }
+    }
+    await credentials.mobilePersistStorage.setItem(PERSIST_KEY, encodeState(state))
     const backup = credentials.stripCredentials({ [PERSIST_KEY]: memoryStorage.getItem(PERSIST_KEY)! })
-    for (const secret of ['fixture-provider-a-key', 'fixture-webdav-password', 'fixture-auth-header', REF_PREFIX]) {
+    for (const secret of [
+      'fixture-provider-a-key',
+      'fixture-webdav-password',
+      'fixture-auth-header',
+      'fixture-vertex-private-key',
+      REF_PREFIX
+    ]) {
       expect(backup[PERSIST_KEY]).not.toContain(secret)
     }
     expect(decodeState(backup[PERSIST_KEY]).messages).toEqual(state.messages)

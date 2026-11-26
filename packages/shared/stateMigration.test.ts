@@ -82,21 +82,48 @@ describe('216 state boundary', () => {
     expect(next.mcp).toBeUndefined()
     expect(sanitizePersistedState(raw)).toBe(raw)
   })
-  it('clears nested model references and normalizes cached strengths without restoring old providers', () => {
+  it('clears nested model references, purges retired credential-bearing slices, and normalizes cached strengths', () => {
     const state = {
       ...fixture(215),
-      codeTools: { selectedModels: { codex: { id: 'old' } } },
-      openclaw: { selectedModelUniqId: 'old' }
+      codeTools: { selectedModels: { codex: { id: 'old' } }, environmentVariables: { OPENAI_API_KEY: 'legacy-key' } },
+      openclaw: { selectedModelUniqId: 'old', token: 'legacy-openclaw-token' },
+      ocr: { providers: [{ id: 'tesseract', apiKey: 'legacy-ocr-secret' }] },
+      copilot: { headers: { Authorization: 'Bearer legacy-copilot-token' }, token: 'ghu_secret' },
+      nutstore: { nutstoreToken: 'legacy-nutstore-secret' },
+      preprocess: { providers: [{ id: 'mineru', apiKey: 'legacy-preprocess-key' }] }
     }
     Object.assign(state.assistants.assistants[0].settings, {
       defaultModel: { id: 'old', provider: 'new' },
       reasoning_effort_cache: 'minimal'
     })
     const next = decode(sanitizePersistedState(encode(state)))
-    expect(next.codeTools.selectedModels).toEqual({})
-    expect(next.openclaw.selectedModelUniqId).toBeNull()
+    expect(next.codeTools).toBeUndefined()
+    expect(next.openclaw).toBeUndefined()
+    expect(next.ocr).toBeUndefined()
+    expect(next.copilot).toBeUndefined()
+    expect(next.nutstore).toBeUndefined()
+    expect(next.preprocess).toBeUndefined()
+    expect(JSON.stringify(next)).not.toContain('legacy-ocr-secret')
+    expect(JSON.stringify(next)).not.toContain('legacy-copilot-token')
+    expect(JSON.stringify(next)).not.toContain('legacy-nutstore-secret')
+    expect(JSON.stringify(next)).not.toContain('legacy-openclaw-token')
     expect(next.assistants.assistants[0].settings.defaultModel).toBeUndefined()
     expect(next.assistants.assistants[0].settings.reasoning_effort_cache).toBe('max')
+
+    // Also purges retired slices on current (>=216) backups where resetProviders is false
+    const currentBackupWithLegacySlices = decode(
+      sanitizePersistedState(
+        encode({
+          ...fixture(223),
+          ocr: { providers: [{ id: 'ocr-1', apiKey: 'v223-ocr-secret' }] },
+          copilot: { headers: { Authorization: 'Bearer v223-copilot-secret' } }
+        })
+      )
+    )
+    expect(currentBackupWithLegacySlices.ocr).toBeUndefined()
+    expect(currentBackupWithLegacySlices.copilot).toBeUndefined()
+    expect(JSON.stringify(currentBackupWithLegacySlices)).not.toContain('v223-ocr-secret')
+    expect(JSON.stringify(currentBackupWithLegacySlices)).not.toContain('v223-copilot-secret')
   })
   it.each(['low', 'medium', 'high', 'xhigh', 'max'])('retains the existing %s selection', (effort) => {
     const state = fixture(216)

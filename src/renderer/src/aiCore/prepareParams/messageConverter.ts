@@ -128,23 +128,9 @@ async function convertMessageToUserModelMessage(
     const file = fileBlock.file
     let processed = false
 
-    // 优先尝试原生文件支持（PDF、图片等）
     if (model) {
       const filePart = await convertFileBlockToFilePart(fileBlock, model)
       if (filePart) {
-        // 判断filePart是否为string
-        if (typeof filePart.data === 'string' && filePart.data.startsWith('fileid://')) {
-          return [
-            {
-              role: 'system',
-              content: filePart.data
-            },
-            {
-              role: 'user',
-              content: parts.length > 0 ? parts : ''
-            }
-          ]
-        }
         parts.push(filePart)
         logger.debug(`File ${file.origin_name} processed as native file format`)
         processed = true

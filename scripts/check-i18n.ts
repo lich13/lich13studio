@@ -50,8 +50,6 @@ function checkRecursively(target: I18N, template: I18N): void {
 }
 
 function isSortedI18N(obj: I18N): boolean {
-  // fs.writeFileSync('./test_origin.json', JSON.stringify(obj))
-  // fs.writeFileSync('./test_sorted.json', JSON.stringify(sortedObjectByKeys(obj)))
   return JSON.stringify(obj) === JSON.stringify(sortedObjectByKeys(obj))
 }
 

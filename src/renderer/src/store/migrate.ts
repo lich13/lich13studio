@@ -26,6 +26,10 @@ const migrate: typeof recentMigrate = async (state, version) => {
   }
 
   const inboundVersion = state._persist?.version ?? -1
+  if (inboundVersion === version) {
+    return sanitizeState(state as Record<string, any>) as PersistedState
+  }
+
   let migrated: PersistedState
   if (inboundVersion < PROVIDER_RESET_VERSION) {
     const { legacyMigrateConfig } = await import('./migrateLegacy')

@@ -94,7 +94,6 @@ describe('useSettings startup/background sync helpers', () => {
     await expect(showStartupWindow({ __TAURI__: { core: { invoke } } })).resolves.toBeUndefined()
 
     expect(invoke.mock.calls).toEqual([['is_startup_silent'], ['show_startup_window']])
-    expect(invoke).not.toHaveBeenCalledWith('show_main_window')
   })
 
   it('skips the window show command for silent startup', async () => {
@@ -105,7 +104,6 @@ describe('useSettings startup/background sync helpers', () => {
     expect(invoke).toHaveBeenCalledTimes(1)
     expect(invoke).toHaveBeenCalledWith('is_startup_silent')
     expect(invoke).not.toHaveBeenCalledWith('show_startup_window')
-    expect(invoke).not.toHaveBeenCalledWith('show_main_window')
   })
 
   it('falls back to the native startup guard when the silent-state query fails', async () => {
@@ -117,6 +115,5 @@ describe('useSettings startup/background sync helpers', () => {
     await expect(showStartupWindow({ __TAURI__: { core: { invoke } } })).resolves.toBeUndefined()
 
     expect(invoke.mock.calls).toEqual([['is_startup_silent'], ['show_startup_window']])
-    expect(invoke).not.toHaveBeenCalledWith('show_main_window')
   })
 })

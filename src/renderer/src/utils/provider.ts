@@ -1,10 +1,5 @@
 import type { ProviderType } from '@renderer/types'
 import { isSystemProvider, type Provider, type SystemProviderId, SystemProviderIds } from '@renderer/types'
-import { isAzureOpenAIProvider } from '@shared/aiCore/provider/utils'
-
-export const isAzureResponsesEndpoint = (provider: Provider) => {
-  return provider.apiVersion === 'preview' || provider.apiVersion === 'v1'
-}
 
 const NOT_SUPPORT_ARRAY_CONTENT_PROVIDERS = [
   'deepseek',
@@ -49,28 +44,10 @@ export const isSupportStreamOptionsProvider = (provider: Provider) => {
   )
 }
 
-const NOT_SUPPORT_QWEN3_ENABLE_THINKING_PROVIDER = [
-  'ollama',
-  'lmstudio',
-  'nvidia',
-  'gpustack'
-] as const satisfies SystemProviderId[]
-
-/**
- * 判断提供商是否支持使用 enable_thinking 参数来控制 Qwen3 等模型的思考。 Only for OpenAI Chat Completions API.
- */
-export const isSupportEnableThinkingProvider = (provider: Provider) => {
-  return (
-    provider.apiOptions?.isNotSupportEnableThinking !== true &&
-    !NOT_SUPPORT_QWEN3_ENABLE_THINKING_PROVIDER.some((pid) => pid === provider.id)
-  )
-}
-
 const SUPPORT_SERVICE_TIER_PROVIDERS = [
   SystemProviderIds.openai,
   SystemProviderIds['azure-openai'],
   SystemProviderIds.groq
-  // TODO: 等待上游支持aws-bedrock
 ]
 
 /**
@@ -85,12 +62,6 @@ export const isSupportServiceTierProvider = (provider: Provider) => {
 
 const NOT_SUPPORT_VERBOSITY_PROVIDERS = ['groq'] as const satisfies SystemProviderId[]
 
-/**
- * Determines whether the provider supports the verbosity option.
- * Only applies to system providers that are not in the exclusion list.
- * @param provider - The provider to check
- * @returns true if the provider supports verbosity, false otherwise
- */
 export const isSupportVerbosityProvider = (provider: Provider) => {
   return (
     provider.apiOptions?.isNotSupportVerbosity !== true &&
@@ -111,47 +82,8 @@ export const isNewApiProvider = (provider: Provider) => {
   return ['new-api', 'cherryin', 'aionly'].includes(provider.id)
 }
 
-/**
- * 判断是否为 OpenAI 兼容的提供商
- * @param {Provider} provider 提供商对象
- * @returns {boolean} 是否为 OpenAI 兼容提供商
- */
 export function isOpenAICompatibleProvider(provider: Provider): boolean {
   return provider.type === 'openai-response'
-}
-
-export function isOpenAIProvider(provider: Provider): boolean {
-  return provider.type === 'openai-response'
-}
-
-export function isAwsBedrockProvider(_provider: Provider): boolean {
-  void _provider
-  return false
-}
-
-// Re-export from shared, for backward compatibility
-export {
-  isAnthropicProvider,
-  isAzureOpenAIProvider,
-  isCherryAIProvider,
-  isGeminiProvider,
-  isOllamaProvider,
-  isPerplexityProvider,
-  isVertexProvider
-} from '@shared/aiCore/provider/utils'
-
-export function isAIGatewayProvider(_provider: Provider): boolean {
-  void _provider
-  return false
-}
-
-const NOT_SUPPORT_API_VERSION_PROVIDERS = ['github', 'copilot', 'perplexity'] as const satisfies SystemProviderId[]
-
-export const isSupportAPIVersionProvider = (provider: Provider) => {
-  if (isSystemProvider(provider)) {
-    return !NOT_SUPPORT_API_VERSION_PROVIDERS.some((pid) => pid === provider.id)
-  }
-  return provider.apiOptions?.isNotSupportAPIVersion !== false
 }
 
 export const NOT_SUPPORT_API_KEY_PROVIDERS: readonly SystemProviderId[] = [
@@ -162,15 +94,12 @@ export const NOT_SUPPORT_API_KEY_PROVIDERS: readonly SystemProviderId[] = [
   'copilot'
 ]
 
-export const NOT_SUPPORT_API_KEY_PROVIDER_TYPES: readonly ProviderType[] = []
-
 // https://platform.claude.com/docs/en/build-with-claude/prompt-caching#1-hour-cache-duration
 export const isSupportAnthropicPromptCacheProvider = (provider: Provider) => {
   return (
     provider.type === 'anthropic' ||
     isNewApiProvider(provider) ||
     provider.id === SystemProviderIds.aihubmix ||
-    provider.id === SystemProviderIds.openrouter ||
-    isAzureOpenAIProvider(provider)
+    provider.id === SystemProviderIds.openrouter
   )
 }

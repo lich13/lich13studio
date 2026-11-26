@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
   language: 'en-US',
+  existsKeys: new Set<string>(),
   dispatch: vi.fn(),
   setTimeoutTimer: vi.fn(),
   navigate: vi.fn(),
@@ -27,10 +28,11 @@ vi.mock('@renderer/store', () => ({ useAppDispatch: () => mocks.dispatch }))
 vi.mock('@renderer/store/thunk/messageThunk', () => ({ removeBlocksThunk: vi.fn() }))
 vi.mock('antd', () => ({ Button: ({ children }: { children: unknown }) => children }))
 vi.mock('react-i18next', () => ({
-  Trans: ({ children }: { children: unknown }) => children,
+  Trans: ({ i18nKey, values }: { i18nKey: string; values?: Record<string, string> }) =>
+    `${mocks.language}:${i18nKey}:${values?.provider ?? ''}`,
   useTranslation: () => ({
     t: (key: string) => `${mocks.language}:${key}`,
-    i18n: { language: mocks.language, exists: () => false }
+    i18n: { language: mocks.language, exists: (key: string) => mocks.existsKeys.has(key) }
   })
 }))
 vi.mock('react-router-dom', () => ({
@@ -75,6 +77,7 @@ describe('ErrorBlock', () => {
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
     vi.stubGlobal('fetch', mocks.fetch)
     mocks.language = 'en-US'
+    mocks.existsKeys.clear()
     mocks.dispatch.mockReset()
     mocks.setTimeoutTimer.mockReset()
     mocks.navigate.mockReset()
@@ -112,5 +115,27 @@ describe('ErrorBlock', () => {
     expect(mocks.diagnoseError).not.toHaveBeenCalled()
     expect(mocks.fetch).not.toHaveBeenCalled()
     expect(mocks.getProviderById).not.toHaveBeenCalled()
+  })
+
+  it('renders localized ErrorMessage via i18nKey even when raw error.message is non-empty', async () => {
+    mocks.existsKeys.add('error.chat.no_api_key')
+    const element = document.createElement('div')
+    const root = createRoot(element)
+    roots.push(root)
+    const localizedBlock = {
+      ...block,
+      error: {
+        name: 'AuthError',
+        message: 'Raw untranslated message',
+        i18nKey: 'chat.no_api_key',
+        providerId: 'openai',
+        stack: null
+      }
+    } as unknown as ErrorMessageBlock
+
+    await act(async () => root.render(createElement(ErrorBlock, { block: localizedBlock, message })))
+
+    expect(element.textContent).toContain('en-US:error.chat.no_api_key:openai')
+    expect(element.textContent).not.toContain('Raw untranslated message')
   })
 })

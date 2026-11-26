@@ -4,7 +4,7 @@ import { HStack } from '@renderer/components/Layout'
 import ListItem from '@renderer/components/ListItem'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import { runtimeCapabilities } from '@renderer/services/mobile/runtime'
-import { FileText, FolderCog, FolderInput } from 'lucide-react'
+import { BookOpen, FileText, FolderCog, FolderInput } from 'lucide-react'
 import type { FC } from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -45,7 +45,7 @@ const DataSettings: FC = () => {
     {
       key: 'obsidian',
       title: t('settings.data.obsidian.title'),
-      icon: <i className="iconfont icon-obsidian" />
+      icon: <BookOpen size={16} />
     }
   ]
   const visibleMenuItems = menuItems.filter((item) => !runtimeCapabilities.android || item.key !== 'obsidian')
@@ -117,10 +117,6 @@ const MenuList = styled.div`
   overflow: auto;
   box-sizing: border-box;
   min-height: 0;
-  .iconfont {
-    color: var(--color-text-2);
-    line-height: 16px;
-  }
 `
 
 export default DataSettings

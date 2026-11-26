@@ -2,7 +2,6 @@ import { isMac } from '@renderer/config/constant'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import { useFullscreen } from '@renderer/hooks/useFullscreen'
 import useNavBackgroundColor from '@renderer/hooks/useNavBackgroundColor'
-import { modelGenerating } from '@renderer/hooks/useRuntime'
 import { useSettings } from '@renderer/hooks/useSettings'
 import { getSidebarIconLabel } from '@renderer/i18n/label'
 import type { SidebarIcon } from '@renderer/types'
@@ -91,8 +90,7 @@ const MainMenus: FC = () => {
         <StyledLink
           type="button"
           aria-label={title}
-          onClick={async () => {
-            await modelGenerating()
+          onClick={() => {
             navigate(path)
           }}>
           <Icon theme={theme} className={isActive}>

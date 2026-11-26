@@ -69,6 +69,7 @@ const TokenCount: FC<Props> = ({ estimateTokenCount, inputTokenCount, contextCou
 const Container = styled.div`
   font-size: 11px;
   line-height: 16px;
+  font-variant-numeric: tabular-nums;
   color: var(--color-text-2);
   z-index: 10;
   padding: 3px 10px;
@@ -87,6 +88,7 @@ const Container = styled.div`
 
 const Text = styled.div`
   font-size: 12px;
+  font-variant-numeric: tabular-nums;
   color: var(--color-text-1);
 `
 

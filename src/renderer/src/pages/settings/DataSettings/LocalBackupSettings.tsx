@@ -169,7 +169,7 @@ const LocalBackupSettings: React.FC = () => {
     if (!localBackupDir) return null
 
     if (!localBackupSync.lastSyncTime && !localBackupSync.syncing && !localBackupSync.lastSyncError) {
-      return <span style={{ color: 'var(--text-secondary)' }}>{t('settings.data.local.noSync')}</span>
+      return <span style={{ color: 'var(--color-text-2)' }}>{t('settings.data.local.noSync')}</span>
     }
 
     return (
@@ -177,11 +177,11 @@ const LocalBackupSettings: React.FC = () => {
         {localBackupSync.syncing && <SyncOutlined spin />}
         {!localBackupSync.syncing && localBackupSync.lastSyncError && (
           <Tooltip title={`${t('settings.data.local.syncError')}: ${localBackupSync.lastSyncError}`}>
-            <WarningOutlined style={{ color: 'red' }} />
+            <WarningOutlined style={{ color: 'var(--color-error)' }} />
           </Tooltip>
         )}
         {localBackupSync.lastSyncTime && (
-          <span style={{ color: 'var(--text-secondary)' }}>
+          <span style={{ color: 'var(--color-text-2)', fontVariantNumeric: 'tabular-nums' }}>
             {t('settings.data.local.lastSync')}: {dayjs(localBackupSync.lastSyncTime).format('HH:mm:ss')}
           </span>
         )}

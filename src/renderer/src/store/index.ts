@@ -5,6 +5,7 @@ import { isMainTauriWindow, runtimeCapabilities } from '@renderer/services/mobil
 import { useDispatch, useSelector, useStore } from 'react-redux'
 import {
   FLUSH,
+  getStoredState,
   PAUSE,
   PERSIST,
   type PersistConfig,
@@ -64,22 +65,52 @@ export function reconcileActiveSlices<S extends Record<string, any>>(
   return autoMergeLevel1(allowedInbound, originalState, reducedState, config)
 }
 
-const persistedReducer = persistReducer<RootState>(
-  {
-    key: 'cherry-studio',
-    storage: credentialStorageEnabled ? mobilePersistStorage : storage,
-    version: 223,
-    throttle: 250,
-    blacklist: ['runtime', 'messages', 'messageBlocks'],
-    stateReconciler: reconcileActiveSlices,
-    migrate
+export const isMiniWindowContext = () =>
+  typeof window !== 'undefined' &&
+  (window.location?.pathname?.endsWith('miniWindow.html') ||
+    (!runtimeCapabilities.android && Boolean((window as any).__TAURI_INTERNALS__) && !isMainTauriWindow()))
+
+const basePersistStorage = credentialStorageEnabled ? mobilePersistStorage : storage
+
+export const createPersistStorageAdapter = (
+  underlyingStorage: typeof basePersistStorage,
+  isReadOnly: () => boolean = isMiniWindowContext
+) => ({
+  getItem: (key: string) => underlyingStorage.getItem(key),
+  setItem: async (key: string, value: string) => {
+    if (isReadOnly()) {
+      return
+    }
+    await underlyingStorage.setItem(key, value)
   },
-  rootReducer
-)
+  removeItem: async (key: string) => {
+    if (isReadOnly()) {
+      return
+    }
+    await underlyingStorage.removeItem(key)
+  }
+})
+
+const persistConfig: PersistConfig<RootState> = {
+  key: 'cherry-studio',
+  storage: createPersistStorageAdapter(basePersistStorage),
+  version: 223,
+  throttle: 250,
+  blacklist: ['runtime', 'messages', 'messageBlocks'],
+  stateReconciler: reconcileActiveSlices,
+  migrate
+}
+
+const persistedReducer = persistReducer<RootState>(persistConfig, rootReducer)
+
+const SYNCED_SLICE_PREFIXES = ['assistants/', 'settings/', 'llm/', 'shortcuts/', 'inputTools/', 'backup/']
 
 storeSyncService.setOptions({
-  syncList: ['assistants/', 'settings/', 'llm/']
+  syncList: SYNCED_SLICE_PREFIXES
 })
+
+let lastMiniRawSnapshot: string | null = null
+let lastMiniLiveSyncAt = 0
 
 const store = configureStore({
   reducer: persistedReducer as unknown as typeof rootReducer,
@@ -88,30 +119,60 @@ const store = configureStore({
       serializableCheck: {
         ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER]
       }
-    }).concat(modelCatalogMiddleware, storeSyncService.createMiddleware())
+    }).concat(
+      modelCatalogMiddleware,
+      () => (next) => (action) => {
+        const result = next(action)
+        const type = (action as { type?: unknown })?.type
+        if (typeof type === 'string' && SYNCED_SLICE_PREFIXES.some((prefix) => type.startsWith(prefix))) {
+          lastMiniLiveSyncAt = Date.now()
+        }
+        return result
+      },
+      storeSyncService.createMiddleware()
+    )
   },
   devTools: import.meta.env.DEV
 })
 
 export type AppDispatch = typeof store.dispatch
 
-const isMiniWindowContext = () =>
-  typeof window !== 'undefined' &&
-  (window.location?.pathname?.endsWith('miniWindow.html') ||
-    (!runtimeCapabilities.android && Boolean((window as any).__TAURI_INTERNALS__) && !isMainTauriWindow()))
-
 export const persistor = persistStore(store, undefined, () => {
   if (typeof window === 'undefined') {
     return
   }
-  if (!isMiniWindowContext()) {
-    void import('@renderer/services/PlatformModelCatalogService').then(({ platformModelCatalogService }) =>
-      platformModelCatalogService.initialize()
-    )
+  if (isMiniWindowContext()) {
+    lastMiniRawSnapshot = localStorage.getItem(`persist:${persistConfig.key}`)
+    persistor.pause()
   }
   void window.api?.notifyReduxStoreReady?.()
   logger.info('Redux store ready, notified main process')
 })
+
+export async function refreshMiniWindowPersistedState(): Promise<void> {
+  if (!isMiniWindowContext()) return
+  const rawKey = `persist:${persistConfig.key}`
+  const currentRaw = localStorage.getItem(rawKey)
+  if (currentRaw === lastMiniRawSnapshot) return
+  if (Date.now() - lastMiniLiveSyncAt < 400) return
+  try {
+    const stored = await getStoredState(persistConfig)
+    const migrated = persistConfig.migrate
+      ? await persistConfig.migrate(stored as any, persistConfig.version ?? 223)
+      : stored
+    lastMiniRawSnapshot = currentRaw
+    if (migrated) {
+      store.dispatch({
+        type: REHYDRATE,
+        key: persistConfig.key,
+        payload: migrated,
+        err: undefined
+      })
+    }
+  } catch (error) {
+    logger.warn('Failed to refresh mini window persisted state:', error as Error)
+  }
+}
 
 export const useAppDispatch = useDispatch.withTypes<AppDispatch>()
 export const useAppSelector = useSelector.withTypes<RootState>()

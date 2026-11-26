@@ -27,12 +27,17 @@ export async function exportPortableBackup(fileName: string, skipBackupFile: boo
   }
 }
 
+export interface ExtractedBackupArchive {
+  payload: string
+  restoreId?: string | null
+}
+
 export async function decryptPortableBackup(bytes: Uint8Array | number[]) {
   const { requestBackupPassword } = await import('@renderer/components/Popups/BackupPasswordPopup')
   const password = await requestBackupPassword()
   if (password === null) return null
   const rawBytes = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes)
-  return invoke<string | number[]>(
+  return invoke<ExtractedBackupArchive | string | number[]>(
     'restore_encrypted_backup_archive',
     toBinaryIpcPayload(rawBytes, runtimeCapabilities.android),
     {

@@ -1,19 +1,3 @@
-/**
- * @deprecated Scheduled for removal in v2.0.0
- * --------------------------------------------------------------------------
- * ⚠️ NOTICE: V2 DATA&UI REFACTORING (by 0xfullex)
- * --------------------------------------------------------------------------
- * STOP: Feature PRs affecting this file are currently BLOCKED.
- * Only critical bug fixes are accepted during this migration phase.
- *
- * This file is being refactored to v2 standards.
- * Any non-critical changes will conflict with the ongoing work.
- *
- * 🔗 Context & Status:
- * - Contribution Hold: https://github.com/CherryHQ/cherry-studio/issues/10954
- * - v2 Refactor PR   : https://github.com/CherryHQ/cherry-studio/pull/10162
- * --------------------------------------------------------------------------
- */
 import { loggerService } from '@logger'
 import db from '@renderer/databases'
 import { dbService } from '@renderer/services/db'
@@ -27,11 +11,12 @@ import { BlockManager } from '@renderer/services/messageStreaming/BlockManager'
 import { createCallbacks } from '@renderer/services/messageStreaming/callbacks'
 import { createStreamProcessor, type StreamProcessorCallbacks } from '@renderer/services/StreamProcessingService'
 import {
+  abortTopicStream,
   beginStream,
   createStreamTerminalGuard,
   finishStream,
   getActiveStream,
-  isCurrentStream,
+  isStreamAcceptingChunks,
   markStreamContent,
   setStreamAbort,
   setStreamPhase
@@ -42,14 +27,13 @@ import { type Assistant, type FileMetadata, type Model, type Topic } from '@rend
 import type { FileMessageBlock, ImageMessageBlock, Message, MessageBlock } from '@renderer/types/newMessage'
 import { AssistantMessageStatus, MessageBlockStatus, MessageBlockType } from '@renderer/types/newMessage'
 import { uuid } from '@renderer/utils'
-import { addAbortController, removeAbortController } from '@renderer/utils/abortController'
+import { abortCompletion, addAbortController, removeAbortController } from '@renderer/utils/abortController'
 import {
   createAssistantMessage,
   createTranslationBlock,
   resetAssistantMessage
 } from '@renderer/utils/messageUtils/create'
-import { getTopicQueue, hasTopicPendingRequests, waitForTopicQueue } from '@renderer/utils/queue'
-import { getTopicFulfilledActiveTopicId, shouldMarkTopicFulfilled } from '@renderer/utils/topicStatus'
+import { clearTopicQueue, getTopicQueue, hasTopicPendingRequests, waitForTopicQueue } from '@renderer/utils/queue'
 import { defaultAppHeaders } from '@shared/utils'
 import { t } from 'i18next'
 import throttle from 'lodash/throttle'
@@ -58,28 +42,16 @@ import { LRUCache } from 'lru-cache'
 import type { AppDispatch, RootState } from '../index'
 import { removeManyBlocks, updateOneBlock, upsertManyBlocks, upsertOneBlock } from '../messageBlock'
 import { newMessagesActions, selectMessagesForTopic } from '../newMessage'
-// import {
-//   bulkAddBlocksV2,
-//   clearMessagesFromDBV2,
-//   deleteMessageFromDBV2,
-//   deleteMessagesFromDBV2,
-//   loadTopicMessagesThunkV2,
-//   saveMessageAndBlocksToDBV2,
-//   updateBlocksV2,
-//   updateFileCountV2,
-//   updateMessageV2,
-//   updateSingleBlockV2
-// } from './messageThunk.v2'
 
 const logger = loggerService.withContext('MessageThunk')
 
+export const shouldMarkTopicFulfilled = (topicId: string, currentTopicId: string | null | undefined): boolean => {
+  return !currentTopicId || currentTopicId !== topicId
+}
+
 const finishTopicLoading = async (topicId: string) => {
   await waitForTopicQueue(topicId)
-  const state = store.getState()
-  const currentTopicId = getTopicFulfilledActiveTopicId(
-    state.runtime.chat.activeTopic?.id,
-    state.messages.currentTopicId
-  )
+  const currentTopicId = store.getState().messages.currentTopicId
   store.dispatch(newMessagesActions.setTopicLoading({ topicId, loading: false }))
   store.dispatch(
     newMessagesActions.setTopicFulfilled({
@@ -138,6 +110,46 @@ const repairTerminalThinkingBlocks = (messages: Message[], blocks: MessageBlock[
   }
 }
 
+export const isNonTerminalToolStatus = (status: string | undefined): boolean =>
+  status !== 'done' && status !== 'error' && status !== 'cancelled'
+
+export const buildPausedBlockChanges = (block: MessageBlock): Partial<MessageBlock> | null => {
+  const isBlockActive =
+    block.status === MessageBlockStatus.PROCESSING ||
+    block.status === MessageBlockStatus.STREAMING ||
+    block.status === MessageBlockStatus.PENDING
+
+  if (block.type === MessageBlockType.TOOL) {
+    const toolResponse = block.metadata?.rawMcpToolResponse
+    const hasRunningTool = Boolean(toolResponse && isNonTerminalToolStatus(toolResponse.status))
+    if (!isBlockActive && !hasRunningTool) {
+      return null
+    }
+    return {
+      status: isBlockActive ? MessageBlockStatus.PAUSED : block.status,
+      ...(hasRunningTool && toolResponse
+        ? {
+            metadata: {
+              ...block.metadata,
+              rawMcpToolResponse: {
+                ...toolResponse,
+                status: 'cancelled'
+              }
+            }
+          }
+        : {})
+    }
+  }
+
+  if (!isBlockActive) {
+    return null
+  }
+
+  return {
+    status: MessageBlockStatus.PAUSED
+  }
+}
+
 const pauseStaleStreamingState = (topicId: string, messages: Message[], blocks: MessageBlock[]) => {
   if (hasTopicPendingRequests(topicId)) {
     return { messages, blocks, repairedMessages: [] as Message[], repairedBlocks: [] as MessageBlock[] }
@@ -168,19 +180,18 @@ const pauseStaleStreamingState = (topicId: string, messages: Message[], blocks: 
 
   const repairedBlocks: MessageBlock[] = []
   const normalizedBlocks = blocks.map((block) => {
-    if (
-      !staleMessageMap.has(block.messageId) ||
-      (block.status !== MessageBlockStatus.PROCESSING &&
-        block.status !== MessageBlockStatus.STREAMING &&
-        block.status !== MessageBlockStatus.PENDING)
-    ) {
+    if (!staleMessageMap.has(block.messageId)) {
+      return block
+    }
+    const changes = buildPausedBlockChanges(block)
+    if (!changes) {
       return block
     }
 
     const repairedBlock = {
       ...block,
-      status: MessageBlockStatus.PAUSED
-    }
+      ...changes
+    } as MessageBlock
 
     repairedBlocks.push(repairedBlock)
     return repairedBlock
@@ -201,7 +212,7 @@ const updateExistingMessageAndBlocksInDB = async (
   try {
     // Always update blocks if provided
     if (updatedBlocks.length > 0) {
-      await updateBlocks(updatedBlocks)
+      await dbService.updateBlocks(updatedBlocks)
     }
 
     // Check if there are message properties to update beyond id and topicId
@@ -209,11 +220,11 @@ const updateExistingMessageAndBlocksInDB = async (
 
     if (messageKeysToUpdate.length > 0) {
       const messageUpdatesPayload = messageKeysToUpdate.reduce<Partial<Message>>((acc, key) => {
-        acc[key] = updatedMessage[key]
+        ;(acc as any)[key] = (updatedMessage as any)[key]
         return acc
       }, {})
 
-      await updateMessage(updatedMessage.topicId, updatedMessage.id, messageUpdatesPayload)
+      await dbService.updateMessage(updatedMessage.topicId, updatedMessage.id, messageUpdatesPayload)
 
       store.dispatch(updateTopicUpdatedAt({ topicId: updatedMessage.topicId }))
     }
@@ -290,7 +301,7 @@ const getBlockThrottler = (id: string) => {
         const changes = pendingBlockDbChanges.get(id)
         if (!changes) return
         pendingBlockDbChanges.delete(id)
-        await updateSingleBlock(id, changes)
+        await dbService.updateSingleBlock(id, changes)
       },
       STREAM_DB_FLUSH_INTERVAL_MS,
       { leading: false, trailing: true }
@@ -315,7 +326,7 @@ export const flushPendingBlockUpdates = async () => {
       throttler.cancel()
       blockUpdateThrottlers.delete(id)
     }
-    dbFlushes.push(updateSingleBlock(id, changes))
+    dbFlushes.push(dbService.updateSingleBlock(id, changes))
   }
   if (dbFlushes.length > 0) {
     await Promise.all(dbFlushes)
@@ -386,6 +397,12 @@ const discardThrottledBlockUpdate = (id: string) => {
     throttler.cancel()
     blockUpdateThrottlers.delete(id)
   }
+}
+
+export const cancelMultipleBlockUpdates = (blockIds: string[]) => {
+  blockIds.forEach((id) => {
+    cancelThrottledBlockUpdate(id)
+  })
 }
 
 /**
@@ -568,22 +585,24 @@ const fetchAndProcessAssistantResponseImpl = async (
     const guardedCallbacks: StreamProcessorCallbacks = {
       ...callbacks,
       onTextChunk: async (text, providerMetadata) => {
-        if (!isCurrentStream(streamEntry) || terminalGuard.isTerminal()) return
+        if (!isStreamAcceptingChunks(streamEntry) || terminalGuard.isTerminal()) return
         markStreamContent(streamEntry)
         await callbacks.onTextChunk?.(text, providerMetadata)
       },
       onError: async (error) => {
-        if (!isCurrentStream(streamEntry)) return
+        if (streamEntry.phase === 'aborted' || !getState().messages.entities[assistantMsgId]) return
         if (!terminalGuard.acceptError()) return
         await callbacks.onError?.(error)
       },
       onComplete: async (status, response) => {
-        if (!isCurrentStream(streamEntry)) return
+        if (!isStreamAcceptingChunks(streamEntry) || !getState().messages.entities[assistantMsgId]) return
         if (!terminalGuard.acceptComplete()) return
         await callbacks.onComplete?.(status, response)
       }
     }
-    const streamProcessorCallbacks = createStreamProcessor(guardedCallbacks)
+    const streamProcessorCallbacks = createStreamProcessor(guardedCallbacks, {
+      shouldAcceptChunk: () => isStreamAcceptingChunks(streamEntry) && !terminalGuard.isTerminal()
+    })
 
     const abortController = new AbortController()
     abortFn = () => abortController.abort()
@@ -610,7 +629,11 @@ const fetchAndProcessAssistantResponseImpl = async (
       streamProcessorCallbacks
     )
 
-    if (!terminalGuard.isTerminal()) {
+    if (
+      isStreamAcceptingChunks(streamEntry) &&
+      !terminalGuard.isTerminal() &&
+      Boolean(getState().messages.entities[assistantMsgId])
+    ) {
       const error = new Error('Stream ended without a terminal event')
       terminalGuard.acceptError()
       await callbacks.onError?.(error)
@@ -618,7 +641,11 @@ const fetchAndProcessAssistantResponseImpl = async (
   } catch (error: any) {
     logger.error('Error in fetchAndProcessAssistantResponseImpl:', error)
     // 统一错误处理：确保 loading 状态被正确设置，避免队列任务卡住
-    if (terminalGuard.acceptError()) {
+    if (
+      streamEntry.phase !== 'aborted' &&
+      Boolean(getState().messages.entities[assistantMsgId]) &&
+      terminalGuard.acceptError()
+    ) {
       try {
         await callbacks.onError?.(error)
       } catch (callbackError) {
@@ -630,11 +657,30 @@ const fetchAndProcessAssistantResponseImpl = async (
   } finally {
     await flushPendingBlockUpdates()
     if (abortKey && abortFn) removeAbortController(abortKey, abortFn)
-    const finalStatus = getState().messages.entities[assistantMsgId]?.status
+    const assistantEntity = getState().messages.entities[assistantMsgId]
+    const finalStatus = assistantEntity?.status
+    if (assistantEntity && (streamEntry.phase === 'aborted' || finalStatus === AssistantMessageStatus.PAUSED)) {
+      const blocksToPersistOnAbort: MessageBlock[] = []
+      for (const blockId of assistantEntity.blocks || []) {
+        cancelThrottledBlockUpdate(blockId)
+        const block = getState().messageBlocks.entities[blockId]
+        const changes = block ? buildPausedBlockChanges(block) : null
+        if (block && changes) {
+          dispatch(updateOneBlock({ id: blockId, changes }))
+          const updated = getState().messageBlocks.entities[blockId]
+          blocksToPersistOnAbort.push(updated ?? ({ ...block, ...changes } as MessageBlock))
+        }
+      }
+      if (blocksToPersistOnAbort.length > 0) {
+        await dbService.updateBlocks(blocksToPersistOnAbort).catch((persistError) => {
+          logger.warn('[fetchAndProcessAssistantResponseImpl] Failed to persist paused tool blocks:', persistError)
+        })
+      }
+    }
     const reason =
       finalStatus === AssistantMessageStatus.SUCCESS
         ? 'completed'
-        : finalStatus === AssistantMessageStatus.PAUSED
+        : finalStatus === AssistantMessageStatus.PAUSED || streamEntry.phase === 'aborted'
           ? 'paused'
           : finalStatus === AssistantMessageStatus.ERROR
             ? 'error'
@@ -654,19 +700,26 @@ const fetchAndProcessAssistantResponseImpl = async (
 export const sendMessage =
   (userMessage: Message, userMessageBlocks: MessageBlock[], assistant: Assistant, topicId: Topic['id']) =>
   async (dispatch: AppDispatch, getState: () => RootState) => {
+    if (userMessage.blocks.length === 0) {
+      const emptyError = new Error('sendMessage: No blocks in the provided message.')
+      logger.warn(emptyError.message)
+      throw emptyError
+    }
+
     try {
-      if (userMessage.blocks.length === 0) {
-        logger.warn('sendMessage: No blocks in the provided message.')
-        return
-      }
+      await dbService.appendMessage(topicId, userMessage, userMessageBlocks)
+    } catch (error) {
+      logger.error('Error persisting user message in sendMessage thunk:', error as Error)
+      throw error
+    }
 
-      await saveMessageAndBlocksToDB(topicId, userMessage, userMessageBlocks)
-      dispatch(newMessagesActions.addMessage({ topicId, message: userMessage }))
-      if (userMessageBlocks.length > 0) {
-        dispatch(upsertManyBlocks(userMessageBlocks))
-      }
-      dispatch(updateTopicUpdatedAt({ topicId }))
+    if (userMessageBlocks.length > 0) {
+      dispatch(upsertManyBlocks(userMessageBlocks))
+    }
+    dispatch(newMessagesActions.addMessage({ topicId, message: userMessage }))
+    dispatch(updateTopicUpdatedAt({ topicId }))
 
+    try {
       const queue = getTopicQueue(topicId)
       const mentionedModels = userMessage.mentions
 
@@ -678,7 +731,7 @@ export const sendMessage =
           model: assistant.model,
           traceId: userMessage.traceId
         })
-        await saveMessageAndBlocksToDB(topicId, assistantMessage, [])
+        await dbService.appendMessage(topicId, assistantMessage, [])
         dispatch(
           newMessagesActions.addMessage({
             topicId,
@@ -691,7 +744,8 @@ export const sendMessage =
         })
       }
     } catch (error) {
-      logger.error('Error in sendMessage thunk:', error as Error)
+      logger.error('Error starting assistant response in sendMessage thunk:', error as Error)
+      window.toast?.error(t('common.errors.create_message'))
     } finally {
       void finishTopicLoading(topicId)
     }
@@ -712,9 +766,19 @@ export const deleteSingleMessageThunk =
     const blockIdsToDelete = messageToDelete.blocks || []
 
     try {
+      if (getActiveStream(topicId)?.assistantMsgId === messageId) {
+        abortTopicStream(topicId)
+      }
+      if (messageToDelete.role === 'assistant' && messageToDelete.askId) {
+        abortCompletion(messageToDelete.askId)
+      }
+      cancelMultipleBlockUpdates(blockIdsToDelete)
+      await dbService.deleteMessage(topicId, messageId)
+      const finalBlocksToDelete = Array.from(
+        new Set([...blockIdsToDelete, ...collectTopicBlockIdsToEvict(getState(), [messageId])])
+      )
+      cleanupMultipleBlocks(dispatch, finalBlocksToDelete)
       dispatch(newMessagesActions.removeMessage({ topicId, messageId }))
-      cleanupMultipleBlocks(dispatch, blockIdsToDelete)
-      await deleteMessageFromDB(topicId, messageId)
     } catch (error) {
       logger.error(`[deleteSingleMessage] Failed to delete message ${messageId}:`, error as Error)
     }
@@ -736,12 +800,6 @@ export const deleteMessageGroupThunk =
       }
     })
 
-    // const userQuery = currentState.messages.entities[askId]
-    // if (userQuery && userQuery.topicId === topicId && !idsToDelete.includes(askId)) {
-    //   messagesToDelete.push(userQuery)
-    //   idsToDelete.push(askId)
-    // }
-
     if (messagesToDelete.length === 0) {
       logger.warn(`[deleteMessageGroup] No messages found with askId ${askId} in topic ${topicId}.`)
       return
@@ -751,9 +809,18 @@ export const deleteMessageGroupThunk =
     const messageIdsToDelete = messagesToDelete.map((m) => m.id)
 
     try {
+      const activeStream = getActiveStream(topicId)
+      if (activeStream && messageIdsToDelete.includes(activeStream.assistantMsgId)) {
+        abortTopicStream(topicId)
+      }
+      abortCompletion(askId)
+      cancelMultipleBlockUpdates(blockIdsToDelete)
+      await dbService.deleteMessages(topicId, messageIdsToDelete)
+      const finalBlocksToDelete = Array.from(
+        new Set([...blockIdsToDelete, ...collectTopicBlockIdsToEvict(getState(), messageIdsToDelete)])
+      )
+      cleanupMultipleBlocks(dispatch, finalBlocksToDelete)
       dispatch(newMessagesActions.removeMessagesByAskId({ topicId, askId }))
-      cleanupMultipleBlocks(dispatch, blockIdsToDelete)
-      await deleteMessagesFromDB(topicId, messageIdsToDelete)
     } catch (error) {
       logger.error(`[deleteMessageGroup] Failed to delete messages with askId ${askId}:`, error as Error)
     }
@@ -765,20 +832,34 @@ export const deleteMessageGroupThunk =
 export const clearTopicMessagesThunk =
   (topicId: string) => async (dispatch: AppDispatch, getState: () => RootState) => {
     try {
+      clearTopicQueue(topicId)
+      if (getActiveStream(topicId)) {
+        abortTopicStream(topicId)
+      }
       const state = getState()
       const messageIdsToClear = state.messages.messageIdsByTopic[topicId] || []
-      const blockIdsToDeleteSet = new Set<string>()
+      const blockIdsToDeleteSet = new Set<string>(collectTopicBlockIdsToEvict(state, messageIdsToClear))
 
       messageIdsToClear.forEach((messageId) => {
         const message = state.messages.entities[messageId]
+        if (message?.role === 'assistant' && message.askId) {
+          abortCompletion(message.askId)
+        }
         message?.blocks?.forEach((blockId) => blockIdsToDeleteSet.add(blockId))
       })
 
       const blockIdsToDelete = Array.from(blockIdsToDeleteSet)
 
+      cancelMultipleBlockUpdates(blockIdsToDelete)
+      await dbService.clearMessages(topicId)
+      const latestState = getState()
+      const latestMsgIds = latestState.messages.messageIdsByTopic[topicId] || []
+      const finalBlocksToDelete = Array.from(
+        new Set([...blockIdsToDelete, ...collectTopicBlockIdsToEvict(latestState, latestMsgIds)])
+      )
+      cleanupMultipleBlocks(dispatch, finalBlocksToDelete)
       dispatch(newMessagesActions.clearTopicMessages(topicId))
-      cleanupMultipleBlocks(dispatch, blockIdsToDelete)
-      await clearMessagesFromDB(topicId)
+      dispatch(newMessagesActions.setTopicLoading({ topicId, loading: false }))
     } catch (error) {
       logger.error(`[clearTopicMessagesThunk] Failed to clear messages for topic ${topicId}:`, error as Error)
     }
@@ -1122,10 +1203,13 @@ export const updateTranslationBlockThunk =
         status: status
       }
 
-      // 更新Redux状态
-      dispatch(updateOneBlock({ id: blockId, changes }))
-
-      await updateSingleBlock(blockId, changes)
+      if (isComplete) {
+        cancelThrottledBlockUpdate(blockId)
+        dispatch(updateOneBlock({ id: blockId, changes }))
+        await dbService.updateSingleBlock(blockId, changes)
+      } else {
+        throttledBlockUpdate(blockId, changes)
+      }
       // Logger.log(`[updateTranslationBlockThunk] Successfully updated translation block ${blockId}.`)
     } catch (error) {
       logger.error(`[updateTranslationBlockThunk] Failed to update translation block ${blockId}:`, error as Error)
@@ -1196,7 +1280,7 @@ export const appendAssistantResponseThunk =
       const insertAtIndex = existingMessageIndex !== -1 ? existingMessageIndex + 1 : currentTopicMessageIds.length
 
       // 4. Update Database (Save the stub to the topic's message list)
-      await saveMessageAndBlocksToDB(topicId, newAssistantMessageStub, [], insertAtIndex)
+      await dbService.appendMessage(topicId, newAssistantMessageStub, [], insertAtIndex)
 
       dispatch(
         newMessagesActions.insertMessageAtIndex({
@@ -1352,7 +1436,7 @@ export const cloneMessagesToNewTopicThunk =
 
         // Add the NEW blocks
         if (clonedBlocks.length > 0) {
-          await bulkAddBlocks(clonedBlocks)
+          await dbService.bulkAddBlocks(clonedBlocks)
         }
         // Update file counts per cloned block reference (preserving multi-block multiplicity)
         const fileIncrements = new Map<string, FileCountDeltaSpec>()
@@ -1428,11 +1512,11 @@ export const updateMessageAndBlocksThunk =
       }
       // Update message properties if provided
       if (messageUpdates && Object.keys(messageUpdates).length > 0 && messageId) {
-        await updateMessage(topicId, messageId, messageUpdates)
+        await dbService.updateMessage(topicId, messageId, messageUpdates)
       }
       // Update blocks if provided
       if (blockUpdatesList.length > 0) {
-        await updateBlocks(blockUpdatesList)
+        await dbService.updateBlocks(blockUpdatesList)
       }
 
       dispatch(updateTopicUpdatedAt({ topicId }))
@@ -1461,18 +1545,12 @@ export const removeBlocksThunk =
 
       const updatedBlockIds = (message.blocks || []).filter((id) => !blockIdsToRemoveSet.has(id))
 
-      // 1. Update Redux state
-      dispatch(
-        newMessagesActions.updateMessage({
-          topicId,
-          messageId,
-          updates: { blocks: updatedBlockIds }
-        })
-      )
-      cleanupMultipleBlocks(dispatch, blockIdsToRemove)
+      cancelMultipleBlockUpdates(blockIdsToRemove)
 
-      // 2. Update database
-      const finalMessagesToSave = selectMessagesForTopic(getState(), topicId)
+      // 1. Update database first so Redux never drops blocks if Dexie fails
+      const finalMessagesToSave = selectMessagesForTopic(state, topicId).map((m) =>
+        m.id === messageId ? { ...m, blocks: updatedBlockIds } : m
+      )
       let attachmentsToDelete: string[] = []
       await db.transaction('rw', db.topics, db.message_blocks, db.files, async () => {
         await db.topics.update(topicId, { messages: finalMessagesToSave })
@@ -1487,6 +1565,16 @@ export const removeBlocksThunk =
         }
       })
       await purgeDetachedAttachments(attachmentsToDelete)
+
+      // 2. Update Redux state after Dexie succeeds
+      dispatch(
+        newMessagesActions.updateMessage({
+          topicId,
+          messageId,
+          updates: { blocks: updatedBlockIds }
+        })
+      )
+      cleanupMultipleBlocks(dispatch, blockIdsToRemove)
 
       dispatch(updateTopicUpdatedAt({ topicId }))
     } catch (error) {
@@ -1560,7 +1648,11 @@ export function evictInactiveTopicsFromRedux(
     const messageIds = state.messages.messageIdsByTopic[candidateTopicId] || []
     const hasActiveMessage = messageIds.some((msgId) => {
       const status = state.messages.entities[msgId]?.status
-      return status === 'processing' || status === 'streaming' || status === 'pending'
+      return (
+        status === AssistantMessageStatus.PROCESSING ||
+        status === AssistantMessageStatus.PENDING ||
+        status === AssistantMessageStatus.SEARCHING
+      )
     })
     if (hasActiveMessage) {
       continue
@@ -1627,12 +1719,12 @@ export const loadTopicMessagesThunk =
 
       if (repairedMessages.length > 0) {
         await Promise.all(
-          repairedMessages.map((message) => updateMessage(topicId, message.id, { status: message.status }))
+          repairedMessages.map((message) => dbService.updateMessage(topicId, message.id, { status: message.status }))
         )
       }
 
       if (blocksToPersist.length > 0) {
-        await updateBlocks(blocksToPersist)
+        await dbService.updateBlocks(blocksToPersist)
       }
 
       // Update Redux state with fetched data
@@ -1647,164 +1739,3 @@ export const loadTopicMessagesThunk =
       evictInactiveTopicsFromRedux(dispatch, getState, MAX_CACHED_REDUX_TOPICS, topicId)
     }
   }
-
-/**
- * Get raw topic data using unified DbService
- * Returns topic with messages array
- */
-export const getRawTopic = async (topicId: string): Promise<{ id: string; messages: Message[] } | undefined> => {
-  try {
-    const rawTopic = await dbService.getRawTopic(topicId)
-    logger.silly('Retrieved raw topic via DbService', {
-      topicId,
-      found: !!rawTopic
-    })
-    return rawTopic
-  } catch (error) {
-    logger.error('Failed to get raw topic:', { topicId, error })
-    return undefined
-  }
-}
-
-/**
- * Update file reference count
- * Only applies to Dexie data source, no-op for agent sessions
- */
-export const updateFileCount = async (fileId: string, delta: number, deleteIfZero: boolean = false): Promise<void> => {
-  try {
-    // Pass all parameters to dbService, including deleteIfZero
-    await dbService.updateFileCount(fileId, delta, deleteIfZero)
-    logger.silly('Updated file count', { fileId, delta, deleteIfZero })
-  } catch (error) {
-    logger.error('Failed to update file count:', { fileId, delta, error })
-    throw error
-  }
-}
-
-/**
- * Delete a single message from database
- */
-export const deleteMessageFromDB = async (topicId: string, messageId: string): Promise<void> => {
-  try {
-    await dbService.deleteMessage(topicId, messageId)
-    logger.silly('Deleted message via DbService', { topicId, messageId })
-  } catch (error) {
-    logger.error('Failed to delete message:', { topicId, messageId, error })
-    throw error
-  }
-}
-
-/**
- * Delete multiple messages from database
- */
-export const deleteMessagesFromDB = async (topicId: string, messageIds: string[]): Promise<void> => {
-  try {
-    await dbService.deleteMessages(topicId, messageIds)
-    logger.silly('Deleted messages via DbService', {
-      topicId,
-      count: messageIds.length
-    })
-  } catch (error) {
-    logger.error('Failed to delete messages:', { topicId, messageIds, error })
-    throw error
-  }
-}
-
-/**
- * Clear all messages from a topic
- */
-export const clearMessagesFromDB = async (topicId: string): Promise<void> => {
-  try {
-    await dbService.clearMessages(topicId)
-    logger.silly('Cleared all messages via DbService', { topicId })
-  } catch (error) {
-    logger.error('Failed to clear messages:', { topicId, error })
-    throw error
-  }
-}
-
-/**
- * Save a message and its blocks to database
- * Uses unified interface, no need for isAgentSessionTopicId check
- */
-export const saveMessageAndBlocksToDB = async (
-  topicId: string,
-  message: Message,
-  blocks: MessageBlock[],
-  messageIndex: number = -1
-): Promise<void> => {
-  try {
-    const blockIds = blocks.map((block) => block.id)
-    const shouldSyncBlocks =
-      blockIds.length > 0 && (!message.blocks || blockIds.some((id, index) => message.blocks?.[index] !== id))
-
-    const messageWithBlocks = shouldSyncBlocks ? { ...message, blocks: blockIds } : message
-    // Direct call without conditional logic, now with messageIndex
-    await dbService.appendMessage(topicId, messageWithBlocks, blocks, messageIndex)
-    logger.silly('Saved message and blocks via DbService', {
-      topicId,
-      messageId: message.id,
-      blockCount: blocks.length,
-      messageIndex
-    })
-  } catch (error) {
-    logger.error('Failed to save message and blocks:', {
-      topicId,
-      messageId: message.id,
-      error
-    })
-    throw error
-  }
-}
-
-/**
- * Update a message in the database
- */
-export const updateMessage = async (topicId: string, messageId: string, updates: Partial<Message>): Promise<void> => {
-  try {
-    await dbService.updateMessage(topicId, messageId, updates)
-    logger.silly('Updated message via DbService', { topicId, messageId })
-  } catch (error) {
-    logger.error('Failed to update message:', { topicId, messageId, error })
-    throw error
-  }
-}
-
-/**
- * Update a single message block
- */
-export const updateSingleBlock = async (blockId: string, updates: Partial<MessageBlock>): Promise<void> => {
-  try {
-    await dbService.updateSingleBlock(blockId, updates)
-    logger.silly('Updated single block via DbService', { blockId })
-  } catch (error) {
-    logger.error('Failed to update single block:', { blockId, error })
-    throw error
-  }
-}
-
-/**
- * Bulk add message blocks (for new blocks)
- */
-export const bulkAddBlocks = async (blocks: MessageBlock[]): Promise<void> => {
-  try {
-    await dbService.bulkAddBlocks(blocks)
-    logger.silly('Bulk added blocks via DbService', { count: blocks.length })
-  } catch (error) {
-    logger.error('Failed to bulk add blocks:', { count: blocks.length, error })
-    throw error
-  }
-}
-
-/**
- * Update multiple message blocks (upsert operation)
- */
-export const updateBlocks = async (blocks: MessageBlock[]): Promise<void> => {
-  try {
-    await dbService.updateBlocks(blocks)
-    logger.silly('Updated blocks via DbService', { count: blocks.length })
-  } catch (error) {
-    logger.error('Failed to update blocks:', { count: blocks.length, error })
-    throw error
-  }
-}

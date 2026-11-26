@@ -410,8 +410,11 @@ const MenusBar = styled.div`
   }
 `
 
-const ActionButton = styled.div<{ $softHoverBg?: boolean }>`
+const ActionButton = styled.button.attrs({ type: 'button' })<{ $softHoverBg?: boolean }>`
   cursor: pointer;
+  border: none;
+  background: transparent;
+  padding: 0;
   border-radius: 8px;
   display: flex;
   flex-direction: row;
@@ -429,14 +432,10 @@ const ActionButton = styled.div<{ $softHoverBg?: boolean }>`
       color: var(--color-text-1);
     }
   }
-  .anticon,
-  .iconfont {
+  .anticon {
     cursor: pointer;
     font-size: 14px;
     color: var(--color-icon);
-  }
-  .icon-at {
-    font-size: 16px;
   }
 `
 
@@ -582,16 +581,6 @@ const buttonRenderers: Record<MessageMenubarButtonId, MessageMenubarButtonRender
     softHoverBg,
     t
   }) => {
-    const deleteTooltip = (
-      <Tooltip
-        title={t('common.delete')}
-        mouseEnterDelay={1}
-        open={showDeleteTooltip}
-        onOpenChange={setShowDeleteTooltip}>
-        <DeleteIcon size={15} />
-      </Tooltip>
-    )
-
     const handleDeleteMessage = async () => {
       await deleteMessage(message.id)
     }
@@ -603,26 +592,40 @@ const buttonRenderers: Record<MessageMenubarButtonId, MessageMenubarButtonRender
           okButtonProps={{ danger: true }}
           onConfirm={async () => await handleDeleteMessage()}
           onOpenChange={(open) => open && setShowDeleteTooltip(false)}>
-          <ActionButton
-            className="message-action-button"
-            onClick={(e) => e.stopPropagation()}
-            $softHoverBg={softHoverBg}>
-            {deleteTooltip}
-          </ActionButton>
+          <Tooltip
+            title={t('common.delete')}
+            mouseEnterDelay={1}
+            open={showDeleteTooltip}
+            onOpenChange={setShowDeleteTooltip}>
+            <ActionButton
+              aria-label={t('common.delete')}
+              className="message-action-button"
+              onClick={(e) => e.stopPropagation()}
+              $softHoverBg={softHoverBg}>
+              <DeleteIcon size={15} />
+            </ActionButton>
+          </Tooltip>
         </Popconfirm>
       )
     }
 
     return (
-      <ActionButton
-        className="message-action-button"
-        onClick={async (e) => {
-          e.stopPropagation()
-          await handleDeleteMessage()
-        }}
-        $softHoverBg={softHoverBg}>
-        {deleteTooltip}
-      </ActionButton>
+      <Tooltip
+        title={t('common.delete')}
+        mouseEnterDelay={1}
+        open={showDeleteTooltip}
+        onOpenChange={setShowDeleteTooltip}>
+        <ActionButton
+          aria-label={t('common.delete')}
+          className="message-action-button"
+          onClick={async (e) => {
+            e.stopPropagation()
+            await handleDeleteMessage()
+          }}
+          $softHoverBg={softHoverBg}>
+          <DeleteIcon size={15} />
+        </ActionButton>
+      </Tooltip>
     )
   },
   'more-menu': ({ isUserMessage, dropdownItems, softHoverBg }) => {

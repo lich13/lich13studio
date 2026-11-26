@@ -9,7 +9,18 @@ import dayjs from 'dayjs'
 
 const logger = loggerService.withContext('FileManager')
 
+function summarizeFileForLog(file: Partial<FileMetadata> | null | undefined) {
+  if (!file) return null
+  return {
+    type: file.type,
+    size: file.size,
+    ext: file.ext
+  }
+}
+
 class FileManager {
+  private static uploadingFileIds = new Set<string>()
+
   static async selectFiles(options?: OpenDialogOptions): Promise<FileMetadata[] | null> {
     return await window.api.file.select(options)
   }
@@ -37,24 +48,54 @@ class FileManager {
   }
 
   static async uploadFile(file: FileMetadata): Promise<FileMetadata> {
-    logger.info(`Uploading file: ${JSON.stringify(file)}`)
-
-    const uploadFile = await window.api.file.upload(file)
-    logger.info('Uploaded file:', uploadFile)
-    const fileRecord = await db.files.get(uploadFile.id)
-
-    if (fileRecord) {
-      await db.files.update(fileRecord.id, { ...fileRecord, count: fileRecord.count + 1 })
-      return fileRecord
+    let uploadedId = ''
+    if (file?.id) {
+      this.uploadingFileIds.add(file.id)
     }
+    try {
+      logger.info('Uploading file:', summarizeFileForLog(file))
 
-    await db.files.add(uploadFile)
+      const uploadFile = await window.api.file.upload(file)
+      logger.info('Uploaded file:', summarizeFileForLog(uploadFile))
+      if (uploadFile?.id) {
+        uploadedId = uploadFile.id
+        this.uploadingFileIds.add(uploadedId)
+      }
+      const fileRecord = await db.files.get(uploadFile.id)
 
-    return uploadFile
+      if (fileRecord) {
+        await db.files.update(fileRecord.id, { ...fileRecord, count: fileRecord.count + 1 })
+        return fileRecord
+      }
+
+      await db.files.add(uploadFile)
+
+      return uploadFile
+    } finally {
+      if (file?.id) {
+        this.uploadingFileIds.delete(file.id)
+      }
+      if (uploadedId) {
+        this.uploadingFileIds.delete(uploadedId)
+      }
+    }
   }
 
   static async uploadFiles(files: FileMetadata[]): Promise<FileMetadata[]> {
     return Promise.all(files.map((file) => this.uploadFile(file)))
+  }
+
+  static async cleanupUncommittedDraftFiles(files: FileMetadata[]): Promise<void> {
+    if (!files || files.length === 0) return
+    await Promise.allSettled(
+      files.map(async (file) => {
+        if (!file?.id || !file.ext || this.uploadingFileIds.has(file.id)) return
+        const committed = await db.files.get(file.id)
+        if (!committed && !this.uploadingFileIds.has(file.id)) {
+          await window.api?.file?.delete?.(file.id + file.ext)
+        }
+      })
+    )
   }
 
   static async getFile(id: string): Promise<FileMetadata | undefined> {
@@ -76,7 +117,7 @@ class FileManager {
   static async deleteFile(id: string, force: boolean = false): Promise<void> {
     const file = await this.getFile(id)
 
-    logger.info('Deleting file:', file)
+    logger.info('Deleting file:', summarizeFileForLog(file))
 
     if (!file) {
       return

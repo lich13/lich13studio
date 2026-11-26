@@ -123,13 +123,6 @@ export class BlockManager {
     this._lastBlockType = newBlockType
     this._activeBlockInfo = { id: newBlock.id, type: newBlockType } // 设置新的活跃块信息
 
-    this.deps.dispatch(
-      newMessagesActions.updateMessage({
-        topicId: this.deps.topicId,
-        messageId: this.deps.assistantMsgId,
-        updates: { blockInstruction: { id: newBlock.id } }
-      })
-    )
     this.deps.dispatch(upsertOneBlock(newBlock))
     this.deps.dispatch(
       newMessagesActions.upsertBlockReference({

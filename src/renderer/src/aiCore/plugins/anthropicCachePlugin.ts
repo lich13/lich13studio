@@ -3,7 +3,6 @@
  * @see https://ai-sdk.dev/providers/ai-sdk-providers/anthropic#cache-control
  */
 import type { LanguageModelV3Message } from '@ai-sdk/provider'
-import { definePlugin } from '@cherrystudio/ai-core/core/plugins'
 import { estimateTextTokens } from '@renderer/services/TokenService'
 import type { Provider } from '@renderer/types'
 import type { LanguageModelMiddleware } from 'ai'
@@ -25,7 +24,7 @@ function estimateContentTokens(content: LanguageModelV3Message['content']): numb
   return 0
 }
 
-function anthropicCacheMiddleware(provider: Provider): LanguageModelMiddleware {
+export function createAnthropicCacheMiddleware(provider: Provider): LanguageModelMiddleware {
   return {
     specificationVersion: 'v3',
     transformParams: async ({ params }) => {
@@ -38,7 +37,6 @@ function anthropicCacheMiddleware(provider: Provider): LanguageModelMiddleware {
       const messages = [...params.prompt]
       let cachedCount = 0
 
-      // Cache system message (providerOptions on message object)
       if (cacheSystemMessage) {
         for (let i = 0; i < messages.length; i++) {
           const msg = messages[i]
@@ -49,10 +47,9 @@ function anthropicCacheMiddleware(provider: Provider): LanguageModelMiddleware {
         }
       }
 
-      // Cache last N non-system messages (providerOptions on content parts)
       if (cacheLastNMessages > 0) {
-        const cumsumTokens = [] as Array<number>
-        let tokenSum = 0 as number
+        const cumsumTokens: number[] = []
+        let tokenSum = 0
         for (let i = 0; i < messages.length; i++) {
           const msg = messages[i]
           tokenSum += estimateContentTokens(msg.content)
@@ -84,13 +81,3 @@ function anthropicCacheMiddleware(provider: Provider): LanguageModelMiddleware {
     }
   }
 }
-
-export const createAnthropicCachePlugin = (provider: Provider) =>
-  definePlugin({
-    name: 'anthropicCache',
-    enforce: 'pre',
-    configureContext: (context) => {
-      context.middlewares = context.middlewares || []
-      context.middlewares.push(anthropicCacheMiddleware(provider))
-    }
-  })

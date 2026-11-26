@@ -11,6 +11,7 @@ import {
 
 import {
   credentialStorageEnabled,
+  DESKTOP_RESET_NOTICE_STORAGE_KEY,
   hydrateCredentials,
   mobilePersistStorage,
   stripCredentials
@@ -423,7 +424,7 @@ const serializeLocalStorage = () => {
   const snapshot: Record<string, string> = {}
   for (let index = 0; index < localStorage.length; index += 1) {
     const key = localStorage.key(index)
-    if (!key) continue
+    if (!key || key === DESKTOP_RESET_NOTICE_STORAGE_KEY) continue
     const value = localStorage.getItem(key)
     if (value !== null) {
       snapshot[key] = value
@@ -441,18 +442,20 @@ const openAppIndexedDb = () =>
   })
 
 const serializeIndexedDb = async (onProgress?: (progress: number) => void) => {
+  let db: IDBDatabase | null = null
   try {
-    const db = await openAppIndexedDb()
+    db = await openAppIndexedDb()
     if (!db) {
       return {}
     }
 
+    const activeDb = db
     const snapshot: Record<string, any[]> = {}
-    const storeNames = Array.from(db.objectStoreNames)
+    const storeNames = Array.from(activeDb.objectStoreNames)
 
     for (const storeName of storeNames) {
       const rows = await new Promise<any[]>((resolve, reject) => {
-        const transaction = db.transaction([storeName], 'readonly')
+        const transaction = activeDb.transaction([storeName], 'readonly')
         const request = transaction.objectStore(storeName).getAll()
         request.onerror = () => reject(request.error || new Error(`Failed to read ${storeName}`))
         request.onsuccess = () => resolve(request.result || [])
@@ -463,11 +466,12 @@ const serializeIndexedDb = async (onProgress?: (progress: number) => void) => {
       await waitForNextFrame()
     }
 
-    db.close()
     return snapshot
   } catch (error) {
     logger.warn('Failed to serialize IndexedDB backup snapshot', error as Error)
     throw new Error('Could not read database for backup')
+  } finally {
+    db?.close()
   }
 }
 
@@ -1079,15 +1083,11 @@ const api = {
   config: {
     set: async (key: string, value: any, _sync?: boolean) => {
       void _sync
-      localStorage.setItem(`config:${key}`, JSON.stringify(value))
       if (invoke && typeof value === 'boolean' && isMainProcessSettingKey(key)) {
         await invoke('set_runtime_setting', { key, value })
       }
     },
-    get: async (key: string) => {
-      const raw = localStorage.getItem(`config:${key}`)
-      return raw ? JSON.parse(raw) : null
-    }
+    get: async () => null
   },
   export: {
     toWord: async (markdown: string, fileName: string) => {
@@ -1316,18 +1316,8 @@ const api = {
             const { decryptPortableBackup } = await import('./services/PortableBackupService')
             const restored = await decryptPortableBackup(bytes)
             if (!restored) throw new DOMException('Request was aborted', 'AbortError')
-            const result =
-              typeof restored === 'string'
-                ? restored
-                : await invoke(
-                    'restore_backup_archive',
-                    toBinaryIpcPayload(toUint8Array(restored), runtimeCapabilities.android),
-                    {
-                      headers: { 'x-file-name': encodeURIComponent(cached.fileName) }
-                    }
-                  )
             emitRestoreProgress({ stage: 'completed', progress: 100, total: 100 })
-            return result
+            return restored
           }
           const result = await invoke(
             'restore_backup_archive',
@@ -1394,6 +1384,15 @@ const api = {
         emitRestoreProgress({ stage: 'extracting', progress: 40, total: 100 })
         const data = await invoke('webdav_restore', { config })
         emitRestoreProgress({ stage: 'completed', progress: 100, total: 100 })
+        if (data === undefined || data === null) {
+          return undefined
+        }
+        if (typeof data === 'object' && typeof (data as AnyRecord).payload === 'string') {
+          return {
+            payload: (data as AnyRecord).payload,
+            restoreId: typeof (data as AnyRecord).restoreId === 'string' ? (data as AnyRecord).restoreId : null
+          }
+        }
         return typeof data === 'string' ? data : JSON.stringify(data)
       } catch (error) {
         emitRestoreProgress({ stage: 'completed', progress: 100, total: 100 })

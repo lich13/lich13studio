@@ -168,11 +168,6 @@ export default defineConfig({
       { find: '@shared', replacement: resolve('packages/shared') },
       { find: '@types', replacement: resolve('src/renderer/src/types') },
       { find: '@logger', replacement: resolve('src/renderer/src/services/LoggerService') },
-      { find: '@cherrystudio/ai-core/provider', replacement: resolve('packages/aiCore/src/core/providers') },
-      {
-        find: '@cherrystudio/ai-core/built-in/plugins',
-        replacement: resolve('packages/aiCore/src/core/plugins/built-in')
-      },
       { find: '@cherrystudio/ai-core', replacement: resolve('packages/aiCore/src') }
     ]
   },

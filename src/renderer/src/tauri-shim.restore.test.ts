@@ -30,6 +30,7 @@ vi.mock('./services/mobile/credentials', () => ({
   get credentialStorageEnabled() {
     return mocks.credentialStorageEnabled
   },
+  DESKTOP_RESET_NOTICE_STORAGE_KEY: 'lich13:desktop-credential-reset-notice',
   hydrateCredentials: (value: unknown) => value,
   mobilePersistStorage: { removeItem: mocks.removePersistedCredentials, getItem: vi.fn(), setItem: vi.fn() },
   stripCredentials: (value: unknown) => value
@@ -264,9 +265,19 @@ describe('Tauri portable backup restore', () => {
       return req
     })
 
+    localStorage.setItem('lich13:desktop-credential-reset-notice', '{"clearedCount":1,"providers":[],"webdav":true}')
     const { buildBackupSnapshot } = await import('./tauri-shim')
     const snapshot = await buildBackupSnapshot(false)
+    expect(snapshot.localStorage['lich13:desktop-credential-reset-notice']).toBeUndefined()
     expect(snapshot.indexedDB.settings).toEqual([{ id: 'theme-pref', value: 'dark' }])
     expect(snapshot.indexedDB.topics).toEqual([{ id: 'topic-1', messages: [] }])
+
+    mocks.invoke.mockResolvedValueOnce({ payload: '{"version":5}', restoreId: 'restore-previous-webdav-1' })
+    await expect(
+      (window as any).api.backup.restoreFromWebdav({ webdavHost: 'https://dav.example.invalid' })
+    ).resolves.toEqual({
+      payload: '{"version":5}',
+      restoreId: 'restore-previous-webdav-1'
+    })
   })
 })

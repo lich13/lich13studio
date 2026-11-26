@@ -1,14 +1,13 @@
 import { HStack } from '@renderer/components/Layout'
 import NavbarIcon from '@renderer/components/NavbarIcon'
 import SearchPopup from '@renderer/components/Popups/SearchPopup'
-import { modelGenerating } from '@renderer/hooks/useRuntime'
 import { useNavbarPosition, useSettings } from '@renderer/hooks/useSettings'
 import { useShowTopics } from '@renderer/hooks/useStore'
 import { useAppDispatch } from '@renderer/store'
 import { setNarrowMode } from '@renderer/store/settings'
 import type { Assistant } from '@renderer/types'
 import { Tooltip } from 'antd'
-import { PanelLeftClose, PanelRightClose, Search } from 'lucide-react'
+import { MoveHorizontal, PanelLeftClose, PanelRightClose, Search } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { styled } from 'styled-components'
 
@@ -25,8 +24,7 @@ const Tools = ({ assistant }: ToolsProps) => {
   const { topicPosition, narrowMode } = useSettings()
   const dispatch = useAppDispatch()
 
-  const handleNarrowModeToggle = async () => {
-    await modelGenerating()
+  const handleNarrowModeToggle = () => {
     dispatch(setNarrowMode(!narrowMode))
   }
 
@@ -36,7 +34,7 @@ const Tools = ({ assistant }: ToolsProps) => {
       {isTopNavbar && (
         <Tooltip title={t('navbar.expand')} mouseEnterDelay={0.8}>
           <NarrowIcon onClick={handleNarrowModeToggle}>
-            <i className="iconfont icon-icon-adaptive-width"></i>
+            <MoveHorizontal size={18} />
           </NarrowIcon>
         </Tooltip>
       )}

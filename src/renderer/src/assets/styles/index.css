@@ -6,8 +6,6 @@
 @import './container.css';
 @import './animation.css';
 @import './responsive.css';
-@import '../fonts/icon-fonts/iconfont.css';
-@import '../fonts/country-flag-fonts/flag.css';
 
 @layer base {
   *,
@@ -23,7 +21,7 @@
   }
 }
 
-*:focus {
+*:focus:not(:focus-visible) {
   outline-style: none;
 }
 
@@ -99,10 +97,10 @@ ul {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background-color: #000;
+  background-color: var(--color-text-2);
   box-shadow:
-    32px 0 #000,
-    -32px 0 #000;
+    32px 0 var(--color-text-2),
+    -32px 0 var(--color-text-2);
   position: relative;
   animation: flash 0.5s ease-out infinite alternate;
 }

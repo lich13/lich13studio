@@ -256,12 +256,14 @@ export const CodeBlockView: React.FC<Props> = memo(({ children, language, onSave
 
   const renderHeader = useMemo(() => {
     if (isInSpecialView) {
-      return <CodeHeader $isInSpecialView>{''}</CodeHeader>
+      return null
     }
+    const normalizedLang = language.trim()
+    const isPlainText = !normalizedLang || /^(?:text|plaintext|txt)$/i.test(normalizedLang)
     return (
-      <CodeHeader $isInSpecialView={false}>
-        <FileCode size={15} style={{ marginRight: 6 }} />
-        {language.charAt(0).toUpperCase() + language.slice(1)}
+      <CodeHeader>
+        <FileCode size={15} style={{ marginRight: isPlainText ? 0 : 6 }} />
+        {!isPlainText && normalizedLang.charAt(0).toUpperCase() + normalizedLang.slice(1)}
       </CodeHeader>
     )
   }, [isInSpecialView, language])
@@ -294,11 +296,7 @@ export const CodeBlockView: React.FC<Props> = memo(({ children, language, onSave
 const CodeBlockWrapper = styled.div<{ $isInSpecialView: boolean }>`
   position: relative;
   width: 100%;
-  /* FIXME: 最小宽度用于解决两个问题。
-   * 一是 CodeViewer 在气泡样式下的用户消息中无法撑开气泡，
-   * 二是 代码块内容过少时 toolbar 会和 title 重叠。
-   */
-  min-width: 35ch;
+  min-width: 0;
 
   .code-toolbar {
     background-color: ${(props) => (props.$isInSpecialView ? 'transparent' : 'var(--color-background-mute)')};
@@ -318,27 +316,28 @@ const CodeBlockWrapper = styled.div<{ $isInSpecialView: boolean }>`
   }
 `
 
-const CodeHeader = styled.div<{ $isInSpecialView?: boolean }>`
+const CodeHeader = styled.div`
   display: flex;
   align-items: center;
   color: var(--color-text);
   font-size: 14px;
   line-height: 1;
-  font-weight: bold;
+  font-weight: 600;
   padding: 0 10px;
   border-top-left-radius: 8px;
   border-top-right-radius: 8px;
-  margin-top: ${(props) => (props.$isInSpecialView ? '6px' : '0')};
-  height: ${(props) => (props.$isInSpecialView ? '16px' : '34px')};
-  background-color: ${(props) => (props.$isInSpecialView ? 'transparent' : 'var(--color-background-mute)')};
+  height: 34px;
+  background-color: var(--color-background-mute);
 `
 
 const SplitViewWrapper = styled.div<{ $isSpecialView: boolean; $isSplitView: boolean }>`
   display: flex;
+  min-width: 0;
 
   > * {
     flex: 1 1 auto;
     width: 100%;
+    min-width: 0;
   }
 
   &:not(:has(+ [class*='Container'])) {

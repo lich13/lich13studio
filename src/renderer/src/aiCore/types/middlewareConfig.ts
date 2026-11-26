@@ -1,27 +1,14 @@
-import type { Assistant, ChatRequestMode, Message } from '@renderer/types'
+import type { Assistant, ChatRequestMode } from '@renderer/types'
 import type { Chunk } from '@renderer/types/chunk'
 import type { ReasoningMode } from '@shared/reasoning'
 
-/**
- * AI SDK 中间件配置项（用于插件构建）
- *
- * 注意：provider 和 model 不在此接口中。
- * 它们是 AiProvider 的固有属性（构造时确定），
- * 由 AiProvider 内部注入到 buildPlugins，避免调用方遗漏。
- */
 export interface AiSdkMiddlewareConfig {
-  /** Legacy plugin hint; ordinary chat uses chatRequestMode. */
-  streamOutput?: boolean
   chatRequestMode?: ChatRequestMode
   onChunk?: (chunk: Chunk) => void | Promise<void>
   assistant?: Assistant
   enableReasoning: boolean
-  isPromptToolUse: boolean
-  isSupportedToolUse: boolean
-  enableGenerateImage: boolean
   enableUrlContext: boolean
   reasoningMode?: ReasoningMode
   textDeltaMode?: 'delta' | 'cumulative'
-  uiMessages?: Message[]
   urlContextConfig?: Record<string, any>
 }

@@ -86,18 +86,31 @@ export function filterEmptyMessages(messages: Message[]): Message[] {
   })
 }
 
+type IndexedMessage = Message & { index: number }
+const indexedMessageCache = new WeakMap<Message, IndexedMessage>()
+
+function getIndexedMessage(message: Message, index: number): IndexedMessage {
+  const cached = indexedMessageCache.get(message)
+  if (cached && cached.index === index) {
+    return cached
+  }
+  const next: IndexedMessage = { ...message, index }
+  indexedMessageCache.set(message, next)
+  return next
+}
+
 /**
  * Groups messages by user message ID or assistant askId.
  */
-export function getGroupedMessages(messages: Message[]): { [key: string]: (Message & { index: number })[] } {
-  const groups: { [key: string]: (Message & { index: number })[] } = {}
+export function getGroupedMessages(messages: Message[]): { [key: string]: IndexedMessage[] } {
+  const groups: { [key: string]: IndexedMessage[] } = {}
   messages.forEach((message, index) => {
     // Use askId if available (should be on assistant messages), otherwise group user messages individually
     const key = message.role === 'assistant' && message.askId ? 'assistant' + message.askId : message.role + message.id
     if (key && !groups[key]) {
       groups[key] = []
     }
-    groups[key].push({ ...message, index }) // Add message with its original index
+    groups[key].push(getIndexedMessage(message, index))
   })
   return groups
 }

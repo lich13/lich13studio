@@ -104,7 +104,7 @@ const MessageHeader: FC<Props> = memo(({ assistant, model, message, topic, isGro
       )}
       <UserWrap>
         <HStack alignItems="center" justifyContent={userNameJustifyContent}>
-          <UserName isBubbleStyle={isBubbleStyle} theme={theme}>
+          <UserName $isBubbleStyle={isBubbleStyle} theme={theme}>
             {username}
           </UserName>
           {isGroupContextMessage && (
@@ -150,6 +150,7 @@ const UserWrap = styled.div`
   flex-direction: column;
   justify-content: space-between;
   flex: 1;
+  min-width: 0;
 `
 
 const InfoWrap = styled.div`
@@ -157,16 +158,21 @@ const InfoWrap = styled.div`
   flex-direction: row;
   align-items: center;
   gap: 4px;
+  min-width: 0;
 `
 
-const UserName = styled.span<{ isBubbleStyle?: boolean; theme?: string }>`
+const UserName = styled.span<{ $isBubbleStyle?: boolean; theme?: string }>`
   font-size: 14px;
   font-weight: 600;
-  color: ${(props) => (props.isBubbleStyle && props.theme === 'dark' ? 'white' : 'var(--color-text)')};
+  color: ${(props) => (props.$isBubbleStyle && props.theme === 'dark' ? 'white' : 'var(--color-text)')};
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 `
 
 const MessageTime = styled.div`
   font-size: 10px;
+  font-variant-numeric: tabular-nums;
   color: var(--color-text-3);
 `
 

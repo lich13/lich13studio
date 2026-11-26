@@ -18,7 +18,7 @@ vi.mock('@renderer/utils/messageUtils/find', () => ({
   getThinkingContent: () => ''
 }))
 
-import { estimateMessagesUsage, estimateUserPromptUsage } from './TokenService'
+import { estimateMessagesUsage, estimateMessageUsage, estimateUserPromptUsage } from './TokenService'
 
 const createMockMessage = (id: string, role: 'user' | 'assistant', text: string): Message =>
   ({
@@ -108,5 +108,16 @@ describe('TokenService.estimateMessagesUsage', () => {
     expect(usage.prompt_tokens).toBeGreaterThanOrEqual(1)
     expect(usage.completion_tokens).toBe(0)
     expect(usage.total_tokens).toBe(usage.prompt_tokens)
+  })
+
+  it('caches estimateMessageUsage by content hash and invalidates on same-length edits', async () => {
+    const msgAscii = createMockMessage('m-usage-cache', 'assistant', 'aaaaaaaaaaaa')
+    const msgCjk = createMockMessage('m-usage-cache', 'assistant', '中文测试词元计数验证内容')
+    const first = await estimateMessageUsage(msgAscii)
+    const cachedRepeat = await estimateMessageUsage(msgAscii)
+    const updated = await estimateMessageUsage(msgCjk)
+
+    expect(cachedRepeat).toEqual(first)
+    expect(updated.completion_tokens).not.toBe(first.completion_tokens)
   })
 })

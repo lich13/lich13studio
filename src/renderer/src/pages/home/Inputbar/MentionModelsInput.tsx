@@ -4,6 +4,7 @@ import { useProviders } from '@renderer/hooks/useProvider'
 import { getModelUniqId } from '@renderer/services/ModelService'
 import type { Model } from '@renderer/types'
 import { getFancyProviderName } from '@renderer/utils'
+import { AtSign } from 'lucide-react'
 import type { FC } from 'react'
 import styled from 'styled-components'
 
@@ -23,7 +24,7 @@ const MentionModelsInput: FC<{
       <HorizontalScrollContainer dependencies={[selectedModels]} expandable>
         {selectedModels.map((model) => (
           <CustomTag
-            icon={<i className="iconfont icon-at" />}
+            icon={<AtSign size={12} className="lucide-custom" />}
             color="#1677ff"
             key={getModelUniqId(model)}
             closable

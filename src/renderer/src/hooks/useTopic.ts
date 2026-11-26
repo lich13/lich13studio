@@ -1,28 +1,28 @@
-import { loggerService } from '@logger'
 import db from '@renderer/databases'
 import i18n from '@renderer/i18n'
-import {
-  applyFileCountDeltasInTx,
-  collectBlockFileDecrements,
-  purgeDetachedAttachments
-} from '@renderer/services/db/DexieMessageDataSource'
+import { dbService } from '@renderer/services/db'
 import { EVENT_NAMES, EventEmitter } from '@renderer/services/EventService'
+import { abortTopicStream, getActiveStream } from '@renderer/services/StreamRegistry'
 import store from '@renderer/store'
 import { updateTopic } from '@renderer/store/assistants'
-import { removeManyBlocks } from '@renderer/store/messageBlock'
 import { newMessagesActions } from '@renderer/store/newMessage'
 import { setNewlyRenamedTopics, setRenamingTopics } from '@renderer/store/runtime'
-import { collectTopicBlockIdsToEvict, loadTopicMessagesThunk } from '@renderer/store/thunk/messageThunk'
+import {
+  cancelMultipleBlockUpdates,
+  cleanupMultipleBlocks,
+  collectTopicBlockIdsToEvict,
+  loadTopicMessagesThunk
+} from '@renderer/store/thunk/messageThunk'
 import type { Assistant, Topic } from '@renderer/types'
+import { abortCompletion } from '@renderer/utils/abortController'
 import { findMainTextBlocks } from '@renderer/utils/messageUtils/find'
 import { truncateText } from '@renderer/utils/naming'
+import { clearTopicQueue } from '@renderer/utils/queue'
 import isEmpty from 'lodash/isEmpty'
 import { type Dispatch, type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { useAssistant } from './useAssistant'
 import { getStoreSetting } from './useSettings'
-
-const logger = loggerService.withContext('useTopic')
 
 export function useActiveTopic(assistantId: string, topic?: Topic) {
   const { assistant } = useAssistant(assistantId)
@@ -227,45 +227,34 @@ export const TopicManager = {
   },
 
   async clearTopicMessages(id: string): Promise<void> {
+    clearTopicQueue(id)
+    if (getActiveStream(id)) {
+      abortTopicStream(id)
+    }
     const reduxState = store.getState()
     const cachedMsgIds = reduxState.messages.messageIdsByTopic[id] || []
+    for (const msgId of cachedMsgIds) {
+      const msg = reduxState.messages.entities[msgId]
+      if (msg?.role === 'assistant' && msg.askId) {
+        abortCompletion(msg.askId)
+      }
+    }
     const cachedBlockIds = collectTopicBlockIdsToEvict(reduxState, cachedMsgIds)
-    if (id in reduxState.messages.messageIdsByTopic) {
+    if (cachedBlockIds.length > 0) {
+      cancelMultipleBlockUpdates(cachedBlockIds)
+    }
+    await dbService.clearMessages(id)
+    const latestState = store.getState()
+    const latestMsgIds = latestState.messages.messageIdsByTopic[id] || []
+    const latestBlockIds = Array.from(
+      new Set([...cachedBlockIds, ...collectTopicBlockIdsToEvict(latestState, latestMsgIds)])
+    )
+    if (latestBlockIds.length > 0) {
+      cleanupMultipleBlocks(store.dispatch, latestBlockIds)
+    }
+    if (id in latestState.messages.messageIdsByTopic) {
       store.dispatch(newMessagesActions.clearTopicMessages(id))
     }
-    if (cachedBlockIds.length > 0) {
-      store.dispatch(removeManyBlocks(cachedBlockIds))
-    }
-
-    let attachmentsToDelete: string[] = []
-
-    try {
-      await db.transaction('rw', [db.topics, db.message_blocks, db.files], async () => {
-        const topic = await db.topics.get(id)
-
-        if (!topic || !topic.messages || topic.messages.length === 0) {
-          return
-        }
-
-        const blockIds = topic.messages.flatMap((message) => message.blocks || [])
-
-        if (blockIds.length > 0) {
-          const blocks = await db.message_blocks.where('id').anyOf(blockIds).toArray()
-          const deltas = collectBlockFileDecrements(blocks)
-          attachmentsToDelete = await applyFileCountDeltasInTx(db.files, deltas, {
-            messageBlocksTable: db.message_blocks,
-            excludingBlockIds: blockIds
-          })
-          await db.message_blocks.bulkDelete(blockIds)
-        }
-
-        await db.topics.update(id, { messages: [] })
-      })
-    } catch (dbError) {
-      logger.error(`Failed to clear database records for topic ${id}:`, dbError as Error)
-      throw dbError
-    }
-
-    await purgeDetachedAttachments(attachmentsToDelete)
+    store.dispatch(newMessagesActions.setTopicLoading({ topicId: id, loading: false }))
   }
 }

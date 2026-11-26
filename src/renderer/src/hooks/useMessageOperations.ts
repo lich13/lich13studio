@@ -1,13 +1,15 @@
 import { loggerService } from '@logger'
 import { createSelector } from '@reduxjs/toolkit'
+import { dbService } from '@renderer/services/db'
 import { EVENT_NAMES, EventEmitter } from '@renderer/services/EventService'
+import { abortTopicStream, getActiveStream } from '@renderer/services/StreamRegistry'
 import { estimateUserPromptUsage } from '@renderer/services/TokenService'
 import store, { type RootState, useAppDispatch, useAppSelector } from '@renderer/store'
-import { updateOneBlock } from '@renderer/store/messageBlock'
-import { messageBlocksSelectors } from '@renderer/store/messageBlock'
+import { messageBlocksSelectors, updateOneBlock } from '@renderer/store/messageBlock'
 import { newMessagesActions, selectMessagesForTopic } from '@renderer/store/newMessage'
 import {
   appendAssistantResponseThunk,
+  buildPausedBlockChanges,
   cancelThrottledBlockUpdate,
   clearTopicMessagesThunk,
   cloneMessagesToNewTopicThunk,
@@ -18,8 +20,6 @@ import {
   removeBlocksThunk,
   resendMessageThunk,
   resendUserMessageWithEditThunk,
-  updateBlocks,
-  updateMessage,
   updateMessageAndBlocksThunk,
   updateTranslationBlockThunk
 } from '@renderer/store/thunk/messageThunk'
@@ -142,15 +142,32 @@ export function useMessageOperations(topic: Topic) {
     const topicMessages = selectMessagesForTopic(state, topic.id)
     if (!topicMessages) return
 
-    const streamingMessages = topicMessages.filter((m) => m.role === 'assistant' && isMessageProcessing(m))
+    const blockEntities = state.messageBlocks.entities
+    const streamingMessages = topicMessages.filter((m) => {
+      if (m.role !== 'assistant') return false
+      if (isMessageProcessing(m)) return true
+      if (
+        m.status === AssistantMessageStatus.SUCCESS ||
+        m.status === AssistantMessageStatus.ERROR ||
+        m.status === AssistantMessageStatus.PAUSED
+      ) {
+        return false
+      }
+      return (m.blocks || []).some((blockId) => {
+        const block = blockEntities[blockId]
+        return Boolean(block && buildPausedBlockChanges(block))
+      })
+    })
     const askIds = [...new Set(streamingMessages?.map((m) => m.askId).filter((id) => !!id) as string[])]
 
+    if (getActiveStream(topic.id)) {
+      abortTopicStream(topic.id)
+    }
     for (const askId of askIds) {
       abortCompletion(askId)
     }
     clearTopicQueue(topic.id)
 
-    const blockEntities = state.messageBlocks.entities
     const blocksToPersist: MessageBlock[] = []
     const persistTasks: Promise<unknown>[] = []
     const pausedAt = new Date().toISOString()
@@ -168,26 +185,22 @@ export function useMessageOperations(topic: Topic) {
           updates: messageUpdates
         })
       )
-      persistTasks.push(updateMessage(topic.id, message.id, messageUpdates))
+      persistTasks.push(dbService.updateMessage(topic.id, message.id, messageUpdates))
 
       for (const blockId of message.blocks || []) {
-        const block = blockEntities[blockId]
-        if (
-          block &&
-          (block.status === MessageBlockStatus.PROCESSING ||
-            block.status === MessageBlockStatus.STREAMING ||
-            block.status === MessageBlockStatus.PENDING)
-        ) {
-          cancelThrottledBlockUpdate(blockId)
-          dispatch(updateOneBlock({ id: blockId, changes: { status: MessageBlockStatus.PAUSED } }))
+        cancelThrottledBlockUpdate(blockId)
+        const block = store.getState().messageBlocks.entities[blockId]
+        const changes = block ? buildPausedBlockChanges(block) : null
+        if (block && changes) {
+          dispatch(updateOneBlock({ id: blockId, changes }))
           const latestBlock = store.getState().messageBlocks.entities[blockId]
-          blocksToPersist.push(latestBlock ?? { ...block, status: MessageBlockStatus.PAUSED })
+          blocksToPersist.push(latestBlock ?? ({ ...block, ...changes } as MessageBlock))
         }
       }
     }
 
     if (blocksToPersist.length > 0) {
-      persistTasks.push(updateBlocks(blocksToPersist))
+      persistTasks.push(dbService.updateBlocks(blocksToPersist))
     }
 
     if (persistTasks.length > 0) {
@@ -472,23 +485,7 @@ export function useMessageOperations(topic: Topic) {
         logger.error('[removeMessageBlock] Topic prop is not valid.')
         return
       }
-
-      const state = store.getState()
-      const message = state.messages.entities[messageId]
-      if (!message || !message.blocks) {
-        logger.error(`[removeMessageBlock] Message not found or has no blocks: ${messageId}`)
-        return
-      }
-
-      const updatedBlocks = message.blocks.filter((blockId) => blockId !== blockIdToRemove)
-
-      const messageUpdates: Partial<Message> & Pick<Message, 'id'> = {
-        id: messageId,
-        updatedAt: new Date().toISOString(),
-        blocks: updatedBlocks
-      }
-
-      await dispatch(updateMessageAndBlocksThunk(topic.id, messageUpdates, []))
+      await dispatch(removeBlocksThunk(topic.id, messageId, [blockIdToRemove]))
     },
     [dispatch, topic?.id]
   )

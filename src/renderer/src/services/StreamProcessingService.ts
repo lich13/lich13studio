@@ -61,9 +61,18 @@ export interface StreamProcessorCallbacks {
 
 export type StreamProcessor = (chunk: Chunk) => Promise<void>
 
+export interface StreamProcessorOptions {
+  shouldAcceptChunk?: (chunk: Chunk) => boolean
+}
+
 // Function to create a stream processor instance
-export function createStreamProcessor(callbacks: StreamProcessorCallbacks = {}): StreamProcessor {
-  let terminal = false
+export function createStreamProcessor(
+  callbacks: StreamProcessorCallbacks = {},
+  options?: StreamProcessorOptions
+): StreamProcessor {
+  let completed = false
+  let errored = false
+  let llmResponseCompleted = false
 
   const handleError = async (error: any) => {
     logger.error('Error processing stream chunk:', error as Error)
@@ -76,12 +85,16 @@ export function createStreamProcessor(callbacks: StreamProcessorCallbacks = {}):
 
   const processChunk = async (chunk: Chunk) => {
     try {
+      if (errored || (completed && chunk.type !== ChunkType.LLM_RESPONSE_COMPLETE)) return
+      if (chunk.type !== ChunkType.ERROR && options?.shouldAcceptChunk && !options.shouldAcceptChunk(chunk)) {
+        return
+      }
       const data = chunk
       // logger.debug('data: ', data)
       switch (data.type) {
         case ChunkType.BLOCK_COMPLETE:
-          if (terminal) break
-          terminal = true
+          if (completed || errored) break
+          completed = true
           await callbacks.onComplete?.(AssistantMessageStatus.SUCCESS, data?.response)
           break
         case ChunkType.LLM_RESPONSE_CREATED:
@@ -141,11 +154,13 @@ export function createStreamProcessor(callbacks: StreamProcessorCallbacks = {}):
           await callbacks.onImageGenerated?.(data.image)
           break
         case ChunkType.LLM_RESPONSE_COMPLETE:
+          if (llmResponseCompleted || errored) break
+          llmResponseCompleted = true
           await callbacks.onLLMResponseComplete?.(data.response)
           break
         case ChunkType.ERROR:
-          if (terminal) break
-          terminal = true
+          if (completed || errored) break
+          errored = true
           try {
             await callbacks.onError?.(data.error)
           } catch (callbackError) {

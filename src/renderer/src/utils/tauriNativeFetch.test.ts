@@ -1,11 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const fixture = vi.hoisted(() => ({
+  android: false,
   getEpoch: vi.fn((): number | undefined => 73),
   warn: vi.fn()
 }))
 vi.mock('@renderer/services/mobile/BackgroundTaskService', () => ({
   backgroundTasks: { getEpoch: fixture.getEpoch }
+}))
+vi.mock('@renderer/services/mobile/runtime', () => ({
+  runtimeCapabilities: {
+    get android() {
+      return fixture.android
+    }
+  }
 }))
 vi.mock('@logger', () => ({ loggerService: { withContext: () => ({ warn: fixture.warn }) } }))
 
@@ -17,6 +25,7 @@ type NativeRequest = {
   method: string
   headers: { name: string; value: string }[]
   body?: number[]
+  bodyBase64?: string
   bodyText?: string
   taskEpoch?: number
 }
@@ -67,6 +76,7 @@ let listen: ReturnType<typeof vi.fn<(event: string, handler: Listener) => Promis
 let fallbackFetch: ReturnType<typeof vi.fn<typeof fetch>>
 
 beforeEach(() => {
+  fixture.android = false
   fixture.getEpoch.mockReset().mockReturnValue(73)
   fixture.warn.mockClear()
   activeListeners = new Set()
@@ -174,17 +184,40 @@ describe('Tauri native fetch delivery', () => {
     expect(unlisteners[0]).toHaveBeenCalledTimes(1)
   })
 
-  it('forwards binary Uint8Array request bodies as byte arrays', async () => {
+  it('forwards binary Uint8Array request bodies as compact base64 strings', async () => {
     const binaryPayload = new Uint8Array([0, 159, 255, 42])
     const response = await nativeFetch({
       method: 'POST',
       headers: { 'Content-Type': 'application/octet-stream' },
       body: binaryPayload
     })
-    expect(requests[0].body).toEqual([0, 159, 255, 42])
+    expect(requests[0].bodyBase64).toBe(btoa(String.fromCharCode(0, 159, 255, 42)))
+    expect(requests[0].body).toBeUndefined()
     expect(requests[0].bodyText).toBeUndefined()
     emit(chunk(requests[0].requestId, 1, 'ok', true))
     expect(await response.text()).toBe('ok')
+  })
+
+  it('scopes desktop chunk listener to current WebviewWindow label and skips visibilitychange replay on desktop', async () => {
+    const windowListen = vi.fn((event: string, handler: Listener) => listen(event, handler))
+    vi.stubGlobal('window', {
+      __TAURI_INTERNALS__: { metadata: { currentWebview: { label: 'mini' } } },
+      __TAURI__: {
+        core: { invoke },
+        event: { listen },
+        webviewWindow: {
+          getCurrentWebviewWindow: () => ({ label: 'mini', listen: windowListen })
+        }
+      }
+    })
+    const response = await nativeFetch()
+    const id = requests[0].requestId
+    expect(windowListen).toHaveBeenCalledTimes(1)
+    fixtureDocument.hidden = false
+    fixtureDocument.dispatchEvent(new Event('visibilitychange'))
+    expect(callsFor('replay_http_chunks')).toHaveLength(0)
+    emit(chunk(id, 1, 'scoped', true))
+    expect(await response.text()).toBe('scoped')
   })
 
   it('merges out-of-order live and replayed events without losing or repeating text', async () => {
@@ -216,6 +249,7 @@ describe('Tauri native fetch delivery', () => {
   })
 
   it('replays missed foreground events and suppresses duplicate replay requests while one is pending', async () => {
+    fixture.android = true
     const replay = deferred<Chunk[]>()
     replayReply = () => replay.promise
     const response = await nativeFetch()

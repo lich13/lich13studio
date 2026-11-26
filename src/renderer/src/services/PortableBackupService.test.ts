@@ -40,9 +40,12 @@ describe('decryptPortableBackup', () => {
 
   it('sends raw Uint8Array body and URI-encoded x-backup-password header on encrypted restore', async () => {
     mocks.requestPassword.mockResolvedValueOnce('密鑰#100%')
-    mocks.invoke.mockResolvedValueOnce('{"version":5}')
+    mocks.invoke.mockResolvedValueOnce({ payload: '{"version":5}', restoreId: 'restore-previous-enc-1' })
     const payload = new Uint8Array([9, 8, 7])
-    await expect(decryptPortableBackup(payload)).resolves.toBe('{"version":5}')
+    await expect(decryptPortableBackup(payload)).resolves.toEqual({
+      payload: '{"version":5}',
+      restoreId: 'restore-previous-enc-1'
+    })
     expect(mocks.invoke).toHaveBeenCalledWith('restore_encrypted_backup_archive', payload, {
       headers: { 'x-backup-password': encodeURIComponent('密鑰#100%') }
     })
@@ -120,7 +123,10 @@ describe('reconcilePendingBackupRestore', () => {
       })
     ).resolves.toBe('rolled_back')
 
-    expect(mocks.invoke).toHaveBeenCalledWith('finish_backup_restore', { commit: false })
+    expect(mocks.invoke).toHaveBeenCalledWith('finish_backup_restore', {
+      commit: false,
+      restoreId: 'restore-previous-crash-before-idb'
+    })
     expect(settingsStore.delete).not.toHaveBeenCalled()
   })
 
@@ -148,7 +154,10 @@ describe('reconcilePendingBackupRestore', () => {
       })
     ).resolves.toBe('committed')
 
-    expect(mocks.invoke).toHaveBeenCalledWith('finish_backup_restore', { commit: true })
+    expect(mocks.invoke).toHaveBeenCalledWith('finish_backup_restore', {
+      commit: true,
+      restoreId
+    })
     expect(settingsStore.delete).toHaveBeenCalledWith(RESTORE_COMMITTED_SETTING_ID)
     expect(settingsMap.has(RESTORE_COMMITTED_SETTING_ID)).toBe(false)
   })
@@ -212,7 +221,10 @@ describe('reconcilePendingBackupRestore', () => {
           loadSettingsStore: async () => settingsStore
         })
       ).resolves.toBe('committed')
-      expect(mocks.invoke).toHaveBeenCalledWith('finish_backup_restore', { commit: true })
+      expect(mocks.invoke).toHaveBeenCalledWith('finish_backup_restore', {
+        commit: true,
+        restoreId
+      })
     } finally {
       ;(globalThis as any).window = prevWindow
     }

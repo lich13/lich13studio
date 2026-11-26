@@ -9,14 +9,12 @@ export const CollapsibleSettingGroup = styled(({ title, children, defaultExpande
 
   return (
     <SettingGroup {...rest}>
-      <GroupHeader>
-        <div
-          onClick={() => setIsExpanded(!isExpanded)}
-          style={{ display: 'flex', alignItems: 'center', flex: 1, cursor: 'pointer' }}>
+      <GroupHeader onClick={() => setIsExpanded(!isExpanded)}>
+        <div style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0 }}>
           {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
           <GroupTitle>{title}</GroupTitle>
         </div>
-        {extra && <div>{extra}</div>}
+        {extra && <div onClick={(e) => e.stopPropagation()}>{extra}</div>}
       </GroupHeader>
       <AnimatePresence initial={false}>
         {isExpanded && (

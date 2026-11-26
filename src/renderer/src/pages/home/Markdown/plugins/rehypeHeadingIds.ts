@@ -9,10 +9,9 @@ import { visit } from 'unist-util-visit'
  * - 将空白与非字母数字字符合并为单个 '-'
  * - 多次出现的相同 slug 加上递增后缀（-1, -2...）
  */
-export function createSlugger() {
-  const seen = new Map<string, number>()
-  const normalize = (text: string): string => {
-    const slug = (text || 'section')
+export function normalizeHeadingSlug(text: string): string {
+  return (
+    (text || 'section')
       .toLowerCase()
       .trim()
       // 移除常见分隔符和标点
@@ -24,12 +23,14 @@ export function createSlugger() {
       .replace(/-{2,}/g, '-')
       // 去除首尾 '-'
       .replace(/^-|-$/g, '')
+  )
+}
 
-    return slug
-  }
+export function createSlugger(initialSeen?: ReadonlyMap<string, number>) {
+  const seen = new Map<string, number>(initialSeen)
 
   const slug = (text: string): string => {
-    const base = normalize(text)
+    const base = normalizeHeadingSlug(text)
     const count = seen.get(base) || 0
     seen.set(base, count + 1)
     return `${base}-${count}`
@@ -52,9 +53,9 @@ export function extractTextFromNode(node: Node | Text | Element | null | undefin
   return ''
 }
 
-export default function rehypeHeadingIds(options?: { prefix?: string }) {
+export default function rehypeHeadingIds(options?: { prefix?: string; initialSeen?: ReadonlyMap<string, number> }) {
   return (tree: Root) => {
-    const slugger = createSlugger()
+    const slugger = createSlugger(options?.initialSeen)
     const prefix = options?.prefix ? `${options.prefix}--` : ''
     visit(tree, 'element', (node) => {
       if (!node || typeof node.tagName !== 'string') return

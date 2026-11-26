@@ -133,4 +133,15 @@ db.version(10).stores({
   message_blocks: 'id, messageId, file.id'
 })
 
+db.version(11).stores({
+  files: '&id',
+  topics: '&id',
+  settings: '&id',
+  knowledge_notes: '&id, baseId, type, content, created_at, updated_at',
+  translate_history: '&id, sourceText, targetText, sourceLanguage, targetLanguage, createdAt',
+  translate_languages: '&id, langCode',
+  quick_phrases: 'id',
+  message_blocks: 'id, messageId, file.id'
+})
+
 export default db

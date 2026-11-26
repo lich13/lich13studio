@@ -8,7 +8,6 @@ const mocks = vi.hoisted(() => ({
   getAiSdkProviderId: vi.fn(),
   getFileSizeLimit: vi.fn(),
   supportsImageInput: vi.fn(),
-  supportsLargeFileUpload: vi.fn(),
   extractPdfText: vi.fn()
 }))
 
@@ -36,17 +35,16 @@ vi.mock('@renderer/services/AssistantService', () => ({
   getProviderByModel: mocks.getProviderByModel
 }))
 
-vi.mock('../provider/factory', () => ({
+vi.mock('../provider/providerConfig', () => ({
   getAiSdkProviderId: mocks.getAiSdkProviderId
 }))
 
 vi.mock('./modelCapabilities', () => ({
   getFileSizeLimit: mocks.getFileSizeLimit,
-  supportsImageInput: mocks.supportsImageInput,
-  supportsLargeFileUpload: mocks.supportsLargeFileUpload
+  supportsImageInput: mocks.supportsImageInput
 }))
 
-import { createPdfCompatibilityPlugin } from '../plugins/pdfCompatibilityPlugin'
+import { createPdfCompatibilityMiddleware } from '../plugins/pdfCompatibilityPlugin'
 import { convertFileBlockToFilePart } from './fileProcessor'
 
 const fixtureModel: Model = {
@@ -88,7 +86,6 @@ describe('convertFileBlockToFilePart', () => {
     warning.mockReset()
     mocks.getFileSizeLimit.mockReset().mockReturnValue(32 * 1024 * 1024)
     mocks.supportsImageInput.mockReset().mockReturnValue(true)
-    mocks.supportsLargeFileUpload.mockReset().mockReturnValue(false)
     mocks.getProviderByModel.mockReset().mockReturnValue({ id: 'anthropic', type: 'anthropic' })
     mocks.getAiSdkProviderId.mockReset().mockReturnValue('anthropic')
 
@@ -187,12 +184,12 @@ describe('convertFileBlockToFilePart', () => {
       group: 'grok'
     }
 
-    const plugin = createPdfCompatibilityPlugin(grokProvider, grokModel)
-    const context: any = { middlewares: [] }
-    plugin.configureContext!(context)
+    const middleware = createPdfCompatibilityMiddleware(grokProvider, grokModel)
 
     const encodedPdf = btoa('%PDF-1.4 grok payload')
-    const transformed = await context.middlewares[0].transformParams({
+    const transformed = await middleware.transformParams!({
+      type: 'generate',
+      model: {} as any,
       params: {
         prompt: [
           {

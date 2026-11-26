@@ -109,18 +109,22 @@ const AssistantsTab: FC<AssistantsTabProps> = (props) => {
   )
 
   const onDeleteAssistant = useCallback(
-    (assistant: Assistant) => {
+    async (assistant: Assistant) => {
       const remaining = assistants.filter((a) => a.id !== assistant.id)
       if (remaining.length === 0) {
         window.toast.error(t('assistants.delete.error.remain_one'))
         return
       }
 
-      if (assistant.id === activeAssistant?.id) {
-        const newActive = remaining[remaining.length - 1]
-        setActiveAssistant(newActive)
+      try {
+        await removeAssistant(assistant.id)
+        if (assistant.id === activeAssistant?.id) {
+          const newActive = remaining[remaining.length - 1]
+          setActiveAssistant(newActive)
+        }
+      } catch {
+        // Error is logged and toasted inside removeAssistant while retaining undeleted topics.
       }
-      removeAssistant(assistant.id)
     },
     [assistants, activeAssistant?.id, removeAssistant, t, setActiveAssistant]
   )

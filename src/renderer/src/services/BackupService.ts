@@ -175,6 +175,20 @@ export async function backup(skipBackupFile: boolean, options: BackupOptions = {
   }
 }
 
+function unwrapExtractedBackup(raw: unknown): { payload: string; restoreId: string | null } {
+  if (typeof raw === 'string') {
+    return { payload: raw, restoreId: null }
+  }
+  if (raw && typeof raw === 'object' && typeof (raw as { payload?: unknown }).payload === 'string') {
+    const rawId = (raw as { restoreId?: unknown }).restoreId
+    return {
+      payload: (raw as { payload: string }).payload,
+      restoreId: typeof rawId === 'string' && rawId.trim() ? rawId.trim() : null
+    }
+  }
+  throw new Error('Invalid backup data')
+}
+
 export async function restore() {
   const notificationService = NotificationService.getInstance()
   const file = await window.api.file.open({
@@ -182,20 +196,21 @@ export async function restore() {
   })
 
   if (file) {
-    let archiveExtracted = false
+    let unpackedRestoreId: string | null = null
     let handedOffToHandleData = false
     try {
       // zip backup file
       if (/\.(zip|lich13backup)$/i.test(file.fileName)) {
         const restoreData = await window.api.backup.restore(file.filePath)
-        archiveExtracted = true
 
         // Direct backup format returns void (app needs to relaunch)
-        // Legacy format returns JSON string that needs to be processed
+        // Legacy format returns JSON string or { payload, restoreId } that needs to be processed
         if (restoreData !== undefined && restoreData !== null) {
-          const data = JSON.parse(restoreData)
+          const unwrapped = unwrapExtractedBackup(restoreData)
+          unpackedRestoreId = unwrapped.restoreId
+          const data = JSON.parse(unwrapped.payload)
           handedOffToHandleData = true
-          await handleData(data)
+          await handleData(data, { restoreId: unpackedRestoreId })
         } else {
           // Direct backup was restored, app will relaunch
           void notificationService.send({
@@ -229,8 +244,8 @@ export async function restore() {
         channel: 'system'
       })
     } catch (error) {
-      if (archiveExtracted && !handedOffToHandleData && isNativeTauriRuntime()) {
-        await invoke('finish_backup_restore', { commit: false }).catch(() => {})
+      if (!handedOffToHandleData && unpackedRestoreId && isNativeTauriRuntime()) {
+        await invoke('finish_backup_restore', { commit: false, restoreId: unpackedRestoreId }).catch(() => {})
       }
       if (error instanceof Error && error.name === 'AbortError') return
       logger.error('restore: Error restoring backup file:', error as Error)
@@ -261,6 +276,7 @@ export async function reset() {
           await persistor.flush()
           localStorage.clear()
           await clearDatabase()
+          await Dexie.delete('lich13studio-model-catalog-cache').catch(() => {})
           await window.api.resetData()
           window.toast.success(i18n.t('message.reset.success'))
           setTimeout(() => window.api.relaunchApp(), 1000)
@@ -444,10 +460,10 @@ export async function backupToWebdav({
 export async function restoreFromWebdav(fileName?: string) {
   const { webdavHost, webdavUser, webdavPass, webdavPath } = store.getState().settings
   const userAgent = getWebdavUserAgent()
-  let data = ''
+  let restoreResult: unknown = ''
 
   try {
-    data = await window.api.backup.restoreFromWebdav({
+    restoreResult = await window.api.backup.restoreFromWebdav({
       webdavHost,
       webdavUser,
       webdavPass,
@@ -465,20 +481,23 @@ export async function restoreFromWebdav(fileName?: string) {
   }
 
   // Direct backup format (version 6+) returns undefined - app needs to relaunch
-  if (!data) {
+  if (restoreResult === undefined || restoreResult === null) {
     logger.info('[WebDAVBackup] Direct backup restored, app will restart')
     return
   }
 
-  // Legacy backup format (version <= 5) returns JSON string
+  // Legacy backup format (version <= 5) returns JSON string or { payload, restoreId }
+  let unpackedRestoreId: string | null = null
   let handedOffToHandleData = false
   try {
-    const parsed = JSON.parse(data)
+    const unwrapped = unwrapExtractedBackup(restoreResult)
+    unpackedRestoreId = unwrapped.restoreId
+    const parsed = JSON.parse(unwrapped.payload)
     handedOffToHandleData = true
-    await handleData(parsed)
+    await handleData(parsed, { restoreId: unpackedRestoreId })
   } catch (error) {
-    if (!handedOffToHandleData && isNativeTauriRuntime()) {
-      await invoke('finish_backup_restore', { commit: false }).catch(() => {})
+    if (!handedOffToHandleData && unpackedRestoreId && isNativeTauriRuntime()) {
+      await invoke('finish_backup_restore', { commit: false, restoreId: unpackedRestoreId }).catch(() => {})
     }
     logger.error('[Backup] Error downloading file from WebDAV:', error as Error)
     window.toast.error(i18n.t('error.backup.file_format'))
@@ -773,10 +792,14 @@ export function stopAutoSync(type?: BackupType) {
 }
 
 /************************************* Backup Utils ************************************** */
-export async function handleData(data: Record<string, any>) {
+export async function handleData(data: Record<string, any>, options?: { restoreId?: string | null }) {
   const native = isNativeTauriRuntime()
+  const pendingRestoreId =
+    native && typeof options?.restoreId === 'string' && options.restoreId.trim() ? options.restoreId.trim() : null
   const finishFiles = async (commit: boolean) => {
-    if (native) await invoke('finish_backup_restore', { commit })
+    if (native && pendingRestoreId) {
+      await invoke('finish_backup_restore', { commit, restoreId: pendingRestoreId })
+    }
   }
   let previousState: string | null = null
   let paused = false
@@ -807,7 +830,6 @@ export async function handleData(data: Record<string, any>) {
     persistor.pause()
     paused = true
     await persistor.flush()
-    const pendingRestoreId = native ? await invoke<string | null>('get_pending_restore_id').catch(() => null) : null
     previousState = credentialStorageEnabled
       ? await mobilePersistStorage.getItem(LEGACY_PERSIST_KEY)
       : localStorage.getItem(LEGACY_PERSIST_KEY)
@@ -826,14 +848,16 @@ export async function handleData(data: Record<string, any>) {
       await Dexie.waitFor(writeState(restoredState))
       stateWritten = true
     })
-    let stagingCleaned = false
-    await finishFiles(true)
-      .then(() => {
-        stagingCleaned = true
-      })
-      .catch(() => logger.warn('Restored data is committed; staging cleanup remains pending'))
-    if (stagingCleaned && pendingRestoreId) {
-      await db.settings.delete(RESTORE_COMMITTED_SETTING_ID).catch(() => {})
+    if (pendingRestoreId) {
+      let stagingCleaned = false
+      await finishFiles(true)
+        .then(() => {
+          stagingCleaned = true
+        })
+        .catch(() => logger.warn('Restored data is committed; staging cleanup remains pending'))
+      if (stagingCleaned) {
+        await db.settings.delete(RESTORE_COMMITTED_SETTING_ID).catch(() => {})
+      }
     }
     window.toast.success(i18n.t('message.restore.success'))
     setTimeout(() => window.api.relaunchApp(), 1000)
@@ -1009,29 +1033,30 @@ export async function backupToLocal({
 }
 
 export async function restoreFromLocal(fileName: string) {
-  let archiveExtracted = false
+  let unpackedRestoreId: string | null = null
   let handedOffToHandleData = false
   try {
     const { localBackupDir: localBackupDirSetting } = store.getState().settings
     const localBackupDir = await window.api.resolvePath(localBackupDirSetting)
     const restoreData = await window.api.backup.restoreFromLocalBackup(fileName, localBackupDir)
-    archiveExtracted = true
 
     // Direct backup format (version 6+) returns undefined - app needs to relaunch
-    if (!restoreData) {
+    if (restoreData === undefined || restoreData === null) {
       logger.info('[LocalBackup] Direct backup restored, app will restart')
       return true
     }
 
-    // Legacy backup format (version <= 5) returns JSON string
-    const data = JSON.parse(restoreData)
+    // Legacy backup format (version <= 5) returns JSON string or { payload, restoreId }
+    const unwrapped = unwrapExtractedBackup(restoreData)
+    unpackedRestoreId = unwrapped.restoreId
+    const data = JSON.parse(unwrapped.payload)
     handedOffToHandleData = true
-    await handleData(data)
+    await handleData(data, { restoreId: unpackedRestoreId })
 
     return true
   } catch (error) {
-    if (archiveExtracted && !handedOffToHandleData && isNativeTauriRuntime()) {
-      await invoke('finish_backup_restore', { commit: false }).catch(() => {})
+    if (!handedOffToHandleData && unpackedRestoreId && isNativeTauriRuntime()) {
+      await invoke('finish_backup_restore', { commit: false, restoreId: unpackedRestoreId }).catch(() => {})
     }
     if (error instanceof Error && error.name === 'AbortError') {
       return false

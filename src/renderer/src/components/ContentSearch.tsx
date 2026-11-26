@@ -74,61 +74,63 @@ const findRangesInTarget = (
   const regexPattern = isWholeWord ? `\\b${escapedSearchText}\\b` : escapedSearchText
   const searchRegex = new RegExp(regexPattern, regexFlags)
   const treeWalker = document.createTreeWalker(target, NodeFilter.SHOW_TEXT, filter)
-  const allTextNodes: { node: Node; startOffset: number }[] = []
-  let fullText = ''
+  const allTextNodes: { node: Node; startOffset: number; endOffset: number }[] = []
+  const chunks: string[] = []
+  let totalLength = 0
 
-  // 1. 拼接所有文本节点内容
+  // 1. 拼接所有非空文本节点内容
   while (treeWalker.nextNode()) {
+    const text = treeWalker.currentNode.nodeValue
+    if (!text) continue
+    const endOffset = totalLength + text.length
     allTextNodes.push({
       node: treeWalker.currentNode,
-      startOffset: fullText.length
+      startOffset: totalLength,
+      endOffset
     })
-    fullText += treeWalker.currentNode.nodeValue
+    chunks.push(text)
+    totalLength = endOffset
   }
 
-  // 2.在完整文本中查找匹配项
+  if (allTextNodes.length === 0) {
+    return ranges
+  }
+
+  const fullText = chunks.join('')
+
+  // 2. 在完整文本中查找匹配项，并用单游标线性映射回 DOM Range (O(M + T))
+  let nodeCursor = 0
   let match: RegExpExecArray | null = null
   while ((match = searchRegex.exec(fullText))) {
+    if (match[0].length === 0) {
+      searchRegex.lastIndex += 1
+      continue
+    }
     const matchStart = match.index
     const matchEnd = matchStart + match[0].length
 
-    // 3. 将匹配项的索引映射回DOM Range
-    let startNode: Node | null = null
-    let endNode: Node | null = null
-    let startOffset = 0
-    let endOffset = 0
-
-    // 找到起始节点和偏移
-    for (const nodeInfo of allTextNodes) {
-      if (
-        matchStart >= nodeInfo.startOffset &&
-        matchStart < nodeInfo.startOffset + (nodeInfo.node.nodeValue?.length ?? 0)
-      ) {
-        startNode = nodeInfo.node
-        startOffset = matchStart - nodeInfo.startOffset
-        break
-      }
+    while (nodeCursor < allTextNodes.length && allTextNodes[nodeCursor].endOffset <= matchStart) {
+      nodeCursor += 1
+    }
+    if (nodeCursor >= allTextNodes.length) {
+      break
     }
 
-    // 找到结束节点和偏移
-    for (const nodeInfo of allTextNodes) {
-      if (
-        matchEnd > nodeInfo.startOffset &&
-        matchEnd <= nodeInfo.startOffset + (nodeInfo.node.nodeValue?.length ?? 0)
-      ) {
-        endNode = nodeInfo.node
-        endOffset = matchEnd - nodeInfo.startOffset
-        break
-      }
+    const startEntry = allTextNodes[nodeCursor]
+    let endCursor = nodeCursor
+    while (endCursor < allTextNodes.length && allTextNodes[endCursor].endOffset < matchEnd) {
+      endCursor += 1
+    }
+    if (endCursor >= allTextNodes.length) {
+      break
     }
 
-    // 如果起始和结束节点都找到了，则创建一个 Range
-    if (startNode && endNode) {
-      const range = new Range()
-      range.setStart(startNode, startOffset)
-      range.setEnd(endNode, endOffset)
-      ranges.push(range)
-    }
+    const endEntry = allTextNodes[endCursor]
+    const range = new Range()
+    range.setStart(startEntry.node, matchStart - startEntry.startOffset)
+    range.setEnd(endEntry.node, matchEnd - endEntry.startOffset)
+    ranges.push(range)
+    nodeCursor = endCursor
   }
 
   return ranges
@@ -157,12 +159,14 @@ export const ContentSearch = React.forwardRef<ContentSearchRef, Props>(
     const [isWholeWord, setIsWholeWord] = useState(false)
     const [allRanges, setAllRanges] = useState<Range[]>([])
     const [currentIndex, setCurrentIndex] = useState(-1)
+    const shouldScrollOnLocateRef = useRef(true)
     const prevSearchText = useRef('')
     const { t } = useTranslation()
 
     const resetSearch = useCallback(() => {
       clearSearchHighlights()
       setAllRanges([])
+      setCurrentIndex(-1)
       setSearchCompleted(SearchCompletedState.NotSearched)
     }, [])
 
@@ -193,13 +197,19 @@ export const ContentSearch = React.forwardRef<ContentSearchRef, Props>(
     )
 
     const search = useCallback(
-      (jump = false) => {
+      (mode: 'jump' | 'reset' | 'preserve' = 'reset') => {
         const searchText = searchInputRef.current?.value.trim() ?? null
         setSearchCompleted(SearchCompletedState.Searched)
         if (target && searchText !== null && searchText !== '') {
+          shouldScrollOnLocateRef.current = mode === 'jump'
           const ranges = findRangesInTarget(target, filter, searchText, isCaseSensitive, isWholeWord)
           setAllRanges(ranges)
-          setCurrentIndex(jump && ranges.length > 0 ? 0 : -1)
+          setCurrentIndex((prev) => {
+            if (ranges.length === 0) return -1
+            if (mode === 'jump') return 0
+            if (mode === 'preserve') return prev >= 0 ? Math.min(prev, ranges.length - 1) : -1
+            return -1
+          })
         }
       },
       [target, filter, isCaseSensitive, isWholeWord]
@@ -224,7 +234,7 @@ export const ContentSearch = React.forwardRef<ContentSearchRef, Props>(
               requestAnimationFrame(() => {
                 inputEl.focus()
                 inputEl.select()
-                search(false)
+                search('reset')
               })
             } else {
               requestAnimationFrame(() => {
@@ -236,11 +246,13 @@ export const ContentSearch = React.forwardRef<ContentSearchRef, Props>(
         },
         searchNext: () => {
           if (allRanges.length > 0) {
+            shouldScrollOnLocateRef.current = true
             setCurrentIndex((prev) => (prev < allRanges.length - 1 ? prev + 1 : 0))
           }
         },
         searchPrev: () => {
           if (allRanges.length > 0) {
+            shouldScrollOnLocateRef.current = true
             setCurrentIndex((prev) => (prev > 0 ? prev - 1 : allRanges.length - 1))
           }
         },
@@ -248,21 +260,28 @@ export const ContentSearch = React.forwardRef<ContentSearchRef, Props>(
           setSearchCompleted(SearchCompletedState.NotSearched)
         },
         search: () => {
-          search(true)
-          locateByIndex(true)
+          search('jump')
         },
         silentSearch: () => {
-          search(false)
-          locateByIndex(false)
+          if (!enableContentSearchRef.current) return
+          search('preserve')
         },
         focus: () => {
           searchInputRef.current?.focus()
         }
       }),
-      [allRanges.length, locateByIndex, search]
+      [allRanges.length, search]
     )
 
-    const _searchHandlerDebounce = useMemo(() => debounce(implementation.search, 300), [implementation.search])
+    const searchFnRef = useRef(implementation.search)
+    searchFnRef.current = implementation.search
+    const _searchHandlerDebounce = useMemo(() => debounce(() => searchFnRef.current(), 300), [])
+
+    useEffect(() => {
+      return () => {
+        _searchHandlerDebounce.cancel()
+      }
+    }, [_searchHandlerDebounce])
 
     const searchHandler = useCallback(() => {
       _searchHandlerDebounce()
@@ -317,12 +336,14 @@ export const ContentSearch = React.forwardRef<ContentSearchRef, Props>(
     useImperativeHandle(ref, () => implementation, [implementation])
 
     useEffect(() => {
-      locateByIndex()
+      const shouldScroll = shouldScrollOnLocateRef.current
+      shouldScrollOnLocateRef.current = true
+      locateByIndex(shouldScroll)
     }, [currentIndex, locateByIndex])
 
     useEffect(() => {
       if (enableContentSearch && searchInputRef.current?.value.trim()) {
-        search(true)
+        search('jump')
       }
     }, [isCaseSensitive, isWholeWord, enableContentSearch, search])
 
@@ -467,14 +488,14 @@ const Input = styled.input`
   padding: 0 5px; /* Adjust padding, wrapper will handle spacing */
   flex: 1; /* Allow input to grow */
   font-size: 14px;
-  font-family: Ubuntu;
+  font-family: var(--font-family);
 `
 
 const ToolBar = styled.div`
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: tpx;
+  gap: 2px;
 `
 
 const Separator = styled.div`
@@ -494,7 +515,8 @@ const SearchResults = styled.div`
   flex: 0 0 auto;
   color: var(--color-text-1);
   font-size: 14px;
-  font-family: Ubuntu;
+  font-family: var(--font-family);
+  font-variant-numeric: tabular-nums;
 `
 
 const SearchResultsPlaceholder = styled.span`

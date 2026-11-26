@@ -1,4 +1,4 @@
-import { dbService } from '@renderer/services/db/DbService'
+import { dbService } from '@renderer/services/db'
 import type { DiagnosisContext, DiagnosisResult } from '@renderer/services/ErrorDiagnosisService'
 import { diagnoseError } from '@renderer/services/ErrorDiagnosisService'
 import store from '@renderer/store'

@@ -1,6 +1,7 @@
 import 'emoji-picker-element'
 
 import TwemojiCountryFlagsWoff2 from '@renderer/assets/fonts/country-flag-fonts/TwemojiCountryFlags.woff2?url'
+import { isWin } from '@renderer/config/constant'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import { polyfillCountryFlagEmojis } from 'country-flag-emoji-polyfill'
 import zh_CN from 'emoji-picker-element/i18n/zh_CN'
@@ -18,6 +19,9 @@ const EmojiPickerContent: FC<EmojiPickerProps> = ({ onEmojiClick }) => {
   const ref = useRef<Picker>(null)
 
   useEffect(() => {
+    if (isWin) {
+      void import('@renderer/assets/fonts/country-flag-fonts/flag.css')
+    }
     polyfillCountryFlagEmojis('Twemoji Mozilla', TwemojiCountryFlagsWoff2)
   }, [])
 

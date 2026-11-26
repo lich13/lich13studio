@@ -27,7 +27,7 @@ export const createToolCallbacks = (deps: ToolCallbacksDependencies) => {
   let toolBlockId: string | null = null
 
   return {
-    onToolCallPending: (toolResponse: ToolResponse) => {
+    onToolCallPending: async (toolResponse: ToolResponse) => {
       logger.debug('onToolCallPending', toolResponse)
 
       if (blockManager.hasInitialPlaceholder) {
@@ -47,8 +47,8 @@ export const createToolCallbacks = (deps: ToolCallbacksDependencies) => {
           metadata: { rawMcpToolResponse: toolResponse }
         })
         toolBlockId = toolBlock.id
-        void blockManager.handleBlockTransition(toolBlock, MessageBlockType.TOOL)
         toolCallIdToBlockIdMap.set(toolResponse.id, toolBlock.id)
+        await blockManager.handleBlockTransition(toolBlock, MessageBlockType.TOOL)
       } else {
         logger.warn(
           `[onToolCallPending] Received unhandled tool status: ${toolResponse.status} for ID: ${toolResponse.id}`
@@ -56,7 +56,7 @@ export const createToolCallbacks = (deps: ToolCallbacksDependencies) => {
       }
     },
 
-    onToolArgumentStreaming: (toolResponse: ToolResponse) => {
+    onToolArgumentStreaming: async (toolResponse: ToolResponse) => {
       // Find or create the tool block for streaming updates
       let existingBlockId = toolCallIdToBlockIdMap.get(toolResponse.id)
 
@@ -80,9 +80,9 @@ export const createToolCallbacks = (deps: ToolCallbacksDependencies) => {
             metadata: { rawMcpToolResponse: toolResponse }
           })
           toolBlockId = toolBlock.id
-          void blockManager.handleBlockTransition(toolBlock, MessageBlockType.TOOL)
           toolCallIdToBlockIdMap.set(toolResponse.id, toolBlock.id)
           existingBlockId = toolBlock.id
+          await blockManager.handleBlockTransition(toolBlock, MessageBlockType.TOOL)
         }
       }
 

@@ -22,10 +22,34 @@ export const CHAT_REQUEST_MODE_VERSION = 223
 
 type State = Record<string, any>
 
+const RETIRED_STATE_SLICES = [
+  'mcp',
+  'websearch',
+  'ocr',
+  'copilot',
+  'openclaw',
+  'codeTools',
+  'minapps',
+  'paintings',
+  'preprocess',
+  'selectionStore',
+  'note',
+  'tabs',
+  'toolPermissions',
+  'nutstore',
+  'knowledge',
+  'translate',
+  'docprocess'
+] as const
+
 /** Runs at both rehydration and backup restore boundaries. Never traverses chat messages. */
 export function sanitizeState<T extends State>(state: T, resetProviders = false): T {
-  delete state.mcp
-  delete state.websearch
+  for (const slice of RETIRED_STATE_SLICES) {
+    delete state[slice]
+  }
+  if (state.settings?.mathEngine === 'MathJax') {
+    state.settings.mathEngine = 'KaTeX'
+  }
   if (state.llm) {
     delete state.llm.modelTestSelection
     delete state.llm.modelTestConcurrency
@@ -49,10 +73,6 @@ export function sanitizeState<T extends State>(state: T, resetProviders = false)
       const model = state.llm[key]
       if (model && !state.llm.providers.some((p) => p.id === model.provider)) delete state.llm[key]
     }
-  }
-  if (resetProviders) {
-    if (state.codeTools) state.codeTools.selectedModels = {}
-    if (state.openclaw) state.openclaw.selectedModelUniqId = null
   }
   const assistants = state.assistants
   const entries = [assistants?.defaultAssistant, ...(assistants?.assistants ?? []), ...(assistants?.presets ?? [])]

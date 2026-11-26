@@ -8,7 +8,7 @@ import { type ModelProviderSelection, resolveModelProviderSelection } from '@sha
 import { PLATFORM_NAMES, PROVIDER_PLATFORMS, type ProviderPlatform } from '@shared/platforms'
 import { Select, Tooltip, Typography } from 'antd'
 import { CircleAlert } from 'lucide-react'
-import { useEffect, useState, useSyncExternalStore } from 'react'
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
@@ -59,48 +59,60 @@ export default function ModelProviderSelect({
     if (!openField) setDraftSelection(selection)
   }, [selection, openField])
   const activeSelection = openField ? draftSelection : selection
-  const resolved = resolveModelProviderSelection(activeSelection, llm)
+  const resolved = useMemo(() => resolveModelProviderSelection(activeSelection, llm), [activeSelection, llm])
   const effort = useSyncExternalStore(reasoningUsage.subscribe, () =>
     reasoningUsage.get(selection.providerId || '', selection.modelId || '')
   )
-  const models = PROVIDER_PLATFORMS.map((platform) => ({
-    label: PLATFORM_NAMES[platform],
-    options: llm.platformModels[platform]
-      .filter((definition) => {
-        const model = { ...definition, provider: '' }
-        return !isEmbeddingModel(model) && !isRerankModel(model) && (!filter || filter(model))
+  const models = useMemo(() => {
+    const groups = PROVIDER_PLATFORMS.map((platform) => ({
+      label: PLATFORM_NAMES[platform],
+      options: llm.platformModels[platform]
+        .filter((definition) => {
+          const model = { ...definition, provider: '' }
+          return !isEmbeddingModel(model) && !isRerankModel(model) && (!filter || filter(model))
+        })
+        .map((model) => {
+          const presentation = getModelPresentation(model)
+          return {
+            value: JSON.stringify([platform, model.id]),
+            label: presentation.label,
+            searchText: presentation.searchText,
+            model: { ...model, provider: '' } as Model | undefined,
+            disabled: false
+          }
+        })
+    }))
+    if (activeSelection.modelId && !resolved.definition) {
+      groups.push({
+        label: t('settings.modelSelection.unavailable'),
+        options: [
+          {
+            value: JSON.stringify([activeSelection.platform, activeSelection.modelId]),
+            label: activeSelection.modelId,
+            searchText: activeSelection.modelId.toLowerCase(),
+            model: undefined,
+            disabled: true
+          }
+        ]
       })
-      .map((model) => ({
-        value: JSON.stringify([platform, model.id]),
-        label: getModelPresentation(model).label,
-        searchText: getModelPresentation(model).searchText,
-        model: { ...model, provider: '' } as Model | undefined,
-        disabled: false
-      }))
-  }))
-  if (activeSelection.modelId && !resolved.definition)
-    models.push({
-      label: t('settings.modelSelection.unavailable'),
-      options: [
-        {
-          value: JSON.stringify([activeSelection.platform, activeSelection.modelId]),
-          label: activeSelection.modelId,
-          model: undefined,
-          disabled: true
-        }
-      ]
-    })
-  const providers = resolved.providers.map((provider) => ({
-    value: provider.id,
-    label: provider.name,
-    disabled: false
-  }))
-  if (activeSelection.providerId && !resolved.provider)
-    providers.push({
-      value: activeSelection.providerId,
-      label: `${llm.providers.find((provider) => provider.id === activeSelection.providerId)?.name || activeSelection.providerId} (${t('settings.modelSelection.unavailable')})`,
-      disabled: true
-    })
+    }
+    return groups
+  }, [activeSelection.modelId, activeSelection.platform, filter, llm.platformModels, resolved.definition, t])
+  const providers = useMemo(() => {
+    const list = resolved.providers.map((provider) => ({
+      value: provider.id,
+      label: provider.name,
+      disabled: false
+    }))
+    if (activeSelection.providerId && !resolved.provider) {
+      list.push({
+        value: activeSelection.providerId,
+        label: `${llm.providers.find((provider) => provider.id === activeSelection.providerId)?.name || activeSelection.providerId} (${t('settings.modelSelection.unavailable')})`,
+        disabled: true
+      })
+    }
+    return list
+  }, [activeSelection.providerId, llm.providers, resolved.provider, resolved.providers, t])
   const issue =
     resolved.model && (isEmbeddingModel(resolved.model) || isRerankModel(resolved.model))
       ? 'modelUnavailable'
@@ -193,14 +205,15 @@ export default function ModelProviderSelect({
             options={models}
             optionRender={(option) => {
               const model = (option.data as { model?: Model }).model
+              const presentation = model ? getModelPresentation(model) : null
               return (
                 <ModelOption className="model-option">
                   <ModelAvatar model={model} size={24} />
                   <span className="model-name" title={model?.id || String(option.label)}>
-                    {model ? (
+                    {presentation && model ? (
                       <>
-                        <span>{getModelPresentation(model).primary}</span>
-                        {getModelPresentation(model).secondary && (
+                        <span>{presentation.primary}</span>
+                        {presentation.secondary && (
                           <small style={{ display: 'block', color: 'var(--color-text-3)' }}>{model.id}</small>
                         )}
                       </>

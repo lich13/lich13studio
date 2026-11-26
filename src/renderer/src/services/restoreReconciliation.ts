@@ -56,7 +56,7 @@ export async function reconcilePendingBackupRestore(options?: {
   }
 
   try {
-    await invokeCmd('finish_backup_restore', { commit: committed })
+    await invokeCmd('finish_backup_restore', { commit: committed, restoreId: pendingRestoreId })
   } catch (error) {
     logger.warn('Failed to finalize pending backup restore on startup; marker retained for retry', error as Error)
     return 'deferred'

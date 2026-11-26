@@ -37,17 +37,20 @@ export interface UseInputTextReturn {
  */
 export function useInputText(options: UseInputTextOptions = {}): UseInputTextReturn {
   const [text, setText] = useState(options.initialValue ?? '')
+  const latestTextRef = useRef(text)
+  latestTextRef.current = text
   const prevTextRef = useRef(text)
+  const optionsRef = useRef(options)
+  optionsRef.current = options
 
-  const handleSetText = useCallback(
-    (value: string | ((prev: string) => string)) => {
-      const newText = typeof value === 'function' ? value(text) : value
-      prevTextRef.current = text
-      setText(newText)
-      options.onChange?.(newText)
-    },
-    [text, options]
-  )
+  const handleSetText = useCallback((value: string | ((prev: string) => string)) => {
+    const current = latestTextRef.current
+    const newText = typeof value === 'function' ? value(current) : value
+    prevTextRef.current = current
+    latestTextRef.current = newText
+    setText(newText)
+    optionsRef.current.onChange?.(newText)
+  }, [])
 
   const clear = useCallback(() => {
     handleSetText('')

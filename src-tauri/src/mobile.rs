@@ -261,8 +261,6 @@ mod commands {
         Err("Desktop only".into())
     }
     #[tauri::command]
-    pub fn show_main_window() {}
-    #[tauri::command]
     pub fn show_mini_window() -> Result<(), String> {
         Err("Desktop only".into())
     }

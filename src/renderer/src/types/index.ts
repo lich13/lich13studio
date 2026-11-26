@@ -853,7 +853,7 @@ export interface Citation {
   metadata?: Record<string, any>
 }
 
-export type MathEngine = 'KaTeX' | 'MathJax' | 'none'
+export type MathEngine = 'KaTeX' | 'none'
 
 export interface StoreSyncAction {
   type: string
@@ -1073,9 +1073,7 @@ type BaseParams = {
   assistant: Assistant
   requestOptions?: FetchChatCompletionRequestOptions
   onChunkReceived: (chunk: Chunk) => void
-  topicId?: string // 添加 topicId 参数
-  allowedTools?: string[]
-  uiMessages?: Message[]
+  topicId?: string
 }
 
 type MessagesParams = BaseParams & {

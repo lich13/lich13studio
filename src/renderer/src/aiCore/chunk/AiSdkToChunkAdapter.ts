@@ -10,40 +10,25 @@ import { ProviderSpecificError } from '@renderer/types/provider-specific-error'
 import { formatErrorMessage, isAbortError } from '@renderer/utils/error'
 import { AISDKError, type TextStreamPart, type ToolSet } from 'ai'
 
-type RawAgentMessage = {
-  type?: string
-  session_id?: string
-}
-
 import { ToolCallChunkHandler } from './handleToolCallChunk'
 
 const logger = loggerService.withContext('AiSdkToChunkAdapter')
 
-/**
- * AI SDK 到 Cherry Studio Chunk 适配器类
- * 处理 fullStream 到 Cherry Studio chunk 的转换
- */
 export class AiSdkToChunkAdapter {
   toolCallHandler: ToolCallChunkHandler
   private accumulate: boolean | undefined
   private pendingChunkCallbacks: Promise<unknown>[] = []
-  private onSessionUpdate?: (sessionId: string) => void
   private responseStartTimestamp: number | null = null
   private firstTokenTimestamp: number | null = null
   private hasTextContent = false
   private emittedTerminalEvent = false
-  private getSessionWasCleared?: () => boolean
 
   constructor(
     private onChunk: (chunk: Chunk) => void | Promise<void>,
-    accumulate?: boolean,
-    onSessionUpdate?: (sessionId: string) => void,
-    getSessionWasCleared?: () => boolean
+    accumulate?: boolean
   ) {
     this.toolCallHandler = new ToolCallChunkHandler((chunk) => this.emitChunk(chunk))
     this.accumulate = accumulate
-    this.onSessionUpdate = onSessionUpdate
-    this.getSessionWasCleared = getSessionWasCleared
   }
 
   private emitChunk(chunk: Chunk) {
@@ -186,15 +171,9 @@ export class AiSdkToChunkAdapter {
     logger.silly(`AI SDK chunk type: ${chunk.type}`, chunk)
     switch (chunk.type) {
       case 'raw': {
-        const agentRawMessage = chunk.rawValue as RawAgentMessage | null | undefined
-        if (agentRawMessage?.type === 'init' && agentRawMessage.session_id) {
-          this.onSessionUpdate?.(agentRawMessage.session_id)
-        } else if (agentRawMessage?.type === 'compact' && agentRawMessage.session_id) {
-          this.onSessionUpdate?.(agentRawMessage.session_id)
-        }
         this.emitChunk({
           type: ChunkType.RAW,
-          content: agentRawMessage
+          content: chunk.rawValue
         })
         break
       }
@@ -317,25 +296,6 @@ export class AiSdkToChunkAdapter {
 
       case 'finish': {
         this.emittedTerminalEvent = true
-        // Check if session was cleared (e.g., /clear command) and no text was output
-        const sessionCleared = this.getSessionWasCleared?.() ?? false
-        if (sessionCleared && !this.hasTextContent) {
-          // Inject a "context cleared" message for the user
-          const clearMessage = '✨ Context cleared. Starting fresh conversation.'
-          this.emitChunk({
-            type: ChunkType.TEXT_START
-          })
-          this.emitChunk({
-            type: ChunkType.TEXT_DELTA,
-            text: clearMessage
-          })
-          this.emitChunk({
-            type: ChunkType.TEXT_COMPLETE,
-            text: clearMessage
-          })
-          final.text = clearMessage
-        }
-
         const usage = {
           completion_tokens: chunk.totalUsage?.outputTokens || 0,
           prompt_tokens: chunk.totalUsage?.inputTokens || 0,

@@ -244,11 +244,10 @@ const AssistantSettingsTab = (props: Props) => {
           <SettingRow>
             <SettingRowTitleSmall>{t('settings.math.engine.label')}</SettingRowTitleSmall>
             <Selector
-              value={mathEngine}
+              value={mathEngine === 'none' ? 'none' : 'KaTeX'}
               onChange={(value) => dispatch(setMathEngine(value as MathEngine))}
               options={[
                 { value: 'KaTeX', label: 'KaTeX' },
-                { value: 'MathJax', label: 'MathJax' },
                 { value: 'none', label: t('settings.math.engine.none') }
               ]}
             />

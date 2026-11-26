@@ -79,6 +79,7 @@ const NavbarLeftContainer = styled.div`
 
 const NavbarCenterContainer = styled.div`
   flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
   padding: 0 ${isMac ? '20px' : 0};
@@ -99,6 +100,7 @@ const NavbarRightContainer = styled.div<{ $isFullscreen: boolean }>`
 
 const NavbarMainContainer = styled.div<{ $isFullscreen: boolean }>`
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -111,6 +113,7 @@ const NavbarMainContainer = styled.div<{ $isFullscreen: boolean }>`
 
 const NavbarHeaderContent = styled.div`
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: row;
   align-items: center;

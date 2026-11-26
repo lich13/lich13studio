@@ -1,21 +1,10 @@
-// @ts-nocheck
-/**
- * @deprecated Scheduled for removal in v2.0.0
- * --------------------------------------------------------------------------
- * ⚠️ NOTICE: V2 DATA&UI REFACTORING (by 0xfullex)
- * --------------------------------------------------------------------------
- * STOP: Feature PRs affecting this file are currently BLOCKED.
- * Only critical bug fixes are accepted during this migration phase.
- *
- * This file is being refactored to v2 standards.
- * Any non-critical changes will conflict with the ongoing work.
- *
- * 🔗 Context & Status:
- * - Contribution Hold: https://github.com/CherryHQ/cherry-studio/issues/10954
- * - v2 Refactor PR   : https://github.com/CherryHQ/cherry-studio/pull/10162
- * --------------------------------------------------------------------------
- */
-import { createEntityAdapter, createSelector, createSlice, type PayloadAction } from '@reduxjs/toolkit'
+import {
+  createEntityAdapter,
+  createSelector,
+  createSlice,
+  type EntityState,
+  type PayloadAction
+} from '@reduxjs/toolkit'
 import type { TodoWriteToolInput } from '@renderer/pages/home/Messages/Tools/MessageAgentTools/types'
 import type {
   AISDKWebSearchResult,
@@ -41,38 +30,35 @@ type MessageBlockEntity = MessageBlock
 // 我们使用块的 `id` 作为唯一标识符。
 const messageBlocksAdapter = createEntityAdapter<MessageBlockEntity>()
 
-// 2. 使用适配器定义初始状态 (Initial State)
-// 如果需要，可以在规范化实体的旁边添加其他状态属性。
-const initialState = messageBlocksAdapter.getInitialState({
-  loadingState: 'idle' as 'idle' | 'loading' | 'succeeded' | 'failed',
-  error: null as string | null
+export interface MessageBlocksState extends EntityState<MessageBlockEntity, string> {
+  loadingState: 'idle' | 'loading' | 'succeeded' | 'failed'
+  error: string | null
+}
+
+const initialState: MessageBlocksState = messageBlocksAdapter.getInitialState({
+  loadingState: 'idle' as const,
+  error: null
 })
 
-// 3. 创建 Slice
-// @ts-ignore ignore
-const _messageBlocksSlice: any = createSlice({
+const _messageBlocksSlice = createSlice({
   name: 'messageBlocks',
   initialState,
   reducers: {
-    // 使用适配器的 reducer 助手进行 CRUD 操作。
-    // 这些 reducer 会自动处理规范化的状态结构。
-
-    /** 添加或更新单个块 (Upsert)。 */
-    upsertOneBlock: messageBlocksAdapter.upsertOne, // 期望 MessageBlock 作为 payload
-
-    /** 添加或更新多个块。用于加载消息。 */
-    upsertManyBlocks: messageBlocksAdapter.upsertMany, // 期望 MessageBlock[] 作为 payload
-
-    /** 根据 ID 移除单个块。 */
-    removeOneBlock: messageBlocksAdapter.removeOne, // 期望 EntityId (string) 作为 payload
-
-    /** 根据 ID 列表移除多个块。用于清理话题。 */
-    removeManyBlocks: messageBlocksAdapter.removeMany, // 期望 EntityId[] (string[]) 作为 payload
-
-    /** 移除所有块。用于完全重置。 */
-    removeAllBlocks: messageBlocksAdapter.removeAll,
-
-    // 你可以为其他状态属性（如加载/错误）添加自定义 reducer
+    upsertOneBlock(state, action: PayloadAction<MessageBlock>) {
+      messageBlocksAdapter.upsertOne(state as MessageBlocksState, action.payload)
+    },
+    upsertManyBlocks(state, action: PayloadAction<MessageBlock[]>) {
+      messageBlocksAdapter.upsertMany(state as MessageBlocksState, action.payload)
+    },
+    removeOneBlock(state, action: PayloadAction<string>) {
+      messageBlocksAdapter.removeOne(state as MessageBlocksState, action.payload)
+    },
+    removeManyBlocks(state, action: PayloadAction<string[]>) {
+      messageBlocksAdapter.removeMany(state as MessageBlocksState, action.payload)
+    },
+    removeAllBlocks(state) {
+      messageBlocksAdapter.removeAll(state as MessageBlocksState)
+    },
     setMessageBlocksLoading: (state, action: PayloadAction<'idle' | 'loading'>) => {
       state.loadingState = action.payload
       state.error = null
@@ -81,10 +67,10 @@ const _messageBlocksSlice: any = createSlice({
       state.loadingState = 'failed'
       state.error = action.payload
     },
-    // 注意：如果只想更新现有块，也可以使用 `updateOne`
-    updateOneBlock: messageBlocksAdapter.updateOne // 期望 { id: EntityId, changes: Partial<MessageBlock> }
+    updateOneBlock(state, action: PayloadAction<{ id: string; changes: Partial<MessageBlock> }>) {
+      messageBlocksAdapter.updateOne(state as MessageBlocksState, action.payload)
+    }
   }
-  // 如果需要处理其他 slice 的 action，可以在这里添加 extraReducers。
 })
 
 // 4. 导出 Actions 和 Reducer

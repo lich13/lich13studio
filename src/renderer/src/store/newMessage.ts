@@ -1,26 +1,10 @@
-// @ts-nocheck
-/**
- * @deprecated Scheduled for removal in v2.0.0
- * --------------------------------------------------------------------------
- * ⚠️ NOTICE: V2 DATA&UI REFACTORING (by 0xfullex)
- * --------------------------------------------------------------------------
- * STOP: Feature PRs affecting this file are currently BLOCKED.
- * Only critical bug fixes are accepted during this migration phase.
- *
- * This file is being refactored to v2 standards.
- * Any non-critical changes will conflict with the ongoing work.
- *
- * 🔗 Context & Status:
- * - Contribution Hold: https://github.com/CherryHQ/cherry-studio/issues/10954
- * - v2 Refactor PR   : https://github.com/CherryHQ/cherry-studio/pull/10162
- * --------------------------------------------------------------------------
- */
 import { loggerService } from '@logger'
 import type { EntityState, PayloadAction } from '@reduxjs/toolkit'
-import { createEntityAdapter, createSlice } from '@reduxjs/toolkit'
-// Separate type-only imports from value imports
+import { createEntityAdapter, createSelector, createSlice } from '@reduxjs/toolkit'
 import type { Message } from '@renderer/types/newMessage'
 import { AssistantMessageStatus, MessageBlockStatus, MessageBlockType } from '@renderer/types/newMessage'
+
+import type { RootState } from './index'
 
 const logger = loggerService.withContext('newMessage')
 
@@ -114,8 +98,7 @@ interface InsertMessageAtIndexPayload {
   index: number
 }
 
-// 4. Create the Slice with Refactored Reducers
-const _messagesSlice: any = createSlice({
+const _messagesSlice = createSlice({
   name: 'newMessages',
   initialState,
   reducers: {
@@ -126,13 +109,13 @@ const _messagesSlice: any = createSlice({
           state.messageIdsByTopic[action.payload] = []
           state.loadingByTopic[action.payload] = false
         }
-        touchTopicLru(state, action.payload)
+        touchTopicLru(state as MessagesState, action.payload)
       }
     },
     setPreviewTopicId(state, action: PayloadAction<string | null>) {
       state.previewTopicId = action.payload
       if (action.payload) {
-        touchTopicLru(state, action.payload)
+        touchTopicLru(state as MessagesState, action.payload)
       }
     },
     setTopicLoading(state, action: PayloadAction<SetTopicLoadingPayload>) {
@@ -148,19 +131,18 @@ const _messagesSlice: any = createSlice({
     },
     messagesReceived(state, action: PayloadAction<MessagesReceivedPayload>) {
       const { topicId, messages } = action.payload
-      // @ts-ignore ts-2589 false positive
-      messagesAdapter.upsertMany(state, messages)
+      messagesAdapter.upsertMany(state as MessagesState, messages)
       state.messageIdsByTopic[topicId] = messages.map((m) => m.id)
-      touchTopicLru(state, topicId)
+      touchTopicLru(state as MessagesState, topicId)
     },
     addMessage(state, action: PayloadAction<{ topicId: string; message: Message }>) {
       const { topicId, message } = action.payload
-      messagesAdapter.addOne(state, message)
+      messagesAdapter.addOne(state as MessagesState, message)
       if (!state.messageIdsByTopic[topicId]) {
         state.messageIdsByTopic[topicId] = []
       }
       state.messageIdsByTopic[topicId].push(message.id)
-      touchTopicLru(state, topicId)
+      touchTopicLru(state as MessagesState, topicId)
       if (!(topicId in state.loadingByTopic)) {
         state.loadingByTopic[topicId] = false
       }
@@ -170,14 +152,13 @@ const _messagesSlice: any = createSlice({
     },
     insertMessageAtIndex(state, action: PayloadAction<InsertMessageAtIndexPayload>) {
       const { topicId, message, index } = action.payload
-      messagesAdapter.addOne(state, message) // Add message to entities
+      messagesAdapter.addOne(state as MessagesState, message)
       if (!state.messageIdsByTopic[topicId]) {
         state.messageIdsByTopic[topicId] = []
       }
-      // Ensure index is within bounds
       const safeIndex = Math.max(0, Math.min(index, state.messageIdsByTopic[topicId].length))
-      state.messageIdsByTopic[topicId].splice(safeIndex, 0, message.id) // Insert ID at specified index
-      touchTopicLru(state, topicId)
+      state.messageIdsByTopic[topicId].splice(safeIndex, 0, message.id)
+      touchTopicLru(state as MessagesState, topicId)
 
       if (!(topicId in state.loadingByTopic)) {
         state.loadingByTopic[topicId] = false
@@ -208,24 +189,25 @@ const _messagesSlice: any = createSlice({
             } else {
               currentBlocks.push(blockIdToAdd)
             }
-            messagesAdapter.updateOne(state, { id: messageId, changes: { ...otherUpdates, blocks: currentBlocks } })
-          } else {
-            if (Object.keys(otherUpdates).length > 0) {
-              messagesAdapter.updateOne(state, { id: messageId, changes: otherUpdates })
-            }
+            messagesAdapter.updateOne(state as MessagesState, {
+              id: messageId,
+              changes: { ...otherUpdates, blocks: currentBlocks }
+            })
+          } else if (Object.keys(otherUpdates).length > 0) {
+            messagesAdapter.updateOne(state as MessagesState, { id: messageId, changes: otherUpdates })
           }
         } else {
           logger.warn(`[updateMessage] Message ${messageId} not found in entities.`)
         }
       } else {
-        messagesAdapter.updateOne(state, { id: messageId, changes: otherUpdates })
+        messagesAdapter.updateOne(state as MessagesState, { id: messageId, changes: otherUpdates })
       }
     },
     clearTopicMessages(state, action: PayloadAction<string>) {
       const topicId = action.payload
       const idsToRemove = state.messageIdsByTopic[topicId] || []
       if (idsToRemove.length > 0) {
-        messagesAdapter.removeMany(state, idsToRemove)
+        messagesAdapter.removeMany(state as MessagesState, idsToRemove)
       }
       delete state.messageIdsByTopic[topicId]
       delete state.loadingByTopic[topicId]
@@ -240,7 +222,7 @@ const _messagesSlice: any = createSlice({
       if (currentTopicIds) {
         state.messageIdsByTopic[topicId] = currentTopicIds.filter((id) => id !== messageId)
       }
-      messagesAdapter.removeOne(state, messageId)
+      messagesAdapter.removeOne(state as MessagesState, messageId)
     },
     removeMessagesByAskId(state, action: PayloadAction<RemoveMessagesByAskIdPayload>) {
       const { topicId, askId } = action.payload
@@ -255,7 +237,7 @@ const _messagesSlice: any = createSlice({
       })
 
       if (idsToRemove.length > 0) {
-        messagesAdapter.removeMany(state, idsToRemove)
+        messagesAdapter.removeMany(state as MessagesState, idsToRemove)
         state.messageIdsByTopic[topicId] = currentTopicIds.filter((id) => !idsToRemove.includes(id))
       }
     },
@@ -266,7 +248,7 @@ const _messagesSlice: any = createSlice({
       if (currentTopicIds) {
         state.messageIdsByTopic[topicId] = currentTopicIds.filter((id) => !idsToRemoveSet.has(id))
       }
-      messagesAdapter.removeMany(state, messageIds)
+      messagesAdapter.removeMany(state as MessagesState, messageIds)
     },
     upsertBlockReference(state, action: PayloadAction<UpsertBlockReferencePayload>) {
       const { messageId, blockId, status, blockType } = action.payload
@@ -278,8 +260,6 @@ const _messagesSlice: any = createSlice({
       }
 
       const changes: Partial<Message> = {}
-
-      // Update Block ID
       const currentBlocks = messageToUpdate.blocks || []
       if (!currentBlocks.includes(blockId)) {
         if (blockType === MessageBlockType.THINKING) {
@@ -289,7 +269,6 @@ const _messagesSlice: any = createSlice({
         }
       }
 
-      // Update Message Status based on Block Status
       if (status) {
         if (
           (status === MessageBlockStatus.PROCESSING || status === MessageBlockStatus.STREAMING) &&
@@ -300,43 +279,24 @@ const _messagesSlice: any = createSlice({
           changes.status = AssistantMessageStatus.PROCESSING
         } else if (status === MessageBlockStatus.ERROR) {
           changes.status = AssistantMessageStatus.ERROR
-        } else if (
-          status === MessageBlockStatus.SUCCESS &&
-          messageToUpdate.status === AssistantMessageStatus.PROCESSING
-        ) {
-          // Tentative success - may need refinement
-          // changes.status = AssistantMessageStatus.SUCCESS
         }
       }
 
-      // Apply updates if any changes were made
       if (Object.keys(changes).length > 0) {
-        messagesAdapter.updateOne(state, { id: messageId, changes })
+        messagesAdapter.updateOne(state as MessagesState, { id: messageId, changes })
       }
     }
   }
 })
 
-// 5. Export Actions and Reducer
-type MessagesSlicePublic = {
-  reducer: typeof _messagesSlice.reducer
-  actions: typeof _messagesSlice.actions
-}
-
-export const messagesSlice: MessagesSlicePublic = {
+export const messagesSlice = {
   reducer: _messagesSlice.reducer,
   actions: _messagesSlice.actions
 }
 
-export const newMessagesActions: MessagesSlicePublic['actions'] = _messagesSlice.actions
+export const newMessagesActions = _messagesSlice.actions
 export default _messagesSlice.reducer
 
-// --- Selectors ---
-import { createSelector } from '@reduxjs/toolkit'
-
-import type { RootState } from './index' // Adjust path if necessary
-
-// Base selector for the messages slice state
 export const selectMessagesState = (state: RootState) => state.messages
 
 // Selectors generated by createEntityAdapter

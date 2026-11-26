@@ -5,6 +5,7 @@ import { useSettings } from '@renderer/hooks/useSettings'
 import { useTemporaryValue } from '@renderer/hooks/useTemporaryValue'
 import { MessageBlockStatus, type ThinkingMessageBlock } from '@renderer/types/newMessage'
 import { Collapse, Tooltip } from 'antd'
+import { Copy } from 'lucide-react'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
@@ -81,13 +82,14 @@ const ThinkingBlock: React.FC<Props> = ({ block }) => {
               {!isThinking && (
                 <Tooltip title={t('common.copy')} mouseEnterDelay={0.8}>
                   <ActionButton
+                    type="button"
                     className="message-action-button"
                     onClick={(e) => {
                       e.stopPropagation()
                       copyThought()
                     }}
                     aria-label={t('common.copy')}>
-                    {!copied && <i className="iconfont icon-copy"></i>}
+                    {!copied && <Copy size={14} className="lucide-custom" />}
                     {copied && <CheckOutlined style={{ color: 'var(--color-primary)' }} />}
                   </ActionButton>
                 </Tooltip>
@@ -192,10 +194,6 @@ const ActionButton = styled.button`
   &:focus-visible {
     outline: 2px solid var(--color-primary);
     outline-offset: 2px;
-  }
-
-  .iconfont {
-    font-size: 14px;
   }
 `
 

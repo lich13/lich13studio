@@ -1,19 +1,3 @@
-/**
- * @deprecated Scheduled for removal in v2.0.0
- * --------------------------------------------------------------------------
- * ⚠️ NOTICE: V2 DATA&UI REFACTORING (by 0xfullex)
- * --------------------------------------------------------------------------
- * STOP: Feature PRs affecting this file are currently BLOCKED.
- * Only critical bug fixes are accepted during this migration phase.
- *
- * This file is being refactored to v2 standards.
- * Any non-critical changes will conflict with the ongoing work.
- *
- * 🔗 Context & Status:
- * - Contribution Hold: https://github.com/CherryHQ/cherry-studio/issues/10954
- * - v2 Refactor PR   : https://github.com/CherryHQ/cherry-studio/pull/10162
- * --------------------------------------------------------------------------
- */
 import { DEFAULT_SIDEBAR_ICONS } from '@renderer/config/sidebar'
 import store, { useAppDispatch, useAppSelector } from '@renderer/store'
 import type { AssistantIconType, SendMessageShortcut, SettingsState } from '@renderer/store/settings'
@@ -34,17 +18,9 @@ import {
 } from '@renderer/store/settings'
 import type { SidebarIcon, ThemeMode, TranslateLanguageCode } from '@renderer/types'
 
-import { getMainProcessSettingUpdates } from './settingsSync'
-
 const RETIRED_SIDEBAR_ICONS = new Set<SidebarIcon>(['store', 'translate', 'knowledge'])
 
 const sanitizeSidebarIcons = (icons: SidebarIcon[]) => icons.filter((icon) => !RETIRED_SIDEBAR_ICONS.has(icon))
-
-function syncMainProcessSettings(updates: { launchToTray?: boolean; tray?: boolean; trayOnClose?: boolean }) {
-  for (const [key, value] of getMainProcessSettingUpdates(updates)) {
-    void window.api.config.set(key, value, true)
-  }
-}
 
 export function useSettings() {
   const settings = useAppSelector((state) => state.settings)
@@ -81,7 +57,6 @@ export function useSettings() {
         if (isLaunchToTray) {
           dispatch(_setTray(true))
         }
-        syncMainProcessSettings({ launchToTray: isLaunchToTray })
       }
     },
 
@@ -95,7 +70,6 @@ export function useSettings() {
           dispatch(_setTray(true))
         }
       }
-      syncMainProcessSettings({ tray: isShowTray, trayOnClose: isTrayOnClose })
     },
 
     setAutoCheckUpdate(isAutoUpdate: boolean) {

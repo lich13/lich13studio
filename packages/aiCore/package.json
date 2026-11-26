@@ -1,79 +1,30 @@
 {
   "name": "@cherrystudio/ai-core",
   "version": "2.0.1",
-  "description": "Cherry Studio AI Core - Unified AI Provider Interface Based on Vercel AI SDK",
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
-  "types": "dist/index.d.ts",
-  "react-native": "dist/index.js",
+  "private": true,
+  "description": "Direct OpenAI Responses and Anthropic Messages executor based on Vercel AI SDK",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
   "scripts": {
-    "build": "tsdown",
-    "dev": "tsc -w",
-    "typecheck": "tsc --noEmit",
-    "lint": "oxlint --fix && eslint . --fix --cache",
-    "lint:check": "oxlint && eslint . --cache",
-    "format": "biome format --write && biome lint --write",
-    "format:check": "biome format && biome lint",
-    "clean": "rm -rf dist",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "prepublishOnly": "pnpm build"
+    "typecheck": "tsc --noEmit"
   },
-  "keywords": ["ai", "sdk", "openai", "anthropic", "cherry-studio", "vercel-ai-sdk"],
-  "author": "Cherry Studio",
   "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/CherryHQ/cherry-studio.git"
-  },
-  "bugs": {
-    "url": "https://github.com/CherryHQ/cherry-studio/issues"
-  },
-  "homepage": "https://github.com/CherryHQ/cherry-studio#readme",
   "peerDependencies": {
     "@ai-sdk/openai": "^3.0.53",
     "ai": "^6.0.116"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^3.0.58",
+    "@ai-sdk/anthropic": "3.0.64",
     "@ai-sdk/provider": "^3.0.8",
-    "lru-cache": "^11.2.4",
     "zod": "^4.6.7"
   },
   "devDependencies": {
-    "biome": "^0.3.3",
-    "oxlint": "^1.36.0",
-    "tsdown": "^0.20.3",
     "@typescript/native": "npm:typescript@7.0.2",
     "typescript": "npm:@typescript/typescript6@6.0.2",
     "vitest": "5.0.4"
   },
   "sideEffects": false,
-  "engines": {
-    "node": ">=18.0.0"
-  },
-  "files": ["dist"],
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "react-native": "./dist/index.js",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js",
-      "default": "./dist/index.js"
-    },
-    "./built-in/plugins": {
-      "types": "./dist/built-in/plugins/index.d.ts",
-      "react-native": "./dist/built-in/plugins/index.js",
-      "import": "./dist/built-in/plugins/index.mjs",
-      "require": "./dist/built-in/plugins/index.js",
-      "default": "./dist/built-in/plugins/index.js"
-    },
-    "./provider": {
-      "types": "./dist/provider/index.d.ts",
-      "react-native": "./dist/provider/index.js",
-      "import": "./dist/provider/index.mjs",
-      "require": "./dist/provider/index.js",
-      "default": "./dist/provider/index.js"
-    }
+    ".": "./src/index.ts"
   }
 }

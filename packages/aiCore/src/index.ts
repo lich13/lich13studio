@@ -1,49 +1,79 @@
-/**
- * Cherry Studio AI Core Package
- * 基于 Vercel AI SDK 的统一 AI Provider 接口
- */
+import { type AnthropicProvider, type AnthropicProviderSettings, createAnthropic } from '@ai-sdk/anthropic'
+import { createOpenAI, type OpenAIProviderSettings } from '@ai-sdk/openai'
+import type { LanguageModelV3 } from '@ai-sdk/provider'
+import {
+  generateText as _generateText,
+  type LanguageModelMiddleware,
+  streamText as _streamText,
+  wrapLanguageModel
+} from 'ai'
 
-// 导入内部使用的类和函数
+export type ProviderId = 'openai' | 'anthropic'
 
-// ==================== 主要用户接口 ====================
-export { createExecutor, embedMany, generateImage, generateText, streamText } from './core/runtime'
+export interface ProviderSettingsMap {
+  openai: OpenAIProviderSettings
+  anthropic: AnthropicProviderSettings
+}
 
-// ==================== Embedding 类型 ====================
-export type { EmbedManyParams, EmbedManyResult } from './core/runtime'
+export interface ExecutorOptions {
+  middlewares?: LanguageModelMiddleware[]
+  enableUrlContext?: boolean
+  urlContextConfig?: Record<string, any>
+}
 
-// ==================== 高级API ====================
-export { isV2Model, isV3Model } from './core/models'
+type DistributiveOmit<T, K extends keyof any> = T extends any ? Omit<T, K> : never
 
-// ==================== 插件系统 ====================
-export type {
-  AiPlugin,
-  AiRequestContext,
-  GenerateTextParams,
-  GenerateTextResult,
-  StreamTextParams,
-  StreamTextResult
-} from './core/plugins'
-export { definePlugin } from './core/plugins'
-export { PluginEngine } from './core/runtime/pluginEngine'
+export type ExecutorStreamTextParams = DistributiveOmit<Parameters<typeof _streamText>[0], 'model'> & { model: string }
+export type ExecutorGenerateTextParams = DistributiveOmit<Parameters<typeof _generateText>[0], 'model'> & {
+  model: string
+}
 
-// ==================== 类型工具 ====================
-export type {
-  AiSdkModel,
-  ExtractToolConfig,
-  ExtractToolConfigMap,
-  ProviderId,
-  ToolCapability,
-  ToolFactory,
-  ToolFactoryMap,
-  ToolFactoryPatch
-} from './core/providers'
+export interface DirectExecutor {
+  streamText: (params: ExecutorStreamTextParams) => Promise<ReturnType<typeof _streamText>>
+  generateText: (params: ExecutorGenerateTextParams) => ReturnType<typeof _generateText>
+}
 
-// ==================== 错误处理 ====================
-export {
-  AiCoreError,
-  ModelResolutionError,
-  ParameterValidationError,
-  PluginExecutionError,
-  RecursiveDepthError,
-  TemplateLoadError
-} from './core/errors'
+export async function createExecutor<T extends ProviderId = ProviderId>(
+  providerId: T,
+  providerSettings: ProviderSettingsMap[T],
+  options: ExecutorOptions = {}
+): Promise<DirectExecutor> {
+  const anthropicProvider: AnthropicProvider | null =
+    providerId === 'anthropic' ? createAnthropic(providerSettings as AnthropicProviderSettings) : null
+  const openaiProvider = providerId === 'openai' ? createOpenAI(providerSettings as OpenAIProviderSettings) : null
+
+  if (!anthropicProvider && !openaiProvider) {
+    throw new Error(`Unsupported provider "${String(providerId)}"`)
+  }
+
+  const resolveWrappedModel = (modelId: string): LanguageModelV3 => {
+    const baseModel = anthropicProvider
+      ? anthropicProvider.languageModel(modelId)
+      : openaiProvider!.languageModel(modelId)
+    const middlewares = options.middlewares ?? []
+    return middlewares.length > 0 ? wrapLanguageModel({ model: baseModel, middleware: middlewares }) : baseModel
+  }
+
+  const applyUrlContext = <P extends Record<string, any>>(params: P): P => {
+    if (!options.enableUrlContext || !anthropicProvider) return params
+    const userConfig = options.urlContextConfig?.anthropic ?? {}
+    return {
+      ...params,
+      tools: {
+        ...params.tools,
+        urlContext: anthropicProvider.tools.webFetch_20260209(userConfig)
+      }
+    }
+  }
+
+  return {
+    async streamText(params) {
+      const next = applyUrlContext(params)
+      return _streamText({ ...next, model: resolveWrappedModel(next.model) } as Parameters<typeof _streamText>[0])
+    },
+    async generateText(params) {
+      const next = applyUrlContext(params)
+      return _generateText({ ...next, model: resolveWrappedModel(next.model) } as Parameters<typeof _generateText>[0])
+    }
+  }
+}

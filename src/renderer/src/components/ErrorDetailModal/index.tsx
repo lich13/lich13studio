@@ -130,7 +130,7 @@ const TruncatedBadge = styled.span`
   padding: 2px 6px;
   font-size: 10px;
   font-weight: normal;
-  color: var(--color-warning);
+  color: var(--color-status-warning);
   background: var(--color-warning-bg, rgba(250, 173, 20, 0.1));
   border-radius: 4px;
 `

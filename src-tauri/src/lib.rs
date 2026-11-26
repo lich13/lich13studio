@@ -13,7 +13,9 @@ use futures_util::StreamExt;
 use image::codecs::png::PngEncoder;
 #[cfg(not(target_os = "android"))]
 use image::{ColorType, ImageEncoder};
-use reqwest::header::{HeaderName, HeaderValue, CONTENT_LENGTH, CONTENT_TYPE, USER_AGENT};
+use reqwest::header::{
+    HeaderName, HeaderValue, CONTENT_LENGTH, CONTENT_TYPE, LOCATION, USER_AGENT,
+};
 use reqwest::{Client, Method};
 use roxmltree::Document;
 use serde::{Deserialize, Serialize};
@@ -52,7 +54,6 @@ use tauri_plugin_notification::NotificationExt;
 use tokio::process::Command;
 use url::Url;
 use uuid::Uuid;
-use walkdir::WalkDir;
 #[cfg(not(target_os = "android"))]
 use xcap::Window as CaptureWindow;
 use zip::write::SimpleFileOptions;
@@ -188,6 +189,8 @@ struct NativeHttpRequest {
     headers: Vec<NativeHttpHeader>,
     body: Option<Vec<u8>>,
     #[serde(default)]
+    body_base64: Option<String>,
+    #[serde(default)]
     body_text: Option<String>,
     #[serde(default)]
     task_epoch: Option<u64>,
@@ -202,14 +205,15 @@ struct NativeHttpResponseStart {
     headers: Vec<NativeHttpHeader>,
 }
 
-fn serialize_bytes_as_base64<S>(bytes: &[u8], serializer: S) -> Result<S::Ok, S::Error>
+fn serialize_bytes_as_base64<S, B: AsRef<[u8]>>(bytes: &B, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
 {
-    if bytes.is_empty() {
+    let slice = bytes.as_ref();
+    if slice.is_empty() {
         serializer.serialize_str("")
     } else {
-        serializer.serialize_str(&general_purpose::STANDARD.encode(bytes))
+        serializer.serialize_str(&general_purpose::STANDARD.encode(slice))
     }
 }
 
@@ -219,7 +223,7 @@ pub(crate) struct NativeHttpChunkEvent {
     pub(crate) sequence: Option<u64>,
     pub(crate) request_id: String,
     #[serde(serialize_with = "serialize_bytes_as_base64")]
-    pub(crate) chunk: Vec<u8>,
+    pub(crate) chunk: Arc<[u8]>,
     pub(crate) done: bool,
     pub(crate) error: Option<String>,
 }
@@ -391,6 +395,7 @@ static WINDOW_STATE_SAVE_EPOCH: AtomicU64 = AtomicU64::new(0);
 static MINI_WINDOW_PINNED: AtomicBool = AtomicBool::new(false);
 static STARTED_SILENTLY: AtomicBool = AtomicBool::new(false);
 static RUNTIME_SETTINGS: OnceLock<Mutex<RuntimeSettings>> = OnceLock::new();
+static STATE_FILE_LOCK: Mutex<()> = Mutex::new(());
 static AUTO_LAUNCH_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 
 #[cfg(target_os = "windows")]
@@ -459,6 +464,9 @@ fn replace_runtime_settings(settings: RuntimeSettings) {
 }
 
 fn load_runtime_settings_from_state() -> Result<RuntimeSettings, String> {
+    let _guard = STATE_FILE_LOCK
+        .lock()
+        .map_err(|_| String::from("state file lock poisoned"))?;
     let state = load_state_file()?;
     state
         .get(RUNTIME_SETTINGS_KEY)
@@ -469,23 +477,40 @@ fn load_runtime_settings_from_state() -> Result<RuntimeSettings, String> {
         .map(|settings| settings.unwrap_or_default())
 }
 
-fn save_runtime_settings_to_state(settings: RuntimeSettings) -> Result<(), String> {
-    let mut state = load_state_file().unwrap_or_else(|_| json!({}));
+fn update_runtime_setting_in_path(
+    path: &Path,
+    current_fallback: RuntimeSettings,
+    key: &str,
+    value: bool,
+) -> Result<RuntimeSettings, String> {
+    let mut state = load_state_file_from_path(path)?;
 
-    if !state.is_object() {
-        state = json!({});
-    }
+    let mut settings = state
+        .get(RUNTIME_SETTINGS_KEY)
+        .cloned()
+        .and_then(|raw| serde_json::from_value::<RuntimeSettings>(raw).ok())
+        .unwrap_or(current_fallback);
+    apply_runtime_setting(&mut settings, key, value)?;
 
     let root = state
         .as_object_mut()
         .ok_or_else(|| String::from("Invalid state payload: root must be an object"))?;
-
     root.insert(
         RUNTIME_SETTINGS_KEY.to_string(),
         serde_json::to_value(settings).map_err(|error| error.to_string())?,
     );
-    save_state_file(&state)?;
-    Ok(())
+    save_state_file_to_path(path, &state)?;
+    Ok(settings)
+}
+
+fn update_runtime_setting_in_state_file(key: &str, value: bool) -> Result<RuntimeSettings, String> {
+    let _guard = STATE_FILE_LOCK
+        .lock()
+        .map_err(|_| String::from("state file lock poisoned"))?;
+    let path = state_path()?;
+    let settings = update_runtime_setting_in_path(&path, current_runtime_settings(), key, value)?;
+    replace_runtime_settings(settings);
+    Ok(settings)
 }
 
 fn apply_runtime_setting(
@@ -1016,7 +1041,7 @@ fn remove_native_http_abort(request_id: &str) {
 async fn emit_native_http_chunk(
     window: &Window,
     request_id: &str,
-    chunk: Vec<u8>,
+    chunk: Arc<[u8]>,
     done: bool,
     error: Option<String>,
 ) {
@@ -1039,19 +1064,28 @@ async fn emit_native_http_chunk(
         }
     }
     #[cfg(not(target_os = "android"))]
-    let _ = window.emit(NATIVE_HTTP_CHUNK_EVENT, payload);
+    let _ = window.emit_to(
+        tauri::EventTarget::webview_window(window.label()),
+        NATIVE_HTTP_CHUNK_EVENT,
+        payload,
+    );
 }
 
 static MOBILE_DATA_DIR: OnceLock<PathBuf> = OnceLock::new();
+static DESKTOP_DATA_DIR: OnceLock<PathBuf> = OnceLock::new();
 
-fn app_data_dir() -> Result<PathBuf, String> {
+pub(crate) fn app_data_dir() -> Result<PathBuf, String> {
     if let Some(path) = MOBILE_DATA_DIR.get() {
+        return Ok(path.clone());
+    }
+    if let Some(path) = DESKTOP_DATA_DIR.get() {
         return Ok(path.clone());
     }
     let path = dirs::data_dir()
         .ok_or_else(|| String::from("Unable to resolve data directory"))?
         .join(APP_NAME);
     fs::create_dir_all(&path).map_err(|error| error.to_string())?;
+    let _ = DESKTOP_DATA_DIR.set(path.clone());
     Ok(path)
 }
 
@@ -1059,25 +1093,59 @@ fn state_path() -> Result<PathBuf, String> {
     Ok(app_data_dir()?.join(DEFAULT_STATE_FILE))
 }
 
-fn load_state_file() -> Result<Value, String> {
-    let path = state_path()?;
-    if !path.exists() {
-        return Ok(json!({}));
-    }
+fn load_state_file_from_path(path: &Path) -> Result<Value, String> {
+    let raw = match fs::read_to_string(path) {
+        Ok(content) => content,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(json!({})),
+        Err(error) => return Err(error.to_string()),
+    };
 
-    let raw = fs::read_to_string(path).map_err(|error| error.to_string())?;
-    serde_json::from_str(&raw).map_err(|error| error.to_string())
+    let parsed: Value = serde_json::from_str(&raw).map_err(|error| error.to_string())?;
+    if !parsed.is_object() {
+        return Err(String::from(
+            "Invalid state payload: root must be an object",
+        ));
+    }
+    Ok(parsed)
 }
 
-fn save_state_file(state: &Value) -> Result<String, String> {
-    let path = state_path()?;
+fn load_state_file() -> Result<Value, String> {
+    load_state_file_from_path(&state_path()?)
+}
+
+fn save_state_file_to_path(path: &Path, state: &Value) -> Result<String, String> {
+    let parent = path
+        .parent()
+        .ok_or_else(|| String::from("Invalid state file path"))?;
+    let file_name = path
+        .file_name()
+        .and_then(OsStr::to_str)
+        .unwrap_or(DEFAULT_STATE_FILE);
+    fs::create_dir_all(parent).map_err(|error| error.to_string())?;
     let payload = serde_json::to_vec_pretty(state).map_err(|error| error.to_string())?;
-    fs::write(&path, payload).map_err(|error| error.to_string())?;
+    let temp_path = parent.join(format!(".{file_name}.tmp-{}", Uuid::new_v4()));
+    let write_res = (|| -> Result<(), String> {
+        let mut file = File::create(&temp_path).map_err(|error| error.to_string())?;
+        file.write_all(&payload)
+            .map_err(|error| error.to_string())?;
+        file.sync_all().map_err(|error| error.to_string())
+    })();
+    if let Err(error) = write_res {
+        let _ = fs::remove_file(&temp_path);
+        return Err(error);
+    }
+    if let Err(error) = fs::rename(&temp_path, path) {
+        let _ = fs::remove_file(&temp_path);
+        return Err(error.to_string());
+    }
     Ok(path.display().to_string())
 }
 
 #[cfg(not(target_os = "android"))]
 fn load_window_state(label: &str) -> Result<Option<PersistedWindowState>, String> {
+    let _guard = STATE_FILE_LOCK
+        .lock()
+        .map_err(|_| String::from("state file lock poisoned"))?;
     let state = load_state_file()?;
     let Some(window_state) = state.get(WINDOW_STATE_KEY) else {
         return Ok(None);
@@ -1098,9 +1166,13 @@ fn pending_window_states() -> &'static Mutex<HashMap<String, PersistedWindowStat
 }
 
 #[cfg(not(target_os = "android"))]
-fn flush_pending_window_states() -> Result<(), String> {
+fn flush_pending_window_states_to_path(
+    path: &Path,
+    state_lock: &Mutex<()>,
+    pending_map: &Mutex<HashMap<String, PersistedWindowState>>,
+) -> Result<(), String> {
     let pending_entries = {
-        let mut guard = pending_window_states()
+        let mut guard = pending_map
             .lock()
             .map_err(|_| String::from("window state cache lock poisoned"))?;
         if guard.is_empty() {
@@ -1109,36 +1181,56 @@ fn flush_pending_window_states() -> Result<(), String> {
         std::mem::take(&mut *guard)
     };
 
-    let mut state = load_state_file().unwrap_or_else(|_| json!({}));
-    if !state.is_object() {
-        state = json!({});
+    let flush_res = (|| -> Result<(), String> {
+        let _state_guard = state_lock
+            .lock()
+            .map_err(|_| String::from("state file lock poisoned"))?;
+
+        let mut state = load_state_file_from_path(path)?;
+
+        let root = state
+            .as_object_mut()
+            .ok_or_else(|| String::from("Invalid state payload: root must be an object"))?;
+
+        let window_state_value = root
+            .entry(WINDOW_STATE_KEY.to_string())
+            .or_insert_with(|| json!({}));
+
+        if !window_state_value.is_object() {
+            *window_state_value = json!({});
+        }
+
+        let window_state_map = window_state_value
+            .as_object_mut()
+            .ok_or_else(|| String::from("Invalid state payload: windowState must be an object"))?;
+
+        for (label, persisted_state) in &pending_entries {
+            window_state_map.insert(
+                label.clone(),
+                serde_json::to_value(persisted_state).map_err(|error| error.to_string())?,
+            );
+        }
+
+        save_state_file_to_path(path, &state)?;
+        Ok(())
+    })();
+
+    if let Err(error) = flush_res {
+        if let Ok(mut guard) = pending_map.lock() {
+            for (label, persisted_state) in pending_entries {
+                guard.entry(label).or_insert(persisted_state);
+            }
+        }
+        return Err(error);
     }
 
-    let root = state
-        .as_object_mut()
-        .ok_or_else(|| String::from("Invalid state payload: root must be an object"))?;
-
-    let window_state_value = root
-        .entry(WINDOW_STATE_KEY.to_string())
-        .or_insert_with(|| json!({}));
-
-    if !window_state_value.is_object() {
-        *window_state_value = json!({});
-    }
-
-    let window_state_map = window_state_value
-        .as_object_mut()
-        .ok_or_else(|| String::from("Invalid state payload: windowState must be an object"))?;
-
-    for (label, persisted_state) in pending_entries {
-        window_state_map.insert(
-            label,
-            serde_json::to_value(persisted_state).map_err(|error| error.to_string())?,
-        );
-    }
-
-    save_state_file(&state)?;
     Ok(())
+}
+
+#[cfg(not(target_os = "android"))]
+fn flush_pending_window_states() -> Result<(), String> {
+    let path = state_path()?;
+    flush_pending_window_states_to_path(&path, &STATE_FILE_LOCK, pending_window_states())
 }
 
 #[cfg(not(target_os = "android"))]
@@ -1655,6 +1747,7 @@ async fn start_http_request(
         fn drop(&mut self) {
             if self.armed {
                 remove_native_http_abort(&self.id);
+                #[cfg(target_os = "android")]
                 http_delivery::remove(&self.id);
             }
         }
@@ -1690,22 +1783,22 @@ async fn start_http_request(
 
     if let Some(body_text) = request.body_text.filter(|text| !text.is_empty()) {
         builder = builder.body(body_text);
+    } else if let Some(body_base64) = request.body_base64.filter(|encoded| !encoded.is_empty()) {
+        let decoded = decode_base64_payload(&body_base64)?;
+        if !decoded.is_empty() {
+            builder = builder.body(decoded);
+        }
     } else if let Some(body) = request.body.filter(|bytes| !bytes.is_empty()) {
         builder = builder.body(body);
     }
 
     if abort_handle.is_aborted() {
-        remove_native_http_abort(&request_id);
         return Err(String::from("Request was aborted"));
     }
 
     let response = tokio::select! {
-      result = builder.send() => result.map_err(|error| {
-        remove_native_http_abort(&request_id);
-        error.to_string()
-      })?,
+      result = builder.send() => result.map_err(|error| error.to_string())?,
       _ = abort_handle.cancelled() => {
-        remove_native_http_abort(&request_id);
         return Err(String::from("Request was aborted"));
       }
     };
@@ -1734,6 +1827,7 @@ async fn start_http_request(
 
     let task_window = window.clone();
     let task_request_id = request_id.clone();
+    let empty_chunk: Arc<[u8]> = Arc::from(&[][..]);
     tauri::async_runtime::spawn(async move {
         let mut stream = response.bytes_stream();
 
@@ -1752,7 +1846,7 @@ async fn start_http_request(
                         emit_native_http_chunk(
                             &task_window,
                             &task_request_id,
-                            part.to_vec(),
+                            Arc::from(part),
                             false,
                             None,
                         )
@@ -1760,10 +1854,10 @@ async fn start_http_request(
                     }
                 }
                 Err(error) => {
-                    let _ = emit_native_http_chunk(
+                    emit_native_http_chunk(
                         &task_window,
                         &task_request_id,
-                        Vec::new(),
+                        empty_chunk,
                         true,
                         Some(error.to_string()),
                     )
@@ -1774,10 +1868,10 @@ async fn start_http_request(
             }
         }
 
-        let _ = emit_native_http_chunk(
+        emit_native_http_chunk(
             &task_window,
             &task_request_id,
-            Vec::new(),
+            empty_chunk,
             true,
             abort_handle
                 .is_aborted()
@@ -1793,6 +1887,7 @@ async fn start_http_request(
 
 #[tauri::command]
 async fn abort_http_request(request_id: String) -> Result<bool, String> {
+    #[cfg(target_os = "android")]
     http_delivery::remove(&request_id);
     if let Ok(registry) = native_http_abort_registry().lock() {
         if let Some(handle) = registry.get(&request_id) {
@@ -1811,6 +1906,20 @@ async fn webdav_client(config: &BackupWebDavConfig) -> Result<Client, String> {
 }
 
 const MAX_WEBDAV_ARCHIVE_BYTES: u64 = 4 * 1024 * 1024 * 1024;
+const WEBDAV_IO_CHUNK_BYTES: usize = 1024 * 1024;
+
+fn ensure_webdav_success(response: reqwest::Response) -> Result<reqwest::Response, String> {
+    let response = response
+        .error_for_status()
+        .map_err(|error| error.to_string())?;
+    if !response.status().is_success() {
+        return Err(format!(
+            "Unexpected WebDAV HTTP status: {}",
+            response.status()
+        ));
+    }
+    Ok(response)
+}
 
 async fn upload_webdav_file(
     config: &BackupWebDavConfig,
@@ -1828,61 +1937,100 @@ async fn upload_webdav_file(
         .filter(|file_name| !file_name.trim().is_empty())
         .unwrap_or("lich13studio-backup.zip");
     let safe_name = validate_safe_backup_file_name(raw_file_name)?;
-    let client = webdav_client(config).await?;
-    let target = format!("{}/{}", normalize_base_url(&config.url), safe_name);
+    let mut current_target = format!("{}/{}", normalize_base_url(&config.url), safe_name);
 
-    let file = File::open(archive_path).map_err(|error| error.to_string())?;
-    let body_stream = futures_util::stream::unfold(Some(file), |reader_opt| async move {
-        let mut reader = reader_opt?;
-        let chunk_res = tauri::async_runtime::spawn_blocking(
-            move || -> Result<(File, Option<Vec<u8>>), std::io::Error> {
-                let mut buf = vec![0u8; 64 * 1024];
-                let read = reader.read(&mut buf)?;
-                if read == 0 {
-                    Ok((reader, None))
-                } else {
-                    buf.truncate(read);
-                    Ok((reader, Some(buf)))
-                }
-            },
+    for hop in 0..=net_policy::MAX_REDIRECTS {
+        let (parsed_target, client) = net_policy::guarded_http_client_no_redirect(
+            &current_target,
+            net_policy::HostPolicy::User,
         )
-        .await;
-        match chunk_res {
-            Ok(Ok((_, None))) => None,
-            Ok(Ok((next_reader, Some(chunk)))) => {
-                Some((Ok::<Vec<u8>, std::io::Error>(chunk), Some(next_reader)))
+        .await?;
+        let file = File::open(archive_path).map_err(|error| error.to_string())?;
+        let body_stream = futures_util::stream::unfold(Some(file), |reader_opt| async move {
+            let mut reader = reader_opt?;
+            let chunk_res = tauri::async_runtime::spawn_blocking(
+                move || -> Result<(File, Option<Vec<u8>>), std::io::Error> {
+                    let mut buf = vec![0u8; WEBDAV_IO_CHUNK_BYTES];
+                    let mut filled = 0usize;
+                    while filled < buf.len() {
+                        let read = reader.read(&mut buf[filled..])?;
+                        if read == 0 {
+                            break;
+                        }
+                        filled += read;
+                    }
+                    if filled == 0 {
+                        Ok((reader, None))
+                    } else {
+                        buf.truncate(filled);
+                        Ok((reader, Some(buf)))
+                    }
+                },
+            )
+            .await;
+            match chunk_res {
+                Ok(Ok((_, None))) => None,
+                Ok(Ok((next_reader, Some(chunk)))) => {
+                    Some((Ok::<Vec<u8>, std::io::Error>(chunk), Some(next_reader)))
+                }
+                Ok(Err(io_err)) => Some((Err(io_err), None)),
+                Err(_) => Some((
+                    Err(std::io::Error::other("WebDAV upload read task failed")),
+                    None,
+                )),
             }
-            Ok(Err(io_err)) => Some((Err(io_err), None)),
-            Err(_) => Some((
-                Err(std::io::Error::other("WebDAV upload read task failed")),
-                None,
-            )),
+        });
+
+        let mut request = client
+            .put(parsed_target.clone())
+            .basic_auth(&config.username, Some(&config.password))
+            .header(CONTENT_TYPE, "application/zip")
+            .header(CONTENT_LENGTH, content_length);
+
+        if let Some(user_agent) = config
+            .user_agent
+            .as_ref()
+            .filter(|value| !value.trim().is_empty())
+        {
+            request = request.header(USER_AGENT, user_agent);
         }
-    });
 
-    let mut request = client
-        .put(&target)
-        .basic_auth(&config.username, Some(&config.password))
-        .header(CONTENT_TYPE, "application/zip")
-        .header(CONTENT_LENGTH, content_length);
+        let response = request
+            .body(reqwest::Body::wrap_stream(body_stream))
+            .send()
+            .await
+            .map_err(|error| error.to_string())?;
 
-    if let Some(user_agent) = config
-        .user_agent
-        .as_ref()
-        .filter(|value| !value.trim().is_empty())
-    {
-        request = request.header(USER_AGENT, user_agent);
+        let status = response.status();
+        if status.is_success() {
+            return Ok(current_target);
+        }
+        if matches!(status.as_u16(), 301 | 302 | 307 | 308) {
+            if hop == net_policy::MAX_REDIRECTS {
+                return Err(String::from("Too many redirects"));
+            }
+            let location_str = response
+                .headers()
+                .get(LOCATION)
+                .ok_or_else(|| format!("WebDAV redirect {} missing Location header", status))?
+                .to_str()
+                .map_err(|_| String::from("Invalid WebDAV redirect Location header"))?;
+            let joined = parsed_target
+                .join(location_str)
+                .map_err(|_| String::from("Invalid WebDAV redirect URL"))?;
+            let validated = net_policy::validate_redirect_hop(
+                &parsed_target,
+                joined.as_str(),
+                net_policy::HostPolicy::User,
+            )?;
+            current_target = validated.to_string();
+            continue;
+        }
+
+        return ensure_webdav_success(response).map(|_| current_target);
     }
 
-    request
-        .body(reqwest::Body::wrap_stream(body_stream))
-        .send()
-        .await
-        .map_err(|error| error.to_string())?
-        .error_for_status()
-        .map_err(|error| error.to_string())?;
-
-    Ok(target)
+    Err(String::from("Too many redirects"))
 }
 
 async fn download_webdav_to_file(
@@ -1890,6 +2038,7 @@ async fn download_webdav_to_file(
     dest_path: &Path,
 ) -> Result<(), String> {
     const MAX_WEBDAV_RESTORE_BYTES: u64 = MAX_WEBDAV_ARCHIVE_BYTES;
+    const WEBDAV_DOWNLOAD_BATCH_BYTES: usize = 512 * 1024;
     let raw_file_name = config
         .file_name
         .as_deref()
@@ -1910,12 +2059,7 @@ async fn download_webdav_to_file(
         request = request.header(USER_AGENT, user_agent);
     }
 
-    let response = request
-        .send()
-        .await
-        .map_err(|error| error.to_string())?
-        .error_for_status()
-        .map_err(|error| error.to_string())?;
+    let response = ensure_webdav_success(request.send().await.map_err(|error| error.to_string())?)?;
 
     if let Some(len) = response.content_length() {
         if len > MAX_WEBDAV_RESTORE_BYTES {
@@ -1928,7 +2072,7 @@ async fn download_webdav_to_file(
     let dest = dest_path.to_path_buf();
     let writer = tauri::async_runtime::spawn_blocking(move || {
         File::create(&dest)
-            .map(BufWriter::new)
+            .map(|file| BufWriter::with_capacity(WEBDAV_IO_CHUNK_BYTES, file))
             .map_err(|error| error.to_string())
     })
     .await
@@ -1936,6 +2080,7 @@ async fn download_webdav_to_file(
 
     let mut stream = response.bytes_stream();
     let mut writer_opt = Some(writer);
+    let mut pending_batch = Vec::with_capacity(WEBDAV_DOWNLOAD_BATCH_BYTES);
     let mut total_written = 0u64;
 
     while let Some(chunk) = stream.next().await {
@@ -1946,23 +2091,35 @@ async fn download_webdav_to_file(
                 "Remote WebDAV backup exceeds maximum supported size",
             ));
         }
-        let mut current_writer = writer_opt
-            .take()
-            .ok_or_else(|| String::from("WebDAV download writer unavailable"))?;
-        current_writer =
-            tauri::async_runtime::spawn_blocking(move || -> Result<BufWriter<File>, String> {
-                current_writer
-                    .write_all(&bytes)
-                    .map_err(|error| error.to_string())?;
-                Ok(current_writer)
-            })
-            .await
-            .map_err(|_| String::from("WebDAV download write task failed"))??;
-        writer_opt = Some(current_writer);
+        pending_batch.extend_from_slice(&bytes);
+        if pending_batch.len() >= WEBDAV_DOWNLOAD_BATCH_BYTES {
+            let batch_to_write = std::mem::replace(
+                &mut pending_batch,
+                Vec::with_capacity(WEBDAV_DOWNLOAD_BATCH_BYTES),
+            );
+            let mut current_writer = writer_opt
+                .take()
+                .ok_or_else(|| String::from("WebDAV download writer unavailable"))?;
+            current_writer =
+                tauri::async_runtime::spawn_blocking(move || -> Result<BufWriter<File>, String> {
+                    current_writer
+                        .write_all(&batch_to_write)
+                        .map_err(|error| error.to_string())?;
+                    Ok(current_writer)
+                })
+                .await
+                .map_err(|_| String::from("WebDAV download write task failed"))??;
+            writer_opt = Some(current_writer);
+        }
     }
 
     if let Some(mut final_writer) = writer_opt {
-        tauri::async_runtime::spawn_blocking(move || {
+        tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
+            if !pending_batch.is_empty() {
+                final_writer
+                    .write_all(&pending_batch)
+                    .map_err(|error| error.to_string())?;
+            }
             final_writer.flush().map_err(|error| error.to_string())
         })
         .await
@@ -2067,12 +2224,7 @@ async fn list_webdav(config: &BackupWebDavConfig) -> Result<Vec<RemoteBackupFile
         request = request.header(USER_AGENT, user_agent);
     }
 
-    let response = request
-        .send()
-        .await
-        .map_err(|error| error.to_string())?
-        .error_for_status()
-        .map_err(|error| error.to_string())?;
+    let response = ensure_webdav_success(request.send().await.map_err(|error| error.to_string())?)?;
 
     let payload = response.text().await.map_err(|error| error.to_string())?;
     parse_webdav_listing(&payload)
@@ -2111,12 +2263,7 @@ async fn delete_webdav(config: &BackupWebDavConfig, file_name: &str) -> Result<b
         request = request.header(USER_AGENT, user_agent);
     }
 
-    request
-        .send()
-        .await
-        .map_err(|error| error.to_string())?
-        .error_for_status()
-        .map_err(|error| error.to_string())?;
+    ensure_webdav_success(request.send().await.map_err(|error| error.to_string())?)?;
 
     Ok(true)
 }
@@ -2608,39 +2755,53 @@ fn add_directory_to_zip<W: Write + Seek>(
         return Ok(());
     }
 
-    for entry in WalkDir::new(source_dir) {
-        let entry = entry.map_err(|error| error.to_string())?;
-        let path = entry.path();
-        let relative = path
-            .strip_prefix(source_dir)
-            .map_err(|error| error.to_string())?;
+    let root_prefix = archive_root.trim_end_matches('/');
+    zip.add_directory(format!("{root_prefix}/"), zip_file_options())
+        .map_err(|error| error.to_string())?;
 
-        let archive_path = if relative.as_os_str().is_empty() {
-            archive_root.trim_end_matches('/').to_string()
-        } else {
-            format!(
-                "{}/{}",
-                archive_root.trim_end_matches('/'),
+    fn visit_dir<W: Write + Seek>(
+        zip: &mut ZipWriter<W>,
+        base_dir: &Path,
+        current_dir: &Path,
+        root_prefix: &str,
+    ) -> Result<(), String> {
+        let mut entries: Vec<_> = fs::read_dir(current_dir)
+            .map_err(|error| error.to_string())?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|error| error.to_string())?;
+        entries.sort_by_key(|entry| entry.file_name());
+
+        for entry in entries {
+            let file_type = entry.file_type().map_err(|error| error.to_string())?;
+            if file_type.is_symlink() {
+                continue;
+            }
+            let path = entry.path();
+            let relative = path
+                .strip_prefix(base_dir)
+                .map_err(|error| error.to_string())?;
+            let archive_path = format!(
+                "{root_prefix}/{}",
                 relative.to_string_lossy().replace('\\', "/")
-            )
-        };
-
-        if entry.file_type().is_dir() {
-            zip.add_directory(
-                format!("{}/", archive_path.trim_end_matches('/')),
-                zip_file_options(),
-            )
-            .map_err(|error| error.to_string())?;
-            continue;
+            );
+            if file_type.is_dir() {
+                zip.add_directory(
+                    format!("{}/", archive_path.trim_end_matches('/')),
+                    zip_file_options(),
+                )
+                .map_err(|error| error.to_string())?;
+                visit_dir(zip, base_dir, &path, root_prefix)?;
+            } else if file_type.is_file() {
+                zip.start_file(archive_path, zip_file_options())
+                    .map_err(|error| error.to_string())?;
+                let mut file = File::open(&path).map_err(|error| error.to_string())?;
+                std::io::copy(&mut file, zip).map_err(|error| error.to_string())?;
+            }
         }
-
-        zip.start_file(archive_path, zip_file_options())
-            .map_err(|error| error.to_string())?;
-        let mut file = File::open(path).map_err(|error| error.to_string())?;
-        std::io::copy(&mut file, zip).map_err(|error| error.to_string())?;
+        Ok(())
     }
 
-    Ok(())
+    visit_dir(zip, source_dir, source_dir, root_prefix)
 }
 
 fn write_backup_archive<W: Write + Seek>(
@@ -2667,6 +2828,35 @@ fn create_backup_archive_bytes(state: &Value, include_files: bool) -> Result<Vec
     Ok(cursor.into_inner())
 }
 
+fn cleanup_stale_backup_temp_files(dir: &Path, max_age: Duration) {
+    let Ok(entries) = fs::read_dir(dir) else {
+        return;
+    };
+    let now = SystemTime::now();
+    for entry in entries.flatten() {
+        let name = entry.file_name();
+        let name_str = name.to_string_lossy();
+        if !name_str.starts_with(".lich13studio") || !name_str.contains(".tmp-") {
+            continue;
+        }
+        let Ok(file_type) = entry.file_type() else {
+            continue;
+        };
+        if !file_type.is_file() {
+            continue;
+        }
+        let is_stale = entry
+            .metadata()
+            .ok()
+            .and_then(|meta| meta.modified().ok())
+            .and_then(|modified| now.duration_since(modified).ok())
+            .is_some_and(|age| age >= max_age);
+        if is_stale {
+            let _ = fs::remove_file(entry.path());
+        }
+    }
+}
+
 fn write_backup_archive_to_file(
     file_path: &Path,
     state: &Value,
@@ -2677,6 +2867,7 @@ fn write_backup_archive_to_file(
         .parent()
         .ok_or_else(|| String::from("Invalid backup file path"))?;
     fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+    cleanup_stale_backup_temp_files(parent, Duration::from_secs(3600));
     let temp_name = format!(
         ".{}.tmp-{}",
         file_path.file_name().unwrap_or_default().to_string_lossy(),
@@ -2712,10 +2903,7 @@ fn validate_backup_value(data: &Value) -> Result<(), String> {
     let persisted = data["localStorage"]["persist:cherry-studio"]
         .as_str()
         .ok_or("Backup missing application state")?;
-    let state: Value = serde_json::from_str(persisted).map_err(|_| "Invalid application state")?;
-    if !state.is_object() {
-        return Err("Invalid application state".into());
-    }
+    serde_json::from_str::<JsonObjectOnly>(persisted).map_err(|_| "Invalid application state")?;
     if let Some(tables) = data["indexedDB"].as_object() {
         if tables.values().any(|table| !table.is_array()) {
             return Err("Invalid backup table".into());
@@ -2724,9 +2912,294 @@ fn validate_backup_value(data: &Value) -> Result<(), String> {
     Ok(())
 }
 
+struct JsonObjectOnly;
+
+impl<'de> serde::de::Visitor<'de> for JsonObjectOnly {
+    type Value = JsonObjectOnly;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("a JSON object")
+    }
+
+    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+    where
+        A: serde::de::MapAccess<'de>,
+    {
+        while map
+            .next_entry::<serde::de::IgnoredAny, serde::de::IgnoredAny>()?
+            .is_some()
+        {}
+        Ok(JsonObjectOnly)
+    }
+}
+
+impl<'de> Deserialize<'de> for JsonObjectOnly {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_map(JsonObjectOnly)
+    }
+}
+
+struct OptionalStringProbe(Option<String>);
+
+impl<'de> serde::de::Visitor<'de> for OptionalStringProbe {
+    type Value = OptionalStringProbe;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("any JSON value")
+    }
+
+    fn visit_str<E: serde::de::Error>(self, v: &str) -> Result<Self::Value, E> {
+        Ok(OptionalStringProbe(Some(v.to_owned())))
+    }
+
+    fn visit_string<E: serde::de::Error>(self, v: String) -> Result<Self::Value, E> {
+        Ok(OptionalStringProbe(Some(v)))
+    }
+
+    fn visit_bool<E: serde::de::Error>(self, _: bool) -> Result<Self::Value, E> {
+        Ok(OptionalStringProbe(None))
+    }
+
+    fn visit_i64<E: serde::de::Error>(self, _: i64) -> Result<Self::Value, E> {
+        Ok(OptionalStringProbe(None))
+    }
+
+    fn visit_u64<E: serde::de::Error>(self, _: u64) -> Result<Self::Value, E> {
+        Ok(OptionalStringProbe(None))
+    }
+
+    fn visit_f64<E: serde::de::Error>(self, _: f64) -> Result<Self::Value, E> {
+        Ok(OptionalStringProbe(None))
+    }
+
+    fn visit_none<E: serde::de::Error>(self) -> Result<Self::Value, E> {
+        Ok(OptionalStringProbe(None))
+    }
+
+    fn visit_unit<E: serde::de::Error>(self) -> Result<Self::Value, E> {
+        Ok(OptionalStringProbe(None))
+    }
+
+    fn visit_seq<A: serde::de::SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
+        while seq.next_element::<serde::de::IgnoredAny>()?.is_some() {}
+        Ok(OptionalStringProbe(None))
+    }
+
+    fn visit_map<A: serde::de::MapAccess<'de>>(self, mut map: A) -> Result<Self::Value, A::Error> {
+        while map
+            .next_entry::<serde::de::IgnoredAny, serde::de::IgnoredAny>()?
+            .is_some()
+        {}
+        Ok(OptionalStringProbe(None))
+    }
+}
+
+impl<'de> Deserialize<'de> for OptionalStringProbe {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        deserializer.deserialize_any(OptionalStringProbe(None))
+    }
+}
+
+enum LocalStorageProbe {
+    Object { persisted: Option<String> },
+    NotObject,
+}
+
+impl<'de> serde::de::Visitor<'de> for LocalStorageProbe {
+    type Value = LocalStorageProbe;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("any JSON value")
+    }
+
+    fn visit_map<A: serde::de::MapAccess<'de>>(self, mut map: A) -> Result<Self::Value, A::Error> {
+        let mut persisted = None;
+        while let Some(key) = map.next_key::<std::borrow::Cow<'de, str>>()? {
+            if key == "persist:cherry-studio" {
+                persisted = map.next_value::<OptionalStringProbe>()?.0;
+            } else {
+                map.next_value::<serde::de::IgnoredAny>()?;
+            }
+        }
+        Ok(LocalStorageProbe::Object { persisted })
+    }
+
+    fn visit_seq<A: serde::de::SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
+        while seq.next_element::<serde::de::IgnoredAny>()?.is_some() {}
+        Ok(LocalStorageProbe::NotObject)
+    }
+
+    fn visit_bool<E: serde::de::Error>(self, _: bool) -> Result<Self::Value, E> {
+        Ok(LocalStorageProbe::NotObject)
+    }
+    fn visit_i64<E: serde::de::Error>(self, _: i64) -> Result<Self::Value, E> {
+        Ok(LocalStorageProbe::NotObject)
+    }
+    fn visit_u64<E: serde::de::Error>(self, _: u64) -> Result<Self::Value, E> {
+        Ok(LocalStorageProbe::NotObject)
+    }
+    fn visit_f64<E: serde::de::Error>(self, _: f64) -> Result<Self::Value, E> {
+        Ok(LocalStorageProbe::NotObject)
+    }
+    fn visit_str<E: serde::de::Error>(self, _: &str) -> Result<Self::Value, E> {
+        Ok(LocalStorageProbe::NotObject)
+    }
+    fn visit_none<E: serde::de::Error>(self) -> Result<Self::Value, E> {
+        Ok(LocalStorageProbe::NotObject)
+    }
+    fn visit_unit<E: serde::de::Error>(self) -> Result<Self::Value, E> {
+        Ok(LocalStorageProbe::NotObject)
+    }
+}
+
+impl<'de> Deserialize<'de> for LocalStorageProbe {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        deserializer.deserialize_any(LocalStorageProbe::NotObject)
+    }
+}
+
+struct IsArrayProbe(bool);
+
+impl<'de> serde::de::Visitor<'de> for IsArrayProbe {
+    type Value = IsArrayProbe;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("any JSON value")
+    }
+
+    fn visit_seq<A: serde::de::SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
+        while seq.next_element::<serde::de::IgnoredAny>()?.is_some() {}
+        Ok(IsArrayProbe(true))
+    }
+
+    fn visit_map<A: serde::de::MapAccess<'de>>(self, mut map: A) -> Result<Self::Value, A::Error> {
+        while map
+            .next_entry::<serde::de::IgnoredAny, serde::de::IgnoredAny>()?
+            .is_some()
+        {}
+        Ok(IsArrayProbe(false))
+    }
+
+    fn visit_bool<E: serde::de::Error>(self, _: bool) -> Result<Self::Value, E> {
+        Ok(IsArrayProbe(false))
+    }
+    fn visit_i64<E: serde::de::Error>(self, _: i64) -> Result<Self::Value, E> {
+        Ok(IsArrayProbe(false))
+    }
+    fn visit_u64<E: serde::de::Error>(self, _: u64) -> Result<Self::Value, E> {
+        Ok(IsArrayProbe(false))
+    }
+    fn visit_f64<E: serde::de::Error>(self, _: f64) -> Result<Self::Value, E> {
+        Ok(IsArrayProbe(false))
+    }
+    fn visit_str<E: serde::de::Error>(self, _: &str) -> Result<Self::Value, E> {
+        Ok(IsArrayProbe(false))
+    }
+    fn visit_none<E: serde::de::Error>(self) -> Result<Self::Value, E> {
+        Ok(IsArrayProbe(false))
+    }
+    fn visit_unit<E: serde::de::Error>(self) -> Result<Self::Value, E> {
+        Ok(IsArrayProbe(false))
+    }
+}
+
+impl<'de> Deserialize<'de> for IsArrayProbe {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        deserializer.deserialize_any(IsArrayProbe(false))
+    }
+}
+
+enum IndexedDbProbe {
+    Object { all_arrays: bool },
+    Array,
+    Other,
+}
+
+impl<'de> serde::de::Visitor<'de> for IndexedDbProbe {
+    type Value = IndexedDbProbe;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("any JSON value")
+    }
+
+    fn visit_seq<A: serde::de::SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
+        while seq.next_element::<serde::de::IgnoredAny>()?.is_some() {}
+        Ok(IndexedDbProbe::Array)
+    }
+
+    fn visit_map<A: serde::de::MapAccess<'de>>(self, mut map: A) -> Result<Self::Value, A::Error> {
+        let mut all_arrays = true;
+        while let Some((_, probe)) = map.next_entry::<serde::de::IgnoredAny, IsArrayProbe>()? {
+            all_arrays &= probe.0;
+        }
+        Ok(IndexedDbProbe::Object { all_arrays })
+    }
+
+    fn visit_bool<E: serde::de::Error>(self, _: bool) -> Result<Self::Value, E> {
+        Ok(IndexedDbProbe::Other)
+    }
+    fn visit_i64<E: serde::de::Error>(self, _: i64) -> Result<Self::Value, E> {
+        Ok(IndexedDbProbe::Other)
+    }
+    fn visit_u64<E: serde::de::Error>(self, _: u64) -> Result<Self::Value, E> {
+        Ok(IndexedDbProbe::Other)
+    }
+    fn visit_f64<E: serde::de::Error>(self, _: f64) -> Result<Self::Value, E> {
+        Ok(IndexedDbProbe::Other)
+    }
+    fn visit_str<E: serde::de::Error>(self, _: &str) -> Result<Self::Value, E> {
+        Ok(IndexedDbProbe::Other)
+    }
+    fn visit_none<E: serde::de::Error>(self) -> Result<Self::Value, E> {
+        Ok(IndexedDbProbe::Other)
+    }
+    fn visit_unit<E: serde::de::Error>(self) -> Result<Self::Value, E> {
+        Ok(IndexedDbProbe::Other)
+    }
+}
+
+impl<'de> Deserialize<'de> for IndexedDbProbe {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        deserializer.deserialize_any(IndexedDbProbe::Other)
+    }
+}
+
+#[derive(Deserialize)]
+struct BackupPayloadProbe {
+    version: Option<Value>,
+    #[serde(rename = "localStorage")]
+    local_storage: Option<LocalStorageProbe>,
+    #[serde(rename = "indexedDB")]
+    indexed_db: Option<IndexedDbProbe>,
+}
+
 fn validate_backup_payload(payload: &str) -> Result<(), String> {
-    let data: Value = serde_json::from_str(payload).map_err(|_| "Invalid backup JSON")?;
-    validate_backup_value(&data)
+    let probe: BackupPayloadProbe =
+        serde_json::from_str(payload).map_err(|_| String::from("Invalid backup JSON"))?;
+    let version = probe
+        .version
+        .as_ref()
+        .and_then(Value::as_u64)
+        .ok_or("Missing backup version")?;
+    let persisted = match probe.local_storage {
+        Some(LocalStorageProbe::Object { persisted }) if (1..=5).contains(&version) => persisted,
+        _ => return Err("Unsupported backup format".into()),
+    };
+    let all_arrays = match probe.indexed_db {
+        Some(IndexedDbProbe::Object { all_arrays }) => Some(all_arrays),
+        Some(IndexedDbProbe::Array) if version == 1 => None,
+        _ => return Err("Unsupported backup format".into()),
+    };
+    let persisted = persisted.ok_or("Backup missing application state")?;
+    serde_json::from_str::<JsonObjectOnly>(&persisted)
+        .map_err(|_| String::from("Invalid application state"))?;
+    if all_arrays == Some(false) {
+        return Err("Invalid backup table".into());
+    }
+    Ok(())
 }
 
 const RESTORE_PENDING_MARKER_FILE: &str = ".restore-pending.json";
@@ -2869,23 +3342,47 @@ fn get_pending_restore_id() -> Result<Option<String>, String> {
     Ok(read_pending_restore_marker(&app_root).map(|marker| marker.previous_dir_name))
 }
 
-#[tauri::command]
-fn finish_backup_restore(commit: bool) -> Result<(), String> {
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct ExtractedBackupArchive {
+    payload: String,
+    restore_id: Option<String>,
+}
+
+fn finish_backup_restore_sync(commit: bool, restore_id: Option<String>) -> Result<(), String> {
+    let expected = restore_id
+        .as_deref()
+        .map(str::trim)
+        .filter(|id| !id.is_empty())
+        .ok_or_else(|| String::from("Restore ID is required"))?;
     let mut pending = PENDING_BACKUP_RESTORE
         .get_or_init(Default::default)
         .lock()
         .map_err(|_| "Restore lock unavailable")?;
     if let Some(target) = pending.clone() {
+        if target.restore_id != expected {
+            return Err("Pending restore ID mismatch".into());
+        }
         finish_backup_restore_target(&target, commit)?;
         *pending = None;
         return Ok(());
     }
     let app_root = app_data_dir()?;
     if let Some(marker) = read_pending_restore_marker(&app_root) {
+        if marker.previous_dir_name != expected {
+            return Err("Pending restore ID mismatch".into());
+        }
         let target = active_restore_from_marker(&app_root, marker);
         finish_backup_restore_target(&target, commit)?;
     }
     Ok(())
+}
+
+#[tauri::command]
+async fn finish_backup_restore(commit: bool, restore_id: Option<String>) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || finish_backup_restore_sync(commit, restore_id))
+        .await
+        .map_err(|_| String::from("Finish backup restore task failed"))?
 }
 
 fn recover_and_cleanup_storage_in_dir(
@@ -2998,18 +3495,21 @@ fn recover_and_cleanup_storage_in_dir(
     Ok(deferred_restore)
 }
 
-fn extract_backup_archive(bytes: &[u8]) -> Result<String, String> {
+fn extract_backup_archive(bytes: &[u8]) -> Result<ExtractedBackupArchive, String> {
     extract_backup_archive_to(bytes, &data_dir()?)
 }
 
-fn extract_backup_archive_to(bytes: &[u8], data_root: &Path) -> Result<String, String> {
+fn extract_backup_archive_to(
+    bytes: &[u8],
+    data_root: &Path,
+) -> Result<ExtractedBackupArchive, String> {
     extract_backup_archive_from_reader(Cursor::new(bytes), data_root)
 }
 
 fn extract_backup_archive_from_file(
     archive_path: &Path,
     data_root: &Path,
-) -> Result<String, String> {
+) -> Result<ExtractedBackupArchive, String> {
     let file = File::open(archive_path).map_err(|_| String::from("Invalid backup archive"))?;
     extract_backup_archive_from_reader(BufReader::new(file), data_root)
 }
@@ -3017,7 +3517,7 @@ fn extract_backup_archive_from_file(
 fn extract_backup_archive_from_reader<R: Read + Seek>(
     reader: R,
     data_root: &Path,
-) -> Result<String, String> {
+) -> Result<ExtractedBackupArchive, String> {
     let mut pending = PENDING_BACKUP_RESTORE
         .get_or_init(Default::default)
         .lock()
@@ -3076,7 +3576,7 @@ fn extract_backup_archive_from_reader<R: Read + Seek>(
             return Err(error);
         }
     };
-    if has_data {
+    let staged_restore_id = if has_data {
         let existed = data_root.exists();
         if let Err(error) = write_pending_restore_marker(
             parent,
@@ -3094,23 +3594,29 @@ fn extract_backup_archive_from_reader<R: Read + Seek>(
             return Err("Cannot prepare backup restore".into());
         }
         if fs::rename(&staging, data_root).is_err() {
-            if existed {
-                let _ = fs::rename(&previous, data_root);
+            let rolled_back = !existed || fs::rename(&previous, data_root).is_ok();
+            if rolled_back {
+                remove_pending_restore_marker_for_data_dir(data_root);
             }
-            remove_pending_restore_marker_for_data_dir(data_root);
             let _ = fs::remove_dir_all(&staging);
             return Err("Cannot commit backup restore".into());
         }
+        let restore_id = previous_dir_name.clone();
         *pending = Some(ActivePendingRestore {
             restore_id: previous_dir_name,
             current: data_root.to_path_buf(),
             previous,
             existed,
         });
+        Some(restore_id)
     } else {
         let _ = fs::remove_dir_all(staging);
-    }
-    Ok(payload)
+        None
+    };
+    Ok(ExtractedBackupArchive {
+        payload,
+        restore_id: staged_restore_id,
+    })
 }
 
 #[tauri::command]
@@ -3127,7 +3633,7 @@ async fn export_portable_backup_archive(
             validate_backup_value(&state)?;
             let archive = create_backup_archive_bytes(&state, include_files)?;
             let zeroized = zeroize::Zeroizing::new(secret);
-            backup_crypto::encrypt(&archive, &zeroized)
+            backup_crypto::encrypt_owned(archive, &zeroized)
         })
         .await
         .map_err(|_| String::from("Backup archive task failed"))??;
@@ -3377,8 +3883,7 @@ fn ensure_screen_capture_access() -> Result<(), String> {
     }
 }
 
-#[tauri::command]
-fn app_info() -> Result<AppInfo, String> {
+fn collect_app_info() -> Result<AppInfo, String> {
     let data_dir = app_data_dir()?;
     let state_file = state_path()?;
     let install_path = install_dir()?;
@@ -3409,6 +3914,13 @@ fn app_info() -> Result<AppInfo, String> {
 }
 
 #[tauri::command]
+async fn app_info() -> Result<AppInfo, String> {
+    tauri::async_runtime::spawn_blocking(collect_app_info)
+        .await
+        .map_err(|_| String::from("App info task failed"))?
+}
+
+#[tauri::command]
 fn get_device_type() -> String {
     system_device_type().to_string()
 }
@@ -3419,12 +3931,10 @@ fn get_hostname() -> String {
 }
 
 #[tauri::command]
-fn set_runtime_setting(key: String, value: bool) -> Result<RuntimeSettings, String> {
-    let mut settings = current_runtime_settings();
-    apply_runtime_setting(&mut settings, &key, value)?;
-    save_runtime_settings_to_state(settings)?;
-    replace_runtime_settings(settings);
-    Ok(settings)
+async fn set_runtime_setting(key: String, value: bool) -> Result<RuntimeSettings, String> {
+    tauri::async_runtime::spawn_blocking(move || update_runtime_setting_in_state_file(&key, value))
+        .await
+        .map_err(|_| String::from("Runtime setting update task failed"))?
 }
 
 #[tauri::command]
@@ -3470,7 +3980,7 @@ async fn webdav_backup(state: Value, config: BackupWebDavConfig) -> Result<Strin
 }
 
 #[tauri::command]
-async fn webdav_restore(config: BackupWebDavConfig) -> Result<String, String> {
+async fn webdav_restore(config: BackupWebDavConfig) -> Result<ExtractedBackupArchive, String> {
     let app_root = app_data_dir()?;
     fs::create_dir_all(&app_root).map_err(|error| error.to_string())?;
     let temp_path = app_root.join(format!(".webdav-download.tmp-{}", Uuid::new_v4()));
@@ -3492,8 +4002,10 @@ async fn pick_folder() -> Result<Option<String>, String> {
 }
 
 #[tauri::command]
-fn get_obsidian_vaults() -> Result<Vec<ObsidianVaultInfo>, String> {
-    obsidian_vaults()
+async fn get_obsidian_vaults() -> Result<Vec<ObsidianVaultInfo>, String> {
+    tauri::async_runtime::spawn_blocking(obsidian_vaults)
+        .await
+        .map_err(|_| String::from("Obsidian vaults scan task failed"))?
 }
 
 #[tauri::command]
@@ -3616,20 +4128,20 @@ async fn restore_from_local_backup(
     file_name: String,
     local_backup_dir: Option<String>,
     password: Option<String>,
-) -> Result<String, String> {
+) -> Result<ExtractedBackupArchive, String> {
     let safe_name = validate_safe_backup_file_name(&file_name)?.to_string();
     let base_dir = local_backup_dir
         .filter(|dir| !dir.trim().is_empty())
         .map(PathBuf::from)
         .unwrap_or(downloads_dir()?);
     let file_path = base_dir.join(&safe_name);
-    tauri::async_runtime::spawn_blocking(move || -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || -> Result<ExtractedBackupArchive, String> {
         let lower_name = safe_name.to_ascii_lowercase();
         if lower_name.ends_with(".lich13backup") {
             let encrypted = fs::read(&file_path).map_err(|error| error.to_string())?;
             let secret = password.ok_or_else(|| String::from("Backup password is required"))?;
             let zeroized = zeroize::Zeroizing::new(secret);
-            let decrypted = backup_crypto::decrypt(&encrypted, &zeroized)?;
+            let decrypted = backup_crypto::decrypt_owned(encrypted, &zeroized)?;
             return extract_backup_archive(&decrypted);
         }
         if lower_name.ends_with(".zip") {
@@ -3638,14 +4150,19 @@ async fn restore_from_local_backup(
 
         let raw = fs::read_to_string(&file_path).map_err(|error| error.to_string())?;
         validate_backup_payload(&raw)?;
-        Ok(raw)
+        Ok(ExtractedBackupArchive {
+            payload: raw,
+            restore_id: None,
+        })
     })
     .await
     .map_err(|_| String::from("Local restore task failed"))?
 }
 
 #[tauri::command]
-async fn restore_backup_archive(request: tauri::ipc::Request<'_>) -> Result<String, String> {
+async fn restore_backup_archive(
+    request: tauri::ipc::Request<'_>,
+) -> Result<ExtractedBackupArchive, String> {
     let file_name = extract_decoded_header(request.headers(), "x-file-name")?;
     let bytes = extract_raw_ipc_bytes(&request)?;
     tauri::async_runtime::spawn_blocking(move || {
@@ -3658,11 +4175,11 @@ async fn restore_backup_archive(request: tauri::ipc::Request<'_>) -> Result<Stri
 #[tauri::command]
 async fn restore_encrypted_backup_archive(
     request: tauri::ipc::Request<'_>,
-) -> Result<String, String> {
+) -> Result<ExtractedBackupArchive, String> {
     let password = extract_zeroizing_header(request.headers(), "x-backup-password")?;
     let bytes = extract_raw_ipc_bytes(&request)?;
     tauri::async_runtime::spawn_blocking(move || {
-        let decrypted = backup_crypto::decrypt(&bytes, &password)?;
+        let decrypted = backup_crypto::decrypt_owned(bytes, &password)?;
         extract_backup_archive(&decrypted)
     })
     .await
@@ -3673,14 +4190,19 @@ fn decode_portable_backup(
     file_name: &str,
     bytes: &[u8],
     data_root: &Path,
-) -> Result<String, String> {
+) -> Result<ExtractedBackupArchive, String> {
     let name = file_name.to_lowercase();
     // The renderer authenticates/decrypts the versioned container before this call.
     // Its original filename still carries .lich13backup, but the payload is a ZIP.
     if name.ends_with(".zip") || name.ends_with(".lich13backup") {
         return extract_backup_archive_to(bytes, data_root);
     }
-    String::from_utf8(bytes.to_vec()).map_err(|_| "Invalid backup data".into())
+    let payload =
+        String::from_utf8(bytes.to_vec()).map_err(|_| String::from("Invalid backup data"))?;
+    Ok(ExtractedBackupArchive {
+        payload,
+        restore_id: None,
+    })
 }
 
 fn list_local_backup_files_in_dir(
@@ -3695,6 +4217,8 @@ fn list_local_backup_files_in_dir(
     if !base_dir.exists() {
         return Ok(Vec::new());
     }
+
+    cleanup_stale_backup_temp_files(&base_dir, Duration::from_secs(3600));
 
     let mut items = Vec::new();
     let entries = fs::read_dir(base_dir).map_err(|error| error.to_string())?;
@@ -3765,12 +4289,6 @@ async fn list_webdav_files(
 #[tauri::command]
 async fn delete_webdav_file(file_name: String, config: BackupWebDavConfig) -> Result<bool, String> {
     delete_webdav(&config, &file_name).await
-}
-
-#[tauri::command]
-#[cfg(not(target_os = "android"))]
-fn show_main_window(app: AppHandle) -> Result<(), String> {
-    show_and_focus_main_window(&app)
 }
 
 #[tauri::command]
@@ -3909,7 +4427,7 @@ pub fn run() {
                 let visibility = StartupVisibility::new(source, runtime_settings.launch_to_tray);
                 STARTED_SILENTLY.store(visibility.is_silent(), Ordering::SeqCst);
                 let _ = STARTUP_VISIBILITY.set(Mutex::new(visibility));
-                let state = load_window_state("main")?;
+                let state = load_window_state("main").ok().flatten();
                 let mode = state
                     .as_ref()
                     .map(|state| RestoredWindowMode::from_saved(state.fullscreen, state.maximized))
@@ -3968,10 +4486,15 @@ pub fn run() {
         .on_window_event(|window, event| {
             #[cfg(not(target_os = "android"))]
             {
+                let main_close_handled = window.label() == "main"
+                    && matches!(event, WindowEvent::CloseRequested { .. })
+                    && !APP_EXITING.load(Ordering::Relaxed);
                 handle_main_window_close(window, event);
                 handle_mini_window_focus(window, event);
-                if let Some(immediate) = should_persist_window_event(event) {
-                    let _ = persist_window_state(window, immediate);
+                if !main_close_handled {
+                    if let Some(immediate) = should_persist_window_event(event) {
+                        let _ = persist_window_state(window, immediate);
+                    }
                 }
             }
             let _ = (window, event);
@@ -4013,7 +4536,6 @@ pub fn run() {
             delete_webdav_file,
             webdav_backup,
             webdav_restore,
-            show_main_window,
             show_startup_window,
             show_mini_window,
             hide_mini_window,
@@ -4096,7 +4618,7 @@ mod tests {
         let event = NativeHttpChunkEvent {
             sequence: Some(3),
             request_id: "req-1".into(),
-            chunk: b"hello\n".to_vec(),
+            chunk: Arc::from(&b"hello\n"[..]),
             done: false,
             error: None,
         };
@@ -4202,16 +4724,112 @@ mod tests {
         assert_eq!(fs::read(data.join("original.txt")).unwrap(), b"preserved");
         let bytes = build(state, "Data/new.txt");
         assert!(extract_backup_archive_to(&bytes[..bytes.len() / 2], &data).is_err());
-        extract_backup_archive_to(&bytes, &data).unwrap();
+        let extracted = extract_backup_archive_to(&bytes, &data).unwrap();
         assert_eq!(fs::read(data.join("new.txt")).unwrap(), b"new file");
-        finish_backup_restore(false).unwrap();
+        let active_id = get_pending_restore_id_in_dir(&root).expect("active restore id");
+        assert_eq!(extracted.restore_id.as_deref(), Some(active_id.as_str()));
+        assert_eq!(
+            finish_backup_restore_sync(false, None).unwrap_err(),
+            "Restore ID is required"
+        );
+        assert_eq!(
+            finish_backup_restore_sync(false, Some("  ".into())).unwrap_err(),
+            "Restore ID is required"
+        );
+        assert_eq!(
+            finish_backup_restore_sync(false, Some("restore-previous-wrong".into())).unwrap_err(),
+            "Pending restore ID mismatch"
+        );
+        finish_backup_restore_sync(false, Some(active_id)).unwrap();
         assert_eq!(fs::read(data.join("original.txt")).unwrap(), b"preserved");
         assert!(!data.join("new.txt").exists());
-        extract_backup_archive_to(&bytes, &data).unwrap();
-        finish_backup_restore(true).unwrap();
+
+        // Archive without Data/ entries returns restore_id: None and stages nothing
+        let mut no_data_zip = ZipWriter::new(Cursor::new(Vec::new()));
+        no_data_zip
+            .start_file("data.json", zip_file_options())
+            .unwrap();
+        no_data_zip.write_all(state).unwrap();
+        let no_data_bytes = no_data_zip.finish().unwrap().into_inner();
+        let no_data_extracted = extract_backup_archive_to(&no_data_bytes, &data).unwrap();
+        assert_eq!(no_data_extracted.restore_id, None);
+        assert_eq!(get_pending_restore_id_in_dir(&root), None);
+
+        let committed = extract_backup_archive_to(&bytes, &data).unwrap();
+        let commit_id = get_pending_restore_id_in_dir(&root).expect("active commit restore id");
+        assert_eq!(committed.restore_id.as_deref(), Some(commit_id.as_str()));
+        finish_backup_restore_sync(true, Some(commit_id)).unwrap();
         assert!(!data.join("original.txt").exists());
         assert_eq!(fs::read_dir(&root).unwrap().count(), 1);
         fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn streaming_backup_validator_preserves_v1_through_v5_and_error_contracts() {
+        assert!(validate_backup_payload(
+            r#"{"version":1,"localStorage":{"persist:cherry-studio":"{}"},"indexedDB":[{"id":"1"}]}"#
+        )
+        .is_ok());
+        assert!(validate_backup_payload(
+            r#"{"version":5,"localStorage":{"persist:cherry-studio":"{\"llm\":\"{}\"}","extra":123},"indexedDB":{"topics":[{"id":"t1"}],"message_blocks":[{"id":"b1","content":"hello"}]}}"#
+        )
+        .is_ok());
+        assert_eq!(
+            validate_backup_payload("{not-json").unwrap_err(),
+            "Invalid backup JSON"
+        );
+        assert_eq!(
+            validate_backup_payload(r#"{"localStorage":{},"indexedDB":{}}"#).unwrap_err(),
+            "Missing backup version"
+        );
+        assert_eq!(
+            validate_backup_payload(
+                r#"{"version":6,"localStorage":{"persist:cherry-studio":"{}"},"indexedDB":{}}"#
+            )
+            .unwrap_err(),
+            "Unsupported backup format"
+        );
+        assert_eq!(
+            validate_backup_payload(
+                r#"{"version":5,"localStorage":{"persist:cherry-studio":"{}"},"indexedDB":[]}"#
+            )
+            .unwrap_err(),
+            "Unsupported backup format"
+        );
+        assert_eq!(
+            validate_backup_payload(r#"{"version":5,"localStorage":{},"indexedDB":{}}"#)
+                .unwrap_err(),
+            "Backup missing application state"
+        );
+        assert_eq!(
+            validate_backup_payload(
+                r#"{"version":5,"localStorage":{"persist:cherry-studio":"[]"},"indexedDB":{}}"#
+            )
+            .unwrap_err(),
+            "Invalid application state"
+        );
+        assert_eq!(
+            validate_backup_payload(
+                r#"{"version":5,"localStorage":{"persist:cherry-studio":"{}"},"indexedDB":{"topics":123}}"#
+            )
+            .unwrap_err(),
+            "Invalid backup table"
+        );
+    }
+
+    #[test]
+    fn cleans_up_stale_lich13studio_backup_temp_files() {
+        let dir = std::env::temp_dir().join(format!("lich13-stale-bk-tmp-{}", Uuid::new_v4()));
+        fs::create_dir_all(&dir).unwrap();
+        let stale_tmp = dir.join(".lich13studio.20260101.zip.tmp-orphan");
+        let real_bk = dir.join("lich13studio.20260101.zip");
+        fs::write(&stale_tmp, b"partial").unwrap();
+        fs::write(&real_bk, b"valid").unwrap();
+
+        cleanup_stale_backup_temp_files(&dir, Duration::ZERO);
+        assert!(!stale_tmp.exists());
+        assert!(real_bk.exists());
+        fs::remove_dir_all(dir).unwrap();
     }
 
     #[test]
@@ -4248,7 +4866,11 @@ mod tests {
         let restored =
             decode_portable_backup("android.lich13backup", &decrypted, &directory.join("Data"))
                 .unwrap();
-        assert_eq!(serde_json::from_str::<Value>(&restored).unwrap(), payload);
+        assert_eq!(restored.restore_id, None);
+        assert_eq!(
+            serde_json::from_str::<Value>(&restored.payload).unwrap(),
+            payload
+        );
         fs::remove_dir_all(directory).unwrap();
     }
 
@@ -4869,5 +5491,326 @@ mod tests {
         .await
         .unwrap_err();
         assert!(err.contains("exceeds maximum supported size"));
+    }
+
+    #[tokio::test]
+    async fn webdav_put_replays_same_origin_redirects_and_rejects_unhandled_or_cross_origin_3xx() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        use tokio::net::TcpListener;
+
+        let temp_root = std::env::temp_dir().join(format!("lich13-webdav-put-{}", Uuid::new_v4()));
+        fs::create_dir_all(&temp_root).unwrap();
+        let archive_path = temp_root.join("backup.zip");
+        let archive_bytes = b"PK\x03\x04-simulated-zip-payload-for-307-replay";
+        fs::write(&archive_path, archive_bytes).unwrap();
+        let content_len = archive_bytes.len() as u64;
+
+        async fn read_http_request(sock: &mut tokio::net::TcpStream) -> Vec<u8> {
+            let mut raw = Vec::new();
+            let mut chunk = [0u8; 1024];
+            let mut header_end = None;
+            let mut expected_body = 0usize;
+            loop {
+                let n = sock.read(&mut chunk).await.unwrap();
+                if n == 0 {
+                    break;
+                }
+                raw.extend_from_slice(&chunk[..n]);
+                if header_end.is_none() {
+                    if let Some(pos) = raw.windows(4).position(|w| w == b"\r\n\r\n") {
+                        let end = pos + 4;
+                        header_end = Some(end);
+                        let headers = String::from_utf8_lossy(&raw[..end]);
+                        for line in headers.lines() {
+                            if let Some((k, v)) = line.split_once(':') {
+                                if k.trim().eq_ignore_ascii_case("content-length") {
+                                    expected_body = v.trim().parse::<usize>().unwrap_or(0);
+                                }
+                            }
+                        }
+                    }
+                }
+                if let Some(end) = header_end {
+                    if raw.len() >= end + expected_body {
+                        break;
+                    }
+                }
+            }
+            raw
+        }
+
+        // 1. Same-origin 307 redirect replays the full PUT body and succeeds on 201 Created
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let expected_payload = archive_bytes.to_vec();
+        let server_task = tokio::spawn(async move {
+            let (mut first_sock, _) = listener.accept().await.unwrap();
+            let first_req = read_http_request(&mut first_sock).await;
+            assert!(first_req.starts_with(b"PUT /dav/lich13studio.zip HTTP/1.1\r\n"));
+            first_sock
+                .write_all(
+                    b"HTTP/1.1 307 Temporary Redirect\r\nLocation: /dav-v2/lich13studio.zip\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+                )
+                .await
+                .unwrap();
+
+            let (mut second_sock, _) = listener.accept().await.unwrap();
+            let second_req = read_http_request(&mut second_sock).await;
+            assert!(second_req.starts_with(b"PUT /dav-v2/lich13studio.zip HTTP/1.1\r\n"));
+            let body_start = second_req
+                .windows(4)
+                .position(|w| w == b"\r\n\r\n")
+                .unwrap()
+                + 4;
+            assert_eq!(&second_req[body_start..], expected_payload.as_slice());
+            second_sock
+                .write_all(
+                    b"HTTP/1.1 201 Created\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+                )
+                .await
+                .unwrap();
+        });
+
+        let final_url = upload_webdav_file(
+            &BackupWebDavConfig {
+                url: format!("http://localhost:{port}/dav"),
+                username: "u".into(),
+                password: "p".into(),
+                file_name: Some("lich13studio.zip".into()),
+                skip_backup_file: None,
+                user_agent: None,
+            },
+            &archive_path,
+            content_len,
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            final_url,
+            format!("http://localhost:{port}/dav-v2/lich13studio.zip")
+        );
+        server_task.await.unwrap();
+
+        // 2. 303 See Other (which cannot preserve PUT upload) must fail, NEVER succeed
+        let bad_303_listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let bad_303_port = bad_303_listener.local_addr().unwrap().port();
+        let bad_303_task = tokio::spawn(async move {
+            let (mut sock, _) = bad_303_listener.accept().await.unwrap();
+            let _ = read_http_request(&mut sock).await;
+            sock.write_all(
+                b"HTTP/1.1 303 See Other\r\nLocation: /done\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+            )
+            .await
+            .unwrap();
+        });
+        let err_303 = upload_webdav_file(
+            &BackupWebDavConfig {
+                url: format!("http://localhost:{bad_303_port}/dav"),
+                username: "u".into(),
+                password: "p".into(),
+                file_name: Some("lich13studio.zip".into()),
+                skip_backup_file: None,
+                user_agent: None,
+            },
+            &archive_path,
+            content_len,
+        )
+        .await
+        .unwrap_err();
+        assert!(err_303.contains("303"));
+        bad_303_task.await.unwrap();
+
+        // 3. Cross-origin 307 redirect on WebDAV PUT must fail without uploading to target
+        let cross_listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let cross_port = cross_listener.local_addr().unwrap().port();
+        let cross_task = tokio::spawn(async move {
+            let (mut sock, _) = cross_listener.accept().await.unwrap();
+            let _ = read_http_request(&mut sock).await;
+            sock.write_all(
+                b"HTTP/1.1 307 Temporary Redirect\r\nLocation: https://evil.example.invalid/steal.zip\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+            )
+            .await
+            .unwrap();
+        });
+        let err_cross = upload_webdav_file(
+            &BackupWebDavConfig {
+                url: format!("http://localhost:{cross_port}/dav"),
+                username: "u".into(),
+                password: "p".into(),
+                file_name: Some("lich13studio.zip".into()),
+                skip_backup_file: None,
+                user_agent: None,
+            },
+            &archive_path,
+            content_len,
+        )
+        .await
+        .unwrap_err();
+        assert_eq!(err_cross, "Cross-origin redirects are not allowed");
+        cross_task.await.unwrap();
+
+        // 4. Multi-hop 307 -> 308 -> 201 with relative query/percent-encoded Location and MAX_REDIRECTS cap
+        let multihop_listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let multihop_port = multihop_listener.local_addr().unwrap().port();
+        let multihop_payload = archive_bytes.to_vec();
+        let multihop_task = tokio::spawn(async move {
+            let (mut s1, _) = multihop_listener.accept().await.unwrap();
+            let _ = read_http_request(&mut s1).await;
+            s1.write_all(
+                b"HTTP/1.1 307 Temporary Redirect\r\nLocation: ../stage%20two/lich13studio.zip?step=1\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+            )
+            .await
+            .unwrap();
+
+            let (mut s2, _) = multihop_listener.accept().await.unwrap();
+            let r2 = read_http_request(&mut s2).await;
+            assert!(r2.starts_with(b"PUT /dav/stage%20two/lich13studio.zip?step=1 HTTP/1.1\r\n"));
+            s2.write_all(
+                b"HTTP/1.1 308 Permanent Redirect\r\nLocation: final%20slot.zip?upload=ok\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+            )
+            .await
+            .unwrap();
+
+            let (mut s3, _) = multihop_listener.accept().await.unwrap();
+            let r3 = read_http_request(&mut s3).await;
+            assert!(r3.starts_with(b"PUT /dav/stage%20two/final%20slot.zip?upload=ok HTTP/1.1\r\n"));
+            let body_idx = r3.windows(4).position(|w| w == b"\r\n\r\n").unwrap() + 4;
+            assert_eq!(&r3[body_idx..], multihop_payload.as_slice());
+            s3.write_all(b"HTTP/1.1 201 Created\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
+                .await
+                .unwrap();
+        });
+        let multihop_final = upload_webdav_file(
+            &BackupWebDavConfig {
+                url: format!("http://localhost:{multihop_port}/dav/sub"),
+                username: "u".into(),
+                password: "p".into(),
+                file_name: Some("lich13studio.zip".into()),
+                skip_backup_file: None,
+                user_agent: None,
+            },
+            &archive_path,
+            content_len,
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            multihop_final,
+            format!("http://localhost:{multihop_port}/dav/stage%20two/final%20slot.zip?upload=ok")
+        );
+        multihop_task.await.unwrap();
+
+        let loop_listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let loop_port = loop_listener.local_addr().unwrap().port();
+        let loop_task = tokio::spawn(async move {
+            for idx in 0..=net_policy::MAX_REDIRECTS {
+                let (mut sock, _) = loop_listener.accept().await.unwrap();
+                let _ = read_http_request(&mut sock).await;
+                let resp = format!(
+                    "HTTP/1.1 307 Temporary Redirect\r\nLocation: /dav/loop-{idx}.zip\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+                );
+                sock.write_all(resp.as_bytes()).await.unwrap();
+            }
+        });
+        let err_loop = upload_webdav_file(
+            &BackupWebDavConfig {
+                url: format!("http://localhost:{loop_port}/dav"),
+                username: "u".into(),
+                password: "p".into(),
+                file_name: Some("lich13studio.zip".into()),
+                skip_backup_file: None,
+                user_agent: None,
+            },
+            &archive_path,
+            content_len,
+        )
+        .await
+        .unwrap_err();
+        assert_eq!(err_loop, "Too many redirects");
+        loop_task.await.unwrap();
+
+        fs::remove_dir_all(temp_root).unwrap();
+    }
+
+    #[test]
+    #[cfg(not(target_os = "android"))]
+    fn state_file_mutations_only_default_not_found_and_preserve_pending_window_states_on_error() {
+        let root = std::env::temp_dir().join(format!("lich13-state-file-{}", Uuid::new_v4()));
+        fs::create_dir_all(&root).unwrap();
+        let state_file = root.join("state.json");
+        let state_lock = Mutex::new(());
+        let pending_map: Mutex<HashMap<String, PersistedWindowState>> = Mutex::new(HashMap::new());
+
+        // 1. NotFound defaults cleanly to {} and writes initial setting
+        let initial_settings = update_runtime_setting_in_path(
+            &state_file,
+            RuntimeSettings::default(),
+            SETTING_TRAY,
+            false,
+        )
+        .unwrap();
+        assert!(!initial_settings.tray);
+        let written: Value =
+            serde_json::from_str(&fs::read_to_string(&state_file).unwrap()).unwrap();
+        assert_eq!(written[RUNTIME_SETTINGS_KEY]["tray"], json!(false));
+
+        // 2. Corrupt JSON must fail WITHOUT overwriting state.json and retain pending window states
+        let corrupt_bytes = b"{corrupt-json-keep-existing-bytes";
+        fs::write(&state_file, corrupt_bytes).unwrap();
+        assert!(update_runtime_setting_in_path(
+            &state_file,
+            RuntimeSettings::default(),
+            SETTING_TRAY,
+            true,
+        )
+        .is_err());
+        assert_eq!(fs::read(&state_file).unwrap(), corrupt_bytes);
+
+        let main_geom = PersistedWindowState {
+            width: Some(1280),
+            height: Some(820),
+            x: Some(40),
+            y: Some(60),
+            maximized: false,
+            fullscreen: false,
+        };
+        pending_map
+            .lock()
+            .unwrap()
+            .insert("main".into(), main_geom.clone());
+        assert!(
+            flush_pending_window_states_to_path(&state_file, &state_lock, &pending_map).is_err()
+        );
+        assert_eq!(fs::read(&state_file).unwrap(), corrupt_bytes);
+        assert_eq!(
+            pending_map.lock().unwrap().get("main").unwrap().width,
+            main_geom.width
+        );
+
+        // 3. Non-object JSON root (e.g. array) also errors without wiping disk
+        fs::write(&state_file, b"[1, 2, 3]").unwrap();
+        assert!(
+            flush_pending_window_states_to_path(&state_file, &state_lock, &pending_map).is_err()
+        );
+        assert_eq!(fs::read(&state_file).unwrap(), b"[1, 2, 3]");
+        assert!(pending_map.lock().unwrap().contains_key("main"));
+
+        // 4. Once valid JSON is restored on disk, retry merges pending window state without losing runtimeSettings
+        fs::write(
+            &state_file,
+            serde_json::to_vec_pretty(&json!({
+                RUNTIME_SETTINGS_KEY: { "tray": false, "launchToTray": false, "trayOnClose": true }
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+        flush_pending_window_states_to_path(&state_file, &state_lock, &pending_map).unwrap();
+        assert!(pending_map.lock().unwrap().is_empty());
+        let merged: Value =
+            serde_json::from_str(&fs::read_to_string(&state_file).unwrap()).unwrap();
+        assert_eq!(merged[RUNTIME_SETTINGS_KEY]["tray"], json!(false));
+        assert_eq!(merged[WINDOW_STATE_KEY]["main"]["width"], json!(1280));
+
+        fs::remove_dir_all(root).unwrap();
     }
 }

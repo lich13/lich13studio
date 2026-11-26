@@ -21,7 +21,6 @@ interface Props {
 }
 
 interface ContainerProps {
-  right?: boolean
   $isEmpty?: boolean
 }
 
@@ -41,7 +40,7 @@ const Messages: FC<Props> = ({ assistant, topic, isOutputted, isLoading, hasErro
             <Sparkles size={18} />
           </EmptyIcon>
           <EmptyTitle>{t('miniwindow.header.default_assistant')}</EmptyTitle>
-          <EmptySubtitle>{t('miniwindow.input.placeholder.empty', { model: modelName })}</EmptySubtitle>
+          {modelName ? <EmptyModel>{modelName}</EmptyModel> : null}
         </EmptyState>
       )}
       {showPendingSpinner && <PendingSpinner style={{ fontSize: 15 }} spin />}
@@ -100,10 +99,14 @@ const EmptyTitle = styled.div`
   font-weight: 600;
 `
 
-const EmptySubtitle = styled.div`
+const EmptyModel = styled.div`
   color: var(--color-text-secondary);
   font-size: 12px;
-  line-height: 1.45;
+  line-height: 1.4;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 `
 
 export default Messages

@@ -11,7 +11,7 @@
 | 平台目录 | `packages/shared/modelCatalog`、`services/PlatformModelCatalogService.ts` | 公共同步、缓存与用户目录合并 |
 | 持久化 | `packages/shared/stateMigration.ts`、`src/renderer/src/store`、`databases` | 迁移 223、保留历史数据 |
 | 备份 | `services/BackupService.ts`、`src-tauri/src/backup_crypto.rs` | 本地／WebDAV、跨平台加密容器 |
-| 凭据 | `src/renderer/src/services/mobile`、Rust 与 Android 原生代码 | 系统凭据库、Android Keystore 与引用迁移 |
+| 凭据 | `src/renderer/src/services/mobile`、Rust 与 Android 原生代码 | 桌面本地 `0600` 隔离凭据文件、Android Keystore 与引用迁移 |
 | 构建 | `vite.config.ts`、`src-tauri/tauri.conf.json` | 前端构建与 Tauri 打包分离 |
 | 检查 | `package.json` 的 `ci:*`、`.github/workflows` | 本地与 CI 共用定义 |
 

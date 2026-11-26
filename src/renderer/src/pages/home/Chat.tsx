@@ -146,7 +146,7 @@ const Chat: FC<Props> = (props) => {
     () =>
       debounce(() => {
         contentSearchRef.current?.silentSearch()
-      }, 10),
+      }, 250),
     []
   )
 
@@ -180,10 +180,7 @@ const Chat: FC<Props> = (props) => {
   return (
     <Container id="chat" className={classNames([messageStyle, { 'multi-select-mode': isMultiSelectMode }])}>
       <HStack>
-        <motion.div
-          layout={!runtimeCapabilities.android}
-          transition={{ duration: 0.3, ease: 'easeInOut' }}
-          style={{ flex: 1, display: 'flex', minWidth: 0, overflow: 'hidden' }}>
+        <div style={{ flex: 1, display: 'flex', minWidth: 0, overflow: 'hidden' }}>
           <Main
             ref={mainRef}
             id="chat-main"
@@ -232,7 +229,7 @@ const Chat: FC<Props> = (props) => {
               </div>
             </QuickPanelProvider>
           </Main>
-        </motion.div>
+        </div>
         <AnimatePresence initial={false}>
           {!runtimeCapabilities.android && topicPosition === 'right' && showTopics && (
             <motion.div

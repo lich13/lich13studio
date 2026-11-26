@@ -321,7 +321,7 @@ const DisplaySettings: FC = () => {
                   options={[
                     {
                       label: (
-                        <span style={{ fontFamily: 'var(--font-family-mono)' }}>
+                        <span style={{ fontFamily: 'var(--code-font-family)' }}>
                           {t('settings.display.font.default')}
                         </span>
                       ),

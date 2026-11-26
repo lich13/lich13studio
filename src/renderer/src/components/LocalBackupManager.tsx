@@ -156,14 +156,16 @@ export function LocalBackupManager({ visible, onClose, localBackupDir, restoreMe
       dataIndex: 'modifiedTime',
       key: 'modifiedTime',
       width: 180,
-      render: (time: string) => dayjs(time).format('YYYY-MM-DD HH:mm:ss')
+      render: (time: string) => (
+        <span style={{ fontVariantNumeric: 'tabular-nums' }}>{dayjs(time).format('YYYY-MM-DD HH:mm:ss')}</span>
+      )
     },
     {
       title: t('settings.data.local.backup.manager.columns.size'),
       dataIndex: 'size',
       key: 'size',
       width: 120,
-      render: (size: number) => formatFileSize(size)
+      render: (size: number) => <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatFileSize(size)}</span>
     },
     {
       title: t('settings.data.local.backup.manager.columns.actions'),

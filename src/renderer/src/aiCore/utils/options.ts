@@ -4,7 +4,7 @@ import { type AiSdkParam, isAiSdkParam } from '@renderer/types/aiCoreTypes'
 import type { ReasoningMode } from '@shared/reasoning'
 import type { JSONValue } from 'ai'
 
-import { getAiSdkProviderId } from '../provider/factory'
+import { getAiSdkProviderId } from '../provider/providerConfig'
 import type { ProviderCapabilities } from '../types'
 import { getAnthropicReasoningParams, getCustomParameters, getOpenAIReasoningParams } from './reasoning'
 
@@ -12,7 +12,7 @@ export function buildProviderOptions(
   assistant: Assistant,
   model: Model,
   provider: Provider,
-  capabilities: Pick<ProviderCapabilities, 'enableReasoning' | 'enableGenerateImage'>,
+  capabilities: Pick<ProviderCapabilities, 'enableReasoning'>,
   reasoningMode: ReasoningMode = 'configured'
 ): { providerOptions: Record<string, Record<string, JSONValue>>; standardParams: Partial<Record<AiSdkParam, any>> } {
   const id = getAiSdkProviderId(provider)

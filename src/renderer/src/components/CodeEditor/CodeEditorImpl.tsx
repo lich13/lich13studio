@@ -2,7 +2,7 @@ import { useCodeStyle } from '@renderer/context/CodeStyleProvider'
 import { useSettings } from '@renderer/hooks/useSettings'
 import type { BasicSetupOptions, Extension } from '@uiw/react-codemirror'
 import CodeMirror, { Annotation, EditorView } from '@uiw/react-codemirror'
-import diff from 'fast-diff'
+import { diffChars } from 'diff'
 import { memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { loadCmTheme } from 'virtual:cm-themes'
 
@@ -210,27 +210,33 @@ const CodeEditorImpl = ({
 CodeEditorImpl.displayName = 'CodeEditorImpl'
 
 function prepareCodeChanges(oldCode: string, newCode: string) {
-  const diffResult = diff(oldCode, newCode)
+  if (oldCode === newCode) {
+    return []
+  }
+  if (newCode.startsWith(oldCode)) {
+    return [{ from: oldCode.length, to: oldCode.length, insert: newCode.slice(oldCode.length) }]
+  }
 
+  const diffResult = diffChars(oldCode, newCode)
   const changes: { from: number; to: number; insert: string }[] = []
   let offset = 0
 
-  for (const [operation, text] of diffResult) {
-    if (operation === 1) {
+  for (const part of diffResult) {
+    if (part.added) {
       changes.push({
         from: offset,
         to: offset,
-        insert: text
+        insert: part.value
       })
-    } else if (operation === -1) {
+    } else if (part.removed) {
       changes.push({
         from: offset,
-        to: offset + text.length,
+        to: offset + part.value.length,
         insert: ''
       })
-      offset += text.length
+      offset += part.value.length
     } else {
-      offset += text.length
+      offset += part.value.length
     }
   }
 

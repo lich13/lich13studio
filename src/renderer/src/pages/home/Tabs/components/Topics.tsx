@@ -8,18 +8,16 @@ import { isMac } from '@renderer/config/constant'
 import { db } from '@renderer/databases'
 import { useAssistant, useAssistants } from '@renderer/hooks/useAssistant'
 import { useInPlaceEdit } from '@renderer/hooks/useInPlaceEdit'
-import { modelGenerating } from '@renderer/hooks/useRuntime'
 import { useSettings } from '@renderer/hooks/useSettings'
 import { finishTopicRenaming, startTopicRenaming, TopicManager } from '@renderer/hooks/useTopic'
 import { getDefaultTopic } from '@renderer/services/AssistantService'
 import { EVENT_NAMES, EventEmitter } from '@renderer/services/EventService'
 import type { RootState } from '@renderer/store'
-import store from '@renderer/store'
 import { newMessagesActions } from '@renderer/store/newMessage'
-import { setGenerating } from '@renderer/store/runtime'
 import type { Assistant, Topic } from '@renderer/types'
 import { classNames, removeSpecialCharactersForFileName } from '@renderer/utils'
 import { copyTopicAsMarkdown, copyTopicAsPlainText } from '@renderer/utils/copy'
+import { clearTopicQueue } from '@renderer/utils/queue'
 import type { MenuProps } from 'antd'
 import { Dropdown, Tooltip } from 'antd'
 import type { ItemType, MenuItemType } from 'antd/es/menu/interface'
@@ -128,8 +126,7 @@ export const Topics: React.FC<Props> = ({ assistant: _assistant, activeTopic, se
   }, [])
 
   const onClearMessages = useCallback((topic: Topic) => {
-    // window.keyv.set(EVENT_NAMES.CHAT_COMPLETION_PAUSED, true)
-    store.dispatch(setGenerating(false))
+    clearTopicQueue(topic.id)
     void EventEmitter.emit(EVENT_NAMES.CLEAR_MESSAGES, topic)
   }, [])
 
@@ -147,8 +144,7 @@ export const Topics: React.FC<Props> = ({ assistant: _assistant, activeTopic, se
           setActiveTopic(assistant.topics[index + 1 === assistant.topics.length ? index - 1 : index + 1])
         }
       }
-      await modelGenerating()
-      removeTopic(topic)
+      await removeTopic(topic)
       setDeletingTopicId(null)
     },
     [activeTopic.id, addTopic, assistant.id, assistant.topics, removeTopic, setActiveTopic]
@@ -194,19 +190,17 @@ export const Topics: React.FC<Props> = ({ assistant: _assistant, activeTopic, se
 
   const onDeleteTopic = useCallback(
     async (topic: Topic) => {
-      await modelGenerating()
       if (topic.id === activeTopic?.id) {
         const index = findIndex(assistant.topics, (t) => t.id === topic.id)
         setActiveTopic(assistant.topics[index + 1 === assistant.topics.length ? index - 1 : index + 1])
       }
-      removeTopic(topic)
+      await removeTopic(topic)
     },
     [assistant.topics, removeTopic, setActiveTopic, activeTopic]
   )
 
   const onMoveTopic = useCallback(
-    async (topic: Topic, toAssistant: Assistant) => {
-      await modelGenerating()
+    (topic: Topic, toAssistant: Assistant) => {
       const index = findIndex(assistant.topics, (t) => t.id === topic.id)
       setActiveTopic(assistant.topics[index + 1 === assistant.topics.length ? 0 : index + 1])
       moveTopic(topic, toAssistant)
@@ -215,8 +209,7 @@ export const Topics: React.FC<Props> = ({ assistant: _assistant, activeTopic, se
   )
 
   const onSwitchTopic = useCallback(
-    async (topic: Topic) => {
-      // await modelGenerating()
+    (topic: Topic) => {
       setActiveTopic(topic)
     },
     [setActiveTopic]
@@ -522,7 +515,7 @@ export const Topics: React.FC<Props> = ({ assistant: _assistant, activeTopic, se
                 toggleSelectTopic(topic.id)
               }
             } else {
-              void onSwitchTopic(topic)
+              onSwitchTopic(topic)
             }
           }
 
@@ -687,7 +680,7 @@ const TopicListItem = styled.div`
   }
 
   &.selected {
-    background-color: var(--color-primary-bg);
+    background-color: var(--color-primary-mute);
     box-shadow:
       inset 0 0 0 1px var(--color-primary),
       0 2px 8px rgba(0, 0, 0, 0.04);
@@ -777,6 +770,7 @@ const TopicPromptText = styled.div`
 const TopicTime = styled.div`
   color: var(--color-text-3);
   font-size: 11px;
+  font-variant-numeric: tabular-nums;
 `
 
 const MenuButton = styled.div`
@@ -823,11 +817,11 @@ const HeaderIconButton = styled.div`
 
   &.active {
     color: var(--color-primary);
-    background-color: var(--color-primary-bg);
+    background-color: var(--color-primary-mute);
     border-color: color-mix(in srgb, var(--color-primary) 22%, transparent);
 
     &:hover {
-      background-color: var(--color-primary-bg);
+      background-color: var(--color-primary-mute);
     }
   }
 `

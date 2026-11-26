@@ -3506,6 +3506,16 @@
       "import_save_failed": "无法将凭据写入安全存储，未保存服务商，请重试。",
       "import_success": "服务商已导入",
       "import_too_large": "导入链接过长或待处理的导入过多，已拒绝且未导入任何内容。请检查链接后重试。",
+      "keychain_migrated": {
+        "action_backup": "前往备份与恢复",
+        "action_headers": "编辑自定义请求头",
+        "action_provider": "前往服务商设置",
+        "description": "新版已移除系统钥匙串授权弹窗，旧版钥匙串引用已安全置空（{{items}}）。请重新填写一次，或恢复升级前的加密备份。",
+        "field_api_key": "API Key",
+        "field_extra_headers": "自定义请求头",
+        "field_webdav": "WebDAV 密码",
+        "title": "凭据存储已切换至本地隔离文件"
+      },
       "misc": "其他",
       "notes": {
         "markdown_editor_default_value": "预览区域",

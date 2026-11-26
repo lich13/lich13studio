@@ -132,20 +132,45 @@ const InputbarInner: FC<InputbarInnerProps> = ({ assistant: initialAssistant, se
   const { setCouldAddImageFile } = useInputbarToolsInternalDispatch()
 
   const activeTopicIdRef = useRef(topic.id)
+  activeTopicIdRef.current = topic.id
+  const prevTopicIdRef = useRef(topic.id)
+  const isProgrammaticTextSyncRef = useRef(false)
+  const topicEditRevisionsRef = useRef(new Map<string, number>())
+  const inFlightSendTopicsRef = useRef(new Set<string>())
+
   const { text, setText } = useInputText({
     initialValue: CacheService.get<string>(getDraftCacheKey(topic.id)) ?? '',
-    onChange: (value) => CacheService.set(getDraftCacheKey(activeTopicIdRef.current), value, DRAFT_CACHE_TTL)
+    onChange: (value) => {
+      if (isProgrammaticTextSyncRef.current) {
+        return
+      }
+      const currentTopicId = activeTopicIdRef.current
+      topicEditRevisionsRef.current.set(currentTopicId, (topicEditRevisionsRef.current.get(currentTopicId) ?? 0) + 1)
+      CacheService.set(getDraftCacheKey(currentTopicId), value, DRAFT_CACHE_TTL)
+    }
   })
 
+  const syncTextWithoutUserEdit = useCallback(
+    (nextValue: string) => {
+      isProgrammaticTextSyncRef.current = true
+      try {
+        setText(nextValue)
+      } finally {
+        isProgrammaticTextSyncRef.current = false
+      }
+    },
+    [setText]
+  )
+
   useEffect(() => {
-    if (activeTopicIdRef.current === topic.id) {
+    if (prevTopicIdRef.current === topic.id) {
       return
     }
-    activeTopicIdRef.current = topic.id
+    prevTopicIdRef.current = topic.id
     const nextDraft = CacheService.get<string>(getDraftCacheKey(topic.id)) ?? ''
-    setText(nextDraft)
+    syncTextWithoutUserEdit(nextDraft)
     setFiles([])
-  }, [topic.id, setText, setFiles])
+  }, [topic.id, syncTextWithoutUserEdit, setFiles])
   const {
     textareaRef,
     resize: resizeTextArea,
@@ -219,7 +244,13 @@ const InputbarInner: FC<InputbarInnerProps> = ({ assistant: initialAssistant, se
     CacheService.set(getMentionedModelsCacheKey(id), mentionedModels, DRAFT_CACHE_TTL)
   })
 
+  const prevAssistantIdRef = useRef(assistant.id)
   useEffect(() => {
+    if (prevAssistantIdRef.current !== assistant.id) {
+      onUnmount(prevAssistantIdRef.current)
+      prevAssistantIdRef.current = assistant.id
+      setMentionedModels(getValidatedCachedModels(assistant.id))
+    }
     return () => onUnmount(assistant.id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assistant.id])
@@ -234,6 +265,9 @@ const InputbarInner: FC<InputbarInnerProps> = ({ assistant: initialAssistant, se
       })
 
   const sendMessage = useCallback(async () => {
+    if (inFlightSendTopicsRef.current.has(topic.id)) {
+      return
+    }
     try {
       for (const target of mentionedModels.length ? mentionedModels : [assistant.model])
         requireCurrentModel(target, true)
@@ -247,32 +281,57 @@ const InputbarInner: FC<InputbarInnerProps> = ({ assistant: initialAssistant, se
 
     logger.info('Starting to send message')
 
-    void EventEmitter.emit(EVENT_NAMES.SEND_MESSAGE, { topicId: topic.id })
+    const sendingTopic = topic
+    const sendingTopicId = sendingTopic.id
+    const sendingAssistant = assistant
+    const sendingText = text
+    const sendingFiles = files
+    const sendingMentions = mentionedModels
+    const sendingDraftRevision = topicEditRevisionsRef.current.get(sendingTopicId) ?? 0
+
+    inFlightSendTopicsRef.current.add(sendingTopicId)
+    void EventEmitter.emit(EVENT_NAMES.SEND_MESSAGE, { topicId: sendingTopicId })
 
     try {
-      const uploadedFiles = await FileManager.uploadFiles(files)
+      const uploadedFiles = await FileManager.uploadFiles(sendingFiles)
 
-      const baseUserMessage: MessageInputBaseParams = { assistant, topic, content: text }
+      const baseUserMessage: MessageInputBaseParams = {
+        assistant: sendingAssistant,
+        topic: sendingTopic,
+        content: sendingText
+      }
       if (uploadedFiles) {
         baseUserMessage.files = uploadedFiles
       }
-      if (mentionedModels.length) {
-        baseUserMessage.mentions = mentionedModels
+      if (sendingMentions.length) {
+        baseUserMessage.mentions = sendingMentions
       }
 
       baseUserMessage.usage = await estimateUserPromptUsage(baseUserMessage)
 
       const { message, blocks } = getUserMessage(baseUserMessage)
 
-      void dispatch(_sendMessage(message, blocks, assistant, topic.id))
+      await dispatch(_sendMessage(message, blocks, sendingAssistant, sendingTopicId))
 
-      setText('')
-      setFiles([])
-      setTimeoutTimer('sendMessage_2', () => resizeTextArea(), 0)
-      // Restore focus to textarea after sending to maintain IME state (fcitx5 issue)
-      focusTextarea()
+      const sendingFileIds = new Set(sendingFiles.map((file) => file.id))
+      const draftUnmodifiedSinceSend = (topicEditRevisionsRef.current.get(sendingTopicId) ?? 0) === sendingDraftRevision
+      if (draftUnmodifiedSinceSend) {
+        CacheService.remove(getDraftCacheKey(sendingTopicId))
+      }
+      if (activeTopicIdRef.current === sendingTopicId) {
+        if (draftUnmodifiedSinceSend) {
+          syncTextWithoutUserEdit('')
+          setTimeoutTimer('sendMessage_2', () => resizeTextArea(), 0)
+        }
+        setFiles((currentFiles) => currentFiles.filter((file) => !sendingFileIds.has(file.id)))
+        // Restore focus to textarea after sending to maintain IME state (fcitx5 issue)
+        focusTextarea()
+      }
     } catch (error) {
       logger.warn('Failed to send message:', error as Error)
+      window.toast?.error(t('common.errors.create_message'))
+    } finally {
+      inFlightSendTopicsRef.current.delete(sendingTopicId)
     }
   }, [
     assistant,
@@ -281,7 +340,7 @@ const InputbarInner: FC<InputbarInnerProps> = ({ assistant: initialAssistant, se
     mentionedModels,
     files,
     dispatch,
-    setText,
+    syncTextWithoutUserEdit,
     setFiles,
     setTimeoutTimer,
     resizeTextArea,
@@ -422,11 +481,12 @@ const InputbarInner: FC<InputbarInnerProps> = ({ assistant: initialAssistant, se
   }, [])
 
   useEffect(() => {
+    if (!showInputEstimatedTokens) {
+      return
+    }
     const debouncedEstimate = debounce((value: string) => {
-      if (showInputEstimatedTokens) {
-        const count = estimateTxtTokens(value) || 0
-        setEstimateTokenCount(count)
-      }
+      const count = estimateTxtTokens(value) || 0
+      setEstimateTokenCount(count)
     }, 500)
 
     debouncedEstimate(text)

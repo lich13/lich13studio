@@ -151,7 +151,7 @@ mod tests {
         NativeHttpChunkEvent {
             request_id: id.into(),
             sequence: None,
-            chunk: vec![42; bytes],
+            chunk: Arc::from(vec![42; bytes]),
             done,
             error: None,
         }
