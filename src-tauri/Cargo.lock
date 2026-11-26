@@ -2486,7 +2486,7 @@ dependencies = [
 
 [[package]]
 name = "lich13studio"
-version = "0.1.43"
+version = "0.1.44"
 dependencies = [
  "aes-gcm",
  "argon2",
