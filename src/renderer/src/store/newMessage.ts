@@ -307,18 +307,35 @@ export const {
   selectEntities: selectMessageEntities // Selects the entity dictionary { id: message }
 } = messagesAdapter.getSelectors(selectMessagesState)
 
-// Custom Selector: Selects messages for a specific topic in order
+const EMPTY_MESSAGES: Message[] = Object.freeze([]) as unknown as Message[]
+const prevTopicMessagesCache = new Map<string, Message[]>()
+
+// Custom Selector: Selects messages for a specific topic in order with stable per-topic array references
 export const selectMessagesForTopic = createSelector(
   [
-    selectMessageEntities, // Input 1: Get the dictionary of all messages { id: message }
-    (state: RootState, topicId: string) => state.messages.messageIdsByTopic[topicId] // Input 2: Get the ordered IDs for the specific topic
+    selectMessageEntities,
+    (state: RootState, topicId: string) => state.messages.messageIdsByTopic[topicId],
+    (_state: RootState, topicId: string) => topicId
   ],
-  (messageEntities, topicMessageIds) => {
-    // Logger.log(`[Selector selectMessagesForTopic] Running for topicId: ${topicId}`); // Uncomment for debugging selector runs
-    if (!topicMessageIds) {
-      return [] // Return an empty array if the topic or its IDs don't exist
+  (messageEntities, topicMessageIds, topicId) => {
+    if (!topicMessageIds || topicMessageIds.length === 0) {
+      prevTopicMessagesCache.delete(topicId)
+      return EMPTY_MESSAGES
     }
-    // Map the ordered IDs to the actual message objects from the dictionary
-    return topicMessageIds.map((id) => messageEntities[id]).filter((m): m is Message => !!m) // Filter out undefined/null in case of inconsistencies
+    const next = topicMessageIds.map((id) => messageEntities[id]).filter((m): m is Message => !!m)
+    if (next.length === 0) {
+      prevTopicMessagesCache.delete(topicId)
+      return EMPTY_MESSAGES
+    }
+    const prev = prevTopicMessagesCache.get(topicId)
+    if (prev && prev.length === next.length && prev.every((msg, idx) => msg === next[idx])) {
+      return prev
+    }
+    if (prevTopicMessagesCache.size > 32) {
+      const oldest = prevTopicMessagesCache.keys().next().value
+      if (oldest !== undefined) prevTopicMessagesCache.delete(oldest)
+    }
+    prevTopicMessagesCache.set(topicId, next)
+    return next
   }
 )

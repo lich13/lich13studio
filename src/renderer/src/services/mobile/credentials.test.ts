@@ -664,6 +664,118 @@ describe('desktop local credential store (zero OS keychain)', () => {
     expect(decodeState(credentials.hydrateCredentials(memoryStorage.getItem(PERSIST_KEY)!))).toEqual(state)
   })
 
+  it('redacts synthetic extra secret fields inside platformModels across runtime setItem, backup strip, and restore hydrate', async () => {
+    await startDesktop()
+    const state = createState() as any
+    state.llm.platformModels = {
+      openai: [
+        {
+          id: 'gpt-6-sol',
+          name: 'GPT-6 Sol',
+          group: 'OpenAI',
+          capabilities: [{ type: 'vision', isUserSelected: false }]
+        },
+        {
+          id: 'gpt-synthetic',
+          name: 'Synthetic',
+          group: 'OpenAI',
+          apiKey: 'fixture-synthetic-catalog-key',
+          nested: { privateKey: 'fixture-synthetic-nested-private-key' }
+        }
+      ],
+      grok: [],
+      anthropic: []
+    }
+    await credentials.mobilePersistStorage.setItem(PERSIST_KEY, encodeState(state))
+    const rawPersisted = memoryStorage.getItem(PERSIST_KEY)!
+    expect(rawPersisted).not.toContain('fixture-synthetic-catalog-key')
+    expect(rawPersisted).not.toContain('fixture-synthetic-nested-private-key')
+    expect(rawPersisted).toContain(REF_PREFIX)
+
+    const stripped = credentials.stripCredentials({ [PERSIST_KEY]: rawPersisted })
+    expect(stripped[PERSIST_KEY]).not.toContain('fixture-synthetic-catalog-key')
+    expect(stripped[PERSIST_KEY]).not.toContain('fixture-synthetic-nested-private-key')
+    expect(stripped[PERSIST_KEY]).not.toContain(REF_PREFIX)
+
+    const hydrated = decodeState(credentials.hydrateCredentials(rawPersisted))
+    expect(hydrated.llm.platformModels).toEqual(state.llm.platformModels)
+  })
+
+  it('rejects non-enum or JSON-container strings inside platformModels fast-path so nested secrets are redacted', async () => {
+    await startDesktop()
+    const state = createState() as any
+    state.llm.platformModels = {
+      openai: [
+        {
+          id: 'gpt-6-sol',
+          name: 'GPT-6 Sol',
+          group: 'OpenAI',
+          endpoint_type: 'openai-response',
+          supported_endpoint_types: ['openai', 'openai-response'],
+          capabilities: [{ type: 'reasoning', isUserSelected: true }],
+          pricing: { input_per_million_tokens: 2.5, output_per_million_tokens: 10, currencySymbol: '$' }
+        },
+        {
+          id: 'gpt-nested-json-endpoint',
+          name: 'Nested Endpoint Payload',
+          group: 'OpenAI',
+          supported_endpoint_types: ['openai', '{"apiKey":"fixture-nested-endpoint-secret"}']
+        }
+      ],
+      grok: [
+        {
+          id: 'grok-nonstandard-cap',
+          name: 'Grok Custom',
+          group: 'grok',
+          endpoint_type: 'custom-secret-endpoint',
+          capabilities: [{ type: 'custom-secret-cap' }],
+          description: '{"privateKey":"fixture-description-json"}'
+        }
+      ],
+      anthropic: []
+    }
+
+    await credentials.mobilePersistStorage.setItem(PERSIST_KEY, encodeState(state))
+    const rawPersisted = memoryStorage.getItem(PERSIST_KEY)!
+    expect(rawPersisted).not.toContain('fixture-nested-endpoint-secret')
+    expect(rawPersisted).toContain(REF_PREFIX)
+
+    const stripped = credentials.stripCredentials({ [PERSIST_KEY]: rawPersisted })
+    expect(stripped[PERSIST_KEY]).not.toContain('fixture-nested-endpoint-secret')
+    expect(stripped[PERSIST_KEY]).not.toContain(REF_PREFIX)
+
+    const hydrated = decodeState(credentials.hydrateCredentials(rawPersisted))
+    expect(hydrated.llm.platformModels).toEqual(state.llm.platformModels)
+
+    // Direct mapCredentials(..., true) also rejects sparse arrays and custom-prototype objects
+    const sparseEndpoints = new Array<string>(2)
+    sparseEndpoints[1] = 'openai'
+    class CustomModelEntry {
+      id = 'custom-proto'
+      name = 'Custom Proto'
+      group = 'OpenAI'
+      apiKey = 'fixture-proto-secret'
+    }
+    const visitedFields: string[] = []
+    credentials.mapCredentials(
+      {
+        platformModels: {
+          openai: [
+            { id: 'sparse-entry', name: 'Sparse', group: 'OpenAI', supported_endpoint_types: sparseEndpoints },
+            new CustomModelEntry()
+          ]
+        }
+      },
+      (val, field) => {
+        visitedFields.push(field)
+        return val
+      },
+      '',
+      true
+    )
+    expect(visitedFields).toContain('apiKey')
+  })
+
   it('skips redundant secure writes when secrets are unchanged and skips prune when no secret keys are removed', async () => {
     // Android Keystore path
     native.android = true

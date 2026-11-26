@@ -13,7 +13,7 @@ type Props = {
   contextCount: { current: number; max: number }
 } & React.HTMLAttributes<HTMLDivElement>
 
-const TokenCount: FC<Props> = ({ estimateTokenCount, inputTokenCount, contextCount }) => {
+const TokenCount: FC<Props> = ({ estimateTokenCount, inputTokenCount, contextCount, ...rest }) => {
   const { t } = useTranslation()
   const { showInputEstimatedTokens } = useSettings()
 
@@ -44,7 +44,7 @@ const TokenCount: FC<Props> = ({ estimateTokenCount, inputTokenCount, contextCou
   }
 
   return (
-    <Container>
+    <Container {...rest}>
       <Popover content={PopoverContent} arrow={false}>
         <HStack>
           <HStack style={{ alignItems: 'center' }}>
@@ -67,12 +67,14 @@ const TokenCount: FC<Props> = ({ estimateTokenCount, inputTokenCount, contextCou
 }
 
 const Container = styled.div`
+  height: 28px;
+  box-sizing: border-box;
   font-size: 11px;
   line-height: 16px;
   font-variant-numeric: tabular-nums;
   color: var(--color-text-2);
   z-index: 10;
-  padding: 3px 10px;
+  padding: 0 10px;
   user-select: none;
   border-radius: 20px;
   display: flex;

@@ -635,4 +635,221 @@ describe('SearchResults global scan, sorting, and top-K snippet hydration', () =
       'blk-newer-single'
     ])
   })
+
+  it('reflects live topic renames immediately without re-scanning and triggers re-scan on equal-size topic replacement', async () => {
+    vi.useFakeTimers()
+    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
+
+    const topicA: Topic = {
+      id: 'topic-live-a',
+      assistantId: 'assistant-1',
+      name: 'Original Title A',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      messages: []
+    }
+    const topicB: Topic = {
+      id: 'topic-live-b',
+      assistantId: 'assistant-1',
+      name: 'Replacement Title B',
+      createdAt: '2026-01-02T00:00:00.000Z',
+      updatedAt: '2026-01-02T00:00:00.000Z',
+      messages: []
+    }
+    mocks.storeTopicsMap = new Map([['topic-live-a', topicA]])
+
+    const msgA1: Message = {
+      id: 'msg-a-1',
+      role: 'assistant',
+      assistantId: 'assistant-1',
+      topicId: 'topic-live-a',
+      createdAt: '2026-01-01T00:01:00.000Z',
+      status: 'success' as any,
+      blocks: ['blk-a-1']
+    }
+    const msgA2: Message = {
+      id: 'msg-a-2',
+      role: 'assistant',
+      assistantId: 'assistant-1',
+      topicId: 'topic-live-a',
+      createdAt: '2026-01-01T00:02:00.000Z',
+      status: 'success' as any,
+      blocks: ['blk-a-2']
+    }
+    const msgB1: Message = {
+      id: 'msg-b-1',
+      role: 'assistant',
+      assistantId: 'assistant-1',
+      topicId: 'topic-live-b',
+      createdAt: '2026-01-02T00:01:00.000Z',
+      status: 'success' as any,
+      blocks: ['blk-b-1']
+    }
+    const blocks: MessageBlock[] = [
+      {
+        id: 'blk-a-1',
+        messageId: 'msg-a-1',
+        type: MessageBlockType.MAIN_TEXT,
+        content: 'SharedKeyword older in topic A',
+        createdAt: msgA1.createdAt,
+        status: MessageBlockStatus.SUCCESS
+      } as MessageBlock,
+      {
+        id: 'blk-a-2',
+        messageId: 'msg-a-2',
+        type: MessageBlockType.MAIN_TEXT,
+        content: 'SharedKeyword newer in topic A',
+        createdAt: msgA2.createdAt,
+        status: MessageBlockStatus.SUCCESS
+      } as MessageBlock,
+      {
+        id: 'blk-b-1',
+        messageId: 'msg-b-1',
+        type: MessageBlockType.MAIN_TEXT,
+        content: 'SharedKeyword inside replacement topic B',
+        createdAt: msgB1.createdAt,
+        status: MessageBlockStatus.SUCCESS
+      } as MessageBlock
+    ]
+
+    const { database, bulkGetCalls } = createFakeSearchDb(blocks, [
+      { id: 'topic-live-a', messages: [msgA1, msgA2] },
+      { id: 'topic-live-b', messages: [msgB1] }
+    ])
+    mocks.db = database
+
+    const onTopicClick = vi.fn()
+    const container = document.createElement('div')
+    const root = createRoot(container)
+
+    await act(async () => {
+      root.render(
+        createElement(SearchResults, {
+          keywords: 'SharedKeyword',
+          onMessageClick: vi.fn(),
+          onTopicClick
+        })
+      )
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(250)
+    })
+
+    expect(container.textContent).toContain('Original Title A')
+    expect(container.textContent).not.toContain('Replacement Title B')
+    expect(bulkGetCalls).toHaveLength(1)
+
+    // 1. Rename topic-live-a while SearchResults stays open: updates title & click target immediately without DB re-scan
+    const renamedTopicA: Topic = { ...topicA, name: 'Renamed Live Title A' }
+    mocks.storeTopicsMap = new Map([['topic-live-a', renamedTopicA]])
+    await act(async () => {
+      root.render(
+        createElement(SearchResults, {
+          keywords: 'SharedKeyword',
+          onMessageClick: vi.fn(),
+          onTopicClick
+        })
+      )
+    })
+
+    expect(container.textContent).toContain('Renamed Live Title A')
+    expect(container.textContent).not.toContain('Original Title A')
+    expect(bulkGetCalls).toHaveLength(1)
+
+    const firstHeading = container.querySelector('h5') as HTMLElement
+    act(() => {
+      firstHeading.click()
+    })
+    expect(onTopicClick).toHaveBeenLastCalledWith(renamedTopicA)
+
+    // Toggling sort order preserves the live renamed topic title
+    const oldestBtn = container.querySelector('button[data-value="oldest"]') as HTMLButtonElement
+    await act(async () => {
+      oldestBtn.click()
+      await Promise.resolve()
+    })
+    expect(container.textContent).toContain('Renamed Live Title A')
+
+    // 2. Replace topic-live-a with topic-live-b (equal Map size: 1 -> 1): triggers re-scan and renders topic B
+    mocks.storeTopicsMap = new Map([['topic-live-b', topicB]])
+    await act(async () => {
+      root.render(
+        createElement(SearchResults, {
+          keywords: 'SharedKeyword',
+          onMessageClick: vi.fn(),
+          onTopicClick
+        })
+      )
+    })
+    // Deleted topic A disappears immediately on render
+    expect(container.textContent).not.toContain('Renamed Live Title A')
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(250)
+    })
+    expect(container.textContent).toContain('Replacement Title B')
+    expect(container.textContent).toContain('SharedKeyword inside replacement topic B')
+
+    // 3. With multiple matched topics, deleting one updates both rendered list and stats count immediately on render
+    mocks.storeTopicsMap = new Map([
+      ['topic-live-a', renamedTopicA],
+      ['topic-live-b', topicB]
+    ])
+    await act(async () => {
+      root.render(
+        createElement(SearchResults, {
+          keywords: 'SharedKeyword',
+          onMessageClick: vi.fn(),
+          onTopicClick
+        })
+      )
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(250)
+    })
+    expect(container.textContent).toContain('"count":3')
+
+    // Delete topic-live-a (which had 2 of the 3 matches): stats count drops to 1 immediately before debounce completes
+    mocks.storeTopicsMap = new Map([['topic-live-b', topicB]])
+    await act(async () => {
+      root.render(
+        createElement(SearchResults, {
+          keywords: 'SharedKeyword',
+          onMessageClick: vi.fn(),
+          onTopicClick
+        })
+      )
+    })
+    expect(container.textContent).toContain('"count":1')
+    expect(container.textContent).not.toContain('"count":3')
+
+    // 4. Empty storeTopicsMap short-circuits scanHistoryMatches without scanning message_blocks
+    let scannedBlocks = 0
+    const countingDb = {
+      ...database,
+      message_blocks: {
+        ...database.message_blocks,
+        toCollection: () => ({
+          until: () => ({
+            each: async () => {
+              scannedBlocks += 1
+            }
+          })
+        })
+      }
+    }
+    const emptyScan = await scanHistoryMatches({
+      database: countingDb,
+      keywords: 'SharedKeyword',
+      matchMode: 'whole-word',
+      storeTopicsMap: new Map(),
+      isCancelled: () => false
+    })
+    expect(emptyScan).toEqual({ terms: ['sharedkeyword'], candidates: [] })
+    expect(scannedBlocks).toBe(0)
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
 })

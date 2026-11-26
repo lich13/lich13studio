@@ -255,13 +255,17 @@ class ShikiStreamService {
     callerId: string
   ): Promise<HighlightChunkResult> {
     const cacheKey = `${callerId}-${language}-${theme}`
-    const lastContent = this.codeCache.get(cacheKey) || ''
+    const lastContent = this.codeCache.get(cacheKey)
 
-    if (code.length === lastContent.length && code === lastContent) {
+    if (lastContent !== undefined && code.length === lastContent.length && code === lastContent) {
       return { lines: [], recall: 0 }
     }
 
-    const isAppend = code.length > lastContent.length && code.startsWith(lastContent)
+    const isAppend =
+      lastContent !== undefined &&
+      lastContent.length > 0 &&
+      code.length > lastContent.length &&
+      code.startsWith(lastContent)
 
     try {
       let result: HighlightChunkResult

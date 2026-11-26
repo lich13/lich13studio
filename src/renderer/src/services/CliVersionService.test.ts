@@ -1,11 +1,12 @@
 import { CLI_BASELINES, CLI_SYNC_INTERVAL, type CliVersions } from '@shared/cliIdentity'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const mocks = vi.hoisted(() => ({ versions: {} as CliVersions, fetcher: vi.fn() }))
+const mocks = vi.hoisted(() => ({ versions: {} as CliVersions | undefined, fetcher: vi.fn() }))
 vi.mock('@renderer/store', () => ({
   default: {
     getState: () => ({ llm: { cliVersions: mocks.versions } }),
     dispatch: ({ platform, cache }) => {
+      mocks.versions ??= {}
       mocks.versions[platform] = cache
     }
   }
@@ -28,7 +29,7 @@ afterEach(() => {
 
 describe('CLI version cache and scheduler', () => {
   it('keeps valid cache offline and throttles background checks for an hour', async () => {
-    mocks.versions.grok = { version: '1.1.0', checkedAt: Date.now() - CLI_SYNC_INTERVAL, syncedAt: 123 }
+    mocks.versions = { grok: { version: '1.1.0', checkedAt: Date.now() - CLI_SYNC_INTERVAL, syncedAt: 123 } }
     mocks.fetcher.mockRejectedValue(new Error('offline'))
     await syncCliVersion('grok')
     expect(mocks.versions.grok).toEqual({ version: '1.1.0', checkedAt: Date.now(), syncedAt: 123 })
@@ -36,6 +37,12 @@ describe('CLI version cache and scheduler', () => {
     expect(mocks.fetcher).toHaveBeenCalledTimes(1)
     await syncCliVersion('grok', true)
     expect(mocks.fetcher).toHaveBeenCalledTimes(2)
+  })
+  it('tolerates missing cliVersions in partially hydrated llm state', async () => {
+    mocks.versions = undefined
+    mocks.fetcher.mockImplementation(async () => new Response('1.2.3'))
+    await expect(syncCliVersion('grok')).resolves.toBeUndefined()
+    expect(mocks.versions?.grok?.version).toBe('1.2.3')
   })
   it('only upgrades stable versions and uses a bundled version when there is no cache', async () => {
     mocks.fetcher.mockImplementation(async () => new Response('0.1.0'))

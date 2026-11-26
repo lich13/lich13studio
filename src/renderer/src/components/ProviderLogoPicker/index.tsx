@@ -1,8 +1,8 @@
-import { SearchOutlined } from '@ant-design/icons'
 import { ProviderAvatarPrimitive } from '@renderer/components/ProviderAvatar'
 import { PROVIDER_LOGO_MAP } from '@renderer/config/providers'
 import { getProviderLabel } from '@renderer/i18n/label'
 import { Input, Tooltip } from 'antd'
+import { Search } from 'lucide-react'
 import type { FC } from 'react'
 import { useMemo, useState } from 'react'
 import styled from 'styled-components'
@@ -38,7 +38,7 @@ const ProviderLogoPicker: FC<Props> = ({ onProviderClick }) => {
       <SearchContainer>
         <Input
           placeholder="search"
-          prefix={<SearchOutlined style={{ color: 'var(--color-text-3)' }} />}
+          prefix={<Search size={14} style={{ color: 'var(--color-text-3)' }} />}
           value={searchText}
           onChange={(e) => setSearchText(e.target.value)}
           size="small"

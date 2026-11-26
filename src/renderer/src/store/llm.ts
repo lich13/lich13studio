@@ -17,7 +17,7 @@
 import type { PayloadAction } from '@reduxjs/toolkit'
 import { createSlice } from '@reduxjs/toolkit'
 import { SYSTEM_PROVIDERS } from '@renderer/config/providers'
-import { type AwsBedrockAuthType, type Model, type Provider, ProviderTypeSchema } from '@renderer/types'
+import { type Model, type Provider, ProviderTypeSchema } from '@renderer/types'
 import type { CliVersionCache, CliVersions } from '@shared/cliIdentity'
 import {
   emptyCatalogExclusions,
@@ -39,37 +39,6 @@ import {
 } from '@shared/platforms'
 import { normalizeProviderEndpoint } from '@shared/providerEndpoint'
 
-type LlmSettings = {
-  ollama: {
-    keepAliveTime: number
-  }
-  lmstudio: {
-    keepAliveTime: number
-  }
-  gpustack: {
-    keepAliveTime: number
-  }
-  vertexai: {
-    serviceAccount: {
-      privateKey: string
-      clientEmail: string
-    }
-    projectId: string
-    location: string
-  }
-  awsBedrock: {
-    authType: AwsBedrockAuthType
-    accessKeyId: string
-    secretAccessKey: string
-    apiKey: string
-    region: string
-  }
-  cherryIn: {
-    accessToken: string
-    refreshToken: string
-  }
-}
-
 export interface LlmState {
   providers: StoredProvider[]
   modelCatalogExclusions: ModelCatalogExclusions
@@ -81,7 +50,6 @@ export interface LlmState {
   quickModel?: Model
   translateModel?: Model
   quickAssistantId: string
-  settings: LlmSettings
 }
 
 export type LlmImportSnapshot = Pick<
@@ -98,37 +66,7 @@ export const initialState: LlmState = {
   providers: SYSTEM_PROVIDERS,
   platformModels: createPlatformModels(),
   modelCatalogExclusions: emptyCatalogExclusions(),
-  cliVersions: {},
-  settings: {
-    ollama: {
-      keepAliveTime: 0
-    },
-    lmstudio: {
-      keepAliveTime: 0
-    },
-    gpustack: {
-      keepAliveTime: 0
-    },
-    vertexai: {
-      serviceAccount: {
-        privateKey: '',
-        clientEmail: ''
-      },
-      projectId: '',
-      location: ''
-    },
-    awsBedrock: {
-      authType: 'iam',
-      accessKeyId: '',
-      secretAccessKey: '',
-      apiKey: '',
-      region: ''
-    },
-    cherryIn: {
-      accessToken: '',
-      refreshToken: ''
-    }
-  }
+  cliVersions: {}
 }
 
 export const moveProvider = (providers: Provider[], id: string, position: number) => {
@@ -206,6 +144,7 @@ const llmSlice = createSlice({
       }
     },
     setCliVersion: (state, action: PayloadAction<{ platform: ProviderPlatform; cache: CliVersionCache }>) => {
+      state.cliVersions ??= {}
       state.cliVersions[action.payload.platform] = action.payload.cache
     },
     importPlatformProvider: (
@@ -273,64 +212,6 @@ const llmSlice = createSlice({
     setTranslateModel: (state, action: PayloadAction<{ model: Model }>) => {
       state.translateModel = action.payload.model
     },
-
-    setQuickAssistantId: (state, action: PayloadAction<string>) => {
-      state.quickAssistantId = action.payload
-    },
-    setOllamaKeepAliveTime: (state, action: PayloadAction<number>) => {
-      state.settings.ollama.keepAliveTime = action.payload
-    },
-    setLMStudioKeepAliveTime: (state, action: PayloadAction<number>) => {
-      state.settings.lmstudio.keepAliveTime = action.payload
-    },
-    setGPUStackKeepAliveTime: (state, action: PayloadAction<number>) => {
-      state.settings.gpustack.keepAliveTime = action.payload
-    },
-    setVertexAIProjectId: (state, action: PayloadAction<string>) => {
-      state.settings.vertexai.projectId = action.payload
-    },
-    setVertexAILocation: (state, action: PayloadAction<string>) => {
-      state.settings.vertexai.location = action.payload
-    },
-    setVertexAIServiceAccountPrivateKey: (state, action: PayloadAction<string>) => {
-      state.settings.vertexai.serviceAccount.privateKey = action.payload
-    },
-    setVertexAIServiceAccountClientEmail: (state, action: PayloadAction<string>) => {
-      state.settings.vertexai.serviceAccount.clientEmail = action.payload
-    },
-    setAwsBedrockAuthType: (state, action: PayloadAction<AwsBedrockAuthType>) => {
-      state.settings.awsBedrock.authType = action.payload
-    },
-    setAwsBedrockAccessKeyId: (state, action: PayloadAction<string>) => {
-      state.settings.awsBedrock.accessKeyId = action.payload
-    },
-    setAwsBedrockSecretAccessKey: (state, action: PayloadAction<string>) => {
-      state.settings.awsBedrock.secretAccessKey = action.payload
-    },
-    setAwsBedrockApiKey: (state, action: PayloadAction<string>) => {
-      state.settings.awsBedrock.apiKey = action.payload
-    },
-    setAwsBedrockRegion: (state, action: PayloadAction<string>) => {
-      state.settings.awsBedrock.region = action.payload
-    },
-    setCherryInTokens: (state, action: PayloadAction<{ accessToken: string; refreshToken?: string }>) => {
-      if (!state.settings.cherryIn) {
-        state.settings.cherryIn = {
-          accessToken: '',
-          refreshToken: ''
-        }
-      }
-
-      state.settings.cherryIn.accessToken = action.payload.accessToken
-
-      if (action.payload.refreshToken !== undefined) {
-        state.settings.cherryIn.refreshToken = action.payload.refreshToken
-      }
-    },
-    clearCherryInTokens: (state) => {
-      state.settings.cherryIn.accessToken = ''
-      state.settings.cherryIn.refreshToken = ''
-    },
     updateModel: (
       state,
       action: PayloadAction<{
@@ -366,21 +247,6 @@ export const {
   setDefaultModel,
   setQuickModel,
   setTranslateModel,
-  setQuickAssistantId,
-  setOllamaKeepAliveTime,
-  setLMStudioKeepAliveTime,
-  setGPUStackKeepAliveTime,
-  setVertexAIProjectId,
-  setVertexAILocation,
-  setVertexAIServiceAccountPrivateKey,
-  setVertexAIServiceAccountClientEmail,
-  setAwsBedrockAuthType,
-  setAwsBedrockAccessKeyId,
-  setAwsBedrockSecretAccessKey,
-  setAwsBedrockApiKey,
-  setAwsBedrockRegion,
-  setCherryInTokens,
-  clearCherryInTokens,
   updateModel
 } = llmSlice.actions
 

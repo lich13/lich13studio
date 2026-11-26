@@ -20,7 +20,6 @@ vi.mock('@renderer/hooks/useProvider', () => ({
 }))
 vi.mock('@renderer/context/ThemeProvider', () => ({ useTheme: () => ({ theme: 'light' }) }))
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
-vi.mock('@renderer/utils/api', async () => import('@shared/utils/api'))
 vi.mock('@renderer/components/Popups/ApiKeyListPopup', () => ({ ApiKeyListPopup: {} }))
 vi.mock('./ApiOptionsSettings/ApiOptionsSettingsPopup', () => ({ default: {} }))
 vi.mock('./CustomHeaderPopup', () => ({ default: {} }))

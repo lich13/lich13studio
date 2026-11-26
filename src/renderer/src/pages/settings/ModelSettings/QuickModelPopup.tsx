@@ -1,10 +1,10 @@
-import { QuestionCircleOutlined } from '@ant-design/icons'
 import { ResetIcon } from '@renderer/components/Icons'
 import { HStack } from '@renderer/components/Layout'
 import { useSettings } from '@renderer/hooks/useSettings'
 import { useAppDispatch } from '@renderer/store'
 import { setEnableTopicNaming, setTopicNamingPrompt } from '@renderer/store/settings'
 import { Button, Divider, Flex, Input, Modal, Popover, Switch } from 'antd'
+import { CircleHelp } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -65,7 +65,7 @@ const PopupContainer: React.FC<Props> = ({ resolve }) => {
           <Flex align="center" gap={4} style={{ marginBottom: 4, height: 30 }}>
             <div>{t('settings.models.topic_naming.prompt')}</div>
             <Popover title={t('assistants.presets.add.prompt.variables.tip.title')} content={promptVarsContent}>
-              <QuestionCircleOutlined size={14} style={{ color: 'var(--color-text-2)' }} />
+              <CircleHelp size={14} style={{ color: 'var(--color-text-2)' }} />
             </Popover>
             {topicNamingPrompt && <Button icon={<ResetIcon size={14} />} onClick={handleReset} type="text" />}
           </Flex>

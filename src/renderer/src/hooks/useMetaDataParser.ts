@@ -1,4 +1,3 @@
-import * as htmlparser2 from 'htmlparser2'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 export function useMetaDataParser<T extends string>(
@@ -38,18 +37,13 @@ export function useMetaDataParser<T extends string>(
       const htmlContent = await response.text()
       const parsedMetadata = {} as Record<T, string>
 
-      const parser = new htmlparser2.Parser({
-        onopentag(tagName, attributes) {
-          if (tagName === 'meta') {
-            const { name: metaName, property: metaProperty, content } = attributes
-            const metaKey = metaName || metaProperty
-            if (!metaKey || !properties.includes(metaKey as T)) return
-            parsedMetadata[metaKey as T] = content
-          }
-        }
-      })
-
-      parser.parseComplete(htmlContent)
+      const doc = new DOMParser().parseFromString(htmlContent, 'text/html')
+      for (const meta of Array.from(doc.querySelectorAll('meta'))) {
+        const metaKey = meta.getAttribute('name') || meta.getAttribute('property')
+        const content = meta.getAttribute('content')
+        if (!metaKey || content === null || !properties.includes(metaKey as T)) continue
+        parsedMetadata[metaKey as T] = content
+      }
 
       setMetadata(parsedMetadata)
     } catch (err) {

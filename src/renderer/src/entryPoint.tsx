@@ -11,10 +11,12 @@ import { createRoot } from 'react-dom/client'
 import { ErrorBoundary } from 'react-error-boundary'
 
 import { initializeMobileCredentials } from './services/mobile/credentials'
+import { ensureLegacyCoreJsPolyfills } from './services/mobile/webviewCompatibility'
 import { reconcilePendingBackupRestore } from './services/restoreReconciliation'
 
 let secureStorageFailed = false
 const App = lazy(async () => {
+  await ensureLegacyCoreJsPolyfills()
   try {
     await initializeMobileCredentials()
   } catch (error) {

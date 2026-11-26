@@ -3,6 +3,7 @@ import './services/mobile/webviewCompatibility'
 
 import { loggerService } from '@logger'
 import { isMainProcessSettingKey } from '@renderer/hooks/settingsSync'
+import { getCurrentWebview } from '@tauri-apps/api/webview'
 import {
   isPermissionGranted as isNotificationPermissionGranted,
   onAction as onNotificationAction,
@@ -179,18 +180,46 @@ const clampZoomFactor = (factor: number) => {
 
 let currentZoomFactor = clampZoomFactor(Number.parseFloat(localStorage.getItem(ZOOM_STORAGE_KEY) || '1'))
 
-const applyZoomFactor = (factor: number) => {
+const canUseNativeWebviewZoom = () =>
+  Boolean(globalWindow.__TAURI_INTERNALS__) && !previewMode && !runtimeCapabilities.android
+
+const applyCssFallbackZoom = (factor: number) => {
+  document.documentElement.style.setProperty(APP_ZOOM_FACTOR_VAR, String(factor))
+  document.documentElement.style.setProperty(APP_INVERSE_ZOOM_FACTOR_VAR, String(1 / factor))
+  document.documentElement.style.setProperty(APP_VIEWPORT_HEIGHT_VAR, `calc(100vh / ${factor})`)
+  document.documentElement.style.setProperty(APP_VIEWPORT_WIDTH_VAR, `calc(100vw / ${factor})`)
+  document.documentElement.style.setProperty('zoom', String(factor))
+}
+
+const applyZoomFactor = async (factor: number, persistStorage = true) => {
   currentZoomFactor = clampZoomFactor(factor)
-  localStorage.setItem(ZOOM_STORAGE_KEY, String(currentZoomFactor))
-  document.documentElement.style.setProperty(APP_ZOOM_FACTOR_VAR, String(currentZoomFactor))
-  document.documentElement.style.setProperty(APP_INVERSE_ZOOM_FACTOR_VAR, String(1 / currentZoomFactor))
-  document.documentElement.style.setProperty(APP_VIEWPORT_HEIGHT_VAR, `calc(100vh / ${currentZoomFactor})`)
-  document.documentElement.style.setProperty(APP_VIEWPORT_WIDTH_VAR, `calc(100vw / ${currentZoomFactor})`)
-  document.documentElement.style.setProperty('zoom', String(currentZoomFactor))
+  if (persistStorage) {
+    localStorage.setItem(ZOOM_STORAGE_KEY, String(currentZoomFactor))
+  }
+  if (canUseNativeWebviewZoom()) {
+    document.documentElement.style.removeProperty('zoom')
+    document.documentElement.style.setProperty(APP_ZOOM_FACTOR_VAR, String(currentZoomFactor))
+    document.documentElement.style.setProperty(APP_INVERSE_ZOOM_FACTOR_VAR, '1')
+    document.documentElement.style.setProperty(APP_VIEWPORT_HEIGHT_VAR, '100vh')
+    document.documentElement.style.setProperty(APP_VIEWPORT_WIDTH_VAR, '100vw')
+    try {
+      await getCurrentWebview().setZoom(currentZoomFactor)
+      return currentZoomFactor
+    } catch (error) {
+      logger.warn('Failed to apply native WebView zoom; falling back to CSS zoom', error as Error)
+    }
+  }
+  applyCssFallbackZoom(currentZoomFactor)
   return currentZoomFactor
 }
 
-applyZoomFactor(currentZoomFactor)
+void applyZoomFactor(currentZoomFactor, false)
+
+window.addEventListener('storage', (event) => {
+  if (event.key === ZOOM_STORAGE_KEY && event.newValue !== null) {
+    void applyZoomFactor(Number.parseFloat(event.newValue), false)
+  }
+})
 
 const fontCandidatesByPlatform: Record<string, string[]> = {
   darwin: [
@@ -301,10 +330,12 @@ if (systemThemeMediaQuery) {
 
 type CachedFileEntry = { fileName: string; ext: string; blob: Blob; text?: string }
 const MAX_FILE_CACHE_ENTRIES = 64
-const MAX_FILE_CACHE_BYTES = 64 * 1024 * 1024
+const MAX_FILE_CACHE_BYTES = 16 * 1024 * 1024
+const isMemoryCacheKey = (key: string) => key.startsWith('memory://')
 const fileCache = new Map<string, CachedFileEntry>()
 const fileAliasMap = new Map<string, string>()
-let fileCacheTotalBytes = 0
+let fileCacheDiskBytes = 0
+let fileCacheDiskEntries = 0
 const fileObjectMap = new WeakMap<File, string>()
 const pendingFileRegistrations = new Map<string, Promise<AnyRecord>>()
 let cachedAppInfo: AnyRecord | null = null
@@ -320,13 +351,17 @@ const deleteCachedFileEntry = (key: string) => {
   const existing = fileCache.get(canonicalKey)
   if (!existing) return
   fileCache.delete(canonicalKey)
-  fileCacheTotalBytes = Math.max(0, fileCacheTotalBytes - existing.blob.size)
+  if (!isMemoryCacheKey(canonicalKey)) {
+    fileCacheDiskBytes = Math.max(0, fileCacheDiskBytes - existing.blob.size)
+    fileCacheDiskEntries = Math.max(0, fileCacheDiskEntries - 1)
+  }
 }
 
 const clearFileCache = () => {
   fileCache.clear()
   fileAliasMap.clear()
-  fileCacheTotalBytes = 0
+  fileCacheDiskBytes = 0
+  fileCacheDiskEntries = 0
 }
 
 const touchCachedFileEntry = (key: string): CachedFileEntry | undefined => {
@@ -340,19 +375,29 @@ const touchCachedFileEntry = (key: string): CachedFileEntry | undefined => {
 
 const setCachedFileEntry = (key: string, entry: CachedFileEntry) => {
   deleteCachedFileEntry(key)
-  if (entry.blob.size > MAX_FILE_CACHE_BYTES && !key.startsWith('memory://')) {
+  const isMemory = isMemoryCacheKey(key)
+  if (!isMemory && entry.blob.size > MAX_FILE_CACHE_BYTES) {
     return
   }
-  while (
-    fileCache.size >= MAX_FILE_CACHE_ENTRIES ||
-    (fileCache.size > 0 && fileCacheTotalBytes + entry.blob.size > MAX_FILE_CACHE_BYTES)
-  ) {
-    const oldestKey = fileCache.keys().next().value
-    if (oldestKey === undefined) break
-    deleteCachedFileEntry(oldestKey)
+  if (!isMemory) {
+    while (
+      fileCacheDiskEntries >= MAX_FILE_CACHE_ENTRIES ||
+      (fileCacheDiskEntries > 0 && fileCacheDiskBytes + entry.blob.size > MAX_FILE_CACHE_BYTES)
+    ) {
+      let oldestDiskKey: string | undefined
+      for (const candidateKey of fileCache.keys()) {
+        if (!isMemoryCacheKey(candidateKey)) {
+          oldestDiskKey = candidateKey
+          break
+        }
+      }
+      if (oldestDiskKey === undefined) break
+      deleteCachedFileEntry(oldestDiskKey)
+    }
+    fileCacheDiskBytes += entry.blob.size
+    fileCacheDiskEntries += 1
   }
   fileCache.set(key, entry)
-  fileCacheTotalBytes += entry.blob.size
 }
 type ProgressPayload = {
   stage: string
@@ -508,16 +553,29 @@ export const buildBackupSnapshot = async (includeCredentials = false) => {
 
 const registerBlob = async (blob: Blob, fileName: string, explicitPath?: string) => {
   const ext = normalizeExt(fileName)
-  const bytes = new Uint8Array(await blob.arrayBuffer())
-  const mime = attachmentMime(fileName, blob.type, bytes)
-  if (blob.type !== mime) blob = new Blob([bytes], { type: mime })
   const id = (explicitPath && managedAttachmentId(explicitPath, ext)) || createId('file')
   let cacheKey = explicitPath || `memory://${id}/${fileName}`
-  if (invoke && !explicitPath) {
+  const shouldPersist = Boolean(invoke && !explicitPath)
+  if (shouldPersist) {
+    const bytes = new Uint8Array(await blob.arrayBuffer())
+    const mime = attachmentMime(fileName, blob.type, bytes)
+    if (blob.type !== mime) {
+      blob = typeof blob.slice === 'function' ? blob.slice(0, blob.size, mime) : new Blob([bytes], { type: mime })
+    }
     const path = await invoke('persist_attachment', toBinaryIpcPayload(bytes, runtimeCapabilities.android), {
       headers: { 'x-file-name': encodeURIComponent(`${id}${ext}`) }
     })
     if (typeof path === 'string') cacheKey = path
+  } else if (typeof blob.slice === 'function') {
+    const headerBytes = new Uint8Array(await blob.slice(0, 16).arrayBuffer())
+    const mime = attachmentMime(fileName, blob.type, headerBytes)
+    if (blob.type !== mime) {
+      blob = blob.slice(0, blob.size, mime)
+    }
+  } else {
+    const bytes = new Uint8Array(await blob.arrayBuffer())
+    const mime = attachmentMime(fileName, blob.type, bytes)
+    if (blob.type !== mime) blob = new Blob([bytes], { type: mime })
   }
   setCachedFileEntry(cacheKey, { fileName, ext, blob })
   const aliasKey = `${id}${ext}`
@@ -714,7 +772,7 @@ const saveBlob = async (fileName: string, blob: Blob) => {
 }
 
 const pickFiles = async (multiple = true, filters?: Array<{ name: string; extensions: string[] }>, persist = true) =>
-  new Promise<any[] | null>((resolve) => {
+  new Promise<any[] | null>((resolve, reject) => {
     const input = document.createElement('input')
     input.type = 'file'
     input.multiple = multiple
@@ -724,41 +782,63 @@ const pickFiles = async (multiple = true, filters?: Array<{ name: string; extens
     if (accepted) input.accept = runtimeCapabilities.android && !persist ? '*/*' : accepted
     input.addEventListener('cancel', () => resolve(null), { once: true })
     input.onchange = async () => {
-      const files = Array.from(input.files || [])
-      if (files.length === 0) {
-        resolve(null)
-        return
+      try {
+        const files = Array.from(input.files || [])
+        if (files.length === 0) {
+          resolve(null)
+          return
+        }
+        const metas = await Promise.all(
+          files.map(async (file) => {
+            const ext = normalizeExt(file.name)
+            const needsInlineContent = !persist && !/\.(zip|lich13backup)$/i.test(file.name)
+            if (needsInlineContent) {
+              const content = new Uint8Array(await file.arrayBuffer())
+              const mime = attachmentMime(file.name, file.type, content)
+              const path = `memory://${createId('backup')}/${file.name}`
+              return {
+                id: createId('file'),
+                name: file.name.replace(ext, ''),
+                origin_name: file.name,
+                fileName: file.name,
+                ext,
+                filePath: path,
+                path,
+                size: file.size,
+                type: mime.startsWith('image/') ? 'image' : mime.startsWith('text/') ? 'text' : 'document',
+                created_at: new Date().toISOString(),
+                count: 1,
+                content
+              }
+            }
+            // A backup must never be copied into the attachments included in the next backup.
+            const path = persist
+              ? await registerBrowserFile(file)
+              : (await registerBlob(file, file.name, `memory://${createId('backup')}/${file.name}`)).path
+            const meta = await getCachedFile(path)
+            return {
+              id: managedAttachmentId(path, ext) || createId('file'),
+              name: file.name.replace(ext, ''),
+              origin_name: file.name,
+              fileName: file.name,
+              ext,
+              filePath: path,
+              path,
+              size: file.size,
+              type: meta?.blob.type.startsWith('image/')
+                ? 'image'
+                : meta?.blob.type.startsWith('text/')
+                  ? 'text'
+                  : 'document',
+              created_at: new Date().toISOString(),
+              count: 1
+            }
+          })
+        )
+        resolve(metas)
+      } catch (error) {
+        reject(error)
       }
-      const metas = await Promise.all(
-        files.map(async (file) => {
-          // A backup must never be copied into the attachments included in the next backup.
-          const path = persist
-            ? await registerBrowserFile(file)
-            : (await registerBlob(file, file.name, `memory://${createId('backup')}/${file.name}`)).path
-          const meta = await getCachedFile(path)
-          const ext = normalizeExt(file.name)
-          const content = persist ? undefined : new Uint8Array(await file.arrayBuffer())
-          return {
-            id: managedAttachmentId(path, ext) || createId('file'),
-            name: file.name.replace(ext, ''),
-            origin_name: file.name,
-            fileName: file.name,
-            ext,
-            filePath: path,
-            path,
-            size: file.size,
-            type: meta?.blob.type.startsWith('image/')
-              ? 'image'
-              : meta?.blob.type.startsWith('text/')
-                ? 'text'
-                : 'document',
-            created_at: new Date().toISOString(),
-            count: 1,
-            ...(content ? { content } : {})
-          }
-        })
-      )
-      resolve(metas)
     }
     input.click()
   })
@@ -911,8 +991,10 @@ const api = {
   },
   setFullScreen: async (value: boolean) => {
     if (value) {
-      await document.documentElement.requestFullscreen?.()
-    } else {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen?.()
+      }
+    } else if (document.fullscreenElement) {
       await document.exitFullscreen?.()
     }
   },
@@ -1344,18 +1426,19 @@ const api = {
     backup: async (fileName: string, destinationPath?: string, skipBackupFile: boolean = false) => {
       try {
         const snapshot = await buildBackupSnapshot()
+        const payload = JSON.stringify(snapshot)
         emitBackupProgress({ stage: 'compressing', progress: 84, total: 100 })
         if (invoke) {
           await invoke('backup_to_local_dir', {
             fileName,
             localBackupDir: destinationPath || null,
-            state: snapshot,
+            payload,
             skipBackupFile
           })
           emitBackupProgress({ stage: 'completed', progress: 100, total: 100 })
           return true
         }
-        const blob = new Blob([JSON.stringify(snapshot)], { type: 'application/json' })
+        const blob = new Blob([payload], { type: 'application/json' })
         downloadBlob(fileName.replace(/\.zip$/i, '.json'), blob)
         emitBackupProgress({ stage: 'completed', progress: 100, total: 100 })
         return true
@@ -1367,9 +1450,10 @@ const api = {
     backupToWebdav: async (webdavConfig: AnyRecord) => {
       try {
         const snapshot = await buildBackupSnapshot()
+        const payload = JSON.stringify(snapshot)
         emitBackupProgress({ stage: 'compressing', progress: 82, total: 100 })
         const config = mapWebdavConfig(webdavConfig)
-        await invoke('webdav_backup', { state: snapshot, config })
+        await invoke('webdav_backup', { payload, config })
         emitBackupProgress({ stage: 'completed', progress: 100, total: 100 })
         return true
       } catch (error) {
@@ -1419,18 +1503,19 @@ const api = {
     backupToLocalDir: async (fileName: string, localConfig?: AnyRecord) => {
       try {
         const snapshot = await buildBackupSnapshot()
+        const payload = JSON.stringify(snapshot)
         emitBackupProgress({ stage: 'compressing', progress: 88, total: 100 })
         if (invoke) {
           await invoke('backup_to_local_dir', {
             fileName,
             localBackupDir: localConfig?.localBackupDir || null,
-            state: snapshot,
+            payload,
             skipBackupFile: Boolean(localConfig?.skipBackupFile)
           })
           emitBackupProgress({ stage: 'completed', progress: 100, total: 100 })
           return true
         }
-        const blob = new Blob([JSON.stringify(snapshot)], { type: 'application/json' })
+        const blob = new Blob([payload], { type: 'application/json' })
         downloadBlob(fileName.replace(/\.zip$/i, '.json'), blob)
         emitBackupProgress({ stage: 'completed', progress: 100, total: 100 })
         return true

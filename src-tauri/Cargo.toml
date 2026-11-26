@@ -8,7 +8,7 @@ rust-version = "1.88"
 
 [lib]
 name = "lich13studio_lib"
-crate-type = ["staticlib", "cdylib", "rlib"]
+crate-type = ["cdylib", "rlib"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
@@ -19,7 +19,6 @@ aes-gcm = "0.10"
 argon2 = "0.5"
 zeroize = "1"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
-dirs = "6"
 futures-util = "0.3"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
 roxmltree = "0.20"
@@ -34,6 +33,7 @@ zip = { version = "9.0.0", default-features = false, features = ["deflate"] }
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
 auto-launch = "0.5"
+dirs = "6"
 image = { version = "0.25", default-features = false, features = ["png"] }
 rfd = "0.15"
 tokio = { version = "1", features = ["process"] }
@@ -45,3 +45,7 @@ tauri-plugin-single-instance = "2"
 objc2 = "0.6"
 objc2-app-kit = { version = "0.3", default-features = false, features = ["NSApplication", "NSResponder"] }
 objc2-foundation = { version = "0.3", default-features = false, features = ["NSAppleEventManager", "NSAppleEventDescriptor", "objc2-core-services"] }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1

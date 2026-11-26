@@ -1,7 +1,7 @@
 import Scrollbar from '@renderer/components/Scrollbar'
 import type { RootState } from '@renderer/store'
 import type { MainTextMessageBlock, Message } from '@renderer/types/newMessage'
-import { MessageBlockType } from '@renderer/types/newMessage'
+import { MessageBlockStatus, MessageBlockType } from '@renderer/types/newMessage'
 import { scrollIntoView } from '@renderer/utils/dom'
 import type { FC } from 'react'
 import React, { useMemo, useRef } from 'react'
@@ -23,6 +23,73 @@ interface HeadingItem {
   text: string
 }
 
+function stripInlineHeadingMarkup(raw: string): string {
+  return raw
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/(\*\*|__|\*|_|~~)/g, '')
+    .replace(/<[^>]*>/g, '')
+    .trim()
+}
+
+function scanStreamingHeadings(blockId: string, content: string): HeadingItem[] {
+  if (!content) return []
+  const slugger = createSlugger()
+  const items: HeadingItem[] = []
+  let fenceChar: string | null = null
+  let fenceLen = 0
+  const lines = content.split(/\r?\n/)
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i]
+    const fenceMatch = /^\s{0,3}(`{3,}|~{3,})(.*)$/.exec(line)
+    if (fenceMatch) {
+      const marker = fenceMatch[1]
+      const trailing = fenceMatch[2]
+      if (!fenceChar) {
+        fenceChar = marker[0]
+        fenceLen = marker.length
+        continue
+      }
+      if (marker[0] === fenceChar && marker.length >= fenceLen && /^\s*$/.test(trailing)) {
+        fenceChar = null
+        fenceLen = 0
+        continue
+      }
+    }
+    if (fenceChar) continue
+
+    const atxMatch = /^\s{0,3}(#{1,6})(?:[ \t]+(.*?))?(?:[ \t]+#+[ \t]*)?$/.exec(line)
+    if (atxMatch && (atxMatch[2] !== undefined || line.trim() === atxMatch[1])) {
+      const text = stripInlineHeadingMarkup(atxMatch[2] ?? '')
+      if (text) {
+        items.push({
+          id: `heading-${blockId}--${slugger.slug(text)}`,
+          level: atxMatch[1].length,
+          text
+        })
+      }
+      continue
+    }
+
+    const htmlMatch = /<h([1-6])[^>]*>(.*?)<\/h\1>/i.exec(line)
+    if (htmlMatch) {
+      const level = parseInt(htmlMatch[1], 10)
+      const text = htmlMatch[2].replace(/<[^>]*>/g, '').trim()
+      if (text) {
+        items.push({
+          id: `heading-${blockId}--${slugger.slug(text)}`,
+          level,
+          text
+        })
+      }
+    }
+  }
+
+  return items
+}
+
 const MessageOutline: FC<MessageOutlineProps> = ({ message }) => {
   const mainTextBlocks = useSelector(
     (state: RootState) =>
@@ -37,6 +104,10 @@ const MessageOutline: FC<MessageOutlineProps> = ({ message }) => {
 
     const result: HeadingItem[] = []
     mainTextBlocks.forEach((mainTextBlock) => {
+      if (mainTextBlock.status === MessageBlockStatus.STREAMING) {
+        result.push(...scanStreamingHeadings(mainTextBlock.id, mainTextBlock.content))
+        return
+      }
       const tree = unified().use(remarkParse).parse(mainTextBlock?.content)
       const slugger = createSlugger()
       visit(tree, ['heading', 'html'], (node) => {
@@ -48,11 +119,10 @@ const MessageOutline: FC<MessageOutlineProps> = ({ message }) => {
           const id = `heading-${mainTextBlock.id}--` + slugger.slug(text || '')
           result.push({ id, level, text: text })
         } else if (node.type === 'html') {
-          // 匹配 <h1>...</h1> 到 <h6>...</h6>
           const match = node.value.match(/<h([1-6])[^>]*>(.*?)<\/h\1>/i)
           if (match) {
             const level = parseInt(match[1], 10)
-            const text = match[2].replace(/<[^>]*>/g, '').trim() // 移除内部的HTML标签
+            const text = match[2].replace(/<[^>]*>/g, '').trim()
             if (text) {
               const id = `heading-${mainTextBlock.id}--${slugger.slug(text || '')}`
               result.push({ id, level, text })

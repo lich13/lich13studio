@@ -1,6 +1,6 @@
 import type { ThemedToken } from 'shiki/core'
 
-export const DEFAULT_LANGUAGES = ['text', 'javascript', 'typescript', 'python', 'java', 'markdown', 'json']
+export const DEFAULT_LANGUAGES = ['text']
 export const DEFAULT_THEMES = ['one-light', 'material-theme-darker']
 
 export interface ShikiThemeMetadata {

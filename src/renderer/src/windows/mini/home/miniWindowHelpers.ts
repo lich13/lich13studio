@@ -12,7 +12,6 @@ import {
   createMessage
 } from '@renderer/utils/messageUtils/create'
 import { imageExts } from '@shared/config/constant'
-import { v4 as uuidv4 } from 'uuid'
 
 type MiniKeyboardEvent = Parameters<typeof isComposingInputEvent>[0] & {
   code?: string
@@ -241,7 +240,7 @@ export const buildMiniWindowUserMessage = ({
   content?: string
   files?: FileMetadata[]
 }) => {
-  const messageId = uuidv4()
+  const messageId = crypto.randomUUID()
   const blocks: MessageBlock[] = []
   const blockIds: string[] = []
 
@@ -270,4 +269,44 @@ export const buildMiniWindowUserMessage = ({
   })
 
   return { message, blocks }
+}
+
+export const finalizeMiniWindowErrorBlocks = ({
+  thinkingBlockId,
+  blockId,
+  isAborted,
+  cancelBlockThrottle,
+  readLatestBlock,
+  resolveThinkingDuration,
+  applyBlockChanges
+}: {
+  thinkingBlockId: string | null
+  blockId: string | null
+  isAborted: boolean
+  cancelBlockThrottle: (id: string) => void
+  readLatestBlock: (id: string) => MessageBlock | undefined
+  resolveThinkingDuration: (reported?: number) => number
+  applyBlockChanges: (id: string, changes: Partial<MessageBlock>) => void
+}) => {
+  const nextStatus = isAborted ? MessageBlockStatus.PAUSED : MessageBlockStatus.ERROR
+  const activeIds = Array.from(new Set([thinkingBlockId, blockId].filter((id): id is string => Boolean(id))))
+
+  for (const activeId of activeIds) {
+    cancelBlockThrottle(activeId)
+    const latestBlock = readLatestBlock(activeId) as
+      | (MessageBlock & { content?: string; thinking_millsec?: number })
+      | undefined
+    const changes: Partial<MessageBlock> & { content?: string; thinking_millsec?: number } = {
+      status: nextStatus
+    }
+    if (typeof latestBlock?.content === 'string') {
+      changes.content = latestBlock.content
+    }
+    if (activeId === thinkingBlockId) {
+      changes.thinking_millsec = resolveThinkingDuration(latestBlock?.thinking_millsec)
+    } else if (typeof latestBlock?.thinking_millsec === 'number') {
+      changes.thinking_millsec = latestBlock.thinking_millsec
+    }
+    applyBlockChanges(activeId, changes)
+  }
 }

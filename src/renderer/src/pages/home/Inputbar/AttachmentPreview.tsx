@@ -1,18 +1,5 @@
-import {
-  FileExcelFilled,
-  FileImageFilled,
-  FileMarkdownFilled,
-  FilePdfFilled,
-  FilePptFilled,
-  FileTextFilled,
-  FileUnknownFilled,
-  FileWordFilled,
-  FileZipFilled,
-  FolderOpenFilled,
-  GlobalOutlined,
-  LinkOutlined
-} from '@ant-design/icons'
 import ConfirmDialog from '@renderer/components/ConfirmDialog'
+import { getFileIcon } from '@renderer/components/FileItem'
 import CustomTag from '@renderer/components/Tags/CustomTag'
 import { useAttachment } from '@renderer/hooks/useAttachment'
 import FileManager from '@renderer/services/FileManager'
@@ -25,6 +12,8 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
+export { getFileIcon }
+
 interface Props {
   files: FileMetadata[]
   setFiles: (files: FileMetadata[]) => void
@@ -35,54 +24,6 @@ const MAX_FILENAME_DISPLAY_LENGTH = 20
 function truncateFileName(name: string, maxLength: number = MAX_FILENAME_DISPLAY_LENGTH) {
   if (name.length <= maxLength) return name
   return name.slice(0, maxLength - 3) + '...'
-}
-
-export const getFileIcon = (type?: string) => {
-  if (!type) return <FileUnknownFilled />
-
-  const ext = type.toLowerCase()
-
-  if (['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'].includes(ext)) {
-    return <FileImageFilled />
-  }
-
-  if (['.doc', '.docx'].includes(ext)) {
-    return <FileWordFilled />
-  }
-  if (['.xls', '.xlsx'].includes(ext)) {
-    return <FileExcelFilled />
-  }
-  if (['.ppt', '.pptx'].includes(ext)) {
-    return <FilePptFilled />
-  }
-  if (ext === '.pdf') {
-    return <FilePdfFilled />
-  }
-  if (['.md', '.markdown'].includes(ext)) {
-    return <FileMarkdownFilled />
-  }
-
-  if (['.zip', '.rar', '.7z', '.tar', '.gz'].includes(ext)) {
-    return <FileZipFilled />
-  }
-
-  if (['.txt', '.json', '.log', '.yml', '.yaml', '.xml', '.csv', '.tscn', '.gd'].includes(ext)) {
-    return <FileTextFilled />
-  }
-
-  if (['.url'].includes(ext)) {
-    return <LinkOutlined />
-  }
-
-  if (['.sitemap'].includes(ext)) {
-    return <GlobalOutlined />
-  }
-
-  if (['.folder'].includes(ext)) {
-    return <FolderOpenFilled />
-  }
-
-  return <FileUnknownFilled />
 }
 
 export const FileNameRender: FC<{ file: FileMetadata }> = ({ file }) => {

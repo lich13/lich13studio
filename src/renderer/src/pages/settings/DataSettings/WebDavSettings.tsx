@@ -1,4 +1,3 @@
-import { FolderOpenOutlined, SaveOutlined, SyncOutlined, WarningOutlined } from '@ant-design/icons'
 import { HStack } from '@renderer/components/Layout'
 import Selector from '@renderer/components/Selector'
 import { WebdavBackupManager } from '@renderer/components/WebdavBackupManager'
@@ -21,6 +20,7 @@ import {
 } from '@renderer/store/settings'
 import { Button, Input, Switch, Tooltip } from 'antd'
 import dayjs from 'dayjs'
+import { AlertTriangle, FolderOpen, RefreshCw, Save } from 'lucide-react'
 import type { FC } from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -102,10 +102,10 @@ const WebDavSettings: FC = () => {
 
     return (
       <HStack gap="5px" alignItems="center">
-        {webdavSync.syncing && <SyncOutlined spin />}
+        {webdavSync.syncing && <RefreshCw size={14} className="animate-spin" />}
         {!webdavSync.syncing && webdavSync.lastSyncError && (
           <Tooltip title={`${t('settings.data.webdav.syncError')}: ${webdavSync.lastSyncError}`}>
-            <WarningOutlined style={{ color: 'var(--color-error)' }} />
+            <AlertTriangle size={14} style={{ color: 'var(--color-error)' }} />
           </Tooltip>
         )}
         {webdavSync.lastSyncTime && (
@@ -180,10 +180,10 @@ const WebDavSettings: FC = () => {
       <SettingRow>
         <SettingRowTitle>{t('settings.general.backup.title')}</SettingRowTitle>
         <HStack gap="5px" justifyContent="space-between">
-          <Button onClick={showBackupModal} icon={<SaveOutlined />} loading={backuping}>
+          <Button onClick={showBackupModal} icon={<Save size={14} />} loading={backuping}>
             {t('settings.data.webdav.backup.button')}
           </Button>
-          <Button onClick={showBackupManager} icon={<FolderOpenOutlined />} disabled={!webdavHost}>
+          <Button onClick={showBackupManager} icon={<FolderOpen size={14} />} disabled={!webdavHost}>
             {t('settings.data.webdav.restore.button')}
           </Button>
         </HStack>

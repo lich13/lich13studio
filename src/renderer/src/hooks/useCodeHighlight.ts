@@ -10,8 +10,9 @@ interface UseCodeHighlightOptions {
 
 interface UseCodeHighlightReturn {
   tokenLines: ThemedToken[][]
-  highlightLines: (count?: number) => Promise<void>
+  highlightLines: (count?: number, releaseCacheAfter?: boolean) => Promise<void>
   resetHighlight: () => void
+  releaseStreamCache: () => void
 }
 
 /**
@@ -22,78 +23,161 @@ export const useCodeHighlight = ({ rawLines, language, callerId }: UseCodeHighli
   const [tokenLines, setTokenLines] = useState<ThemedToken[][]>([])
   const processingRef = useRef(false)
   const latestRequestedContentRef = useRef<string | null>(null)
+  const lastHighlightedContentRef = useRef<string | null>(null)
+  const pendingReleaseRef = useRef(false)
   const tokenLinesCountRef = useRef(0)
+  const resetEpochRef = useRef(0)
   const shikiThemeRef = useRef(activeShikiTheme)
+
+  const rawLinesRef = useRef(rawLines)
+  rawLinesRef.current = rawLines
+  const languageRef = useRef(language)
+  languageRef.current = language
+  const callerIdRef = useRef(callerId)
+  callerIdRef.current = callerId
+  const highlightStreamingCodeRef = useRef(highlightStreamingCode)
+  highlightStreamingCodeRef.current = highlightStreamingCode
+  const cleanupTokenizersRef = useRef(cleanupTokenizers)
+  cleanupTokenizersRef.current = cleanupTokenizers
 
   useEffect(() => {
     tokenLinesCountRef.current = tokenLines.length
   }, [tokenLines])
 
-  const highlightLines = useCallback(
-    async (count?: number) => {
-      const targetCount = count === undefined ? rawLines.length : Math.min(count, rawLines.length)
+  const releaseStreamCache = useCallback(() => {
+    if (processingRef.current) {
+      pendingReleaseRef.current = true
+      return
+    }
+    cleanupTokenizersRef.current(callerIdRef.current)
+  }, [])
 
-      // 数量相等也可能内容不同，交给 ShikiStreamService 处理
-      if (targetCount < tokenLinesCountRef.current) return
+  const highlightLines = useCallback(async (count?: number, releaseCacheAfter = false) => {
+    const lines = rawLinesRef.current
+    const targetCount = count === undefined ? lines.length : Math.min(count, lines.length)
 
-      const currentContent = rawLines.slice(0, targetCount).join('\n').trimEnd()
+    if (releaseCacheAfter && targetCount >= lines.length) {
+      pendingReleaseRef.current = true
+    }
 
-      // 记录最新要处理的内容，为了保证最终状态正确
-      latestRequestedContentRef.current = currentContent
+    const fullContent = lines.join('\n').trimEnd()
+    const prevHighlighted = lastHighlightedContentRef.current
+    const isPrefixContinuation = prevHighlighted === null || fullContent.startsWith(prevHighlighted)
 
-      // 如果正在处理，先跳出，等到完成后会检查是否有新内容
-      if (processingRef.current) return
+    if (!processingRef.current && isPrefixContinuation && targetCount < tokenLinesCountRef.current) {
+      if (pendingReleaseRef.current) {
+        pendingReleaseRef.current = false
+        cleanupTokenizersRef.current(callerIdRef.current)
+      }
+      return
+    }
 
-      processingRef.current = true
+    const currentContent = lines.slice(0, targetCount).join('\n').trimEnd()
+    if (!processingRef.current && prevHighlighted !== null && currentContent === prevHighlighted) {
+      if (pendingReleaseRef.current) {
+        pendingReleaseRef.current = false
+        cleanupTokenizersRef.current(callerIdRef.current)
+      }
+      return
+    }
 
-      try {
-        // 循环处理，确保会处理最新内容
-        while (latestRequestedContentRef.current !== null) {
-          const contentToProcess = latestRequestedContentRef.current
-          latestRequestedContentRef.current = null // 标记开始处理
+    pendingReleaseRef.current = releaseCacheAfter && targetCount >= lines.length
+    latestRequestedContentRef.current = currentContent
 
-          // 传入完整内容，让 ShikiStreamService 检测变化并处理增量高亮
-          const result = await highlightStreamingCode(contentToProcess, language, callerId)
+    if (processingRef.current) return
 
-          // 如有结果，更新 tokenLines
-          if (result.lines.length > 0 || result.recall !== 0) {
-            setTokenLines((prev) => {
-              return result.recall === -1
+    processingRef.current = true
+
+    try {
+      while (latestRequestedContentRef.current !== null) {
+        const contentToProcess = latestRequestedContentRef.current
+        latestRequestedContentRef.current = null
+
+        if (lastHighlightedContentRef.current !== null && contentToProcess === lastHighlightedContentRef.current) {
+          continue
+        }
+
+        if (contentToProcess.length === 0) {
+          cleanupTokenizersRef.current(callerIdRef.current)
+          lastHighlightedContentRef.current = ''
+          tokenLinesCountRef.current = 0
+          setTokenLines([])
+          continue
+        }
+
+        const requestEpoch = resetEpochRef.current
+        let result: Awaited<ReturnType<typeof highlightStreamingCode>>
+        try {
+          result = await highlightStreamingCodeRef.current(contentToProcess, languageRef.current, callerIdRef.current)
+        } catch (error) {
+          if (latestRequestedContentRef.current !== null) {
+            lastHighlightedContentRef.current = null
+            continue
+          }
+          throw error
+        }
+        if (requestEpoch !== resetEpochRef.current) {
+          cleanupTokenizersRef.current(callerIdRef.current)
+          continue
+        }
+        const nextQueued = latestRequestedContentRef.current as string | null
+        if (nextQueued !== null && !nextQueued.startsWith(contentToProcess)) {
+          lastHighlightedContentRef.current = null
+          continue
+        }
+        lastHighlightedContentRef.current = contentToProcess
+
+        if (result.lines.length > 0 || result.recall !== 0) {
+          setTokenLines((prev) => {
+            const next =
+              result.recall === -1
                 ? result.lines
                 : [...prev.slice(0, Math.max(0, prev.length - result.recall)), ...result.lines]
-            })
-          }
+            tokenLinesCountRef.current = next.length
+            return next
+          })
         }
-      } finally {
-        processingRef.current = false
       }
-    },
-    [rawLines, highlightStreamingCode, language, callerId]
-  )
+    } finally {
+      processingRef.current = false
+      if (pendingReleaseRef.current) {
+        pendingReleaseRef.current = false
+        cleanupTokenizersRef.current(callerIdRef.current)
+      }
+    }
+  }, [])
 
   const resetHighlight = useCallback(() => {
-    cleanupTokenizers(callerId)
+    resetEpochRef.current += 1
+    pendingReleaseRef.current = false
+    latestRequestedContentRef.current = null
+    lastHighlightedContentRef.current = null
+    cleanupTokenizersRef.current(callerIdRef.current)
+    tokenLinesCountRef.current = 0
     setTokenLines([])
-  }, [callerId, cleanupTokenizers])
+  }, [])
 
-  // 主题变化时强制重新高亮
+  // 主题或语言变化时强制重新高亮
+  const prevLangRef = useRef(language)
   useEffect(() => {
-    if (shikiThemeRef.current !== activeShikiTheme) {
+    if (shikiThemeRef.current !== activeShikiTheme || prevLangRef.current !== language) {
       shikiThemeRef.current = activeShikiTheme
+      prevLangRef.current = language
       resetHighlight()
     }
-  }, [activeShikiTheme, resetHighlight])
+  }, [activeShikiTheme, language, resetHighlight])
 
   // 组件卸载时清理资源
   useEffect(() => {
     return () => {
-      cleanupTokenizers(callerId)
+      cleanupTokenizersRef.current(callerIdRef.current)
     }
-  }, [callerId, cleanupTokenizers])
+  }, [])
 
   return {
     tokenLines,
     highlightLines,
-    resetHighlight
+    resetHighlight,
+    releaseStreamCache
   }
 }

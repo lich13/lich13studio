@@ -1,5 +1,5 @@
-import { CloseOutlined } from '@ant-design/icons'
 import { Tooltip } from 'antd'
+import { X } from 'lucide-react'
 import type { CSSProperties, FC, MouseEventHandler } from 'react'
 import { memo, useMemo } from 'react'
 import styled from 'styled-components'
@@ -49,14 +49,15 @@ const CustomTag: FC<CustomTagProps> = ({
         }}>
         {icon} {children}
         {closable && (
-          <CloseIcon
+          <CloseButton
             $size={size}
             $color={actualColor}
             onClick={(e) => {
               e.stopPropagation()
               onClose?.()
-            }}
-          />
+            }}>
+            <X size={Math.round(size * 0.8)} />
+          </CloseButton>
         )}
       </Tag>
     ),
@@ -94,9 +95,8 @@ const Tag = styled.div<{ $color: string; $size: number; $closable: boolean; $cli
   }
 `
 
-const CloseIcon = styled(CloseOutlined)<{ $size: number; $color: string }>`
+const CloseButton = styled.span<{ $size: number; $color: string }>`
   cursor: pointer;
-  font-size: ${({ $size }) => $size * 0.8}px;
   color: ${({ $color }) => $color};
   display: flex;
   align-items: center;

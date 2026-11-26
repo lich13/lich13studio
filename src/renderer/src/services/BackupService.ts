@@ -198,6 +198,7 @@ export async function restore() {
   if (file) {
     let unpackedRestoreId: string | null = null
     let handedOffToHandleData = false
+    const pickedPath = file.filePath || file.path
     try {
       // zip backup file
       if (/\.(zip|lich13backup)$/i.test(file.fileName)) {
@@ -254,6 +255,10 @@ export async function restore() {
         content: error instanceof Error ? error.message : String(error),
         centered: true
       })
+    } finally {
+      if (typeof pickedPath === 'string' && pickedPath.startsWith('memory://')) {
+        await window.api?.file?.delete?.(pickedPath).catch(() => {})
+      }
     }
   }
 }

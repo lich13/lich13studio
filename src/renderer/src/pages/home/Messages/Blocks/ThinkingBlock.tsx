@@ -1,11 +1,10 @@
-import { CheckOutlined } from '@ant-design/icons'
 import { loggerService } from '@logger'
 import ThinkingEffect from '@renderer/components/ThinkingEffect'
 import { useSettings } from '@renderer/hooks/useSettings'
 import { useTemporaryValue } from '@renderer/hooks/useTemporaryValue'
 import { MessageBlockStatus, type ThinkingMessageBlock } from '@renderer/types/newMessage'
 import { Collapse, Tooltip } from 'antd'
-import { Copy } from 'lucide-react'
+import { Check, Copy } from 'lucide-react'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
@@ -90,7 +89,7 @@ const ThinkingBlock: React.FC<Props> = ({ block }) => {
                     }}
                     aria-label={t('common.copy')}>
                     {!copied && <Copy size={14} className="lucide-custom" />}
-                    {copied && <CheckOutlined style={{ color: 'var(--color-primary)' }} />}
+                    {copied && <Check size={14} style={{ color: 'var(--color-primary)' }} />}
                   </ActionButton>
                 </Tooltip>
               )}
@@ -109,38 +108,53 @@ const normalizeThinkingTime = (value?: number) => (typeof value === 'number' && 
 const ThinkingTimeSeconds = memo(
   ({ blockThinkingTime, isThinking }: { blockThinkingTime: number; isThinking: boolean }) => {
     const { t } = useTranslation()
-    const [displayTime, setDisplayTime] = useState(normalizeThinkingTime(blockThinkingTime))
-
-    const timer = useRef<NodeJS.Timeout | null>(null)
+    const normalizedPropTime = normalizeThinkingTime(blockThinkingTime)
+    const [displayTime, setDisplayTime] = useState(normalizedPropTime)
+    const anchorRef = useRef<{ baseMs: number; startedAt: number }>({
+      baseMs: normalizedPropTime,
+      startedAt: isThinking ? performance.now() : 0
+    })
 
     useEffect(() => {
       if (isThinking) {
-        setDisplayTime((prev) => Math.max(prev, normalizeThinkingTime(blockThinkingTime)))
-        if (!timer.current) {
-          timer.current = setInterval(() => {
-            setDisplayTime((prev) => prev + 100)
-          }, 100)
-        }
+        const now = performance.now()
+        const currentElapsed =
+          anchorRef.current.startedAt > 0
+            ? anchorRef.current.baseMs + (now - anchorRef.current.startedAt)
+            : anchorRef.current.baseMs
+        const nextBase = Math.max(currentElapsed, normalizedPropTime)
+        anchorRef.current = { baseMs: nextBase, startedAt: now }
+        setDisplayTime((prev) => Math.max(prev, nextBase))
       } else {
-        if (timer.current) {
-          clearInterval(timer.current)
-          timer.current = null
-        }
-        setDisplayTime(normalizeThinkingTime(blockThinkingTime))
+        anchorRef.current = { baseMs: normalizedPropTime, startedAt: 0 }
+        setDisplayTime(normalizedPropTime)
       }
+    }, [isThinking, normalizedPropTime])
+
+    useEffect(() => {
+      if (!isThinking) return
+      if (anchorRef.current.startedAt <= 0) {
+        anchorRef.current = {
+          baseMs: Math.max(anchorRef.current.baseMs, normalizeThinkingTime(blockThinkingTime)),
+          startedAt: performance.now()
+        }
+      }
+      const timerId = setInterval(() => {
+        const now = performance.now()
+        const next = anchorRef.current.baseMs + (now - anchorRef.current.startedAt)
+        setDisplayTime((prev) => (next > prev ? next : prev))
+      }, 100)
 
       return () => {
-        if (timer.current) {
-          clearInterval(timer.current)
-          timer.current = null
-        }
+        clearInterval(timerId)
       }
-    }, [isThinking, blockThinkingTime])
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isThinking])
 
     const thinkingTimeSeconds = useMemo(() => {
       const safeTime = normalizeThinkingTime(displayTime)
-      return ((safeTime < 1000 ? 100 : safeTime) / 1000).toFixed(1)
-    }, [displayTime])
+      return ((safeTime <= 0 ? (isThinking ? 100 : 0) : Math.max(100, safeTime)) / 1000).toFixed(1)
+    }, [displayTime, isThinking])
 
     return isThinking
       ? t('chat.thinking', {

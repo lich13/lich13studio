@@ -117,7 +117,7 @@ vi.mock('./PortableBackupService', () => ({
   exportPortableBackup: vi.fn()
 }))
 
-import { handleData, restoreFromLocal, restoreFromWebdav } from './BackupService'
+import { handleData, restore, restoreFromLocal, restoreFromWebdav } from './BackupService'
 import { reconcilePendingBackupRestore, RESTORE_COMMITTED_SETTING_ID } from './restoreReconciliation'
 
 function makeValidBackupPayload() {
@@ -277,5 +277,42 @@ describe('BackupService handleData atomic restoreId journal & crash reconciliati
     mocks.invoke.mockClear()
     await restoreFromWebdav('lich13studio-nodata.zip')
     expect(mocks.invoke).not.toHaveBeenCalledWith('finish_backup_restore', expect.anything())
+  })
+
+  it('always evicts memory:// backup paths in BackupService.restore finally even when decompression or JSON parse fails', async () => {
+    const deleteSpy = vi.fn(async () => true)
+    const modalErrorSpy = vi.fn()
+    ;(window as any).modal = { error: modalErrorSpy }
+    ;(window as any).api.file = {
+      open: vi
+        .fn()
+        .mockResolvedValueOnce({
+          fileName: 'corrupt-1.bak',
+          filePath: 'memory://backup-1/corrupt-1.bak',
+          path: 'memory://backup-1/corrupt-1.bak',
+          content: new Uint8Array([1, 2, 3])
+        })
+        .mockResolvedValueOnce({
+          fileName: 'corrupt-2.bak',
+          filePath: 'memory://backup-2/corrupt-2.bak',
+          path: 'memory://backup-2/corrupt-2.bak',
+          content: new Uint8Array([4, 5, 6])
+        }),
+      delete: deleteSpy
+    }
+    ;(window as any).api.zip = {
+      decompress: vi
+        .fn()
+        .mockRejectedValueOnce(new Error('Invalid gzip stream'))
+        .mockResolvedValueOnce('{malformed-json')
+    }
+
+    await restore()
+    expect(deleteSpy).toHaveBeenCalledWith('memory://backup-1/corrupt-1.bak')
+    expect(modalErrorSpy).toHaveBeenCalledTimes(1)
+
+    await restore()
+    expect(deleteSpy).toHaveBeenCalledWith('memory://backup-2/corrupt-2.bak')
+    expect(modalErrorSpy).toHaveBeenCalledTimes(2)
   })
 })

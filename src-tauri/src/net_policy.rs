@@ -18,7 +18,7 @@ use url::{Host, Url};
 
 pub const MAX_REDIRECTS: usize = 10;
 const CLIENT_CACHE_TTL: Duration = Duration::from_secs(300);
-const CLIENT_CACHE_MAX_ENTRIES: usize = 32;
+const CLIENT_CACHE_MAX_ENTRIES: usize = 12;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum HostPolicy {
@@ -288,6 +288,7 @@ fn build_pinned_client_builder(
     };
     ClientBuilder::new()
         .no_proxy()
+        .pool_max_idle_per_host(2)
         .dns_resolver(resolver)
         .redirect(redirect_policy)
 }

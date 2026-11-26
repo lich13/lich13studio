@@ -5,7 +5,7 @@ import { LRUCache } from 'lru-cache'
 import { createBundledHighlighter, type HighlighterGeneric, type SpecialLanguage } from 'shiki/core'
 import { createJavaScriptRegexEngine } from 'shiki/engine/javascript'
 
-import { installWebviewCompatibility } from '../services/mobile/webviewCompatibility'
+import { ensureLegacyCoreJsPolyfills, installWebviewCompatibility } from '../services/mobile/webviewCompatibility'
 import type { HighlightChunkResult } from '../services/ShikiStreamService'
 import type { ShikiStreamTokenizerOptions } from '../services/ShikiStreamTokenizer'
 import { ShikiStreamTokenizer } from '../services/ShikiStreamTokenizer'
@@ -195,6 +195,7 @@ const tokenizerMap = new LRUCache<string, ShikiStreamTokenizer>({
 
 async function initHighlighter(themes: string[], languages: string[]): Promise<void> {
   installWebviewCompatibility()
+  await ensureLegacyCoreJsPolyfills()
   highlighter = await createHighlighter({
     langs: languages as any,
     themes: themes as any

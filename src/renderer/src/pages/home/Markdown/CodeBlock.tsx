@@ -55,7 +55,7 @@ const FencedCodeBlock: React.FC<{
   }
 
   return (
-    <CodeBlockView language={language} onSave={handleSave}>
+    <CodeBlockView language={language} isStreaming={isStreaming} onSave={handleSave}>
       {children}
     </CodeBlockView>
   )

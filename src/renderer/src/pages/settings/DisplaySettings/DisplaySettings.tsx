@@ -300,7 +300,6 @@ const DisplaySettings: FC = () => {
                   value={userTheme.userFontFamily || ''}
                   onChange={(font) => handleUserFontChange(font)}
                   showSearch
-                  getPopupContainer={(triggerNode) => triggerNode.parentElement || document.body}
                 />
                 <Button
                   onClick={() => handleUserFontChange('')}
@@ -332,7 +331,6 @@ const DisplaySettings: FC = () => {
                   value={userTheme.userCodeFontFamily || ''}
                   onChange={(font) => handleUserCodeFontChange(font)}
                   showSearch
-                  getPopupContainer={(triggerNode) => triggerNode.parentElement || document.body}
                 />
                 <Button
                   onClick={() => handleUserCodeFontChange('')}

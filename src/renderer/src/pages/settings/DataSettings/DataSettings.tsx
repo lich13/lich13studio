@@ -1,10 +1,9 @@
-import { CloudSyncOutlined } from '@ant-design/icons'
 import DividerWithText from '@renderer/components/DividerWithText'
 import { HStack } from '@renderer/components/Layout'
 import ListItem from '@renderer/components/ListItem'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import { runtimeCapabilities } from '@renderer/services/mobile/runtime'
-import { BookOpen, FileText, FolderCog, FolderInput } from 'lucide-react'
+import { BookOpen, Cloud, FileText, FolderCog, FolderInput } from 'lucide-react'
 import type { FC } from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -28,7 +27,7 @@ const DataSettings: FC = () => {
     { key: 'data', title: t('settings.data.data.title'), icon: <FolderCog size={16} /> },
     { key: 'divider_1', isDivider: true, text: t('settings.data.divider.cloud_storage') },
     { key: 'local_backup', title: t('settings.data.local.title'), icon: <FolderCog size={16} /> },
-    { key: 'webdav', title: t('settings.data.webdav.title'), icon: <CloudSyncOutlined style={{ fontSize: 16 }} /> },
+    { key: 'webdav', title: t('settings.data.webdav.title'), icon: <Cloud size={16} /> },
     { key: 'divider_3', isDivider: true, text: t('settings.data.divider.export_settings') },
     {
       key: 'export_menu',

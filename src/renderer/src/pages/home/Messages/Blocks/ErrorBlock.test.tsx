@@ -15,7 +15,6 @@ const mocks = vi.hoisted(() => ({
   fetch: vi.fn()
 }))
 
-vi.mock('@ant-design/icons', () => ({ SettingOutlined: () => null }))
 vi.mock('@renderer/components/ErrorDetailModal', () => ({ showErrorDetailPopup: mocks.showErrorDetailPopup }))
 vi.mock('@renderer/hooks/useTimer', () => ({ useTimer: () => ({ setTimeoutTimer: mocks.setTimeoutTimer }) }))
 vi.mock('@renderer/i18n/label', () => ({
@@ -23,7 +22,7 @@ vi.mock('@renderer/i18n/label', () => ({
   getProviderLabel: (id: string) => id
 }))
 vi.mock('@renderer/services/ErrorDiagnosisService', () => ({ diagnoseError: mocks.diagnoseError }))
-vi.mock('@renderer/services/ProviderService', () => ({ getProviderById: mocks.getProviderById }))
+vi.mock('@renderer/services/AssistantService', () => ({ getProviderById: mocks.getProviderById }))
 vi.mock('@renderer/store', () => ({ useAppDispatch: () => mocks.dispatch }))
 vi.mock('@renderer/store/thunk/messageThunk', () => ({ removeBlocksThunk: vi.fn() }))
 vi.mock('antd', () => ({ Button: ({ children }: { children: unknown }) => children }))

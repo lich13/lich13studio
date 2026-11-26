@@ -1,9 +1,9 @@
-import { DeleteOutlined, ExclamationCircleOutlined, ReloadOutlined } from '@ant-design/icons'
 import { restoreFromLocal } from '@renderer/services/BackupService'
 import type { BackupFile } from '@renderer/types'
 import { formatFileSize } from '@renderer/utils'
 import { Button, message, Modal, Space, Table, Tooltip } from 'antd'
 import dayjs from 'dayjs'
+import { CircleAlert, RefreshCw, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -65,7 +65,7 @@ export function LocalBackupManager({ visible, onClose, localBackupDir, restoreMe
 
     window.modal.confirm({
       title: t('settings.data.local.backup.manager.delete.confirm.title'),
-      icon: <ExclamationCircleOutlined />,
+      icon: <CircleAlert size={18} style={{ color: 'var(--color-status-warning)', marginRight: 8 }} />,
       content: t('settings.data.local.backup.manager.delete.confirm.multiple', { count: selectedRowKeys.length }),
       okText: t('common.confirm'),
       cancelText: t('common.cancel'),
@@ -94,7 +94,7 @@ export function LocalBackupManager({ visible, onClose, localBackupDir, restoreMe
   const handleDeleteSingle = async (fileName: string) => {
     window.modal.confirm({
       title: t('settings.data.local.backup.manager.delete.confirm.title'),
-      icon: <ExclamationCircleOutlined />,
+      icon: <CircleAlert size={18} style={{ color: 'var(--color-status-warning)', marginRight: 8 }} />,
       content: t('settings.data.local.backup.manager.delete.confirm.single', { fileName }),
       okText: t('common.confirm'),
       cancelText: t('common.cancel'),
@@ -117,7 +117,7 @@ export function LocalBackupManager({ visible, onClose, localBackupDir, restoreMe
   const handleRestore = async (fileName: string) => {
     window.modal.confirm({
       title: t('settings.data.local.restore.confirm.title'),
-      icon: <ExclamationCircleOutlined />,
+      icon: <CircleAlert size={18} style={{ color: 'var(--color-status-warning)', marginRight: 8 }} />,
       content: t('settings.data.local.restore.confirm.content'),
       okText: t('common.confirm'),
       cancelText: t('common.cancel'),
@@ -197,13 +197,13 @@ export function LocalBackupManager({ visible, onClose, localBackupDir, restoreMe
 
   const footerContent = (
     <Space align="center">
-      <Button key="refresh" icon={<ReloadOutlined />} onClick={fetchBackupFiles} disabled={loading}>
+      <Button key="refresh" icon={<RefreshCw size={14} />} onClick={fetchBackupFiles} disabled={loading}>
         {t('settings.data.local.backup.manager.refresh')}
       </Button>
       <Button
         key="delete"
         danger
-        icon={<DeleteOutlined />}
+        icon={<Trash2 size={14} />}
         onClick={handleDeleteSelected}
         disabled={selectedRowKeys.length === 0 || deleting}
         loading={deleting}>

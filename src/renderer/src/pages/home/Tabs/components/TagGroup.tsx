@@ -1,6 +1,6 @@
-import { DownOutlined, RightOutlined } from '@ant-design/icons'
 import { cn } from '@renderer/utils'
 import { Tooltip } from 'antd'
+import { ChevronDown, ChevronRight } from 'lucide-react'
 import type { FC, ReactNode } from 'react'
 
 interface TagGroupProps {
@@ -19,9 +19,9 @@ export const TagGroup: FC<TagGroupProps> = ({ tag, isCollapsed, onToggle, showTi
           <Tooltip title={tag}>
             <GroupTitleName>
               {isCollapsed ? (
-                <RightOutlined style={{ fontSize: '10px', marginRight: '5px' }} />
+                <ChevronRight size={12} style={{ marginRight: '5px', flexShrink: 0, alignSelf: 'center' }} />
               ) : (
-                <DownOutlined style={{ fontSize: '10px', marginRight: '5px' }} />
+                <ChevronDown size={12} style={{ marginRight: '5px', flexShrink: 0, alignSelf: 'center' }} />
               )}
               {tag}
             </GroupTitleName>

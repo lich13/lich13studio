@@ -56,7 +56,7 @@ const Messages: React.FC<MessagesProps> = ({ assistant, topic, setActiveTopic, o
   const [isLoadingMore, setIsLoadingMore] = useState(false)
 
   const { addTopic } = useAssistant(assistant.id)
-  const { messageNavigation } = useSettings()
+  const { messageNavigation, showInputEstimatedTokens } = useSettings()
   const { t } = useTranslation()
   const dispatch = useAppDispatch()
   const messages = useTopicMessages(topic.id)
@@ -239,6 +239,10 @@ const Messages: React.FC<MessagesProps> = ({ assistant, topic, setActiveTopic, o
 
   const contextCountSetting = assistant.settings?.contextCount
   useEffect(() => {
+    if (!showInputEstimatedTokens) {
+      onFirstUpdate?.()
+      return
+    }
     let cancelled = false
     const currentAssistant = assistantRef.current
     void runAsyncFunction(async () => {
@@ -256,7 +260,7 @@ const Messages: React.FC<MessagesProps> = ({ assistant, topic, setActiveTopic, o
     return () => {
       cancelled = true
     }
-  }, [assistant.id, assistant.prompt, contextCountSetting, messages, onFirstUpdate])
+  }, [assistant.id, assistant.prompt, contextCountSetting, messages, onFirstUpdate, showInputEstimatedTokens])
 
   const loadMoreMessages = useCallback(() => {
     if (!hasMore || isLoadingMore) return

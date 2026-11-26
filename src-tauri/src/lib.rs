@@ -32,9 +32,9 @@ use std::fs::File;
 use std::io::{BufReader, BufWriter, Cursor, Read, Seek, Write};
 use std::path::{Component, Path, PathBuf};
 use std::process::Command as StdCommand;
-#[cfg(not(target_os = "android"))]
-use std::sync::atomic::AtomicU64;
 use std::sync::atomic::{AtomicBool, Ordering};
+#[cfg(not(target_os = "android"))]
+use std::sync::atomic::{AtomicU64, AtomicUsize};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, SystemTime};
 #[cfg(not(target_os = "android"))]
@@ -78,7 +78,6 @@ const DEFAULT_STATE_FILE: &str = "state.json";
 const WINDOW_STATE_KEY: &str = "windowState";
 const MINI_WINDOW_LABEL: &str = "mini";
 const MINI_WINDOW_SHOW_EVENT: &str = "show-mini-window";
-const MINI_WINDOW_HIDE_EVENT: &str = "hide-mini-window";
 const MINI_WINDOW_WIDTH: u32 = 420;
 const MINI_WINDOW_HEIGHT: u32 = 620;
 const GITHUB_LATEST_RELEASE_API_URL: &str =
@@ -217,11 +216,19 @@ where
     }
 }
 
+fn serialize_arc_str<S>(value: &Arc<str>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    serializer.serialize_str(value)
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct NativeHttpChunkEvent {
     pub(crate) sequence: Option<u64>,
-    pub(crate) request_id: String,
+    #[serde(serialize_with = "serialize_arc_str")]
+    pub(crate) request_id: Arc<str>,
     #[serde(serialize_with = "serialize_bytes_as_base64")]
     pub(crate) chunk: Arc<[u8]>,
     pub(crate) done: bool,
@@ -381,7 +388,7 @@ impl HttpAbortHandle {
     }
 }
 
-static HTTP_REQUEST_ABORTS: OnceLock<Mutex<HashMap<String, Arc<HttpAbortHandle>>>> =
+static HTTP_REQUEST_ABORTS: OnceLock<Mutex<HashMap<Arc<str>, Arc<HttpAbortHandle>>>> =
     OnceLock::new();
 #[cfg(not(target_os = "android"))]
 static STARTUP_VISIBILITY: OnceLock<Mutex<StartupVisibility>> = OnceLock::new();
@@ -392,11 +399,35 @@ static PENDING_WINDOW_STATES: OnceLock<Mutex<HashMap<String, PersistedWindowStat
     OnceLock::new();
 #[cfg(not(target_os = "android"))]
 static WINDOW_STATE_SAVE_EPOCH: AtomicU64 = AtomicU64::new(0);
+#[cfg(not(target_os = "android"))]
+static WINDOW_STATE_DEBOUNCE_ACTIVE: AtomicBool = AtomicBool::new(false);
+#[cfg(not(target_os = "android"))]
+static MINI_WINDOW_POSITIONED: AtomicBool = AtomicBool::new(false);
+#[cfg(not(target_os = "android"))]
+static NATIVE_DIALOG_DEPTH: AtomicUsize = AtomicUsize::new(0);
 static MINI_WINDOW_PINNED: AtomicBool = AtomicBool::new(false);
 static STARTED_SILENTLY: AtomicBool = AtomicBool::new(false);
 static RUNTIME_SETTINGS: OnceLock<Mutex<RuntimeSettings>> = OnceLock::new();
 static STATE_FILE_LOCK: Mutex<()> = Mutex::new(());
 static AUTO_LAUNCH_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+
+#[cfg(not(target_os = "android"))]
+struct NativeDialogFocusGuard;
+
+#[cfg(not(target_os = "android"))]
+impl NativeDialogFocusGuard {
+    fn enter() -> Self {
+        NATIVE_DIALOG_DEPTH.fetch_add(1, Ordering::SeqCst);
+        Self
+    }
+}
+
+#[cfg(not(target_os = "android"))]
+impl Drop for NativeDialogFocusGuard {
+    fn drop(&mut self) {
+        NATIVE_DIALOG_DEPTH.fetch_sub(1, Ordering::SeqCst);
+    }
+}
 
 #[cfg(target_os = "windows")]
 fn hidden_std_command<S: AsRef<OsStr>>(program: S) -> StdCommand {
@@ -422,13 +453,13 @@ fn hidden_command<S: AsRef<OsStr>>(program: S) -> Command {
     Command::new(program)
 }
 
-fn native_http_abort_registry() -> &'static Mutex<HashMap<String, Arc<HttpAbortHandle>>> {
+fn native_http_abort_registry() -> &'static Mutex<HashMap<Arc<str>, Arc<HttpAbortHandle>>> {
     HTTP_REQUEST_ABORTS.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
 #[cfg_attr(not(any(target_os = "android", test)), allow(dead_code))]
 pub(crate) fn cancel_all_http_requests() {
-    let ids: Vec<String> = if let Ok(registry) = native_http_abort_registry().lock() {
+    let ids: Vec<Arc<str>> = if let Ok(registry) = native_http_abort_registry().lock() {
         registry
             .iter()
             .map(|(id, handle)| {
@@ -824,16 +855,43 @@ fn monitor_contains_point(monitor: &Monitor, point: PhysicalPosition<f64>) -> bo
 }
 
 #[cfg(not(target_os = "android"))]
+fn rect_is_visible_on_any_monitor(
+    pos: PhysicalPosition<i32>,
+    size: PhysicalSize<u32>,
+    monitors: &[tauri::Monitor],
+) -> bool {
+    let right = pos.x.saturating_add(size.width as i32);
+    let bottom = pos.y.saturating_add(size.height as i32);
+    monitors.iter().any(|monitor| {
+        let area = monitor.work_area();
+        let area_right = area.position.x.saturating_add(area.size.width as i32);
+        let area_bottom = area.position.y.saturating_add(area.size.height as i32);
+        let overlap_w = right.min(area_right) - pos.x.max(area.position.x);
+        let overlap_h = bottom.min(area_bottom) - pos.y.max(area.position.y);
+        overlap_w >= 80 && overlap_h >= 80
+    })
+}
+
+#[cfg(not(target_os = "android"))]
 fn position_mini_window(
     window: &WebviewWindow,
     anchor: Option<PhysicalPosition<f64>>,
 ) -> Result<(), String> {
-    let size = window
-        .inner_size()
-        .unwrap_or_else(|_| PhysicalSize::new(MINI_WINDOW_WIDTH, MINI_WINDOW_HEIGHT));
     let monitors = window
         .available_monitors()
         .map_err(|error| error.to_string())?;
+
+    if anchor.is_none() && MINI_WINDOW_POSITIONED.load(Ordering::Relaxed) {
+        if let (Ok(pos), Ok(size)) = (window.outer_position(), window.outer_size()) {
+            if size.width > 0
+                && size.height > 0
+                && rect_is_visible_on_any_monitor(pos, size, &monitors)
+            {
+                return Ok(());
+            }
+        }
+    }
+
     let monitor = anchor
         .and_then(|point| {
             monitors
@@ -847,40 +905,55 @@ fn position_mini_window(
     let Some(monitor) = monitor else {
         if anchor.is_none() {
             let _ = window.center();
+            MINI_WINDOW_POSITIONED.store(true, Ordering::Relaxed);
         }
         return Ok(());
     };
 
+    let scale = monitor.scale_factor().max(1.0);
+    let fallback_size = PhysicalSize::new(
+        ((MINI_WINDOW_WIDTH as f64) * scale).round() as u32,
+        ((MINI_WINDOW_HEIGHT as f64) * scale).round() as u32,
+    );
+    let size = window
+        .outer_size()
+        .or_else(|_| window.inner_size())
+        .ok()
+        .filter(|s| s.width > 0 && s.height > 0)
+        .unwrap_or(fallback_size);
+
+    let scale_px = |logical: i32| ((logical as f64) * scale).round() as i32;
     let work_area = monitor.work_area();
-    let margin = 10;
-    let max_x = work_area.position.x + work_area.size.width as i32 - size.width as i32 - margin;
-    let max_y = work_area.position.y + work_area.size.height as i32 - size.height as i32 - margin;
+    let margin = scale_px(10);
+    let anchor_offset_x = scale_px(14);
+    let anchor_offset_y = scale_px(10);
+    let edge_offset = scale_px(24);
+    let min_x = work_area.position.x + margin;
+    let min_y = work_area.position.y + margin;
+    let max_x = (work_area.position.x + work_area.size.width as i32 - size.width as i32 - margin)
+        .max(min_x);
+    let max_y = (work_area.position.y + work_area.size.height as i32 - size.height as i32 - margin)
+        .max(min_y);
 
     let (target_x, target_y) = if let Some(point) = anchor {
         (
             clamp_i32(
-                point.x.round() as i32 - size.width as i32 + 14,
-                work_area.position.x + margin,
+                point.x.round() as i32 - size.width as i32 + anchor_offset_x,
+                min_x,
                 max_x,
             ),
-            clamp_i32(
-                point.y.round() as i32 + 10,
-                work_area.position.y + margin,
-                max_y,
-            ),
+            clamp_i32(point.y.round() as i32 + anchor_offset_y, min_y, max_y),
         )
     } else {
         (
             clamp_i32(
-                work_area.position.x + work_area.size.width as i32 - size.width as i32 - 24,
-                work_area.position.x + margin,
+                work_area.position.x + work_area.size.width as i32
+                    - size.width as i32
+                    - edge_offset,
+                min_x,
                 max_x,
             ),
-            clamp_i32(
-                work_area.position.y + 24,
-                work_area.position.y + margin,
-                max_y,
-            ),
+            clamp_i32(work_area.position.y + edge_offset, min_y, max_y),
         )
     };
 
@@ -888,7 +961,9 @@ fn position_mini_window(
         .set_position(Position::Physical(PhysicalPosition::new(
             target_x, target_y,
         )))
-        .map_err(|error| error.to_string())
+        .map_err(|error| error.to_string())?;
+    MINI_WINDOW_POSITIONED.store(true, Ordering::Relaxed);
+    Ok(())
 }
 
 #[cfg(not(target_os = "android"))]
@@ -932,7 +1007,6 @@ fn show_mini_window_at(
 fn hide_mini_window_for_app(app: &AppHandle) -> Result<(), String> {
     if let Some(mini_window) = app.get_webview_window(MINI_WINDOW_LABEL) {
         mini_window.hide().map_err(|error| error.to_string())?;
-        let _ = mini_window.emit(MINI_WINDOW_HIDE_EVENT, ());
     }
     Ok(())
 }
@@ -1024,10 +1098,10 @@ fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn register_native_http_abort(request_id: &str) -> Arc<HttpAbortHandle> {
+fn register_native_http_abort(request_id: impl Into<Arc<str>>) -> Arc<HttpAbortHandle> {
     let handle = Arc::new(HttpAbortHandle::new());
     if let Ok(mut registry) = native_http_abort_registry().lock() {
-        registry.insert(request_id.to_string(), handle.clone());
+        registry.insert(request_id.into(), handle.clone());
     }
     handle
 }
@@ -1040,14 +1114,14 @@ fn remove_native_http_abort(request_id: &str) {
 
 async fn emit_native_http_chunk(
     window: &Window,
-    request_id: &str,
+    request_id: &Arc<str>,
     chunk: Arc<[u8]>,
     done: bool,
     error: Option<String>,
 ) {
     let payload = NativeHttpChunkEvent {
         sequence: None,
-        request_id: request_id.to_string(),
+        request_id: request_id.clone(),
         chunk,
         done,
         error,
@@ -1056,8 +1130,8 @@ async fn emit_native_http_chunk(
     {
         let abort = native_http_abort_registry()
             .lock()
-            .unwrap()
-            .get(request_id)
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .get(request_id.as_ref())
             .cloned();
         if let Some(abort) = abort {
             http_delivery::emit(window, payload, &abort).await;
@@ -1081,12 +1155,19 @@ pub(crate) fn app_data_dir() -> Result<PathBuf, String> {
     if let Some(path) = DESKTOP_DATA_DIR.get() {
         return Ok(path.clone());
     }
-    let path = dirs::data_dir()
-        .ok_or_else(|| String::from("Unable to resolve data directory"))?
-        .join(APP_NAME);
-    fs::create_dir_all(&path).map_err(|error| error.to_string())?;
-    let _ = DESKTOP_DATA_DIR.set(path.clone());
-    Ok(path)
+    #[cfg(target_os = "android")]
+    {
+        Err(String::from("Mobile data directory is not initialized yet"))
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let path = dirs::data_dir()
+            .ok_or_else(|| String::from("Unable to resolve data directory"))?
+            .join(APP_NAME);
+        fs::create_dir_all(&path).map_err(|error| error.to_string())?;
+        let _ = DESKTOP_DATA_DIR.set(path.clone());
+        Ok(path)
+    }
 }
 
 fn state_path() -> Result<PathBuf, String> {
@@ -1235,18 +1316,20 @@ fn flush_pending_window_states() -> Result<(), String> {
 
 #[cfg(not(target_os = "android"))]
 fn persist_window_state(window: &Window, immediate: bool) -> Result<(), String> {
+    if window.label() != "main" {
+        return Ok(());
+    }
     // Geometry changes during hidden startup must not overwrite the saved
     // fullscreen/maximized mode that is waiting for the first explicit show.
-    if window.label() == "main"
-        && !STARTUP_VISIBILITY
-            .get()
-            .and_then(|visibility| {
-                visibility
-                    .lock()
-                    .ok()
-                    .map(|visibility| visibility.has_presented())
-            })
-            .unwrap_or(false)
+    if !STARTUP_VISIBILITY
+        .get()
+        .and_then(|visibility| {
+            visibility
+                .lock()
+                .ok()
+                .map(|visibility| visibility.has_presented())
+        })
+        .unwrap_or(false)
     {
         return Ok(());
     }
@@ -1279,17 +1362,39 @@ fn persist_window_state(window: &Window, immediate: bool) -> Result<(), String> 
         guard.insert(label, persisted_state);
     }
 
-    let epoch = WINDOW_STATE_SAVE_EPOCH.fetch_add(1, Ordering::SeqCst) + 1;
+    let _ = WINDOW_STATE_SAVE_EPOCH.fetch_add(1, Ordering::SeqCst);
     if immediate {
-        return flush_pending_window_states();
+        if APP_EXITING.load(Ordering::Relaxed) {
+            return flush_pending_window_states();
+        }
+        tauri::async_runtime::spawn_blocking(flush_pending_window_states);
+        return Ok(());
     }
 
-    tauri::async_runtime::spawn(async move {
-        tokio::time::sleep(Duration::from_millis(300)).await;
-        if WINDOW_STATE_SAVE_EPOCH.load(Ordering::SeqCst) == epoch {
-            let _ = flush_pending_window_states();
-        }
-    });
+    if WINDOW_STATE_DEBOUNCE_ACTIVE
+        .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+        .is_ok()
+    {
+        tauri::async_runtime::spawn(async move {
+            loop {
+                let observed = WINDOW_STATE_SAVE_EPOCH.load(Ordering::SeqCst);
+                tokio::time::sleep(Duration::from_millis(300)).await;
+                if WINDOW_STATE_SAVE_EPOCH.load(Ordering::SeqCst) == observed {
+                    let _ = tauri::async_runtime::spawn_blocking(flush_pending_window_states).await;
+                    WINDOW_STATE_DEBOUNCE_ACTIVE.store(false, Ordering::SeqCst);
+                    if WINDOW_STATE_SAVE_EPOCH.load(Ordering::SeqCst) == observed {
+                        break;
+                    }
+                    if WINDOW_STATE_DEBOUNCE_ACTIVE
+                        .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+                        .is_err()
+                    {
+                        break;
+                    }
+                }
+            }
+        });
+    }
     Ok(())
 }
 
@@ -1311,8 +1416,12 @@ fn handle_main_window_close(window: &Window, event: &WindowEvent) {
             }
 
             api.prevent_close();
+            let close_action = main_window_close_action(current_runtime_settings());
+            if close_action == MainWindowCloseAction::Quit {
+                APP_EXITING.store(true, Ordering::Relaxed);
+            }
             let _ = persist_window_state(window, true);
-            match main_window_close_action(current_runtime_settings()) {
+            match close_action {
                 MainWindowCloseAction::KeepBackground => {
                     let _ = window.hide();
                     apply_dock_visibility(
@@ -1321,7 +1430,6 @@ fn handle_main_window_close(window: &Window, event: &WindowEvent) {
                     );
                 }
                 MainWindowCloseAction::Quit => {
-                    APP_EXITING.store(true, Ordering::Relaxed);
                     close_auxiliary_windows(window.app_handle());
                     window.app_handle().exit(0);
                 }
@@ -1336,9 +1444,17 @@ fn handle_mini_window_focus(window: &Window, event: &WindowEvent) {
         return;
     }
 
-    if matches!(event, WindowEvent::Focused(false)) && !MINI_WINDOW_PINNED.load(Ordering::Relaxed) {
+    if matches!(event, WindowEvent::Destroyed) {
+        MINI_WINDOW_PINNED.store(false, Ordering::Relaxed);
+        MINI_WINDOW_POSITIONED.store(false, Ordering::Relaxed);
+        return;
+    }
+
+    if matches!(event, WindowEvent::Focused(false))
+        && !MINI_WINDOW_PINNED.load(Ordering::Relaxed)
+        && NATIVE_DIALOG_DEPTH.load(Ordering::SeqCst) == 0
+    {
         let _ = window.hide();
-        let _ = window.emit(MINI_WINDOW_HIDE_EVENT, ());
     }
 }
 
@@ -1372,10 +1488,19 @@ fn handle_run_event(app: &AppHandle, event: &RunEvent) {
 }
 
 fn downloads_dir() -> Result<PathBuf, String> {
-    let path = dirs::download_dir()
-        .or_else(dirs::desktop_dir)
-        .ok_or_else(|| String::from("Unable to resolve Downloads or Desktop directory"))?;
-    Ok(path)
+    #[cfg(target_os = "android")]
+    {
+        let dir = app_data_dir()?.join("backups");
+        fs::create_dir_all(&dir).map_err(|error| error.to_string())?;
+        Ok(dir)
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let path = dirs::download_dir()
+            .or_else(dirs::desktop_dir)
+            .ok_or_else(|| String::from("Unable to resolve Downloads or Desktop directory"))?;
+        Ok(path)
+    }
 }
 
 pub(crate) fn percent_decode_bytes(encoded: &str) -> Result<Vec<u8>, String> {
@@ -1471,7 +1596,7 @@ fn extract_ipc_body_bytes(body: &tauri::ipc::InvokeBody) -> Result<Vec<u8>, Stri
     }
 }
 
-struct TempFileGuard(PathBuf);
+pub(crate) struct TempFileGuard(pub(crate) PathBuf);
 
 impl Drop for TempFileGuard {
     fn drop(&mut self) {
@@ -1481,6 +1606,7 @@ impl Drop for TempFileGuard {
 
 #[cfg(not(target_os = "android"))]
 async fn pick_save_file_path(file_name: &str) -> Option<PathBuf> {
+    let _dialog_guard = NativeDialogFocusGuard::enter();
     rfd::AsyncFileDialog::new()
         .set_file_name(file_name)
         .save_file()
@@ -1560,7 +1686,14 @@ fn default_obsidian_config_path() -> Result<PathBuf, String> {
             .join("obsidian.json"))
     }
 
-    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    #[cfg(target_os = "android")]
+    {
+        Err(String::from(
+            "Obsidian vault discovery is unavailable on Android",
+        ))
+    }
+
+    #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "android")))]
     {
         let home =
             dirs::home_dir().ok_or_else(|| String::from("Unable to resolve home directory"))?;
@@ -1727,11 +1860,12 @@ async fn start_http_request(
     window: Window,
     request: NativeHttpRequest,
 ) -> Result<NativeHttpResponseStart, String> {
-    let request_id = if request.request_id.trim().is_empty() {
+    let request_id_str = if request.request_id.trim().is_empty() {
         Uuid::new_v4().to_string()
     } else {
         request.request_id.clone()
     };
+    let request_id: Arc<str> = Arc::from(request_id_str.as_str());
 
     if request
         .task_epoch
@@ -1740,7 +1874,7 @@ async fn start_http_request(
         return Err("Background task was stopped".into());
     }
     struct StartGuard {
-        id: String,
+        id: Arc<str>,
         armed: bool,
     }
     impl Drop for StartGuard {
@@ -1756,7 +1890,7 @@ async fn start_http_request(
         id: request_id.clone(),
         armed: true,
     };
-    let abort_handle = register_native_http_abort(&request_id);
+    let abort_handle = register_native_http_abort(request_id.clone());
     #[cfg(target_os = "android")]
     http_delivery::register(&request_id);
     let (target, client) = tokio::select! {
@@ -1815,7 +1949,7 @@ async fn start_http_request(
         .collect::<Vec<_>>();
 
     let response_start = NativeHttpResponseStart {
-        request_id: request_id.clone(),
+        request_id: request_id_str,
         status: response.status().as_u16(),
         status_text: response
             .status()
@@ -1827,55 +1961,17 @@ async fn start_http_request(
 
     let task_window = window.clone();
     let task_request_id = request_id.clone();
-    let empty_chunk: Arc<[u8]> = Arc::from(&[][..]);
     tauri::async_runtime::spawn(async move {
-        let mut stream = response.bytes_stream();
-
-        loop {
-            let chunk = tokio::select! {
-              chunk = stream.next() => chunk,
-              _ = abort_handle.cancelled() => None,
-            };
-            let Some(chunk) = chunk else { break };
-            match chunk {
-                Ok(bytes) => {
-                    for part in bytes.chunks(16 * 1024) {
-                        if abort_handle.is_aborted() {
-                            break;
-                        }
-                        emit_native_http_chunk(
-                            &task_window,
-                            &task_request_id,
-                            Arc::from(part),
-                            false,
-                            None,
-                        )
-                        .await;
-                    }
+        http_delivery::pump_microbatched_stream(
+            response.bytes_stream(),
+            &abort_handle,
+            |chunk, done, error| {
+                let win = task_window.clone();
+                let req_id = task_request_id.clone();
+                async move {
+                    emit_native_http_chunk(&win, &req_id, chunk, done, error).await;
                 }
-                Err(error) => {
-                    emit_native_http_chunk(
-                        &task_window,
-                        &task_request_id,
-                        empty_chunk,
-                        true,
-                        Some(error.to_string()),
-                    )
-                    .await;
-                    remove_native_http_abort(&task_request_id);
-                    return;
-                }
-            }
-        }
-
-        emit_native_http_chunk(
-            &task_window,
-            &task_request_id,
-            empty_chunk,
-            true,
-            abort_handle
-                .is_aborted()
-                .then(|| "Request was aborted".into()),
+            },
         )
         .await;
         remove_native_http_abort(&task_request_id);
@@ -1890,7 +1986,7 @@ async fn abort_http_request(request_id: String) -> Result<bool, String> {
     #[cfg(target_os = "android")]
     http_delivery::remove(&request_id);
     if let Ok(registry) = native_http_abort_registry().lock() {
-        if let Some(handle) = registry.get(&request_id) {
+        if let Some(handle) = registry.get(request_id.as_str()) {
             handle.cancel();
             return Ok(true);
         }
@@ -2224,9 +2320,28 @@ async fn list_webdav(config: &BackupWebDavConfig) -> Result<Vec<RemoteBackupFile
         request = request.header(USER_AGENT, user_agent);
     }
 
-    let response = ensure_webdav_success(request.send().await.map_err(|error| error.to_string())?)?;
-
-    let payload = response.text().await.map_err(|error| error.to_string())?;
+    const MAX_WEBDAV_PROPFIND_BYTES: usize = 16 * 1024 * 1024;
+    let mut response =
+        ensure_webdav_success(request.send().await.map_err(|error| error.to_string())?)?;
+    if response
+        .content_length()
+        .is_some_and(|len| len > MAX_WEBDAV_PROPFIND_BYTES as u64)
+    {
+        return Err(String::from(
+            "WebDAV directory listing exceeds maximum supported size",
+        ));
+    }
+    let mut raw_xml = Vec::new();
+    while let Some(chunk) = response.chunk().await.map_err(|error| error.to_string())? {
+        if raw_xml.len().saturating_add(chunk.len()) > MAX_WEBDAV_PROPFIND_BYTES {
+            return Err(String::from(
+                "WebDAV directory listing exceeds maximum supported size",
+            ));
+        }
+        raw_xml.extend_from_slice(&chunk);
+    }
+    let payload =
+        String::from_utf8(raw_xml).map_err(|_| String::from("Invalid UTF-8 in WebDAV listing"))?;
     parse_webdav_listing(&payload)
 }
 
@@ -2316,18 +2431,26 @@ fn file_type_from_extension(extension: &str) -> &'static str {
 }
 
 fn decode_base64_payload(payload: &str) -> Result<Vec<u8>, String> {
-    let normalized: String = payload
-        .chars()
-        .filter(|character| !character.is_ascii_whitespace())
-        .collect();
-
-    if normalized.is_empty() {
+    let trimmed = payload.trim_matches(|character: char| character.is_ascii_whitespace());
+    if trimmed.is_empty() {
         return Err(String::from("Base64 data is required"));
     }
 
+    if !trimmed.bytes().any(|byte| byte.is_ascii_whitespace()) {
+        return general_purpose::STANDARD
+            .decode(trimmed.as_bytes())
+            .or_else(|_| general_purpose::STANDARD_NO_PAD.decode(trimmed.as_bytes()))
+            .map_err(|error| format!("Failed to decode base64 image: {error}"));
+    }
+
+    let normalized: Vec<u8> = trimmed
+        .bytes()
+        .filter(|byte| !byte.is_ascii_whitespace())
+        .collect();
+
     general_purpose::STANDARD
-        .decode(normalized.as_bytes())
-        .or_else(|_| general_purpose::STANDARD_NO_PAD.decode(normalized.as_bytes()))
+        .decode(&normalized)
+        .or_else(|_| general_purpose::STANDARD_NO_PAD.decode(&normalized))
         .map_err(|error| format!("Failed to decode base64 image: {error}"))
 }
 
@@ -2719,25 +2842,65 @@ fn data_dir() -> Result<PathBuf, String> {
     Ok(path)
 }
 
+fn install_dir_for_exe(exe: &Path) -> PathBuf {
+    if cfg!(target_os = "macos") {
+        if let Some(macos_dir) = exe.parent() {
+            if macos_dir.file_name().and_then(|n| n.to_str()) == Some("MacOS") {
+                if let Some(contents_dir) = macos_dir.parent() {
+                    if contents_dir.file_name().and_then(|n| n.to_str()) == Some("Contents") {
+                        if let Some(bundle_dir) = contents_dir.parent() {
+                            return bundle_dir.to_path_buf();
+                        }
+                    }
+                }
+            }
+        }
+    }
+    exe.parent().unwrap_or_else(|| Path::new("/")).to_path_buf()
+}
+
 fn install_dir() -> Result<PathBuf, String> {
     if cfg!(target_os = "android") {
         return app_data_dir();
     }
     let exe = std::env::current_exe().map_err(|error| error.to_string())?;
-    Ok(exe
-        .parent()
-        .and_then(|path| path.parent())
-        .and_then(|path| path.parent())
-        .map(|path| path.to_path_buf())
-        .unwrap_or_else(|| {
-            exe.parent()
-                .unwrap_or_else(|| std::path::Path::new("/"))
-                .to_path_buf()
-        }))
+    Ok(install_dir_for_exe(&exe))
 }
 
 fn resources_dir() -> Result<PathBuf, String> {
-    Ok(install_dir()?.join("Contents").join("Resources"))
+    if cfg!(target_os = "android") {
+        return app_data_dir();
+    }
+    let install = install_dir()?;
+    if cfg!(target_os = "macos") {
+        let macos_resources = install.join("Contents").join("Resources");
+        if macos_resources.exists() || install.extension().and_then(|e| e.to_str()) == Some("app") {
+            return Ok(macos_resources);
+        }
+        return Ok(install);
+    }
+    if cfg!(target_os = "windows") {
+        let win_resources = install.join("resources");
+        return Ok(if win_resources.is_dir() {
+            win_resources
+        } else {
+            install
+        });
+    }
+    if install.file_name().and_then(|n| n.to_str()) == Some("bin") {
+        if let Some(prefix) = install.parent() {
+            let lib_resources = prefix.join("lib").join(APP_NAME);
+            if lib_resources.is_dir() {
+                return Ok(lib_resources);
+            }
+        }
+    }
+    let linux_resources = install.join("resources");
+    Ok(if linux_resources.is_dir() {
+        linux_resources
+    } else {
+        install
+    })
 }
 
 fn zip_file_options() -> SimpleFileOptions {
@@ -2804,9 +2967,93 @@ fn add_directory_to_zip<W: Write + Seek>(
     visit_dir(zip, source_dir, source_dir, root_prefix)
 }
 
+struct PrefixedVecWriter {
+    buf: Vec<u8>,
+    base: usize,
+    pos: usize,
+    max_payload_bytes: u64,
+}
+
+impl PrefixedVecWriter {
+    fn with_prefix_zeros(prefix_len: usize, max_payload_bytes: u64) -> Self {
+        Self {
+            buf: vec![0u8; prefix_len],
+            base: prefix_len,
+            pos: 0,
+            max_payload_bytes,
+        }
+    }
+
+    fn into_inner(self) -> Vec<u8> {
+        self.buf
+    }
+}
+
+impl Write for PrefixedVecWriter {
+    fn write(&mut self, data: &[u8]) -> std::io::Result<usize> {
+        if !data.is_empty() {
+            let payload_end = self.pos.checked_add(data.len()).ok_or_else(|| {
+                std::io::Error::new(std::io::ErrorKind::InvalidInput, "write overflow")
+            })?;
+            if payload_end as u64 > self.max_payload_bytes {
+                return Err(std::io::Error::other(
+                    "Encrypted backup exceeds maximum portable size",
+                ));
+            }
+        }
+        let abs_pos = self.base.checked_add(self.pos).ok_or_else(|| {
+            std::io::Error::new(std::io::ErrorKind::InvalidInput, "offset overflow")
+        })?;
+        let end = abs_pos.checked_add(data.len()).ok_or_else(|| {
+            std::io::Error::new(std::io::ErrorKind::InvalidInput, "write overflow")
+        })?;
+        if abs_pos == self.buf.len() {
+            self.buf.extend_from_slice(data);
+        } else {
+            if end > self.buf.len() {
+                self.buf.resize(end, 0);
+            }
+            self.buf[abs_pos..end].copy_from_slice(data);
+        }
+        self.pos += data.len();
+        Ok(data.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+impl Seek for PrefixedVecWriter {
+    fn seek(&mut self, style: std::io::SeekFrom) -> std::io::Result<u64> {
+        let current_len = self.buf.len().saturating_sub(self.base) as i64;
+        let next_pos = match style {
+            std::io::SeekFrom::Start(offset) => i64::try_from(offset).map_err(|_| {
+                std::io::Error::new(std::io::ErrorKind::InvalidInput, "invalid seek")
+            })?,
+            std::io::SeekFrom::End(offset) => current_len.checked_add(offset).ok_or_else(|| {
+                std::io::Error::new(std::io::ErrorKind::InvalidInput, "invalid seek")
+            })?,
+            std::io::SeekFrom::Current(offset) => {
+                (self.pos as i64).checked_add(offset).ok_or_else(|| {
+                    std::io::Error::new(std::io::ErrorKind::InvalidInput, "invalid seek")
+                })?
+            }
+        };
+        if next_pos < 0 {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "cannot seek before archive start",
+            ));
+        }
+        self.pos = next_pos as usize;
+        Ok(self.pos as u64)
+    }
+}
+
 fn write_backup_archive<W: Write + Seek>(
     writer: W,
-    state: &Value,
+    payload: &str,
     include_files: bool,
     data_root: &Path,
 ) -> Result<W, String> {
@@ -2814,7 +3061,8 @@ fn write_backup_archive<W: Write + Seek>(
 
     zip.start_file("data.json", zip_file_options())
         .map_err(|error| error.to_string())?;
-    serde_json::to_writer(&mut zip, state).map_err(|error| error.to_string())?;
+    zip.write_all(payload.as_bytes())
+        .map_err(|error| error.to_string())?;
 
     if include_files {
         add_directory_to_zip(&mut zip, data_root, "Data")?;
@@ -2823,9 +3071,48 @@ fn write_backup_archive<W: Write + Seek>(
     zip.finish().map_err(|error| error.to_string())
 }
 
-fn create_backup_archive_bytes(state: &Value, include_files: bool) -> Result<Vec<u8>, String> {
-    let cursor = write_backup_archive(Cursor::new(Vec::new()), state, include_files, &data_dir()?)?;
-    Ok(cursor.into_inner())
+fn create_prefixed_backup_archive_bytes_with_limit(
+    prefix_len: usize,
+    payload: &str,
+    include_files: bool,
+    data_root: &Path,
+    max_payload_bytes: u64,
+) -> Result<Vec<u8>, String> {
+    let writer = write_backup_archive(
+        PrefixedVecWriter::with_prefix_zeros(prefix_len, max_payload_bytes),
+        payload,
+        include_files,
+        data_root,
+    )
+    .map_err(|error| {
+        if error.contains("Encrypted backup exceeds maximum portable size") {
+            String::from("Encrypted backup exceeds maximum portable size")
+        } else {
+            error
+        }
+    })?;
+    let bytes = writer.into_inner();
+    if bytes.len().saturating_sub(prefix_len) as u64 > max_payload_bytes {
+        return Err(String::from(
+            "Encrypted backup exceeds maximum portable size",
+        ));
+    }
+    Ok(bytes)
+}
+
+fn create_prefixed_backup_archive_bytes(
+    prefix_len: usize,
+    payload: &str,
+    include_files: bool,
+    data_root: &Path,
+) -> Result<Vec<u8>, String> {
+    create_prefixed_backup_archive_bytes_with_limit(
+        prefix_len,
+        payload,
+        include_files,
+        data_root,
+        MAX_WEBDAV_ARCHIVE_BYTES,
+    )
 }
 
 fn cleanup_stale_backup_temp_files(dir: &Path, max_age: Duration) {
@@ -2857,9 +3144,32 @@ fn cleanup_stale_backup_temp_files(dir: &Path, max_age: Duration) {
     }
 }
 
+fn write_bytes_to_file_atomically(file_path: &Path, bytes: &[u8]) -> Result<(), String> {
+    let parent = file_path
+        .parent()
+        .ok_or_else(|| String::from("Invalid backup file path"))?;
+    fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+    cleanup_stale_backup_temp_files(parent, Duration::from_secs(3600));
+    let temp_name = format!(
+        ".{}.tmp-{}",
+        file_path.file_name().unwrap_or_default().to_string_lossy(),
+        Uuid::new_v4()
+    );
+    let temp_path = parent.join(temp_name);
+    if let Err(error) = fs::write(&temp_path, bytes) {
+        let _ = fs::remove_file(&temp_path);
+        return Err(error.to_string());
+    }
+    if let Err(error) = fs::rename(&temp_path, file_path) {
+        let _ = fs::remove_file(&temp_path);
+        return Err(error.to_string());
+    }
+    Ok(())
+}
+
 fn write_backup_archive_to_file(
     file_path: &Path,
-    state: &Value,
+    payload: &str,
     include_files: bool,
     data_root: &Path,
 ) -> Result<(), String> {
@@ -2877,7 +3187,7 @@ fn write_backup_archive_to_file(
     let write_result = (|| -> Result<(), String> {
         let file = File::create(&temp_path).map_err(|error| error.to_string())?;
         let mut writer =
-            write_backup_archive(BufWriter::new(file), state, include_files, data_root)?;
+            write_backup_archive(BufWriter::new(file), payload, include_files, data_root)?;
         writer.flush().map_err(|error| error.to_string())?;
         Ok(())
     })();
@@ -2888,26 +3198,6 @@ fn write_backup_archive_to_file(
     if let Err(error) = fs::rename(&temp_path, file_path) {
         let _ = fs::remove_file(&temp_path);
         return Err(error.to_string());
-    }
-    Ok(())
-}
-
-fn validate_backup_value(data: &Value) -> Result<(), String> {
-    let version = data["version"].as_u64().ok_or("Missing backup version")?;
-    if !(1..=5).contains(&version)
-        || !data["localStorage"].is_object()
-        || !(data["indexedDB"].is_object() || (version == 1 && data["indexedDB"].is_array()))
-    {
-        return Err("Unsupported backup format".into());
-    }
-    let persisted = data["localStorage"]["persist:cherry-studio"]
-        .as_str()
-        .ok_or("Backup missing application state")?;
-    serde_json::from_str::<JsonObjectOnly>(persisted).map_err(|_| "Invalid application state")?;
-    if let Some(tables) = data["indexedDB"].as_object() {
-        if tables.values().any(|table| !table.is_array()) {
-            return Err("Invalid backup table".into());
-        }
     }
     Ok(())
 }
@@ -3623,29 +3913,62 @@ fn extract_backup_archive_from_reader<R: Read + Seek>(
 async fn export_portable_backup_archive(
     app: AppHandle,
     file_name: String,
-    state: Value,
+    payload: String,
     include_files: bool,
     password: Option<String>,
 ) -> Result<String, String> {
     let safe_name = validate_safe_backup_file_name(&file_name)?.to_string();
     if let Some(secret) = password {
-        let bytes = tauri::async_runtime::spawn_blocking(move || -> Result<Vec<u8>, String> {
-            validate_backup_value(&state)?;
-            let archive = create_backup_archive_bytes(&state, include_files)?;
-            let zeroized = zeroize::Zeroizing::new(secret);
-            backup_crypto::encrypt_owned(archive, &zeroized)
-        })
-        .await
-        .map_err(|_| String::from("Backup archive task failed"))??;
+        let zeroized = zeroize::Zeroizing::new(secret);
+        if zeroized.is_empty() {
+            return Err(String::from("Backup password is required"));
+        }
 
         #[cfg(target_os = "android")]
         {
+            let bytes = tauri::async_runtime::spawn_blocking(move || -> Result<Vec<u8>, String> {
+                validate_backup_payload(&payload)?;
+                let mut prefixed = create_prefixed_backup_archive_bytes(
+                    backup_crypto::HEADER_LEN,
+                    &payload,
+                    include_files,
+                    &data_dir()?,
+                )?;
+                backup_crypto::encrypt_prefixed_in_place(&mut prefixed, &zeroized)?;
+                Ok(prefixed)
+            })
+            .await
+            .map_err(|_| String::from("Backup archive task failed"))??;
             return mobile::save_file_bytes(app, safe_name, bytes).await;
         }
         #[cfg(not(target_os = "android"))]
         {
             let _ = app;
-            return save_file_bytes(safe_name, bytes).await;
+            let validated_payload =
+                tauri::async_runtime::spawn_blocking(move || -> Result<String, String> {
+                    validate_backup_payload(&payload)?;
+                    Ok(payload)
+                })
+                .await
+                .map_err(|_| String::from("Backup validation task failed"))??;
+
+            let Some(file_path) = pick_save_file_path(&safe_name).await else {
+                return Ok(String::new());
+            };
+            let target_for_write = file_path.clone();
+            tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
+                let mut prefixed = create_prefixed_backup_archive_bytes(
+                    backup_crypto::HEADER_LEN,
+                    &validated_payload,
+                    include_files,
+                    &data_dir()?,
+                )?;
+                backup_crypto::encrypt_prefixed_in_place(&mut prefixed, &zeroized)?;
+                write_bytes_to_file_atomically(&target_for_write, &prefixed)
+            })
+            .await
+            .map_err(|_| String::from("Backup archive task failed"))??;
+            return Ok(file_path.display().to_string());
         }
     }
 
@@ -3661,8 +3984,8 @@ async fn export_portable_backup_archive(
         let _guard = TempFileGuard(staged_path.clone());
         let target_for_write = staged_path.clone();
         tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
-            validate_backup_value(&state)?;
-            write_backup_archive_to_file(&target_for_write, &state, include_files, &data_dir()?)
+            validate_backup_payload(&payload)?;
+            write_backup_archive_to_file(&target_for_write, &payload, include_files, &data_dir()?)
         })
         .await
         .map_err(|_| String::from("Backup archive task failed"))??;
@@ -3671,13 +3994,24 @@ async fn export_portable_backup_archive(
     #[cfg(not(target_os = "android"))]
     {
         let _ = app;
-        validate_backup_value(&state)?;
+        let validated_payload =
+            tauri::async_runtime::spawn_blocking(move || -> Result<String, String> {
+                validate_backup_payload(&payload)?;
+                Ok(payload)
+            })
+            .await
+            .map_err(|_| String::from("Backup validation task failed"))??;
         let Some(file_path) = pick_save_file_path(&safe_name).await else {
             return Ok(String::new());
         };
         let target_for_write = file_path.clone();
         tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
-            write_backup_archive_to_file(&target_for_write, &state, include_files, &data_dir()?)
+            write_backup_archive_to_file(
+                &target_for_write,
+                &validated_payload,
+                include_files,
+                &data_dir()?,
+            )
         })
         .await
         .map_err(|_| String::from("Backup archive task failed"))??;
@@ -3895,7 +4229,7 @@ fn collect_app_info() -> Result<AppInfo, String> {
 
     Ok(AppInfo {
         version: env!("CARGO_PKG_VERSION"),
-        is_packaged: true,
+        is_packaged: !cfg!(debug_assertions),
         app_path: resources_path.display().to_string(),
         config_path: config_path.display().to_string(),
         app_data_path: data_dir.display().to_string(),
@@ -3955,7 +4289,7 @@ fn is_startup_silent() -> bool {
 }
 
 #[tauri::command]
-async fn webdav_backup(state: Value, config: BackupWebDavConfig) -> Result<String, String> {
+async fn webdav_backup(payload: String, config: BackupWebDavConfig) -> Result<String, String> {
     let include_files = !config.skip_backup_file.unwrap_or(false);
     let app_root = app_data_dir()?;
     fs::create_dir_all(&app_root).map_err(|error| error.to_string())?;
@@ -3963,10 +4297,10 @@ async fn webdav_backup(state: Value, config: BackupWebDavConfig) -> Result<Strin
     let _guard = TempFileGuard(temp_path.clone());
     let temp_for_write = temp_path.clone();
     let content_length = tauri::async_runtime::spawn_blocking(move || -> Result<u64, String> {
-        validate_backup_value(&state)?;
+        validate_backup_payload(&payload)?;
         let file = File::create(&temp_for_write).map_err(|error| error.to_string())?;
         let mut writer =
-            write_backup_archive(BufWriter::new(file), &state, include_files, &data_dir()?)?;
+            write_backup_archive(BufWriter::new(file), &payload, include_files, &data_dir()?)?;
         writer.flush().map_err(|error| error.to_string())?;
         drop(writer);
         fs::metadata(&temp_for_write)
@@ -3997,6 +4331,7 @@ async fn webdav_restore(config: BackupWebDavConfig) -> Result<ExtractedBackupArc
 #[tauri::command]
 #[cfg(not(target_os = "android"))]
 async fn pick_folder() -> Result<Option<String>, String> {
+    let _dialog_guard = NativeDialogFocusGuard::enter();
     let handle = rfd::AsyncFileDialog::new().pick_folder().await;
     Ok(handle.map(|path| path.path().display().to_string()))
 }
@@ -4095,8 +4430,7 @@ async fn capture_window(window_id: u32) -> Result<tauri::ipc::Response, String> 
 async fn backup_to_local_dir(
     file_name: String,
     local_backup_dir: Option<String>,
-    state: Option<Value>,
-    payload: Option<String>,
+    payload: String,
     skip_backup_file: Option<bool>,
 ) -> Result<bool, String> {
     let safe_name = validate_safe_backup_file_name(&file_name)?.to_string();
@@ -4106,21 +4440,96 @@ async fn backup_to_local_dir(
         .unwrap_or(downloads_dir()?);
     let include_files = !skip_backup_file.unwrap_or(false);
     tauri::async_runtime::spawn_blocking(move || -> Result<bool, String> {
-        let backup_state = match state {
-            Some(value) => value,
-            None => {
-                let raw =
-                    payload.ok_or_else(|| String::from("Backup state payload is required"))?;
-                serde_json::from_str(&raw).map_err(|error| error.to_string())?
-            }
-        };
-        validate_backup_value(&backup_state)?;
+        validate_backup_payload(&payload)?;
         let file_path = base_dir.join(safe_name);
-        write_backup_archive_to_file(&file_path, &backup_state, include_files, &data_dir()?)?;
+        write_backup_archive_to_file(&file_path, &payload, include_files, &data_dir()?)?;
         Ok(true)
     })
     .await
     .map_err(|_| String::from("Local backup task failed"))?
+}
+
+const MAX_LOCAL_JSON_RESTORE_BYTES: u64 = 512 * 1024 * 1024;
+const MAX_ENCRYPTED_BACKUP_BYTES: u64 =
+    MAX_WEBDAV_ARCHIVE_BYTES + (backup_crypto::MIN_ENCRYPTED_LEN as u64);
+
+fn restore_from_local_backup_in_dir(
+    file_name: &str,
+    base_dir: &Path,
+    data_root: &Path,
+    password: Option<String>,
+    max_json_bytes: u64,
+) -> Result<ExtractedBackupArchive, String> {
+    let safe_name = validate_safe_backup_file_name(file_name)?;
+    let file_path = base_dir.join(safe_name);
+    let lower_name = safe_name.to_ascii_lowercase();
+    if lower_name.ends_with(".zip") {
+        return extract_backup_archive_from_file(&file_path, data_root);
+    }
+    if lower_name.ends_with(".lich13backup") {
+        let secret = password
+            .filter(|value| !value.is_empty())
+            .ok_or_else(|| String::from("Backup password is required"))?;
+        let mut file = File::open(&file_path).map_err(|error| error.to_string())?;
+        let meta = file.metadata().map_err(|error| error.to_string())?;
+        if !meta.is_file() {
+            return Err(String::from("Invalid encrypted backup"));
+        }
+        let len = meta.len();
+        if len < backup_crypto::MIN_ENCRYPTED_LEN as u64 {
+            return Err(String::from("Invalid encrypted backup"));
+        }
+        let mut magic_buf = [0u8; backup_crypto::MAGIC.len()];
+        file.read_exact(&mut magic_buf)
+            .map_err(|_| String::from("Invalid encrypted backup"))?;
+        if magic_buf != backup_crypto::MAGIC {
+            return Err(String::from("Invalid encrypted backup"));
+        }
+        if len > MAX_ENCRYPTED_BACKUP_BYTES {
+            return Err(String::from(
+                "Encrypted backup exceeds maximum portable size",
+            ));
+        }
+        let cap = usize::try_from(len)
+            .map_err(|_| String::from("Encrypted backup exceeds addressable memory"))?;
+        let remaining = len - backup_crypto::MAGIC.len() as u64;
+        let mut encrypted = Vec::with_capacity(cap);
+        encrypted.extend_from_slice(&magic_buf);
+        file.take(remaining.saturating_add(1))
+            .read_to_end(&mut encrypted)
+            .map_err(|error| error.to_string())?;
+        if encrypted.len() as u64 != len {
+            return Err(String::from("Invalid encrypted backup"));
+        }
+        let zeroized = zeroize::Zeroizing::new(secret);
+        let decrypted = backup_crypto::decrypt_in_place(&mut encrypted, &zeroized)?;
+        return extract_backup_archive_to(decrypted, data_root);
+    }
+
+    let file = File::open(&file_path).map_err(|error| error.to_string())?;
+    let meta = file.metadata().map_err(|error| error.to_string())?;
+    if !meta.is_file() {
+        return Err(String::from("Invalid backup data"));
+    }
+    if meta.len() > max_json_bytes {
+        return Err(String::from(
+            "Local backup exceeds maximum in-memory restore size",
+        ));
+    }
+    let mut raw = String::new();
+    file.take(max_json_bytes.saturating_add(1))
+        .read_to_string(&mut raw)
+        .map_err(|error| error.to_string())?;
+    if raw.len() as u64 > max_json_bytes {
+        return Err(String::from(
+            "Local backup exceeds maximum in-memory restore size",
+        ));
+    }
+    validate_backup_payload(&raw)?;
+    Ok(ExtractedBackupArchive {
+        payload: raw,
+        restore_id: None,
+    })
 }
 
 #[tauri::command]
@@ -4129,31 +4538,18 @@ async fn restore_from_local_backup(
     local_backup_dir: Option<String>,
     password: Option<String>,
 ) -> Result<ExtractedBackupArchive, String> {
-    let safe_name = validate_safe_backup_file_name(&file_name)?.to_string();
     let base_dir = local_backup_dir
         .filter(|dir| !dir.trim().is_empty())
         .map(PathBuf::from)
         .unwrap_or(downloads_dir()?);
-    let file_path = base_dir.join(&safe_name);
-    tauri::async_runtime::spawn_blocking(move || -> Result<ExtractedBackupArchive, String> {
-        let lower_name = safe_name.to_ascii_lowercase();
-        if lower_name.ends_with(".lich13backup") {
-            let encrypted = fs::read(&file_path).map_err(|error| error.to_string())?;
-            let secret = password.ok_or_else(|| String::from("Backup password is required"))?;
-            let zeroized = zeroize::Zeroizing::new(secret);
-            let decrypted = backup_crypto::decrypt_owned(encrypted, &zeroized)?;
-            return extract_backup_archive(&decrypted);
-        }
-        if lower_name.ends_with(".zip") {
-            return extract_backup_archive_from_file(&file_path, &data_dir()?);
-        }
-
-        let raw = fs::read_to_string(&file_path).map_err(|error| error.to_string())?;
-        validate_backup_payload(&raw)?;
-        Ok(ExtractedBackupArchive {
-            payload: raw,
-            restore_id: None,
-        })
+    tauri::async_runtime::spawn_blocking(move || {
+        restore_from_local_backup_in_dir(
+            &file_name,
+            &base_dir,
+            &data_dir()?,
+            password,
+            MAX_LOCAL_JSON_RESTORE_BYTES,
+        )
     })
     .await
     .map_err(|_| String::from("Local restore task failed"))?
@@ -4177,10 +4573,15 @@ async fn restore_encrypted_backup_archive(
     request: tauri::ipc::Request<'_>,
 ) -> Result<ExtractedBackupArchive, String> {
     let password = extract_zeroizing_header(request.headers(), "x-backup-password")?;
-    let bytes = extract_raw_ipc_bytes(&request)?;
+    let mut bytes = extract_raw_ipc_bytes(&request)?;
+    if bytes.len() as u64 > MAX_ENCRYPTED_BACKUP_BYTES {
+        return Err(String::from(
+            "Encrypted backup exceeds maximum portable size",
+        ));
+    }
     tauri::async_runtime::spawn_blocking(move || {
-        let decrypted = backup_crypto::decrypt_owned(bytes, &password)?;
-        extract_backup_archive(&decrypted)
+        let decrypted = backup_crypto::decrypt_in_place(&mut bytes, &password)?;
+        extract_backup_archive(decrypted)
     })
     .await
     .map_err(|_| String::from("Encrypted backup restore task failed"))?
@@ -4262,21 +4663,39 @@ async fn list_local_backup_files(
     .map_err(|_| String::from("List local backups task failed"))?
 }
 
+fn delete_local_backup_file_in_dir(file_name: &str, base_dir: &Path) -> Result<bool, String> {
+    let safe_name = validate_safe_backup_file_name(file_name)?;
+    if !safe_name.starts_with("lich13studio") {
+        return Err(String::from("Refusing to delete non-backup file"));
+    }
+    let file_path = base_dir.join(safe_name);
+    match fs::symlink_metadata(&file_path) {
+        Ok(meta) => {
+            if meta.file_type().is_symlink() || !meta.is_file() {
+                return Err(String::from("Backup target must be a regular file"));
+            }
+            fs::remove_file(&file_path).map_err(|error| error.to_string())?;
+            Ok(true)
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(false),
+        Err(error) => Err(error.to_string()),
+    }
+}
+
 #[tauri::command]
 async fn delete_local_backup_file(
     file_name: String,
     local_backup_dir: Option<String>,
 ) -> Result<bool, String> {
-    let safe_name = validate_safe_backup_file_name(&file_name)?;
     let base_dir = local_backup_dir
         .filter(|dir| !dir.trim().is_empty())
         .map(PathBuf::from)
         .unwrap_or(downloads_dir()?);
-    let file_path = base_dir.join(safe_name);
-    if file_path.exists() {
-        fs::remove_file(file_path).map_err(|error| error.to_string())?;
-    }
-    Ok(true)
+    tauri::async_runtime::spawn_blocking(move || {
+        delete_local_backup_file_in_dir(&file_name, &base_dir)
+    })
+    .await
+    .map_err(|_| String::from("Delete local backup task failed"))?
 }
 
 #[tauri::command]
@@ -5200,8 +5619,9 @@ mod tests {
             "localStorage": { "persist:cherry-studio": "{}" },
             "indexedDB": { "topics": [] }
         });
+        let payload = state.to_string();
         let archive_path = out_dir.join("lich13studio.stream.zip");
-        write_backup_archive_to_file(&archive_path, &state, true, &data_root).unwrap();
+        write_backup_archive_to_file(&archive_path, &payload, true, &data_root).unwrap();
 
         let out_entries: Vec<String> = fs::read_dir(&out_dir)
             .unwrap()
@@ -5810,6 +6230,192 @@ mod tests {
             serde_json::from_str(&fs::read_to_string(&state_file).unwrap()).unwrap();
         assert_eq!(merged[RUNTIME_SETTINGS_KEY]["tray"], json!(false));
         assert_eq!(merged[WINDOW_STATE_KEY]["main"]["width"], json!(1280));
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[tokio::test]
+    async fn prefixed_encrypted_backup_archive_roundtrips_without_ast_or_memmove() {
+        let root = std::env::temp_dir().join(format!("lich13-prefixed-enc-{}", Uuid::new_v4()));
+        let data_root = root.join("Data");
+        let restore_root = root.join("RestoredData");
+        fs::create_dir_all(data_root.join("Files")).unwrap();
+        fs::write(
+            data_root.join("Files/asset.bin"),
+            b"zero-copy-encrypted-zip",
+        )
+        .unwrap();
+
+        let payload = r#"{"version":5,"localStorage":{"persist:cherry-studio":"{\"theme\":\"dark\"}"},"indexedDB":{"topics":[{"id":"t1"}]}}"#;
+        validate_backup_payload(payload).unwrap();
+        let mut prefixed = create_prefixed_backup_archive_bytes(
+            backup_crypto::HEADER_LEN,
+            payload,
+            true,
+            &data_root,
+        )
+        .unwrap();
+        backup_crypto::encrypt_prefixed_in_place(&mut prefixed, "archive-pass-2026").unwrap();
+
+        let decrypted_slice =
+            backup_crypto::decrypt_in_place(&mut prefixed, "archive-pass-2026").unwrap();
+        let extracted = extract_backup_archive_to(decrypted_slice, &restore_root).unwrap();
+        assert_eq!(extracted.payload, payload);
+        assert_eq!(
+            fs::read(restore_root.join("Files/asset.bin")).unwrap(),
+            b"zero-copy-encrypted-zip"
+        );
+        if let Some(restore_id) = extracted.restore_id {
+            finish_backup_restore(true, Some(restore_id)).await.unwrap();
+        }
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn delete_local_backup_file_enforces_prefix_and_rejects_symlinks() {
+        let root = std::env::temp_dir().join(format!("lich13-del-backup-{}", Uuid::new_v4()));
+        fs::create_dir_all(&root).unwrap();
+
+        let non_backup = root.join("notes.txt");
+        fs::write(&non_backup, b"keep me").unwrap();
+        assert!(delete_local_backup_file_in_dir("notes.txt", &root).is_err());
+        assert!(non_backup.exists());
+
+        let valid_backup = root.join("lich13studio.20261127.zip");
+        fs::write(&valid_backup, b"zip").unwrap();
+        assert!(delete_local_backup_file_in_dir("lich13studio.20261127.zip", &root).unwrap());
+        assert!(!valid_backup.exists());
+        assert!(!delete_local_backup_file_in_dir("lich13studio.missing.zip", &root).unwrap());
+
+        #[cfg(unix)]
+        {
+            let target = root.join("outside-secret.txt");
+            fs::write(&target, b"secret").unwrap();
+            let link = root.join("lich13studio.symlink.zip");
+            std::os::unix::fs::symlink(&target, &link).unwrap();
+            assert!(delete_local_backup_file_in_dir("lich13studio.symlink.zip", &root).is_err());
+            assert!(target.exists());
+        }
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn restore_from_local_backup_verifies_magic_before_read_and_allows_large_encrypted_archives() {
+        let root = std::env::temp_dir().join(format!("lich13-local-restore-{}", Uuid::new_v4()));
+        let backup_dir = root.join("Backups");
+        let export_data_root = root.join("ExportData");
+        let restore_data_root = root.join("AppData").join("Data");
+        fs::create_dir_all(&backup_dir).unwrap();
+        fs::create_dir_all(export_data_root.join("Files")).unwrap();
+        fs::create_dir_all(&restore_data_root).unwrap();
+
+        let attachment_bytes = vec![0x5a_u8; 8192];
+        fs::write(
+            export_data_root.join("Files/large-attachment.bin"),
+            &attachment_bytes,
+        )
+        .unwrap();
+
+        let payload = r#"{"version":5,"localStorage":{"persist:cherry-studio":"{}"},"indexedDB":{"topics":[{"id":"t-local"}]}}"#;
+        validate_backup_payload(payload).unwrap();
+        let mut encrypted = create_prefixed_backup_archive_bytes(
+            backup_crypto::HEADER_LEN,
+            payload,
+            true,
+            &export_data_root,
+        )
+        .unwrap();
+        backup_crypto::encrypt_prefixed_in_place(&mut encrypted, "local-backup-pass").unwrap();
+        let enc_name = "lich13studio.large.lich13backup";
+        fs::write(backup_dir.join(enc_name), &encrypted).unwrap();
+
+        // 1. Valid .lich13backup larger than max_json_bytes (e.g. 512 bytes) restores cleanly without hitting JSON cap
+        assert!(encrypted.len() > 512);
+        let restored = restore_from_local_backup_in_dir(
+            enc_name,
+            &backup_dir,
+            &restore_data_root,
+            Some("local-backup-pass".into()),
+            512,
+        )
+        .unwrap();
+        assert_eq!(restored.payload, payload);
+        assert_eq!(
+            fs::read(restore_data_root.join("Files/large-attachment.bin")).unwrap(),
+            attachment_bytes
+        );
+        let restore_id = restored.restore_id.expect("expected staged restore_id");
+        finish_backup_restore_sync(true, Some(restore_id)).unwrap();
+
+        // 2. >512 MiB sparse non-backup file renamed .lich13backup is rejected via 9-byte magic header check
+        let fake_enc_name = "lich13studio.nonbackup.lich13backup";
+        let fake_enc_path = backup_dir.join(fake_enc_name);
+        {
+            let mut fake_file = File::create(&fake_enc_path).unwrap();
+            fake_file.write_all(b"NOT_LICH13_MAGIC_HEADER").unwrap();
+            fake_file
+                .set_len(MAX_LOCAL_JSON_RESTORE_BYTES + 1024 * 1024)
+                .unwrap();
+        }
+        let fake_err = restore_from_local_backup_in_dir(
+            fake_enc_name,
+            &backup_dir,
+            &restore_data_root,
+            Some("local-backup-pass".into()),
+            MAX_LOCAL_JSON_RESTORE_BYTES,
+        )
+        .unwrap_err();
+        assert_eq!(fake_err, "Invalid encrypted backup");
+
+        // 3. >512 MiB sparse plain .json file is still rejected by MAX_LOCAL_JSON_RESTORE_BYTES
+        let oversize_json_name = "lich13studio.oversize.json";
+        let oversize_json_path = backup_dir.join(oversize_json_name);
+        {
+            let oversize_file = File::create(&oversize_json_path).unwrap();
+            oversize_file
+                .set_len(MAX_LOCAL_JSON_RESTORE_BYTES + 1024)
+                .unwrap();
+        }
+        let json_err = restore_from_local_backup_in_dir(
+            oversize_json_name,
+            &backup_dir,
+            &restore_data_root,
+            None,
+            MAX_LOCAL_JSON_RESTORE_BYTES,
+        )
+        .unwrap_err();
+        assert_eq!(
+            json_err,
+            "Local backup exceeds maximum in-memory restore size"
+        );
+
+        // 4. PrefixedVecWriter enforces max_payload_bytes during streaming writes before unbounded growth
+        let mut bounded_writer =
+            PrefixedVecWriter::with_prefix_zeros(backup_crypto::HEADER_LEN, 128);
+        bounded_writer.write_all(&[0xaa; 100]).unwrap();
+        let write_err = bounded_writer.write_all(&[0xbb; 64]).unwrap_err();
+        assert!(write_err
+            .to_string()
+            .contains("Encrypted backup exceeds maximum portable size"));
+        assert_eq!(
+            bounded_writer.into_inner().len(),
+            backup_crypto::HEADER_LEN + 100
+        );
+
+        let export_cap_err = create_prefixed_backup_archive_bytes_with_limit(
+            backup_crypto::HEADER_LEN,
+            payload,
+            true,
+            &export_data_root,
+            512,
+        )
+        .unwrap_err();
+        assert_eq!(
+            export_cap_err,
+            "Encrypted backup exceeds maximum portable size"
+        );
 
         fs::remove_dir_all(root).unwrap();
     }

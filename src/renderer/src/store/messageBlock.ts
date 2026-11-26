@@ -337,13 +337,21 @@ export const formatCitationsFromBlock = (block: CitationMessageBlock | undefined
 }
 // --- End of Centralized Logic ---
 
+export const EMPTY_CITATIONS: Citation[] = Object.freeze([]) as unknown as Citation[]
+
 // Memoized selector that takes a block ID and returns formatted citations
-export const selectFormattedCitationsByBlockId = createSelector([selectBlockEntityById], (blockEntity): Citation[] => {
+const selectMemoizedFormattedCitations = createSelector([selectBlockEntityById], (blockEntity): Citation[] => {
   if (blockEntity?.type === MessageBlockType.CITATION) {
-    return formatCitationsFromBlock(blockEntity)
+    const formatted = formatCitationsFromBlock(blockEntity)
+    return formatted.length > 0 ? formatted : EMPTY_CITATIONS
   }
-  return []
+  return EMPTY_CITATIONS
 })
+
+export const selectFormattedCitationsByBlockId = (state: RootState, blockId: string | undefined): Citation[] => {
+  if (!blockId) return EMPTY_CITATIONS
+  return selectMemoizedFormattedCitations(state, blockId)
+}
 
 // --- Active TodoWrite Block Selector ---
 export interface TodoWriteNormalToolResponse extends Omit<NormalToolResponse, 'tool' | 'arguments'> {

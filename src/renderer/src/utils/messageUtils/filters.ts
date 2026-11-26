@@ -5,26 +5,20 @@ import { MessageBlockType } from '@renderer/types/newMessage'
 // May need Block types if refactoring to use them
 // import type { MessageBlock, MainTextMessageBlock } from '@renderer/types/newMessageTypes';
 import isEmpty from 'lodash/isEmpty'
-import remove from 'lodash/remove'
 import takeRight from 'lodash/takeRight'
-// Assuming getGroupedMessages is also moved here or imported
-// import { getGroupedMessages } from './path/to/getGroupedMessages';
-
-// const logger = loggerService.withContext('Utils.filter')
 
 /**
  * Filters out messages of type '@' or 'clear' and messages without main text content.
  */
 export const filterMessages = (messages: Message[]) => {
-  return messages
-    .filter((message) => !['@', 'clear'].includes(message.type!))
-    .filter((message) => {
-      const state = store.getState()
-      const mainTextBlock = message.blocks
-        ?.map((blockId) => messageBlocksSelectors.selectById(state, blockId))
-        .find((block) => block?.type === MessageBlockType.MAIN_TEXT)
-      return !isEmpty((mainTextBlock as any)?.content?.trim()) // Type assertion needed
-    })
+  const state = store.getState()
+  return messages.filter((message) => {
+    if (message.type === 'clear' || (message.type as string | undefined) === '@') return false
+    const mainTextBlock = message.blocks
+      ?.map((blockId) => messageBlocksSelectors.selectById(state, blockId))
+      .find((block) => block?.type === MessageBlockType.MAIN_TEXT)
+    return !isEmpty((mainTextBlock as any)?.content?.trim())
+  })
 }
 
 /**
@@ -58,14 +52,13 @@ export function filterUserRoleStartMessages(messages: Message[]): Message[] {
  * Filters out messages considered "empty" based on block content.
  */
 export function filterEmptyMessages(messages: Message[]): Message[] {
+  const state = store.getState()
   return messages.filter((message) => {
-    const state = store.getState()
     let hasContent = false
     for (const blockId of message.blocks) {
       const block = messageBlocksSelectors.selectById(state, blockId)
       if (!block) continue
       if (block.type === MessageBlockType.MAIN_TEXT && !isEmpty((block as any).content?.trim())) {
-        // Type assertion needed
         hasContent = true
         break
       }
@@ -120,30 +113,20 @@ export function getGroupedMessages(messages: Message[]): { [key: string]: Indexe
  * Only remain one message in a group. Either useful or fallback to the first message in the group.
  */
 export function filterUsefulMessages(messages: Message[]): Message[] {
-  const _messages = [...messages]
   const groupedMessages = getGroupedMessages(messages)
+  const removeIds = new Set<string>()
 
-  Object.entries(groupedMessages).forEach(([key, groupedMsgs]) => {
-    if (key.startsWith('assistant')) {
-      const usefulMessage = groupedMsgs.find((m) => m.useful === true)
-      if (usefulMessage) {
-        // Remove all messages in the group except the useful one
-        groupedMsgs.forEach((m) => {
-          if (m.id !== usefulMessage.id) {
-            remove(_messages, (o) => o.id === m.id)
-          }
-        })
-      } else if (groupedMsgs.length > 0) {
-        // Keep only the first message if none are marked useful
-        const messagesToRemove = groupedMsgs.slice(1)
-        messagesToRemove.forEach((m) => {
-          remove(_messages, (o) => o.id === m.id)
-        })
+  for (const [key, groupedMsgs] of Object.entries(groupedMessages)) {
+    if (!key.startsWith('assistant') || groupedMsgs.length <= 1) continue
+    const keepId = (groupedMsgs.find((m) => m.useful === true) ?? groupedMsgs[0]).id
+    for (const msg of groupedMsgs) {
+      if (msg.id !== keepId) {
+        removeIds.add(msg.id)
       }
     }
-  })
+  }
 
-  return _messages
+  return removeIds.size === 0 ? [...messages] : messages.filter((msg) => !removeIds.has(msg.id))
 }
 
 export function filterLastAssistantMessage(messages: Message[]): Message[] {

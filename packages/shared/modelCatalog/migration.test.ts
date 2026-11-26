@@ -72,13 +72,22 @@ describe('official directory preservation and migration 222', () => {
     expect(findOfficialModel('claude-opus-4-5')?.id).toBe('claude-opus-4-5-20251101')
     expect(findOfficialModel('grok-code-fast-1')?.id).toBe('grok-build-0.1')
   })
-  it('installs new metadata without mutating the source snapshot', () => {
+  it('installs new metadata without mutating the source snapshot and freezes installed catalog', () => {
     const next = structuredClone(bundledModelCatalogs.openai)
-    next.models.find((m) => m.id === 'gpt-6.1-sol')!.capabilities.vision = false
+    const target = next.models.find((m) => m.id === 'gpt-6.1-sol')!
+    target.capabilities.vision = false
+    target.aliases.push('gpt-6.1-sol-mut-check')
     installModelCatalog(next)
     expect(findOfficialModel('gpt-6.1-sol')!.capabilities.vision).toBe(false)
-    next.models.find((m) => m.id === 'gpt-6.1-sol')!.capabilities.vision = true
-    expect(findOfficialModel('gpt-6.1-sol')!.capabilities.vision).toBe(false)
+    expect(findOfficialModel('gpt-6.1-sol-mut-check')?.id).toBe('gpt-6.1-sol')
+    target.capabilities.vision = true
+    target.aliases.push('gpt-6.1-sol-after-install')
+    const installed = findOfficialModel('gpt-6.1-sol')!
+    expect(installed.capabilities.vision).toBe(false)
+    expect(findOfficialModel('gpt-6.1-sol-after-install')).toBeUndefined()
+    expect(Object.isFrozen(installed)).toBe(true)
+    expect(Object.isFrozen(installed.capabilities)).toBe(true)
+    expect(Object.isFrozen(installed.aliases)).toBe(true)
     installModelCatalog(bundledModelCatalogs.openai)
   })
 })

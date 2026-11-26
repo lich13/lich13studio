@@ -1,12 +1,10 @@
 import { loggerService } from '@logger'
 import ModelAvatar from '@renderer/components/Avatar/ModelAvatar'
 import ModelProviderSelect from '@renderer/components/ModelProviderSelect'
-import { isMac } from '@renderer/config/constant'
-import { useTheme } from '@renderer/context/ThemeProvider'
 import db from '@renderer/databases'
 import { useDefaultAssistant } from '@renderer/hooks/useAssistant'
 import { useSettings } from '@renderer/hooks/useSettings'
-import i18n from '@renderer/i18n'
+import i18n, { setDayjsLocale } from '@renderer/i18n'
 import { getDefaultTopic } from '@renderer/services/AssistantService'
 import { dbService } from '@renderer/services/db'
 import FileManager from '@renderer/services/FileManager'
@@ -18,7 +16,7 @@ import { updateOneBlock, upsertManyBlocks, upsertOneBlock } from '@renderer/stor
 import { newMessagesActions, selectMessagesForTopic } from '@renderer/store/newMessage'
 import { cancelThrottledBlockUpdate, throttledBlockUpdate } from '@renderer/store/thunk/messageThunk'
 import type { FileMetadata, Topic } from '@renderer/types'
-import { FILE_TYPE, ThemeMode } from '@renderer/types'
+import { FILE_TYPE } from '@renderer/types'
 import type { Chunk } from '@renderer/types/chunk'
 import { ChunkType } from '@renderer/types/chunk'
 import { AssistantMessageStatus, type Message, type MessageBlock, MessageBlockStatus } from '@renderer/types/newMessage'
@@ -53,6 +51,7 @@ import MiniWindowCaptureButton from './components/MiniWindowCaptureButton'
 import {
   captureMiniWindowScreenshot,
   captureMiniWindowSelectedWindow,
+  finalizeMiniWindowErrorBlocks,
   getMiniWindowMessageWithBlock,
   getMiniWindowPersistedTopic,
   getMiniWindowResetState,
@@ -68,8 +67,7 @@ import {
 const logger = loggerService.withContext('HomeWindow')
 
 const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
-  const { language, readClipboardAtStartup, windowStyle } = useSettings()
-  const { theme } = useTheme()
+  const { language, readClipboardAtStartup } = useSettings()
   const { t } = useTranslation()
 
   const [isFirstMessage, setIsFirstMessage] = useState(true)
@@ -165,7 +163,8 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
   }, [files])
 
   useEffect(() => {
-    void i18n.changeLanguage(language || defaultLanguage)
+    void i18n.changeLanguage(defaultLanguage)
+    setDayjsLocale()
   }, [language])
 
   const focusInput = useCallback(() => {
@@ -399,6 +398,7 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
       let persistQueue = Promise.resolve()
       let isCurrentRequest = () => false
       let finishCurrentRequest = () => undefined
+      let finalizePendingRequestOnFailure: ((isAborted: boolean) => void) | null = null
       let registeredAskId = ''
       let registeredAbortFn: (() => void) | undefined
       const queueMiniWindowPersist = (task: () => Promise<void>, label: string) => {
@@ -490,6 +490,7 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
         let blockId: string | null = null
         let thinkingBlockId: string | null = null
         let thinkingStartTime: number | null = null
+        let terminalHandled = false
 
         const resolveThinkingDuration = (duration?: number) => {
           if (typeof duration === 'number' && Number.isFinite(duration)) {
@@ -500,6 +501,38 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
           }
           return 0
         }
+
+        const finalizeAssistantFailure = (isAborted: boolean) => {
+          if (terminalHandled) return
+          terminalHandled = true
+          finalizeMiniWindowErrorBlocks({
+            thinkingBlockId,
+            blockId,
+            isAborted,
+            cancelBlockThrottle: cancelThrottledBlockUpdate,
+            readLatestBlock: (id) => store.getState().messageBlocks.entities[id],
+            resolveThinkingDuration,
+            applyBlockChanges: (id, changes) => {
+              store.dispatch(updateOneBlock({ id, changes }))
+              persistBlockUpdate(id, changes, 'error block')
+            }
+          })
+          thinkingStartTime = null
+          thinkingBlockId = null
+          blockId = null
+          const nextStatus = isAborted ? AssistantMessageStatus.PAUSED : AssistantMessageStatus.ERROR
+          store.dispatch(
+            newMessagesActions.updateMessage({
+              topicId,
+              messageId: assistantMessage.id,
+              updates: {
+                status: nextStatus
+              }
+            })
+          )
+          persistAssistantMessageUpdate({ status: nextStatus }, 'assistant error status')
+        }
+        finalizePendingRequestOnFailure = finalizeAssistantFailure
 
         setIsLoading(true)
         setIsOutputted(false)
@@ -642,44 +675,19 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
                 }
                 break
               case ChunkType.ERROR: {
+                if (terminalHandled) break
                 //stop the thinking timer
                 const isAborted = isAbortError(chunk.error)
-                const possibleBlockId = thinkingBlockId || blockId
-                if (possibleBlockId) {
-                  store.dispatch(
-                    updateOneBlock({
-                      id: possibleBlockId,
-                      changes: {
-                        status: isAborted ? MessageBlockStatus.PAUSED : MessageBlockStatus.ERROR
-                      }
-                    })
-                  )
-                  persistBlockUpdate(
-                    possibleBlockId,
-                    { status: isAborted ? MessageBlockStatus.PAUSED : MessageBlockStatus.ERROR },
-                    'error block'
-                  )
-                }
-                const nextStatus = isAborted ? AssistantMessageStatus.PAUSED : AssistantMessageStatus.ERROR
-                store.dispatch(
-                  newMessagesActions.updateMessage({
-                    topicId,
-                    messageId: assistantMessage.id,
-                    updates: {
-                      status: nextStatus
-                    }
-                  })
-                )
-                persistAssistantMessageUpdate({ status: nextStatus }, 'assistant error status')
+                finalizeAssistantFailure(isAborted)
                 if (!isAborted) {
                   throw new Error(chunk.error?.message || String(chunk.error || ''))
                 }
-                thinkingStartTime = null
-                thinkingBlockId = null
                 finishCurrentRequest()
                 break
               }
               case ChunkType.BLOCK_COMPLETE:
+                if (terminalHandled) break
+                terminalHandled = true
                 finishCurrentRequest()
                 store.dispatch(
                   newMessagesActions.updateMessage({
@@ -695,7 +703,9 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
         })
         await persistQueue
       } catch (err) {
-        if (isAbortError(err)) {
+        const aborted = isAbortError(err)
+        finalizePendingRequestOnFailure?.(aborted)
+        if (aborted) {
           finishCurrentRequest()
           return
         }
@@ -790,14 +800,7 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
     }
   }, [currentTopic, t])
 
-  const backgroundColor = useMemo(() => {
-    // ONLY MAC: when transparent style + light theme: use vibrancy effect
-    // because the dark style under mac's vibrancy effect has not been implemented
-    if (isMac && windowStyle === 'transparent' && theme === ThemeMode.light) {
-      return 'transparent'
-    }
-    return 'var(--color-background)'
-  }, [windowStyle, theme])
+  const backgroundColor = 'var(--color-background)'
 
   // Memoize placeholder text
   const inputPlaceholder = useMemo(() => {

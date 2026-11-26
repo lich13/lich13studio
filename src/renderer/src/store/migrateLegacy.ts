@@ -5,7 +5,7 @@ import {
   DEFAULT_TEMPERATURE,
   isMac
 } from '@renderer/config/constant'
-import { isFunctionCallingModel, isNotSupportTextDeltaModel, qwenModel, SYSTEM_MODELS } from '@renderer/config/models'
+import { isFunctionCallingModel, isNotSupportTextDeltaModel } from '@renderer/config/models'
 import { TRANSLATE_PROMPT } from '@renderer/config/prompts'
 import { SYSTEM_PROVIDERS } from '@renderer/config/providers'
 import { DEFAULT_SIDEBAR_ICONS } from '@renderer/config/sidebar'
@@ -32,7 +32,7 @@ import { API_SERVER_DEFAULTS, defaultByPassRules, UpgradeChannel } from '@shared
 import isEmpty from 'lodash/isEmpty'
 
 import { DEFAULT_TOOL_ORDER, DEFAULT_TOOL_ORDER_BY_SCOPE } from './inputTools'
-import { initialState as llmInitialState, moveProvider } from './llm'
+import { moveProvider } from './llm'
 import { initialState as settingsInitialState } from './settings'
 import { initialState as shortcutsInitialState } from './shortcuts'
 
@@ -198,24 +198,7 @@ export const legacyMigrateConfig: Record<string, (state: RootState) => RootState
       return state
     }
   },
-  '9': (state: RootState) => {
-    try {
-      return {
-        ...state,
-        llm: {
-          ...state.llm,
-          providers: state.llm.providers.map((provider) => {
-            if (provider.id === 'zhipu' && provider.models[0] && provider.models[0].id === 'llama3-70b-8192') {
-              provider.models = SYSTEM_MODELS.zhipu
-            }
-            return provider
-          })
-        }
-      }
-    } catch (error) {
-      return state
-    }
-  },
+  '9': (state: RootState) => state,
   '10': (state: RootState) => {
     try {
       addProvider(state, 'baichuan')
@@ -907,10 +890,6 @@ export const legacyMigrateConfig: Record<string, (state: RootState) => RootState
       addProvider(state, 'infini')
       addProvider(state, 'dmxapi')
 
-      state.llm.settings.lmstudio = {
-        keepAliveTime: 5
-      }
-
       return state
     } catch (error) {
       return state
@@ -1215,17 +1194,7 @@ export const legacyMigrateConfig: Record<string, (state: RootState) => RootState
       return state
     }
   },
-  '95': (state: RootState) => {
-    try {
-      const qiniuProvider = state.llm.providers.find((provider) => provider.id === 'qiniu')
-      if (qiniuProvider && isEmpty(qiniuProvider.models)) {
-        qiniuProvider.models = SYSTEM_MODELS.qiniu
-      }
-      return state
-    } catch (error) {
-      return state
-    }
-  },
+  '95': (state: RootState) => state,
   '96': (state: RootState) => {
     try {
       // @ts-ignore eslint-disable-next-line
@@ -1476,12 +1445,6 @@ export const legacyMigrateConfig: Record<string, (state: RootState) => RootState
   '111': (state: RootState) => {
     try {
       addSelectionAction(state, 'quote')
-      if (
-        state.llm.translateModel.provider === 'silicon' &&
-        state.llm.translateModel.id === 'meta-llama/Llama-3.3-70B-Instruct'
-      ) {
-        state.llm.translateModel = SYSTEM_MODELS.defaultModel[2]
-      }
 
       // add selection_assistant_toggle and selection_assistant_select_text shortcuts after mini_window
       addShortcuts(state, ['selection_assistant_toggle', 'selection_assistant_select_text'], 'mini_window')
@@ -1509,9 +1472,6 @@ export const legacyMigrateConfig: Record<string, (state: RootState) => RootState
   '113': (state: RootState) => {
     try {
       addProvider(state, 'vertexai')
-      if (!state.llm.settings.vertexai) {
-        state.llm.settings.vertexai = llmInitialState.settings.vertexai
-      }
       updateProvider(state, 'gemini', {
         isVertex: false
       })
@@ -1589,12 +1549,7 @@ export const legacyMigrateConfig: Record<string, (state: RootState) => RootState
       ]
       if (ppioProvider) {
         updateProvider(state, 'ppio', {
-          models: [
-            ...ppioProvider.models.filter((model) => !modelsToRemove.includes(model.id)),
-            ...SYSTEM_MODELS.ppio.filter(
-              (systemModel) => !ppioProvider.models.some((existingModel) => existingModel.id === systemModel.id)
-            )
-          ],
+          models: ppioProvider.models.filter((model) => !modelsToRemove.includes(model.id)),
           apiHost: 'https://api.ppinfra.com/v3/openai/'
         })
       }
@@ -1752,11 +1707,6 @@ export const legacyMigrateConfig: Record<string, (state: RootState) => RootState
         })
       })
 
-      const lanyunProvider = state.llm.providers.find((provider) => provider.id === 'lanyun')
-      if (lanyunProvider && lanyunProvider.models.length === 0) {
-        updateProvider(state, 'lanyun', { models: SYSTEM_MODELS.lanyun })
-      }
-
       return state
     } catch (error) {
       logger.error('migrate 123 error', error as Error)
@@ -1800,11 +1750,6 @@ export const legacyMigrateConfig: Record<string, (state: RootState) => RootState
       }
 
       addProvider(state, 'aws-bedrock')
-
-      // 初始化 awsBedrock 设置
-      if (!state.llm.settings.awsBedrock) {
-        state.llm.settings.awsBedrock = llmInitialState.settings.awsBedrock
-      }
 
       return state
     } catch (error) {
@@ -2131,16 +2076,6 @@ export const legacyMigrateConfig: Record<string, (state: RootState) => RootState
       const zhipuProvider = state.llm.providers.find((p) => p.id === 'zhipu')
 
       if (zhipuProvider) {
-        // Update zhipu model list
-        if (!zhipuProvider.enabled) {
-          zhipuProvider.models = SYSTEM_MODELS.zhipu
-        }
-
-        // Update zhipu model list
-        if (zhipuProvider.models.length === 0) {
-          zhipuProvider.models = SYSTEM_MODELS.zhipu
-        }
-
         // Update default painting provider to zhipu
         state.settings.defaultPaintingProvider = 'zhipu'
       }
@@ -2503,19 +2438,6 @@ export const legacyMigrateConfig: Record<string, (state: RootState) => RootState
     try {
       // Ensure aws-bedrock provider exists
       addProvider(state, 'aws-bedrock')
-
-      // Ensure awsBedrock settings exist and have all required fields
-      if (!state.llm.settings.awsBedrock) {
-        state.llm.settings.awsBedrock = llmInitialState.settings.awsBedrock
-      } else {
-        // For users who have awsBedrock but missing new fields (authType and apiKey)
-        if (!state.llm.settings.awsBedrock.authType) {
-          state.llm.settings.awsBedrock.authType = 'iam'
-        }
-        if (state.llm.settings.awsBedrock.apiKey === undefined) {
-          state.llm.settings.awsBedrock.apiKey = ''
-        }
-      }
       return state
     } catch (error) {
       logger.error('migrate 171 error', error as Error)
@@ -2938,24 +2860,6 @@ export const legacyMigrateConfig: Record<string, (state: RootState) => RootState
   },
   '194': (state: RootState) => {
     try {
-      const GLM_4_5_FLASH_MODEL = 'glm-4.5-flash'
-      if (state.llm.defaultModel?.provider === 'cherryai' && state.llm.defaultModel?.id === GLM_4_5_FLASH_MODEL) {
-        state.llm.defaultModel = qwenModel
-      }
-      if (state.llm.quickModel?.provider === 'cherryai' && state.llm.quickModel?.id === GLM_4_5_FLASH_MODEL) {
-        state.llm.quickModel = qwenModel
-      }
-      if (state.llm.translateModel?.provider === 'cherryai' && state.llm.translateModel?.id === GLM_4_5_FLASH_MODEL) {
-        state.llm.translateModel = qwenModel
-      }
-      state.assistants.assistants.forEach((assistant) => {
-        if (assistant.model?.provider === 'cherryai' && assistant.model?.id === GLM_4_5_FLASH_MODEL) {
-          assistant.model = qwenModel
-        }
-        if (assistant.defaultModel?.provider === 'cherryai' && assistant.defaultModel?.id === GLM_4_5_FLASH_MODEL) {
-          assistant.defaultModel = qwenModel
-        }
-      })
       // Initialize mini app region filter setting
       state.settings.minAppRegion ??= 'auto'
       return state
@@ -3010,7 +2914,6 @@ export const legacyMigrateConfig: Record<string, (state: RootState) => RootState
     try {
       state.llm.providers.forEach((provider) => {
         if (provider.id === 'minimax') {
-          provider.models = SYSTEM_MODELS['minimax']
           provider.apiHost = 'https://api.minimaxi.com/v1/'
         }
       })
@@ -3107,32 +3010,7 @@ export const legacyMigrateConfig: Record<string, (state: RootState) => RootState
       return state
     }
   },
-  '204': (state: RootState) => {
-    try {
-      if (state.llm.defaultModel?.provider === 'cherryai') {
-        state.llm.defaultModel = qwenModel
-      }
-      if (state.llm.quickModel?.provider === 'cherryai') {
-        state.llm.quickModel = qwenModel
-      }
-      if (state.llm.translateModel?.provider === 'cherryai') {
-        state.llm.translateModel = qwenModel
-      }
-      state.assistants.assistants.forEach((assistant) => {
-        if (assistant.model?.provider === 'cherryai') {
-          assistant.model = qwenModel
-        }
-        if (assistant.defaultModel?.provider === 'cherryai') {
-          assistant.defaultModel = qwenModel
-        }
-      })
-      logger.info('migrate 204 success')
-      return state
-    } catch (error) {
-      logger.error('migrate 204 error', error as Error)
-      return state
-    }
-  },
+  '204': (state: RootState) => state,
   '205': (state: RootState) => {
     try {
       localStorage.setItem('onboarding-completed', 'true')

@@ -33,7 +33,7 @@ function normalizeProvider<T extends Provider>(provider: T): T {
 
 export const selectProviders = createSelector([(state: RootState) => state.llm], resolveProviders)
 
-const selectEnabledProviders = createSelector(selectProviders, (providers) =>
+export const selectEnabledProviders = createSelector(selectProviders, (providers) =>
   providers.map(normalizeProvider).filter((p) => p.enabled)
 )
 
@@ -45,7 +45,7 @@ const selectUserProviders = createSelector(selectProviders, (providers) =>
   providers.filter((p) => !isSystemProvider(p)).map(normalizeProvider)
 )
 
-const selectAllProviders = createSelector(selectProviders, (providers) => providers.map(normalizeProvider))
+export const selectAllProviders = createSelector(selectProviders, (providers) => providers.map(normalizeProvider))
 
 export function useProviders() {
   const providers: Provider[] = useAppSelector(selectEnabledProviders)

@@ -4,6 +4,50 @@ import PQueue from 'p-queue'
 // Queue configuration - managed by topic
 const requestQueues: { [topicId: string]: PQueue } = {}
 
+const createManagedTopicQueue = (topicId: string, options = {}): PQueue => {
+  const queue = new PQueue(options)
+  const rawAdd = queue.add.bind(queue)
+  const rawAddAll = queue.addAll.bind(queue)
+
+  const resolveActiveQueue = (): PQueue => {
+    const active = requestQueues[topicId]
+    if (active && active !== queue) {
+      return active
+    }
+    if (!active) {
+      requestQueues[topicId] = queue
+    }
+    return queue
+  }
+
+  queue.add = ((fn: Parameters<PQueue['add']>[0], addOptions?: Parameters<PQueue['add']>[1]) => {
+    const target = resolveActiveQueue()
+    if (target !== queue) {
+      return target.add(fn, addOptions)
+    }
+    return rawAdd(fn, addOptions)
+  }) as PQueue['add']
+
+  queue.addAll = ((fns: Parameters<PQueue['addAll']>[0], addOptions?: Parameters<PQueue['addAll']>[1]) => {
+    if (fns.length === 0) {
+      return Promise.resolve([])
+    }
+    const target = resolveActiveQueue()
+    if (target !== queue) {
+      return target.addAll(fns, addOptions)
+    }
+    return rawAddAll(fns, addOptions)
+  }) as PQueue['addAll']
+
+  queue.on('idle', () => {
+    if (requestQueues[topicId] === queue && queue.size === 0 && queue.pending === 0) {
+      delete requestQueues[topicId]
+    }
+  })
+
+  return queue
+}
+
 /**
  * Get or create a queue for a specific topic
  * @param topicId The ID of the topic
@@ -12,7 +56,7 @@ const requestQueues: { [topicId: string]: PQueue } = {}
  */
 export const getTopicQueue = (topicId: string, options = {}): PQueue => {
   if (!requestQueues[topicId]) {
-    requestQueues[topicId] = new PQueue(options)
+    requestQueues[topicId] = createManagedTopicQueue(topicId, options)
   }
   return requestQueues[topicId]
 }
@@ -66,7 +110,13 @@ export const getTopicPendingRequestCount = (topicId: string): number => {
  * @param topicId The ID of the topic
  */
 export const waitForTopicQueue = async (topicId: string): Promise<void> => {
-  if (requestQueues[topicId]) {
-    await requestQueues[topicId].onIdle()
+  while (hasTopicPendingRequests(topicId)) {
+    const active = requestQueues[topicId]
+    if (!active) break
+    await active.onIdle()
+  }
+  const idleQueue = requestQueues[topicId]
+  if (idleQueue && idleQueue.size === 0 && idleQueue.pending === 0) {
+    delete requestQueues[topicId]
   }
 }

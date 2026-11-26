@@ -1,4 +1,3 @@
-import { HolderOutlined } from '@ant-design/icons'
 import { loggerService } from '@logger'
 import type { QuickPanelTriggerInfo } from '@renderer/components/QuickPanel'
 import { QuickPanelReservedSymbol, QuickPanelView, useQuickPanel } from '@renderer/components/QuickPanel'
@@ -15,6 +14,7 @@ import { formatQuotedText } from '@renderer/utils/formats'
 import { isComposingInputEvent, isSendMessageKeyPressed } from '@renderer/utils/input'
 import TextArea from 'antd/es/input/TextArea'
 import type { TextAreaRef } from 'antd/lib/input/TextArea'
+import { GripHorizontal } from 'lucide-react'
 import type { CSSProperties, FC } from 'react'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -551,55 +551,57 @@ export const InputbarCore: FC<InputbarCoreProps> = ({
         onDrop={handleDrop}
         className={classNames('inputbar')}>
         {pinnedContent}
-        {quickPanelElement}
-        <InputBarContainer
-          id="inputbar"
-          className={classNames('inputbar-container', isDragging && 'file-dragging', isExpanded && 'expanded')}>
-          {!runtimeCapabilities.android && (
-            <DragHandle onMouseDown={handleDragStart}>
-              <HolderOutlined style={{ fontSize: 12 }} />
-            </DragHandle>
-          )}
-          {files.length > 0 && (
-            <AttachmentPreview files={files} setFiles={setFiles} onAttachmentContextMenu={appendTxtContentToInput} />
-          )}
-          {topContent}
+        <InputBarAnchor className="inputbar-anchor">
+          {quickPanelElement}
+          <InputBarContainer
+            id="inputbar"
+            className={classNames('inputbar-container', isDragging && 'file-dragging', isExpanded && 'expanded')}>
+            {!runtimeCapabilities.android && (
+              <DragHandle onMouseDown={handleDragStart}>
+                <GripHorizontal size={14} />
+              </DragHandle>
+            )}
+            {files.length > 0 && (
+              <AttachmentPreview files={files} setFiles={setFiles} onAttachmentContextMenu={appendTxtContentToInput} />
+            )}
+            {topContent}
 
-          <Textarea
-            ref={textareaRef}
-            value={text}
-            onChange={handleTextareaChange}
-            onKeyDown={handleKeyDown}
-            onPaste={(e) => handlePaste(e.nativeEvent)}
-            onFocus={handleFocus}
-            onBlur={() => setInputFocus(false)}
-            placeholder={placeholder}
-            autoFocus={!runtimeCapabilities.android}
-            variant="borderless"
-            spellCheck={enableSpellCheck}
-            rows={2}
-            autoSize={height ? false : { minRows: 2, maxRows: 20 }}
-            styles={{ textarea: TextareaStyle }}
-            style={{
-              fontSize,
-              height: height,
-              minHeight: '30px'
-            }}
-            disabled={searching}
-            onClick={() => {
-              searching && dispatch(setSearching(false))
-              quickPanel.close()
-            }}
-          />
+            <Textarea
+              ref={textareaRef}
+              value={text}
+              onChange={handleTextareaChange}
+              onKeyDown={handleKeyDown}
+              onPaste={(e) => handlePaste(e.nativeEvent)}
+              onFocus={handleFocus}
+              onBlur={() => setInputFocus(false)}
+              placeholder={placeholder}
+              autoFocus={!runtimeCapabilities.android}
+              variant="borderless"
+              spellCheck={enableSpellCheck}
+              rows={2}
+              autoSize={height ? false : { minRows: 2, maxRows: 20 }}
+              styles={{ textarea: TextareaStyle }}
+              style={{
+                fontSize,
+                height: height,
+                minHeight: '30px'
+              }}
+              disabled={searching}
+              onClick={() => {
+                searching && dispatch(setSearching(false))
+                quickPanel.close()
+              }}
+            />
 
-          <BottomBar>
-            <LeftSection>{leftToolbar}</LeftSection>
-            <RightSection>
-              {rightToolbar}
-              {rightSectionExtras}
-            </RightSection>
-          </BottomBar>
-        </InputBarContainer>
+            <BottomBar>
+              <LeftSection>{leftToolbar}</LeftSection>
+              <RightSection>
+                {rightToolbar}
+                {rightSectionExtras}
+              </RightSection>
+            </BottomBar>
+          </InputBarContainer>
+        </InputBarAnchor>
       </Container>
     </NarrowLayout>
   )
@@ -624,11 +626,11 @@ const DragHandle = styled.div`
   &:hover {
     opacity: 1;
   }
+`
 
-  .anticon {
-    transform: rotate(90deg);
-    font-size: 14px;
-  }
+const InputBarAnchor = styled.div`
+  position: relative;
+  width: 100%;
 `
 
 const Container = styled.div`

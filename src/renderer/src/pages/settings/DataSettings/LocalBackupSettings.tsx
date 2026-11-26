@@ -1,4 +1,3 @@
-import { DeleteOutlined, FolderOpenOutlined, SaveOutlined, SyncOutlined, WarningOutlined } from '@ant-design/icons'
 import { loggerService } from '@logger'
 import { HStack } from '@renderer/components/Layout'
 import { LocalBackupManager } from '@renderer/components/LocalBackupManager'
@@ -19,6 +18,7 @@ import {
 import type { AppInfo } from '@renderer/types'
 import { Button, Input, Switch, Tooltip } from 'antd'
 import dayjs from 'dayjs'
+import { AlertTriangle, FolderOpen, RefreshCw, Save, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -174,10 +174,10 @@ const LocalBackupSettings: React.FC = () => {
 
     return (
       <HStack gap="5px" alignItems="center">
-        {localBackupSync.syncing && <SyncOutlined spin />}
+        {localBackupSync.syncing && <RefreshCw size={14} className="animate-spin" />}
         {!localBackupSync.syncing && localBackupSync.lastSyncError && (
           <Tooltip title={`${t('settings.data.local.syncError')}: ${localBackupSync.lastSyncError}`}>
-            <WarningOutlined style={{ color: 'var(--color-error)' }} />
+            <AlertTriangle size={14} style={{ color: 'var(--color-error)' }} />
           </Tooltip>
         )}
         {localBackupSync.lastSyncTime && (
@@ -210,11 +210,11 @@ const LocalBackupSettings: React.FC = () => {
           <HStack gap="5px">
             <Button
               onClick={() => void createPortableBackup(localBackupSkipBackupFile)}
-              icon={<SaveOutlined />}
+              icon={<Save size={14} />}
               loading={backuping}>
               {t('settings.data.local.backup.button')}
             </Button>
-            <Button onClick={() => void restore()} icon={<FolderOpenOutlined />}>
+            <Button onClick={() => void restore()} icon={<FolderOpen size={14} />}>
               {t('settings.data.local.restore.button')}
             </Button>
           </HStack>
@@ -242,10 +242,10 @@ const LocalBackupSettings: React.FC = () => {
             placeholder={t('settings.data.local.directory.placeholder')}
             style={{ minWidth: 200, maxWidth: 400, flex: 1 }}
           />
-          <Button icon={<FolderOpenOutlined />} onClick={handleBrowseDirectory}>
+          <Button icon={<FolderOpen size={14} />} onClick={handleBrowseDirectory}>
             {t('common.browse')}
           </Button>
-          <Button icon={<DeleteOutlined />} onClick={handleClearDirectory} disabled={!localBackupDir} danger>
+          <Button icon={<Trash2 size={14} />} onClick={handleClearDirectory} disabled={!localBackupDir} danger>
             {t('common.clear')}
           </Button>
         </HStack>
@@ -254,10 +254,10 @@ const LocalBackupSettings: React.FC = () => {
       <SettingRow>
         <SettingRowTitle>{t('settings.general.backup.title')}</SettingRowTitle>
         <HStack gap="5px" justifyContent="space-between">
-          <Button onClick={showBackupModal} icon={<SaveOutlined />} loading={backuping} disabled={!localBackupDir}>
+          <Button onClick={showBackupModal} icon={<Save size={14} />} loading={backuping} disabled={!localBackupDir}>
             {t('settings.data.local.backup.button')}
           </Button>
-          <Button onClick={showBackupManager} icon={<FolderOpenOutlined />} disabled={!localBackupDir}>
+          <Button onClick={showBackupManager} icon={<FolderOpen size={14} />} disabled={!localBackupDir}>
             {t('settings.data.local.restore.button')}
           </Button>
         </HStack>

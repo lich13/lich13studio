@@ -1,12 +1,10 @@
-import { CodeOutlined } from '@ant-design/icons'
 import { loggerService } from '@logger'
 import { extractHtmlTitle, getFileNameFromHtmlTitle } from '@renderer/utils/formats'
 import { Button } from 'antd'
-import { DownloadIcon, Globe, LinkIcon, Sparkles } from 'lucide-react'
+import { Code, DownloadIcon, Globe, LinkIcon, Loader2, Sparkles } from 'lucide-react'
 import type { FC } from 'react'
 import { lazy, Suspense, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ClipLoader } from 'react-spinners'
 import styled from 'styled-components'
 
 const HtmlArtifactsPopup = lazy(() => import('./HtmlArtifactsPopup'))
@@ -73,21 +71,21 @@ const HtmlArtifactsCard: FC<Props> = ({ html, onSave, isStreaming = false }) => 
         <Content>
           {isStreaming && !hasContent ? (
             <GeneratingContainer>
-              <ClipLoader size={18} color="var(--color-primary)" />
+              <Loader2 size={18} className="animate-spin" style={{ color: 'var(--color-primary)' }} />
               <GeneratingText>{t('html_artifacts.generating', 'Generating content...')}</GeneratingText>
             </GeneratingContainer>
           ) : isStreaming && hasContent ? (
             <>
               <CodeSnippetPreview>{extractTailPreview(htmlContent)}</CodeSnippetPreview>
               <ButtonContainer>
-                <Button icon={<CodeOutlined />} onClick={openPopup} type="primary" size="small">
+                <Button icon={<Code size={14} />} onClick={openPopup} type="primary" size="small">
                   {t('chat.artifacts.button.preview')}
                 </Button>
               </ButtonContainer>
             </>
           ) : (
             <ButtonContainer>
-              <Button icon={<CodeOutlined />} onClick={openPopup} type="text" size="small" disabled={!hasContent}>
+              <Button icon={<Code size={14} />} onClick={openPopup} type="text" size="small" disabled={!hasContent}>
                 {t('chat.artifacts.button.preview')}
               </Button>
               <Button

@@ -47,10 +47,9 @@ export const createThinkingCallbacks = (deps: ThinkingCallbacksDependencies) => 
     }),
 
     onThinkingStart: async () => {
-      // Set the start time immediately before any async operations to prevent a race condition
-      // where onThinkingChunk fires while handleBlockTransition is still awaiting, causing
-      // thinking_millsec to be computed as `performance.now() - 0` (a huge value).
-      thinkingSegmentStartedAt = performance.now()
+      if (thinkingSegmentStartedAt === 0) {
+        thinkingSegmentStartedAt = performance.now()
+      }
 
       if (blockManager.hasInitialPlaceholder) {
         const changes: Partial<MessageBlock> = {
@@ -82,7 +81,7 @@ export const createThinkingCallbacks = (deps: ThinkingCallbacksDependencies) => 
       }
     },
 
-    onThinkingChunk: async (text: string) => {
+    onThinkingChunk: (text: string) => {
       if (thinkingBlockId) {
         const combinedContent = joinThinkingContent(completedThinkingContent, text)
         const blockChanges: Partial<MessageBlock> = {

@@ -1,17 +1,10 @@
-import {
-  ArrowDownOutlined,
-  ArrowUpOutlined,
-  CloseOutlined,
-  HistoryOutlined,
-  VerticalAlignBottomOutlined,
-  VerticalAlignTopOutlined
-} from '@ant-design/icons'
 import { useSettings } from '@renderer/hooks/useSettings'
 import { useTimer } from '@renderer/hooks/useTimer'
 import type { RootState } from '@renderer/store'
 // import { selectCurrentTopicId } from '@renderer/store/newMessage'
 import { scrollIntoView } from '@renderer/utils/dom'
 import { Button, Drawer, Tooltip } from 'antd'
+import { ArrowDown, ArrowDownToLine, ArrowUp, ArrowUpToLine, History, X } from 'lucide-react'
 import type { FC } from 'react'
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -344,7 +337,7 @@ const ChatNavigation: FC<ChatNavigationProps> = ({ containerId }) => {
           <Tooltip title={t('chat.navigation.close')} placement="left" mouseEnterDelay={0.5}>
             <NavigationButton
               type="text"
-              icon={<CloseOutlined />}
+              icon={<X size={14} />}
               onClick={handleCloseChatNavigation}
               aria-label={t('chat.navigation.close')}
             />
@@ -353,7 +346,7 @@ const ChatNavigation: FC<ChatNavigationProps> = ({ containerId }) => {
           <Tooltip title={t('chat.navigation.top')} placement="left" mouseEnterDelay={0.5}>
             <NavigationButton
               type="text"
-              icon={<VerticalAlignTopOutlined />}
+              icon={<ArrowUpToLine size={14} />}
               onClick={handleScrollToTop}
               aria-label={t('chat.navigation.top')}
             />
@@ -362,7 +355,7 @@ const ChatNavigation: FC<ChatNavigationProps> = ({ containerId }) => {
           <Tooltip title={t('chat.navigation.prev')} placement="left" mouseEnterDelay={0.5}>
             <NavigationButton
               type="text"
-              icon={<ArrowUpOutlined />}
+              icon={<ArrowUp size={14} />}
               onClick={handlePrevMessage}
               aria-label={t('chat.navigation.prev')}
             />
@@ -371,7 +364,7 @@ const ChatNavigation: FC<ChatNavigationProps> = ({ containerId }) => {
           <Tooltip title={t('chat.navigation.next')} placement="left" mouseEnterDelay={0.5}>
             <NavigationButton
               type="text"
-              icon={<ArrowDownOutlined />}
+              icon={<ArrowDown size={14} />}
               onClick={handleNextMessage}
               aria-label={t('chat.navigation.next')}
             />
@@ -380,7 +373,7 @@ const ChatNavigation: FC<ChatNavigationProps> = ({ containerId }) => {
           <Tooltip title={t('chat.navigation.bottom')} placement="left" mouseEnterDelay={0.5}>
             <NavigationButton
               type="text"
-              icon={<VerticalAlignBottomOutlined />}
+              icon={<ArrowDownToLine size={14} />}
               onClick={handleScrollToBottom}
               aria-label={t('chat.navigation.bottom')}
             />
@@ -389,7 +382,7 @@ const ChatNavigation: FC<ChatNavigationProps> = ({ containerId }) => {
           <Tooltip title={t('chat.navigation.history')} placement="left" mouseEnterDelay={0.5}>
             <NavigationButton
               type="text"
-              icon={<HistoryOutlined />}
+              icon={<History size={14} />}
               onClick={handleChatHistoryClick}
               aria-label={t('chat.navigation.history')}
             />
@@ -470,10 +463,6 @@ const NavigationButton = styled(Button)`
   &:hover {
     background-color: var(--color-hover);
     color: var(--color-primary);
-  }
-
-  .anticon {
-    font-size: 14px;
   }
 `
 

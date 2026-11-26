@@ -107,17 +107,6 @@ export const getStoreSetting = <K extends keyof SettingsState>(key: K): Settings
   return store.getState().settings[key]
 }
 
-export const useEnableDeveloperMode = () => {
-  return {
-    enableDeveloperMode: false,
-    setEnableDeveloperMode: () => undefined
-  }
-}
-
-export const getEnableDeveloperMode = () => {
-  return false
-}
-
 export const useNavbarPosition = () => {
   const navbarPosition = useAppSelector((state) => state.settings.navbarPosition)
   const dispatch = useAppDispatch()

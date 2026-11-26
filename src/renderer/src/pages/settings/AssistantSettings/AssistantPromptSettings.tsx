@@ -1,6 +1,5 @@
 import 'emoji-picker-element'
 
-import { CloseCircleFilled } from '@ant-design/icons'
 import CodeEditor from '@renderer/components/CodeEditor'
 import EmojiPicker from '@renderer/components/EmojiPicker'
 import { Box, HSpaceBetweenStack, HStack } from '@renderer/components/Layout'
@@ -9,7 +8,7 @@ import { estimateTextTokens } from '@renderer/services/TokenService'
 import type { Assistant, AssistantSettings } from '@renderer/types'
 import { getLeadingEmoji } from '@renderer/utils'
 import { Button, Input, Popover } from 'antd'
-import { Edit, HelpCircle, Save } from 'lucide-react'
+import { CircleX, Edit, HelpCircle, Save } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ReactMarkdown from 'react-markdown'
@@ -79,7 +78,8 @@ const AssistantPromptSettings: React.FC<Props> = ({ assistant, updateAssistant }
               {emoji}
             </Button>
             {emoji && (
-              <CloseCircleFilled
+              <CircleX
+                size={16}
                 className="delete-icon"
                 onClick={(e) => {
                   e.stopPropagation()
@@ -90,7 +90,6 @@ const AssistantPromptSettings: React.FC<Props> = ({ assistant, updateAssistant }
                   position: 'absolute',
                   top: '-8px',
                   right: '-8px',
-                  fontSize: '16px',
                   color: '#ff4d4f',
                   cursor: 'pointer'
                 }}

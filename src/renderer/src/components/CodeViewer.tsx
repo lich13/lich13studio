@@ -2,10 +2,10 @@ import { loggerService } from '@logger'
 import { useCodeStyle } from '@renderer/context/CodeStyleProvider'
 import { useCodeHighlight } from '@renderer/hooks/useCodeHighlight'
 import { useSettings } from '@renderer/hooks/useSettings'
-import { uuid } from '@renderer/utils'
 import { getReactStyleFromToken } from '@renderer/utils/shiki'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import debounce from 'lodash/debounce'
+import throttle from 'lodash/throttle'
 import React, { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import type { ThemedToken } from 'shiki/core'
 import styled from 'styled-components'
@@ -66,6 +66,10 @@ interface CodeViewerProps {
    * Callback to request expansion when multi-line selection is detected.
    */
   onRequestExpand?: () => void
+  /**
+   * Whether the parent message block is still streaming.
+   */
+  isStreaming?: boolean
 }
 
 /**
@@ -85,13 +89,14 @@ const CodeViewer = ({
   className,
   expanded = true,
   wrapped = true,
-  onRequestExpand
+  onRequestExpand,
+  isStreaming = false
 }: CodeViewerProps) => {
   const { codeShowLineNumbers: _lineNumbers, fontSize: _fontSize } = useSettings()
-  const { getShikiPreProperties, isShikiThemeDark } = useCodeStyle()
+  const { activeShikiTheme, getShikiPreProperties, isShikiThemeDark } = useCodeStyle()
   const shikiThemeRef = useRef<HTMLDivElement>(null)
   const scrollerRef = useRef<HTMLDivElement>(null)
-  const callerId = useRef(`${Date.now()}-${uuid()}`).current
+  const callerId = useRef(`${Date.now()}-${crypto.randomUUID()}`).current
   const savedSelectionRef = useRef<SavedSelection | null>(null)
   // Ensure the active selection actually belongs to this CodeViewer instance
   const selectionBelongsToViewer = useCallback((sel: Selection | null) => {
@@ -125,9 +130,9 @@ const CodeViewer = ({
         // 滚动条适应 shiki 主题变化而非应用主题
         shikiTheme.classList.add(isShikiThemeDark ? 'shiki-dark' : 'shiki-light')
 
-        if (properties.style) {
-          shikiTheme.style.cssText += `${properties.style}`
-        }
+        const heightRule =
+          !expanded && height !== undefined ? `height: ${typeof height === 'number' ? `${height}px` : height}` : ''
+        shikiTheme.style.cssText = [heightRule, properties.style || ''].filter(Boolean).join('; ')
         // FIXME: 临时解决 SelectionToolbar 无法弹出，走剪贴板回退的问题
         // shikiTheme.tabIndex = properties.tabindex
       }
@@ -135,7 +140,7 @@ const CodeViewer = ({
     return () => {
       mounted = false
     }
-  }, [language, getShikiPreProperties, isShikiThemeDark, className])
+  }, [language, getShikiPreProperties, isShikiThemeDark, className, expanded, height])
 
   // 保存当前选区的逻辑位置
   const saveSelection = useCallback((): SavedSelection | null => {
@@ -359,27 +364,50 @@ const CodeViewer = ({
     callerId
   })
 
-  // 防抖高亮提高流式响应的性能，数字大一点也不会影响用户体验
-  const debouncedHighlightLines = useMemo(() => debounce(highlightLines, 300), [highlightLines])
+  // 固定节流高亮，确保流式单行追加、行数增长与流结束均可靠触发高亮
+  const throttledHighlightLines = useMemo(
+    () =>
+      throttle(
+        (count?: number) => {
+          void highlightLines(count, false)
+        },
+        120,
+        { leading: true, trailing: true }
+      ),
+    [highlightLines]
+  )
 
   useEffect(() => {
     return () => {
-      debouncedHighlightLines.cancel()
+      throttledHighlightLines.cancel()
     }
-  }, [debouncedHighlightLines])
+  }, [throttledHighlightLines])
 
-  // 渐进式高亮
+  const visibleLineCount = expanded
+    ? rawLines.length
+    : virtualItems.length > 0
+      ? virtualItems[virtualItems.length - 1].index + 1
+      : 0
+
+  // 渐进式高亮（流结束或静态块立即冲刷并在全量高亮后释放 codeCache）
   useEffect(() => {
-    if (!shikiThemeRef.current || rawLines.length === 0) return
-    if (expanded) {
-      void debouncedHighlightLines(rawLines.length)
+    if (!shikiThemeRef.current || visibleLineCount <= 0) return
+    if (!isStreaming) {
+      throttledHighlightLines.cancel()
+      void highlightLines(visibleLineCount, expanded)
       return
     }
-    if (virtualItems.length > 0) {
-      const lastIndex = virtualItems[virtualItems.length - 1].index
-      void debouncedHighlightLines(lastIndex + 1)
-    }
-  }, [expanded, rawLines.length, virtualItems, debouncedHighlightLines])
+    throttledHighlightLines(visibleLineCount)
+  }, [
+    value,
+    language,
+    activeShikiTheme,
+    expanded,
+    visibleLineCount,
+    isStreaming,
+    highlightLines,
+    throttledHighlightLines
+  ])
 
   // Monitor selection changes only in collapsed state when onRequestExpand is provided
   const handleSelectionChange = useMemo(

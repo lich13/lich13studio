@@ -1,4 +1,3 @@
-import { ArrowsAltOutlined, ShrinkOutlined } from '@ant-design/icons'
 import ModelAvatar from '@renderer/components/Avatar/ModelAvatar'
 import { HStack } from '@renderer/components/Layout'
 import Scrollbar from '@renderer/components/Scrollbar'
@@ -9,6 +8,7 @@ import type { Model } from '@renderer/types'
 import { AssistantMessageStatus, type Message } from '@renderer/types/newMessage'
 import { lightbulbSoftVariants } from '@renderer/utils/motionVariants'
 import { Avatar, Segmented as AntdSegmented, Tooltip } from 'antd'
+import { Maximize2, Minimize2 } from 'lucide-react'
 import { motion } from 'motion/react'
 import type { FC } from 'react'
 import { memo, useCallback } from 'react'
@@ -82,7 +82,7 @@ const MessageGroupModelList: FC<MessageGroupModelListProps> = ({ messages, selec
         <DisplayModeToggle
           displayMode={foldDisplayMode}
           onClick={() => dispatch(setFoldDisplayMode(isCompact ? 'expanded' : 'compact'))}>
-          {isCompact ? <ArrowsAltOutlined /> : <ShrinkOutlined />}
+          {isCompact ? <Maximize2 size={14} /> : <Minimize2 size={14} />}
         </DisplayModeToggle>
       </Tooltip>
       <ModelsContainer $displayMode={foldDisplayMode}>

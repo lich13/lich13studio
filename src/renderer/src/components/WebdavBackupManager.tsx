@@ -1,9 +1,9 @@
-import { DeleteOutlined, ExclamationCircleOutlined, ReloadOutlined } from '@ant-design/icons'
 import { restoreFromWebdav } from '@renderer/services/BackupService'
 import type { BackupFile } from '@renderer/types'
 import { formatFileSize } from '@renderer/utils'
 import { Button, message, Modal, Table, Tooltip } from 'antd'
 import dayjs from 'dayjs'
+import { CircleAlert, RefreshCw, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -110,7 +110,7 @@ export function WebdavBackupManager({
 
     window.modal.confirm({
       title: t('settings.data.webdav.backup.manager.delete.confirm.title'),
-      icon: <ExclamationCircleOutlined />,
+      icon: <CircleAlert size={18} style={{ color: 'var(--color-status-warning)', marginRight: 8 }} />,
       content: t('settings.data.webdav.backup.manager.delete.confirm.multiple', { count: selectedRowKeys.length }),
       okText: t('common.confirm'),
       cancelText: t('common.cancel'),
@@ -150,7 +150,7 @@ export function WebdavBackupManager({
 
     window.modal.confirm({
       title: t('settings.data.webdav.backup.manager.delete.confirm.title'),
-      icon: <ExclamationCircleOutlined />,
+      icon: <CircleAlert size={18} style={{ color: 'var(--color-status-warning)', marginRight: 8 }} />,
       content: t('settings.data.webdav.backup.manager.delete.confirm.single', { fileName }),
       okText: t('common.confirm'),
       cancelText: t('common.cancel'),
@@ -184,7 +184,7 @@ export function WebdavBackupManager({
 
     window.modal.confirm({
       title: customLabels?.restoreConfirmTitle || t('settings.data.webdav.restore.confirm.title'),
-      icon: <ExclamationCircleOutlined />,
+      icon: <CircleAlert size={18} style={{ color: 'var(--color-status-warning)', marginRight: 8 }} />,
       content: customLabels?.restoreConfirmContent || t('settings.data.webdav.restore.confirm.content'),
       okText: t('common.confirm'),
       cancelText: t('common.cancel'),
@@ -269,13 +269,13 @@ export function WebdavBackupManager({
       centered
       transitionName="animation-move-down"
       footer={[
-        <Button key="refresh" icon={<ReloadOutlined />} onClick={fetchBackupFiles} disabled={loading}>
+        <Button key="refresh" icon={<RefreshCw size={14} />} onClick={fetchBackupFiles} disabled={loading}>
           {t('settings.data.webdav.backup.manager.refresh')}
         </Button>,
         <Button
           key="delete"
           danger
-          icon={<DeleteOutlined />}
+          icon={<Trash2 size={14} />}
           onClick={handleDeleteSelected}
           disabled={selectedRowKeys.length === 0 || deleting}
           loading={deleting}>

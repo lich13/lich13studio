@@ -1,4 +1,3 @@
-import { QuestionCircleOutlined } from '@ant-design/icons'
 import ModelAvatar from '@renderer/components/Avatar/ModelAvatar'
 import CodeEditor from '@renderer/components/CodeEditor'
 import EditableNumber from '@renderer/components/EditableNumber'
@@ -20,7 +19,7 @@ import type { Assistant, AssistantSettingCustomParameters, AssistantSettings, Mo
 import { modalConfirm } from '@renderer/utils'
 import { Button, Col, Divider, Input, InputNumber, Row, Select, Slider, Switch, Tooltip } from 'antd'
 import isNull from 'lodash/isNull'
-import { PlusIcon } from 'lucide-react'
+import { CircleHelp, PlusIcon } from 'lucide-react'
 import type { FC } from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -571,8 +570,7 @@ const Label = styled.p`
   flex-shrink: 0;
 `
 
-const QuestionIcon = styled(QuestionCircleOutlined)`
-  font-size: 12px;
+const QuestionIcon = styled(CircleHelp).attrs({ size: 13 })`
   cursor: pointer;
   color: var(--color-text-3);
 `

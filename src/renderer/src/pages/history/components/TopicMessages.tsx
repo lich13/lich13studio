@@ -1,4 +1,3 @@
-import { MessageOutlined } from '@ant-design/icons'
 import { HStack } from '@renderer/components/Layout'
 import SearchPopup from '@renderer/components/Popups/SearchPopup'
 import { MessageEditingProvider } from '@renderer/context/MessageEditingContext'
@@ -14,7 +13,7 @@ import type { Topic } from '@renderer/types'
 import { classNames, runAsyncFunction } from '@renderer/utils'
 import { Button, Divider, Empty } from 'antd'
 import { t } from 'i18next'
-import { Forward } from 'lucide-react'
+import { Forward, MessageSquare } from 'lucide-react'
 import type { FC } from 'react'
 import { useEffect, useState } from 'react'
 import styled from 'styled-components'
@@ -75,7 +74,7 @@ const TopicMessages: FC<Props> = ({ topic: _topic, ...props }) => {
           {isEmpty && <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />}
           {!isEmpty && (
             <HStack justifyContent="center">
-              <Button onClick={() => onContinueChat(topic)} icon={<MessageOutlined />}>
+              <Button onClick={() => onContinueChat(topic)} icon={<MessageSquare size={14} />}>
                 {t('history.continue_chat')}
               </Button>
             </HStack>

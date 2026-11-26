@@ -2,7 +2,7 @@ import { getStoreProviders } from '@renderer/hooks/useStore'
 import type { Model } from '@renderer/types'
 import pick from 'lodash/pick'
 
-import { getProviderName } from './ProviderService'
+import { getProviderName } from './AssistantService'
 
 export const getModelUniqId = (m?: Model) => {
   return m?.id ? JSON.stringify(pick(m, ['id', 'provider'])) : ''

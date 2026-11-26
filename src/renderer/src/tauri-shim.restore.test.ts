@@ -280,4 +280,122 @@ describe('Tauri portable backup restore', () => {
       restoreId: 'restore-previous-webdav-1'
     })
   })
+
+  it('caps disk attachment cache at 16 MiB while preserving >16 MiB memory:// encrypted backups through restore', async () => {
+    const oversizedDiskBytes = new Uint8Array(18 * 1024 * 1024)
+    mocks.invoke.mockImplementation(async (command: string) => {
+      if (command === 'read_attachment') return oversizedDiskBytes
+      return undefined
+    })
+
+    // Normal disk-backed attachment > 16 MiB is served on demand without staying in JS RAM cache
+    const readOnce = await (window as any).api.file.binaryImage('huge-disk-attachment.png')
+    expect(readOnce.data.byteLength).toBe(18 * 1024 * 1024)
+    expect(await (window as any).api.getCacheSize()).toBe('0 B')
+
+    // >16 MiB memory:// encrypted backup is exempted from cache rejection AND protected from disk eviction
+    const backupBytes = new Uint8Array(18 * 1024 * 1024)
+    backupBytes[0] = 0x4c
+    backupBytes[backupBytes.length - 1] = 0x9a
+    const memoryBackupPath = 'memory://backup-large/archive.lich13backup'
+    await (window as any).api.file.write(memoryBackupPath, backupBytes)
+
+    // Concurrent normal disk attachment reads must NOT evict the memory:// backup entry
+    mocks.invoke.mockImplementation(async (command: string) => {
+      if (command === 'read_attachment') return new Uint8Array(4 * 1024 * 1024)
+      return undefined
+    })
+    for (let idx = 0; idx < 6; idx += 1) {
+      await (window as any).api.file.binaryImage(`disk-item-${idx}.bin`)
+    }
+
+    mocks.decryptPortableBackup.mockResolvedValueOnce({
+      payload: '{"version":5,"localStorage":{"persist:cherry-studio":"{}"},"indexedDB":{}}',
+      restoreId: 'restore-previous-large-enc'
+    })
+
+    const restored = await (window as any).api.backup.restore(memoryBackupPath)
+    expect(restored).toEqual({
+      payload: '{"version":5,"localStorage":{"persist:cherry-studio":"{}"},"indexedDB":{}}',
+      restoreId: 'restore-previous-large-enc'
+    })
+    expect(mocks.decryptPortableBackup).toHaveBeenCalledTimes(1)
+    const passedBytes: Uint8Array = mocks.decryptPortableBackup.mock.calls[0][0]
+    expect(passedBytes.byteLength).toBe(18 * 1024 * 1024)
+    expect(passedBytes[0]).toBe(0x4c)
+    expect(passedBytes[passedBytes.length - 1]).toBe(0x9a)
+
+    // Restore finally-block immediately reclaims the >16 MiB memory:// backup entry without waiting for clearCache()
+    await expect((window as any).api.file.read(memoryBackupPath)).resolves.toBe('')
+
+    await (window as any).api.clearCache()
+    expect(await (window as any).api.getCacheSize()).toBe('0 B')
+  })
+
+  it('skips fileCache registration when picking inline-content .bak/.json backups via api.file.open across retries', async () => {
+    await (window as any).api.clearCache()
+    expect(await (window as any).api.getCacheSize()).toBe('0 B')
+
+    const originalCreateElement = document.createElement.bind(document)
+    let nextSelectedFile: { name: string; type: string; size: number; arrayBuffer: () => Promise<ArrayBuffer> } | null =
+      null
+
+    const createElementSpy = vi.spyOn(document, 'createElement').mockImplementation(((tagName: string) => {
+      const el = originalCreateElement(tagName)
+      if (tagName.toLowerCase() === 'input') {
+        Object.defineProperty(el, 'click', {
+          configurable: true,
+          value: () => {
+            Object.defineProperty(el, 'files', {
+              configurable: true,
+              value: nextSelectedFile ? [nextSelectedFile] : []
+            })
+            void (el as HTMLInputElement).onchange?.(new Event('change') as any)
+          }
+        })
+      }
+      return el
+    }) as typeof document.createElement)
+
+    try {
+      for (const fileName of ['corrupt-attempt-1.bak', 'corrupt-attempt-2.json']) {
+        const rawBytes = new TextEncoder().encode(`{not-valid-backup-${fileName}`)
+        nextSelectedFile = {
+          name: fileName,
+          type: 'application/octet-stream',
+          size: rawBytes.byteLength,
+          arrayBuffer: async () => rawBytes.slice().buffer
+        }
+        const picked = await (window as any).api.file.open({
+          filters: [{ name: 'Backup', extensions: ['bak', 'zip', 'json', 'lich13backup'] }]
+        })
+        expect(picked).toMatchObject({
+          fileName,
+          filePath: expect.stringMatching(/^memory:\/\/backup-/),
+          size: rawBytes.byteLength
+        })
+        expect(Array.from(picked.content)).toEqual(Array.from(rawBytes))
+        // Must NOT leave any memory:// entry in fileCache even before BackupService.restore runs
+        expect(await (window as any).api.getCacheSize()).toBe('0 B')
+      }
+
+      // Unreadable file rejects cleanly instead of hanging indefinitely and leaves zero cached bytes
+      nextSelectedFile = {
+        name: 'unreadable.bak',
+        type: 'application/octet-stream',
+        size: 16,
+        arrayBuffer: async () => {
+          throw new Error('NotReadableError: SAF URI revoked')
+        }
+      }
+      await expect(
+        (window as any).api.file.open({
+          filters: [{ name: 'Backup', extensions: ['bak', 'zip', 'json', 'lich13backup'] }]
+        })
+      ).rejects.toThrow('NotReadableError')
+      expect(await (window as any).api.getCacheSize()).toBe('0 B')
+    } finally {
+      createElementSpy.mockRestore()
+    }
+  })
 })

@@ -17,6 +17,7 @@ import app.tauri.annotation.*
 import app.tauri.plugin.*
 import java.io.File
 import java.security.KeyStore
+import java.util.concurrent.Executors
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
@@ -34,6 +35,7 @@ class MobileRuntimePlugin(private val activity: Activity) : Plugin(activity) {
     private val credentialLock = Any()
     private val store = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
     private val notificationRequests = mutableListOf<Invoke>()
+    private val ioExecutor = Executors.newSingleThreadExecutor()
     private fun currentActivity(): Activity = resumedActivity ?: PluginManager.activity ?: activity
     override fun onResume(activity: AppCompatActivity) { resumedActivity = activity }
     override fun onDestroy(activity: AppCompatActivity) { if (resumedActivity === activity) resumedActivity = null }
@@ -45,8 +47,11 @@ class MobileRuntimePlugin(private val activity: Activity) : Plugin(activity) {
             if (!request || Build.VERSION.SDK_INT < 33 || appContext.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
                 invoke.resolve(JSObject().put("granted", notificationsGranted()))
             } else {
-                notificationRequests.add(invoke)
-                if (notificationRequests.size == 1) {
+                val shouldRequest = synchronized(notificationRequests) {
+                    notificationRequests.add(invoke)
+                    notificationRequests.size == 1
+                }
+                if (shouldRequest) {
                     try { requestPermissionForAlias("taskNotifications", invoke, "notificationPermissionResult") }
                     catch (_: Exception) { finishNotificationRequests() }
                 }
@@ -55,8 +60,9 @@ class MobileRuntimePlugin(private val activity: Activity) : Plugin(activity) {
     }
     @PermissionCallback fun notificationPermissionResult(invoke: Invoke) { finishNotificationRequests() }
     private fun finishNotificationRequests() {
-        val pending = notificationRequests.toList()
-        notificationRequests.clear()
+        val pending = synchronized(notificationRequests) {
+            notificationRequests.toList().also { notificationRequests.clear() }
+        }
         val result = JSObject().put("granted", notificationsGranted())
         pending.forEach { it.resolve(result) }
     }
@@ -135,13 +141,28 @@ class MobileRuntimePlugin(private val activity: Activity) : Plugin(activity) {
         startActivityForResult(invoke, intent, "savedFile")
     }
     @ActivityCallback fun savedFile(invoke: Invoke, result: ActivityResult) {
-        try {
-            val uri = result.data?.data
-            if (result.resultCode != Activity.RESULT_OK || uri == null) { invoke.resolve(JSObject().put("uri", "")); return }
-            val source = File(invoke.parseArgs(MobileArgs::class.java).path)
-            require(source.canonicalPath.startsWith(appContext.filesDir.parentFile!!.canonicalPath + "/"))
-            appContext.contentResolver.openOutputStream(uri, "wt")!!.use { output -> source.inputStream().use { it.copyTo(output) } }
-            invoke.resolve(JSObject().put("uri", uri.toString()))
-        } catch (_: Exception) { invoke.reject("文件导出失败") }
+        val uri = try { result.data?.data } catch (_: Exception) { null }
+        if (result.resultCode != Activity.RESULT_OK || uri == null) {
+            invoke.resolve(JSObject().put("uri", ""))
+            return
+        }
+        val sourcePath = try {
+            invoke.parseArgs(MobileArgs::class.java).path
+        } catch (_: Exception) {
+            invoke.reject("文件导出失败")
+            return
+        }
+        ioExecutor.execute {
+            try {
+                val source = File(sourcePath)
+                require(source.canonicalPath.startsWith(appContext.filesDir.parentFile!!.canonicalPath + "/"))
+                appContext.contentResolver.openOutputStream(uri, "wt")!!.use { output ->
+                    source.inputStream().use { it.copyTo(output) }
+                }
+                invoke.resolve(JSObject().put("uri", uri.toString()))
+            } catch (_: Exception) {
+                invoke.reject("文件导出失败")
+            }
+        }
     }
 }

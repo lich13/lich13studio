@@ -1,6 +1,5 @@
-import { LoadingOutlined } from '@ant-design/icons'
 import { Tag as AntdTag, Tooltip } from 'antd'
-import { CircleArrowLeft, Copy, Pin } from 'lucide-react'
+import { CircleArrowLeft, Copy, Loader2, Pin } from 'lucide-react'
 import type { FC } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useTranslation } from 'react-i18next'
@@ -14,6 +13,9 @@ interface FooterProps {
   onCopy?: () => void
 }
 
+const INTERACTIVE_OVERLAY_SELECTOR =
+  'input, textarea, select, [contenteditable="true"], [role="combobox"], [role="listbox"], [role="menu"], [role="dialog"], .ant-select, .ant-select-dropdown, .ant-dropdown, .ant-popover, .ant-modal'
+
 const Footer: FC<FooterProps> = ({ loading, onEsc, setIsPinned, isPinned, onCopy }) => {
   const { t } = useTranslation()
 
@@ -21,7 +23,22 @@ const Footer: FC<FooterProps> = ({ loading, onEsc, setIsPinned, isPinned, onCopy
     onEsc()
   })
 
-  useHotkeys('c', () => {
+  useHotkeys('c', (event) => {
+    if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return
+    if (window.getSelection()?.toString()) return
+    const active = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const target = event.target instanceof HTMLElement ? event.target : null
+    if (
+      active?.isContentEditable ||
+      target?.isContentEditable ||
+      active?.closest(INTERACTIVE_OVERLAY_SELECTOR) ||
+      target?.closest(INTERACTIVE_OVERLAY_SELECTOR) ||
+      document.querySelector(
+        '.ant-select-dropdown:not(.ant-select-dropdown-hidden), .ant-dropdown:not(.ant-dropdown-hidden), .ant-popover:not(.ant-popover-hidden)'
+      )
+    ) {
+      return
+    }
     handleCopy()
   })
 
@@ -37,7 +54,7 @@ const Footer: FC<FooterProps> = ({ loading, onEsc, setIsPinned, isPinned, onCopy
           bordered={false}
           icon={
             loading ? (
-              <LoadingOutlined style={{ fontSize: 12, color: 'var(--color-error)', padding: 0 }} spin />
+              <Loader2 size={12} className="animate-spin" style={{ color: 'var(--color-error)' }} />
             ) : (
               <CircleArrowLeft size={14} color="var(--color-text)" />
             )

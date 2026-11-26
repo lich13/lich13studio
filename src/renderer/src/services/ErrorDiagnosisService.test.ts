@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('i18next', () => ({ t: mocks.translate }))
-vi.mock('@renderer/services/ProviderService', () => ({ getProviderById: mocks.providerLookup }))
+vi.mock('@renderer/services/AssistantService', () => ({ getProviderById: mocks.providerLookup }))
 
 import { diagnoseError } from './ErrorDiagnosisService'
 

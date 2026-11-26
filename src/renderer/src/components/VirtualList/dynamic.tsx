@@ -243,7 +243,6 @@ function DynamicVirtualList<T>(props: DynamicVirtualListProps<T>) {
       ref={scrollerRef}
       className={className ? `dynamic-virtual-list ${className}` : 'dynamic-virtual-list'}
       role="region"
-      aria-hidden={!showScrollbar}
       $autoHide={autoHideScrollbar}
       $show={showScrollbar}
       style={{
@@ -297,7 +296,7 @@ function DynamicVirtualList<T>(props: DynamicVirtualListProps<T>) {
             top: isItemActiveSticky ? stickyOffset : 0,
             left: 0,
             zIndex: isItemActiveSticky ? 1000 + (100 - activeStickyIndex) : isItemSticky ? 999 : 0,
-            pointerEvents: isCoveredBySticky ? 'none' : 'auto',
+            pointerEvents: isCoveredBySticky ? 'none' : (itemContainerStyle?.pointerEvents ?? 'auto'),
             ...(isItemActiveSticky && {
               backgroundColor: 'var(--color-background)'
             }),

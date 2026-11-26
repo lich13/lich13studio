@@ -1,755 +1,6 @@
 {
   "agent": {
-    "add": {
-      "description": "Gestionează sarcini complexe cu diverse instrumente",
-      "error": {
-        "failed": "Nu s-a putut adăuga un agent",
-        "invalid_agent": "Agent invalid"
-      },
-      "model": {
-        "supported_providers": "Furnizori acceptați",
-        "tooltip": "Momentan, doar modelele care acceptă endpoint-uri Anthropic sunt disponibile pentru funcția Agent.",
-        "view_providers": "Vizualizați furnizorii acceptați"
-      },
-      "title": "Adaugă agent",
-      "type": {
-        "placeholder": "Selectează un tip de agent"
-      }
-    },
-    "askUserQuestion": {
-      "answered": "răspuns",
-      "customPlaceholder": "Introdu răspunsul tău...",
-      "loading": "Se încarcă întrebările...",
-      "multiSelect": "Selecție multiplă",
-      "next": "Următorul",
-      "noQuestions": "Nu sunt disponibile întrebări",
-      "other": "Altele",
-      "previous": "Anterior",
-      "submit": "Trimite",
-      "title": "Întrebări de la Agent"
-    },
-    "cherryClaw": {
-      "channels": {
-        "add": "Adaugă",
-        "bindAgent": "Agent de legătură",
-        "chatIdsAutoTrackHint": "Când este lăsat gol, sistemul va urmări automat: trebuie să trimiți mai întâi un mesaj Bot-ului pe platformă, apoi sistemul va înregistra ID-ul conversației pentru notificările viitoare.",
-        "comingSoon": "În curând",
-        "connected": "Conectat",
-        "connecting": "Conectare",
-        "deleteConfirm": "Șterge canalul „{{name}}”?",
-        "description": "Conectați agentul la platforme de mesagerie.",
-        "disconnected": "Deconectat",
-        "discord": {
-          "botToken": "Token Bot",
-          "botTokenPlaceholder": "Introdu token-ul botului tău Discord",
-          "channelIds": "ID-uri de canale permise",
-          "channelIdsHint": "Format: canal:id sau dm:id. Lasă gol pentru a permite tot.",
-          "channelIdsPlaceholder": "canal:123456789, dm:987654321",
-          "description": "Primește și răspunde la mesaje printr-un bot Discord folosind gateway WebSocket.",
-          "title": "Discord",
-          "whoamiTip": "💡 Sfaturi: Trimite /whoami către bot pentru a obține ID-ul canalului tău în formatul corect."
-        },
-        "error": "Eroare",
-        "feishu": {
-          "appId": "App ID",
-          "appIdPlaceholder": "Introduceți App ID-ul aplicației Feishu",
-          "appSecret": "App Secret",
-          "appSecretPlaceholder": "Introduceți App Secret-ul aplicației Feishu",
-          "chatIds": "ID-uri de chat permise",
-          "chatIdsHint": "ID-uri de chat separate prin virgulă. Lăsați gol pentru a permite toate chat-urile.",
-          "chatIdsPlaceholder": "oc_xxxxx, oc_yyyyy",
-          "connected": "Conectat",
-          "description": "Primiți și răspundeți la mesaje printr-un bot Feishu/Lark folosind WebSocket.",
-          "domain": "Domeniu",
-          "domainFeishu": "Feishu (China)",
-          "domainLark": "Lark (Internațional)",
-          "encryptKey": "Cheie de criptare",
-          "encryptKeyPlaceholder": "Introduceți cheia de criptare a aplicației Feishu",
-          "loginHint": "Nu sunt configurate credențiale. Activează canalul pentru a începe înregistrarea prin cod QR sau introdu manual ID-ul aplicației și secretul aplicației.",
-          "qrExpired": "Codul QR a expirat. Vă rugăm să reîncercați comutând canalul.",
-          "qrHint": "Se așteaptă scanarea codului QR...",
-          "qrScanHint": "Deschide Feishu pe telefonul tău și scanează codul QR pentru a crea o aplicație bot.",
-          "qrTitle": "Înregistrare prin cod QR Feishu",
-          "title": "Feishu",
-          "verificationToken": "Token de verificare",
-          "verificationTokenPlaceholder": "Introduceți tokenul de verificare al aplicației Feishu"
-        },
-        "logs": "Jurnale",
-        "noInstances": "Niciun canal {{type}} configurat. Faceți clic pe „+ Adăugare” pentru a crea unul.",
-        "noLogs": "Niciun jurnal încă",
-        "notifyReceiver": "Primește notificări de sarcini",
-        "notifyReceiverHint": "Trimite rezultatele sarcinilor programate pe acest canal.",
-        "qq": {
-          "appId": "App ID",
-          "appIdPlaceholder": "Introduceți App ID-ul QQ Bot",
-          "chatIds": "ID-uri de chat permise",
-          "chatIdsHint": "Format: c2c:openid, group:groupid, channel:channelid. Lăsați gol pentru a permite toate.",
-          "chatIdsPlaceholder": "c2c:abc123, group:xyz789",
-          "clientSecret": "Client Secret",
-          "clientSecretPlaceholder": "Introduceți Client Secret-ul QQ Bot",
-          "description": "Primește și răspunde la mesaje prin API-ul oficial QQ Bot.",
-          "title": "QQ",
-          "whoamiTip": "💡 Sfat: Trimiteți /whoami la bot pentru a obține ID-ul de chat în formatul corect."
-        },
-        "security": {
-          "inheritFromAgent": "Moștenește de la agent",
-          "permissionMode": "Modul de permisiune al canalului",
-          "permissionModeHint": "Suprascrie modul de permisiune al agentului pentru mesajele de pe acest canal. „Moștenire” utilizează setarea implicită a agentului."
-        },
-        "selectAgent": "Selectați un agent pentru a-l lega",
-        "slack": {
-          "appToken": "Token la nivel de aplicație",
-          "appTokenPlaceholder": "xapp-...",
-          "botToken": "Token bot",
-          "botTokenPlaceholder": "xoxb-...",
-          "channelIds": "ID-uri canale permise",
-          "channelIdsHint": "ID-urile canalelor Slack. Lăsați gol pentru a permite toate.",
-          "channelIdsPlaceholder": "C01234567, D89012345",
-          "description": "Primește și răspunde la mesaje printr-un bot Slack folosind Socket Mode.",
-          "title": "Slack",
-          "whoamiTip": "💡 Sfat: Trimite /whoami către bot pentru a obține ID-ul canalului."
-        },
-        "soulModeRequired": "Acest agent nu are Activat Modul Autonom. Funcționalitățile canalului nu vor funcționa. Vă rugăm să-l activați în setările agentului.",
-        "tab": "Canale",
-        "telegram": {
-          "botToken": "Token Bot",
-          "botTokenPlaceholder": "Introduceți token-ul bot-ului Telegram",
-          "chatIds": "ID-uri de chat permise",
-          "chatIdsHint": "Separate prin virgulă. Lăsați gol pentru a permite toate chat-urile.",
-          "chatIdsPlaceholder": "123456789, 987654321",
-          "description": "Primește și răspunde la mesaje prin bot Telegram folosind long polling.",
-          "title": "Telegram"
-        },
-        "title": "Canale",
-        "wechat": {
-          "addAccount": "Adaugă cont WeChat",
-          "chatIds": "ID-uri de utilizator permise",
-          "chatIdsHint": "Separat prin virgulă. Lăsați gol pentru a permite tuturor utilizatorilor.",
-          "chatIdsPlaceholder": "wxid_abc123, wxid_def456",
-          "connected": "Conectat",
-          "description": "Primește și răspunde la mesaje prin WeChat folosind API-ul iLink Bot.",
-          "disconnected": "Deconectat",
-          "loginHint": "Prima autentificare necesită scanarea unui cod QR. Verifică jurnalele aplicației pentru adresa URL de autentificare.",
-          "qrHint": "Deschideți WeChat pe telefon, scanați codul QR pentru a vă conecta.",
-          "qrTitle": "Autentificare WeChat cu cod QR",
-          "title": "WeChat",
-          "whoamiTip": "Sfat: Trimiteți /whoami în WeChat pentru a obține ID-ul unui utilizator."
-        }
-      },
-      "heartbeat": {
-        "enabled": "Activează Heartbeat",
-        "enabledHelper": "Când este activat și heartbeat.md există în spațiul de lucru, planificatorul citește conținutul și îl trimite la sesiunea principală la intervalul configurat.",
-        "interval": "Interval (minute)",
-        "intervalHelper": "Cât de des rulează heartbeat-ul, în minute."
-      },
-      "sandbox": {
-        "description": "Restricționează accesul agentului la sistemul de fișiere și rețea doar la directorul spațiului de lucru folosind sandboxing la nivel de sistem de operare.",
-        "helper": "Restricționează accesul la sistemul de fișiere și comenzi la calea spațiului de lucru.",
-        "label": "Mod Sandbox"
-      },
-      "scheduler": {
-        "cron": {
-          "helper": "Expresie cron standard (ex: '*/30 * * * *' pentru fiecare 30 de minute).",
-          "label": "Expresie Cron",
-          "placeholder": "*/30 * * * *"
-        },
-        "description": "Planificatorul declanșează agentul automat conform unui program.",
-        "enabled": "Activează planificatorul",
-        "enabledHelper": "Când este activat, agentul va rula automat pe baza programului configurat.",
-        "errors": {
-          "invalidCron": "Expresie cron invalidă",
-          "invalidDelay": "Întârzierea trebuie să fie un număr pozitiv",
-          "invalidInterval": "Intervalul trebuie să fie un număr pozitiv"
-        },
-        "interval": {
-          "helper": "Cât de des ar trebui să ruleze agentul, în secunde.",
-          "label": "Interval (secunde)"
-        },
-        "lastRun": "Ultima rulare",
-        "never": "Niciodată",
-        "nextRun": "Următoarea rulare",
-        "oneTime": {
-          "helper": "Întârziere unică în secunde înainte de rularea agentului.",
-          "label": "Întârziere (secunde)"
-        },
-        "status": {
-          "running": "Rulează",
-          "stopped": "Oprit",
-          "tickInProgress": "Tick în progres"
-        },
-        "tab": "Planificator",
-        "title": "Configurare planificator",
-        "type": {
-          "cron": "Expresie Cron",
-          "interval": "Interval fix",
-          "label": "Tip program",
-          "one-time": "Întârziere unică"
-        }
-      },
-      "soul": {
-        "description": "Sufletul definește personalitatea și comportamentul de bază al agentului. Este citit din soul.md în rădăcina spațiului de lucru.",
-        "empty": "Nu s-a găsit soul.md în rădăcina spațiului de lucru. Creați unul pentru a defini personalitatea agentului.",
-        "enabled": "Activează sufletul",
-        "enabledHelper": "Când este activat, agentul citește soul.md din rădăcina spațiului de lucru și îl adaugă la începutul promptului de sistem.",
-        "fileLabel": "soul.md",
-        "preview": "Previzualizare suflet",
-        "tab": "Suflet",
-        "title": "Configurare suflet"
-      },
-      "tasks": {
-        "add": "Adaugă sarcină",
-        "cancel": "Anulează",
-        "channels": {
-          "label": "Trimite către canale",
-          "noActiveChatIds": "Canalele selectate nu au destinatari disponibili (ID de chat). Este posibil ca rezultatele sarcinii să nu fie livrate. Vă rugăm să trimiteți mai întâi un mesaj botului pe platformă.",
-          "placeholder": "Selectați canalele pentru a primi rezultatele"
-        },
-        "cronPlaceholder": "ex: 0 9 * * * (în fiecare zi la ora 9)",
-        "delete": {
-          "confirm": "Sunteți sigur că doriți să ștergeți această sarcină?",
-          "label": "Șterge"
-        },
-        "edit": "Editează",
-        "empty": "Nu există sarcini programate. Adăugați una pentru a începe.",
-        "intervalPlaceholder": "Interval în minute",
-        "intervalUnit": "minute",
-        "lastRun": "Ultima rulare",
-        "logs": {
-          "duration": "Durată",
-          "empty": "Nu există încă istoric de rulare.",
-          "error": "Eroare",
-          "justNow": "chiar acum",
-          "label": "Istoric rulări",
-          "result": "Rezultat",
-          "runAt": "Rulat la",
-          "running": "Alergând...",
-          "search": "Caută jurnalele...",
-          "status": "Stare",
-          "success": "Succes",
-          "viewSession": "Vizualizare sesiune"
-        },
-        "name": {
-          "label": "Nume",
-          "placeholder": "ex: Revizuire cod zilnică"
-        },
-        "nextRun": "Următoarea rulare",
-        "oncePlaceholder": "Selectați data și ora",
-        "pause": "Pauză",
-        "prompt": {
-          "expand": "Extinde editorul",
-          "label": "Prompt",
-          "placeholder": "Ce ar trebui să facă agentul când rulează această sarcină?"
-        },
-        "resume": "Reia",
-        "run": "Rulează",
-        "runTriggered": "Sarcină declanșată",
-        "save": "Salvează",
-        "scheduleType": {
-          "cron": "Cron",
-          "interval": "Interval",
-          "label": "Tip program",
-          "once": "O singură dată"
-        },
-        "scheduleValue": "Valoare program",
-        "status": {
-          "active": "Activă",
-          "completed": "Finalizată",
-          "paused": "În pauză"
-        },
-        "tab": "Sarcini",
-        "time": {
-          "hoursAgo": "acum {{count}}h",
-          "minutesAgo": "acum {{count}}m"
-        },
-        "timeout": {
-          "label": "Timeout",
-          "placeholder": "Fără limită"
-        },
-        "title": "Sarcini programate"
-      },
-      "warning": {
-        "bypassPermissions": "Agenții CherryClaw rulează în mod automat complet în mod implicit. Toate instrumentele se execută fără a solicita aprobare."
-      }
-    },
-    "delete": {
-      "content": "Ștergerea agentului va opri forțat și va șterge toate sesiunile asociate cu agentul. Ești sigur?",
-      "error": {
-        "failed": "Nu s-a putut șterge agentul"
-      },
-      "title": "Șterge agentul"
-    },
-    "edit": {
-      "title": "Editează agentul"
-    },
-    "empty": {
-      "description": "Creează un agent pentru a gestiona sarcini complexe cu instrumente alimentate de inteligență artificială",
-      "title": "Niciun agent încă"
-    },
-    "get": {
-      "error": {
-        "failed": "Nu s-a putut obține agentul.",
-        "null_id": "ID-ul agentului este nul."
-      }
-    },
-    "gitBash": {
-      "autoDetected": "Se folosește Git Bash detectat automat",
-      "autoDiscoveredHint": "Descoperit automat",
-      "clear": {
-        "button": "Șterge calea personalizată"
-      },
-      "customPath": "Se folosește calea personalizată: {{path}}",
-      "error": {
-        "description": "Git Bash este necesar pentru a rula agenți pe Windows. Agentul nu poate funcționa fără acesta. Te rugăm să instalezi Git pentru Windows de la",
-        "recheck": "Verifică din nou instalarea Git Bash",
-        "required": "Calea Git Bash este necesară pe Windows",
-        "title": "Git Bash este necesar"
-      },
-      "found": {
-        "title": "Git Bash configurat"
-      },
-      "notFound": "Git Bash nu a fost găsit. Te rugăm să-l instalezi mai întâi.",
-      "pick": {
-        "button": "Selectează calea Git Bash",
-        "failed": "Nu s-a putut seta calea Git Bash",
-        "invalidPath": "Fișierul selectat nu este un executabil Git Bash valid (bash.exe).",
-        "title": "Selectează executabilul Git Bash"
-      },
-      "placeholder": "Selectează calea bash.exe",
-      "success": "Git Bash a fost detectat cu succes!",
-      "tooltip": "Git Bash este necesar pentru a rula agenți pe Windows. Instalează-l de pe git-scm.com dacă nu este disponibil."
-    },
-    "input": {
-      "placeholder": "Introdu mesajul aici, trimite cu {{key}} - @ selectează calea, / selectează comanda",
-      "soul_placeholder": "Ajută-mă să mă conectez la Telegram"
-    },
-    "list": {
-      "error": {
-        "failed": "Nu s-a putut afișa lista de agenți."
-      }
-    },
-    "reorder": {
-      "error": {
-        "failed": "Nu s-a reușit reordonarea agenților"
-      }
-    },
-    "server": {
-      "error": {
-        "not_running": "Serverul API este activat, dar nu rulează corect."
-      }
-    },
-    "session": {
-      "accessible_paths": {
-        "add": "Adaugă director",
-        "default_hint": "Implicit: {{path}}",
-        "duplicate": "Acest director este deja inclus.",
-        "empty": "Selectează cel puțin un director pe care agentul îl poate accesa.",
-        "error": {
-          "at_least_one": "Te rugăm să selectezi cel puțin un director accesibil."
-        },
-        "label": "Directoare accesibile",
-        "select_failed": "Nu s-a putut selecta directorul."
-      },
-      "add": {
-        "title": "Adaugă o sesiune"
-      },
-      "allowed_tools": {
-        "empty": "Niciun instrument disponibil pentru acest agent.",
-        "helper": "Instrumentele pre-aprobate rulează fără aprobare manuală. Instrumentele neselectate necesită aprobare înainte de utilizare.",
-        "label": "Instrumente pre-aprobate",
-        "placeholder": "Selectează instrumente pre-aprobate"
-      },
-      "create": {
-        "error": {
-          "failed": "Nu s-a putut adăuga o sesiune"
-        }
-      },
-      "delete": {
-        "content": "Ești sigur că vrei să ștergi această sesiune?",
-        "error": {
-          "failed": "Nu s-a putut șterge sesiunea",
-          "last": "Trebuie păstrată cel puțin o sesiune"
-        },
-        "title": "Șterge sesiunea"
-      },
-      "edit": {
-        "title": "Editează sesiunea"
-      },
-      "get": {
-        "error": {
-          "failed": "Nu s-a putut obține sesiunea",
-          "null_id": "ID-ul sesiunii este nul"
-        }
-      },
-      "label_one": "Sesiune",
-      "label_other": "Sesiuni",
-      "reorder": {
-        "error": {
-          "failed": "Nu s-a putut reordona sesiunile"
-        }
-      },
-      "update": {
-        "error": {
-          "failed": "Nu s-a putut actualiza sesiunea"
-        }
-      }
-    },
-    "settings": {
-      "advance": {
-        "envVars": {
-          "description": "Setați variabile de mediu personalizate pentru runtime-ul agentului.",
-          "helper": "Introduceți variabile de mediu personalizate (una pe linie, format: CHEIE=valoare)",
-          "label": "Variabile de mediu"
-        },
-        "maxTurns": {
-          "description": "Definește câte cicluri cerere/răspuns poate finaliza automat agentul.",
-          "helper": "Valorile mai mari permit rulări autonome mai lungi; valorile mai mici mențin sesiunile scurte.",
-          "label": "Limită de schimburi în conversație"
-        },
-        "permissionMode": {
-          "description": "Controlează modul în care agentul gestionează acțiunile care necesită aprobare.",
-          "label": "Mod de permisiune",
-          "options": {
-            "acceptEdits": "Acceptă automat editările",
-            "bypassPermissions": "Omite verificările de permisiune",
-            "default": "Implicit (întreabă înainte de a continua)",
-            "plan": "Mod de planificare (necesită aprobarea planului)"
-          },
-          "placeholder": "Alege un comportament pentru permisiuni"
-        },
-        "title": "Setări avansate"
-      },
-      "essential": "Setări esențiale",
-      "permissionMode": {
-        "tab": "Mod de permisiune",
-        "title": "Mod de permisiune"
-      },
-      "plugins": {
-        "available": {
-          "title": "Pluginuri disponibile"
-        },
-        "confirm": {
-          "uninstall": "Ești sigur că vrei să dezinstalezi acest plugin?"
-        },
-        "empty": {
-          "available": "Nu s-au găsit pluginuri care să corespundă filtrelor tale. Încearcă să ajustezi căutarea sau filtrele de categorie."
-        },
-        "error": {
-          "install": "Nu s-a putut instala pluginul",
-          "load": "Nu s-au putut încărca pluginurile",
-          "load_more": "Nu s-au putut încărca mai multe pluginuri",
-          "uninstall": "Nu s-a putut dezinstala pluginul"
-        },
-        "filter": {
-          "all": "Toate categoriile"
-        },
-        "install": {
-          "button": "Instalare",
-          "title": "Instalați pluginuri"
-        },
-        "installed": {
-          "empty": "Niciun plugin instalat încă. Răsfoiește pluginurile disponibile pentru a începe.",
-          "title": "Plugin-uri instalate"
-        },
-        "installing": "Se instalează...",
-        "plugin_upload": {
-          "all_failed": "Toate componentele {{failed}} nu au putut fi instalate",
-          "error": "Instalarea a eșuat",
-          "format_hint": "Acceptă pachete de pluginuri (.claude-plugin/plugin.json)",
-          "hint": "Trageți și plasați aici arhiva ZIP a pluginului sau faceți clic pentru a selecta",
-          "invalid_format": "Vă rugăm să încărcați un fișier ZIP",
-          "partial_success": "Pluginul \"{{name}}\" instalat parțial: {{installed}} instalat, {{failed}} eșuat",
-          "select_folder": "Selectați dosarul",
-          "select_folder_title": "Selectați dosarul pluginului",
-          "success": "Plugin-ul \"{{name}}\" a fost instalat cu succes ({{count}} componente)",
-          "success_multi": "Instalate {{count}} componente din {{packages}} pachete",
-          "uploading": "Se încarcă și se instalează..."
-        },
-        "results": "{{count}} plugin(uri) găsit(e)",
-        "search": {
-          "placeholder": "Caută pluginuri..."
-        },
-        "standalone_plugins": "Plugin-uri autonome",
-        "success": {
-          "install": "Plugin instalat cu succes",
-          "uninstall": "Plugin dezinstalat cu succes",
-          "uninstall_package": "Pachetul „{{name}}” a fost dezinstalat cu succes"
-        },
-        "tab": "Pluginuri",
-        "type": {
-          "agent": "Agent",
-          "agents": "Agenți",
-          "all": "Toate",
-          "command": "Comandă",
-          "commands": "Comenzi",
-          "skills": "Abilități"
-        },
-        "uninstall": "Dezinstalează",
-        "uninstall_package": "Dezinstalează Pachetul",
-        "uninstall_package_confirm": "Sigur dorești să dezinstalezi întregul pachet „{{name}}”? Aceasta va elimina {{count}} component(e).",
-        "uninstalling": "Se dezinstalează..."
-      },
-      "prompt": "Setări prompt",
-      "skills": {
-        "builtin": "Încorporat",
-        "noFilterResults": "Nicio abilitate potrivită",
-        "noSkills": "Nicio abilitate instalată. Instalează abilități din Setări > Abilități.",
-        "searchPlaceholder": "Abilități de căutare...",
-        "tab": "Abilități",
-        "title": "Abilități instalate"
-      },
-      "soulMode": {
-        "description": "Când este activată, agentul folosește o comandă de sistem personalizată din fișierele soul ale spațiului de lucru, injectează instrumente autonome de gestionare a sarcinilor și dezactivează instrumentele interactive care nu sunt potrivite pentru funcționarea autonomă.",
-        "disabledBadge": "Dezactivat de Modul Autonom",
-        "disabledTooltip": "Acest instrument este dezactivat automat când Modul Autonom este activ",
-        "title": "Mod Autonom"
-      },
-      "tooling": {
-        "permissionMode": {
-          "acceptEdits": {
-            "description": "Editările de fișiere și operațiunile sistemului de fișiere sunt aprobate automat.",
-            "title": "Acceptă automat editările de fișiere"
-          },
-          "bypassPermissions": {
-            "description": "Toate solicitările de permisiune sunt omise — folosește cu precauție.",
-            "title": "Omite verificările de permisiune",
-            "warning": "Folosește cu precauție — toate instrumentele vor rula fără a cere aprobare."
-          },
-          "confirmChange": {
-            "description": "Schimbarea modurilor actualizează instrumentele aprobate automat.",
-            "title": "Schimbi modul de permisiune?"
-          },
-          "default": {
-            "description": "Instrumentele doar-pentru-citire sunt pre-aprobate; orice altceva necesită încă permisiune.",
-            "title": "Implicit (întreabă înainte de a continua)"
-          },
-          "helper": "Alege cum gestionează agentul aprobările pentru instrumente.",
-          "placeholder": "Selectează modul de permisiune",
-          "plan": {
-            "description": "Partajează setul implicit de instrumente doar-pentru-citire, dar prezintă un plan înainte de execuție.",
-            "title": "Mod de planificare"
-          },
-          "title": "Mod de permisiune"
-        },
-        "preapproved": {
-          "autoBadge": "Adăugat de mod",
-          "autoDescription": "Acest instrument este aprobat automat de modul de permisiune curent.",
-          "autoDisabledTooltip": "Aprobat automat de „{{mode}}” și nu poate fi dezactivat.",
-          "empty": "Niciun instrument nu corespunde filtrelor tale.",
-          "requiresApproval": "Necesită aprobare când este dezactivat",
-          "search": "Caută instrumente",
-          "title": "[to be translated]:Pre-approved Tools",
-          "toggle": "Comută {{name}}"
-        }
-      },
-      "tools": {
-        "approved": "aprobat",
-        "caution": "Instrumentele pre-aprobate ocolesc revizuirea umană. Activează doar instrumente de încredere.",
-        "description": "Alege ce instrumente pot rula fără aprobare manuală.",
-        "requiresPermission": "Necesită permisiune când nu este pre-aprobat.",
-        "tab": "Instrumente pre-aprobate",
-        "title": "Instrumente pre-aprobate",
-        "toggle": "{{defaultValue}}"
-      }
-    },
-    "sidebar_title": "Agenți",
-    "todo": {
-      "panel": {
-        "title": "{{completed}}/{{total}} sarcini finalizate"
-      },
-      "status": {
-        "completed": "Finalizat",
-        "in_progress": "În desfășurare",
-        "pending": "În așteptare"
-      }
-    },
-    "toolPermission": {
-      "aria": {
-        "allowAllRequest": "Permiteți întotdeauna acest instrument",
-        "allowRequest": "Permite cererea instrumentului",
-        "denyRequest": "Refuză cererea instrumentului",
-        "hideDetails": "Ascunde detaliile instrumentului",
-        "runWithOptions": "Rulează cu opțiuni suplimentare",
-        "showDetails": "Afișează detaliile instrumentului"
-      },
-      "button": {
-        "allowAll": "Permiteți întotdeauna",
-        "cancel": "Anulează",
-        "run": "Rulează"
-      },
-      "confirmation": "Ești sigur că vrei să rulezi acest instrument Claude?",
-      "defaultDenyMessage": "Utilizatorul a refuzat permisiunea pentru acest instrument.",
-      "defaultDescription": "Execută cod sau acțiuni de sistem în mediul tău. Asigură-te că comanda pare sigură înainte de a o rula.",
-      "error": {
-        "sendFailed": "Nu s-a putut trimite decizia ta. Te rugăm să încerci din nou."
-      },
-      "executing": "Se execută...",
-      "expired": "Expirat",
-      "inputPreview": "Previzualizare intrare instrument",
-      "pending": "În așteptare ({{seconds}}s)",
-      "permissionExpired": "Cererea de permisiune a expirat. Se așteaptă instrucțiuni noi...",
-      "requiresElevatedPermissions": "Acest instrument necesită permisiuni elevate.",
-      "suggestion": {
-        "permissionUpdateMultiple": "Aprobarea poate actualiza permisiunile mai multor sesiuni dacă ai ales să permiți întotdeauna acest instrument.",
-        "permissionUpdateSingle": "Aprobarea poate actualiza permisiunile sesiunii tale dacă ai ales să permiți întotdeauna acest instrument."
-      },
-      "toast": {
-        "denied": "Cererea instrumentului a fost refuzată.",
-        "timeout": "Cererea instrumentului a expirat înainte de a primi aprobare."
-      },
-      "toolPendingFallback": "Instrument",
-      "waiting": "Se așteaptă decizia privind permisiunea instrumentului..."
-    },
-    "tools": {
-      "builtin": {
-        "Bash": {
-          "description": "Execută comenzi shell în mediul tău"
-        },
-        "Edit": {
-          "description": "Efectuează editări țintite asupra fișierelor specifice"
-        },
-        "Glob": {
-          "description": "Găsește fișiere pe baza potrivirii modelelor"
-        },
-        "Grep": {
-          "description": "Caută modele în conținutul fișierelor"
-        },
-        "MultiEdit": {
-          "description": "Efectuează mai multe modificări într-un singur fișier atomic"
-        },
-        "NotebookEdit": {
-          "description": "Modifică celulele din Jupyter notebook"
-        },
-        "NotebookRead": {
-          "description": "Citește și afișează conținutul notebook-urilor Jupyter"
-        },
-        "Read": {
-          "description": "Citește conținutul fișierelor"
-        },
-        "Task": {
-          "description": "Rulează un sub-agent pentru a gestiona sarcini complexe, cu mai mulți pași"
-        },
-        "TodoWrite": {
-          "description": "Creează și gestionează liste de sarcini structurate"
-        },
-        "ToolSearch": {
-          "description": "Descoperă instrumente amânate din biblioteci mari"
-        },
-        "WebFetch": {
-          "description": "Preia conținutul de la o adresă URL specificată"
-        },
-        "Write": {
-          "description": "Creează sau suprascrie fișiere"
-        }
-      }
-    },
-    "type": {
-      "label": "Tip agent",
-      "unknown": "Tip necunoscut"
-    },
-    "update": {
-      "error": {
-        "failed": "Nu s-a putut actualiza agentul"
-      }
-    },
-    "warning": {
-      "enable_and_start": "Activează și pornește",
-      "enable_server": "Activează serverul API pentru a folosi agenți.",
-      "enable_server_description": "Serverul API trebuie activat pentru ca agenții să funcționeze. Îl poți activa direct sau îl poți configura în setări.",
-      "server_not_running": "Serverul API este activat, dar nu rulează. Vă rugăm să verificați configurația serverului.",
-      "server_not_running_description": "Serverul API trebuie să fie pornit pentru ca agenții să funcționeze. Îl poți porni direct sau verifica setările."
-    }
-  },
-  "apiServer": {
-    "actions": {
-      "copy": "Copiază",
-      "regenerate": "Regenerează",
-      "restart": {
-        "button": "Repornește",
-        "tooltip": "Repornește serverul"
-      },
-      "start": "Pornește",
-      "stop": "Oprește"
-    },
-    "authHeader": {
-      "title": "Header de autorizare"
-    },
-    "authHeaderText": "Utilizează în header-ul Authorization:",
-    "configuration": "Configurare",
-    "description": "Expune capacitățile AI ale Cherry Studio prin API-uri HTTP compatibile cu OpenAI",
-    "documentation": {
-      "title": "Documentație API"
-    },
-    "fields": {
-      "apiKey": {
-        "copyTooltip": "Copiază cheia API",
-        "description": "Token de autentificare securizat pentru acces API",
-        "label": "Cheie API",
-        "placeholder": "Cheia API va fi generată automat"
-      },
-      "port": {
-        "description": "Numărul portului TCP pentru serverul HTTP (1000-65535)",
-        "helpText": "Oprește serverul pentru a schimba portul",
-        "label": "Port"
-      },
-      "url": {
-        "copyTooltip": "Copiază URL-ul",
-        "label": "URL"
-      }
-    },
-    "messages": {
-      "apiKeyCopied": "Cheia API a fost copiată în clipboard",
-      "apiKeyRegenerated": "Cheia API a fost regenerată",
-      "notEnabled": "Serverul API nu este activat.",
-      "operationFailed": "Operațiunea serverului API a eșuat: ",
-      "restartError": "Nu s-a putut reporni serverul API: ",
-      "restartFailed": "Repornirea serverului API a eșuat: ",
-      "restartSuccess": "Serverul API a repornit cu succes",
-      "startError": "Nu s-a putut porni serverul API: ",
-      "startSuccess": "Serverul API a pornit cu succes",
-      "stopError": "Nu s-a putut opri serverul API: ",
-      "stopSuccess": "Serverul API s-a oprit cu succes",
-      "urlCopied": "URL-ul serverului a fost copiat în clipboard"
-    },
-    "status": {
-      "running": "Rulează",
-      "stopped": "Oprit"
-    },
-    "title": "Server API"
-  },
-  "appMenu": {
-    "about": "Despre",
-    "close": "Închide fereastra",
-    "copy": "Copiază",
-    "cut": "Decupează",
-    "delete": "Șterge",
-    "documentation": "Documentație",
-    "edit": "Editare",
-    "feedback": "Feedback",
-    "file": "Fișier",
-    "forceReload": "Reîncărcare forțată",
-    "front": "Adu toate în față",
-    "help": "Ajutor",
-    "hide": "Ascunde",
-    "hideOthers": "Ascunde celelalte",
-    "minimize": "Minimizează",
-    "paste": "Lipește",
-    "quit": "Ieșire",
-    "redo": "Refă",
-    "releases": "Lansări",
-    "reload": "Reîncarcă",
-    "resetZoom": "Dimensiune reală",
-    "selectAll": "Selectează tot",
-    "services": "Servicii",
-    "toggleDevTools": "Comută instrumentele pentru dezvoltatori",
-    "toggleFullscreen": "Comută ecranul complet",
-    "undo": "Anulează",
-    "unhide": "Afișează toate",
-    "view": "Vizualizare",
-    "website": "Site web",
-    "window": "Fereastră",
-    "zoom": "Zoom",
-    "zoomIn": "Mărește",
-    "zoomOut": "Micșorează"
+    "sidebar_title": "Agenți"
   },
   "assistants": {
     "abbr": "Asistenți",
@@ -944,13 +195,6 @@
     },
     "title": "Asistenți"
   },
-  "auth": {
-    "error": "Obținerea automată a cheii API a eșuat, te rugăm să o obții manual",
-    "get_key": "Obține",
-    "get_key_success": "Cheia API a fost obținută automat cu succes",
-    "login": "Autentificare",
-    "oauth_button": "Autentificare cu {{provider}}"
-  },
   "backup": {
     "confirm": {
       "button": "Selectează locația de backup",
@@ -998,11 +242,6 @@
       "topic": {
         "title": "Subiect nou"
       }
-    },
-    "alerts": {
-      "create_agent": "Creează un agent pentru a începe",
-      "create_session": "Creează o sesiune",
-      "select_agent": "Selectați un agent"
     },
     "artifacts": {
       "button": {
@@ -1327,9 +566,6 @@
         "tip": "Valoarea implicită este 1; cu cât valoarea este mai mică, cu atât mai puțină varietate în răspunsuri și mai ușor de înțeles; cu cât valoarea este mai mare, cu atât gama de vocabular a AI-ului este mai largă și mai diversă"
       }
     },
-    "suggestions": {
-      "title": "Întrebări sugerate"
-    },
     "thinking": "Gândire ({{seconds}} secunde)",
     "topics": {
       "auto_rename": "Redenumire automată",
@@ -1441,45 +677,10 @@
       },
       "title": "Subiecte",
       "unpin": "Detașează subiectul"
-    },
-    "translate": "Tradu"
+    }
   },
   "code": {
-    "auto_update_to_latest": "Actualizează automat la cea mai recentă versiune",
-    "bun_required_message": "Mediul Bun este necesar pentru a rula instrumente CLI",
-    "cli_tool": "Instrument CLI",
-    "cli_tool_placeholder": "Selectează instrumentul CLI de utilizat",
-    "custom_path": "Cale personalizată",
-    "custom_path_error": "Nu s-a putut seta calea personalizată a terminalului",
-    "custom_path_required": "Calea personalizată este necesară pentru acest terminal",
-    "custom_path_set": "Calea personalizată a terminalului a fost setată cu succes",
-    "description": "Lansează rapid mai multe instrumente CLI de cod pentru a îmbunătăți eficiența dezvoltării",
-    "env_vars_help": "Introdu variabile de mediu personalizate (una pe rând, format: CHEIE=valoare)",
-    "environment_variables": "Variabile de mediu",
-    "folder_placeholder": "Selectează directorul de lucru",
-    "installError": "[to be translated]:Failed to install dependencies",
-    "installSuccess": "[to be translated]:Dependencies installed successfully",
-    "install_bun": "Instalează Bun",
-    "installing_bun": "Se instalează...",
-    "launch": {
-      "bun_required": "Te rugăm să instalezi mai întâi mediul Bun înainte de a lansa instrumentele CLI",
-      "error": "Lansarea a eșuat, te rugăm să încerci din nou",
-      "label": "Lansează",
-      "success": "Lansare reușită",
-      "validation_error": "Te rugăm să completezi toate câmpurile obligatorii: instrument CLI, model și director de lucru"
-    },
-    "launching": "Se lansează...",
-    "model": "Model",
-    "model_placeholder": "Selectează modelul de utilizat",
-    "model_required": "Te rugăm să selectezi un model",
-    "select_folder": "Selectează dosarul",
-    "set_custom_path": "Setează calea personalizată a terminalului",
-    "supported_providers": "Furnizori acceptați",
-    "terminal": "Terminal",
-    "terminal_placeholder": "Selectează aplicația terminal",
-    "title": "Instrumente de cod",
-    "update_options": "Opțiuni de actualizare",
-    "working_directory": "Director de lucru"
+    "title": "Instrumente de cod"
   },
   "code_block": {
     "collapse": "Restrânge",
@@ -1840,14 +1041,6 @@
     "title": "Fișiere",
     "type": "Tip"
   },
-  "gpustack": {
-    "keep_alive_time": {
-      "description": "Timpul în minute pentru a menține conexiunea activă; implicit este 5 minute.",
-      "placeholder": "Minute",
-      "title": "Timp menținere conexiune"
-    },
-    "title": "GPUStack"
-  },
   "history": {
     "continue_chat": "Continuă conversația",
     "error": {
@@ -1863,6 +1056,7 @@
       },
       "messages": "Caută în toate mesajele",
       "placeholder": "Caută subiecte sau mesaje...",
+      "results_stats": "[to be translated]:Found {{count}} results in {{time}} seconds",
       "sort": {
         "newest": "Cele mai noi primele",
         "oldest": "Cel mai vechi mai întâi"
@@ -1916,15 +1110,10 @@
     "title": "Importă conversații externe"
   },
   "knowledge": {
-    "drag_file": "Trage fișierul aici",
     "error": {
       "model_invalid": "Niciun model selectat"
     },
-    "file_hint": "Acceptă {{file_types}}",
-    "search_placeholder": "Introdu text pentru căutare",
-    "subtitle_file": "fișier subtitrare",
-    "title": "Bază de cunoștințe",
-    "videos_file": "fișier video"
+    "title": "Bază de cunoștințe"
   },
   "languages": {
     "arabic": "Arabă",
@@ -1948,124 +1137,6 @@
     "unknown": "necunoscut",
     "urdu": "Urdu",
     "vietnamese": "Vietnameză"
-  },
-  "launchpad": {
-    "apps": "Aplicații",
-    "minapps": "Mini-aplicații"
-  },
-  "lmstudio": {
-    "keep_alive_time": {
-      "description": "Timpul în minute pentru a menține conexiunea activă; implicit este 5 minute.",
-      "placeholder": "Minute",
-      "title": "Timp menținere conexiune"
-    },
-    "title": "LM Studio"
-  },
-  "memory": {
-    "actions": "Acțiuni",
-    "add_failed": "Nu s-a putut adăuga amintirea",
-    "add_first_memory": "Adaugă prima ta amintire",
-    "add_memory": "Adaugă amintire",
-    "add_new_user": "Adaugă utilizator nou",
-    "add_success": "Amintire adăugată cu succes",
-    "add_user": "Adaugă utilizator",
-    "add_user_failed": "Nu s-a putut adăuga utilizatorul",
-    "all_users": "Toți utilizatorii",
-    "cannot_delete_default_user": "Nu se poate șterge utilizatorul implicit",
-    "configure_memory_first": "Te rugăm să configurezi mai întâi setările de memorie",
-    "content": "Conținut",
-    "current_user": "Utilizator curent",
-    "custom": "Personalizat",
-    "default": "Implicit",
-    "default_user": "Utilizator implicit",
-    "delete_confirm": "Ești sigur că vrei să ștergi această amintire?",
-    "delete_confirm_content": "Ești sigur că vrei să ștergi {{count}} amintiri?",
-    "delete_confirm_single": "Ești sigur că vrei să ștergi această amintire?",
-    "delete_confirm_title": "Șterge amintiri",
-    "delete_failed": "Nu s-a putut șterge amintirea",
-    "delete_selected": "Șterge selectate",
-    "delete_success": "Amintire ștearsă cu succes",
-    "delete_user": "Șterge utilizator",
-    "delete_user_confirm_content": "Ești sigur că vrei să ștergi utilizatorul {{user}} și toate amintirile sale?",
-    "delete_user_confirm_title": "Șterge utilizator",
-    "delete_user_failed": "Nu s-a putut șterge utilizatorul",
-    "description": "Memoria îți permite să stochezi și să gestionezi informații despre interacțiunile tale cu asistentul. Poți adăuga, edita și șterge amintiri, precum și să le filtrezi și să cauți prin ele.",
-    "edit_memory": "Editează amintirea",
-    "embedding_dimensions": "Dimensiuni embedding",
-    "embedding_model": "Model embedding",
-    "enable_global_memory_first": "Te rugăm să activezi mai întâi memoria globală",
-    "end_date": "Data de sfârșit",
-    "global_memory": "Memorie globală",
-    "global_memory_description": "Pentru a folosi funcțiile de memorie, te rugăm să activezi memoria globală în setările asistentului.",
-    "global_memory_disabled_desc": "Pentru a folosi funcțiile de memorie, te rugăm să activezi mai întâi memoria globală în setările asistentului.",
-    "global_memory_disabled_title": "Memorie globală dezactivată",
-    "global_memory_enabled": "Memorie globală activată",
-    "go_to_memory_page": "Mergi la pagina Memorie",
-    "initial_memory_content": "Bun venit! Aceasta este prima ta amintire.",
-    "llm_model": "Model LLM",
-    "load_failed": "Nu s-au putut încărca amintirile",
-    "loading": "Se încarcă amintirile...",
-    "loading_memories": "Se încarcă amintirile...",
-    "memories_description": "Se afișează {{count}} din {{total}} amintiri",
-    "memories_reset_success": "Toate amintirile pentru {{user}} au fost resetate cu succes",
-    "memory": "amintire",
-    "memory_content": "Conținut amintire",
-    "memory_placeholder": "Introdu conținutul amintirii...",
-    "new_user_id": "ID utilizator nou",
-    "new_user_id_placeholder": "Introdu un ID de utilizator unic",
-    "no_matching_memories": "Nu s-au găsit amintiri potrivite",
-    "no_memories": "Încă nu există amintiri",
-    "no_memories_description": "Începe prin a adăuga prima ta amintire",
-    "not_configured_desc": "Te rugăm să configurezi modelele de embedding și LLM în setările de memorie pentru a activa funcționalitatea de memorie.",
-    "not_configured_title": "Memorie neconfigurată",
-    "pagination_total": "{{start}}-{{end}} din {{total}} elemente",
-    "please_enter_memory": "Te rugăm să introduci conținutul amintirii",
-    "please_select_embedding_model": "Te rugăm să selectezi un model de embedding",
-    "please_select_llm_model": "Te rugăm să selectezi un model LLM",
-    "reset_filters": "Resetează filtrele",
-    "reset_memories": "Resetează amintirile",
-    "reset_memories_confirm_content": "Ești sigur că vrei să ștergi definitiv toate amintirile pentru {{user}}? Această acțiune nu poate fi anulată.",
-    "reset_memories_confirm_title": "Resetează toate amintirile",
-    "reset_memories_failed": "Nu s-au putut reseta amintirile",
-    "reset_user_memories": "Resetează amintirile utilizatorului",
-    "reset_user_memories_confirm_content": "Ești sigur că vrei să resetezi toate amintirile pentru {{user}}?",
-    "reset_user_memories_confirm_title": "Resetează amintirile utilizatorului",
-    "reset_user_memories_failed": "Nu s-au putut reseta amintirile utilizatorului",
-    "score": "Scor",
-    "search": "Caută",
-    "search_placeholder": "Caută amintiri...",
-    "select_embedding_model_placeholder": "Selectează model embedding",
-    "select_llm_model_placeholder": "Selectează model LLM",
-    "select_user": "Selectează utilizator",
-    "settings": "Setări",
-    "settings_title": "Setări memorie",
-    "start_date": "Data de început",
-    "statistics": "Statistici",
-    "stored_memories": "Amintiri stocate",
-    "switch_user": "Schimbă utilizatorul",
-    "switch_user_confirm": "Schimbi contextul de utilizator la {{user}}?",
-    "time": "Timp",
-    "title": "Amintiri",
-    "total_memories": "Total amintiri",
-    "try_different_filters": "Încearcă să ajustezi criteriile de căutare",
-    "update_failed": "Nu s-a putut actualiza amintirea",
-    "update_success": "Amintire actualizată cu succes",
-    "user": "Utilizator",
-    "user_created": "Utilizatorul {{user}} a fost creat și comutat cu succes",
-    "user_deleted": "Utilizatorul {{user}} a fost șters cu succes",
-    "user_id": "ID utilizator",
-    "user_id_exists": "Acest ID de utilizator există deja",
-    "user_id_invalid_chars": "ID-ul de utilizator poate conține doar litere, cifre, cratime și liniuțe de subliniere",
-    "user_id_placeholder": "Introdu ID utilizator (opțional)",
-    "user_id_required": "ID-ul de utilizator este obligatoriu",
-    "user_id_reserved": "'default-user' este rezervat, te rugăm să folosești un ID diferit",
-    "user_id_rules": "ID-ul de utilizator trebuie să fie unic și să conțină doar litere, cifre, cratime (-) și liniuțe de subliniere (_)",
-    "user_id_too_long": "ID-ul de utilizator nu poate depăși 50 de caractere",
-    "user_management": "Gestionare utilizatori",
-    "user_memories_reset": "Toate amintirile pentru {{user}} au fost resetate",
-    "user_switch_failed": "Nu s-a putut schimba utilizatorul",
-    "user_switched": "Contextul de utilizator a fost schimbat la {{user}}",
-    "users": "Utilizatori"
   },
   "message": {
     "agents": {
@@ -2402,64 +1473,6 @@
       }
     }
   },
-  "minapp": {
-    "add_to_launchpad": "Adaugă în Launchpad",
-    "add_to_sidebar": "Adaugă în bara laterală",
-    "popup": {
-      "close": "Închide MinApp",
-      "devtools": "Instrumente dezvoltator",
-      "goBack": "Mergi înapoi",
-      "goForward": "Mergi înainte",
-      "minimize": "Minimizează MinApp",
-      "openExternal": "Deschide în browser",
-      "open_link_external_off": "Curent: Deschide linkurile în fereastra implicită",
-      "open_link_external_on": "Curent: Deschide linkurile în browser",
-      "refresh": "Reîmprospătează",
-      "rightclick_copyurl": "Clic dreapta pentru a copia URL-ul"
-    },
-    "remove_from_launchpad": "Elimină din Launchpad",
-    "remove_from_sidebar": "Elimină din bara laterală",
-    "sidebar": {
-      "close": {
-        "title": "Închide"
-      },
-      "closeall": {
-        "title": "Închide tot"
-      },
-      "hide": {
-        "title": "Ascunde"
-      },
-      "remove_custom": {
-        "title": "Șterge aplicația personalizată"
-      }
-    },
-    "title": "MinApp"
-  },
-  "minapps": {
-    "ant-ling": "Ant Ling",
-    "baichuan": "Baichuan",
-    "baidu-ai-search": "Baidu AI Search",
-    "chatglm": "ChatGLM",
-    "dangbei": "Dangbei",
-    "doubao": "Doubao",
-    "hailuo": "MINIMAX",
-    "ima": "acum",
-    "metaso": "Metaso",
-    "minimax-agent": "Agent Minimax CN",
-    "minimax-global": "Agent Minimax",
-    "nami-ai": "Nami AI",
-    "nami-ai-search": "Nami AI Search",
-    "qwen": "Qwen",
-    "sensechat": "SenseChat",
-    "stepfun": "Stepfun",
-    "tencent-yuanbao": "Yuanbao",
-    "tiangong-ai": "Skywork",
-    "wanzhi": "Wanzhi",
-    "wenxin": "ERNIE",
-    "wps-copilot": "WPS Copilot",
-    "xiaoyi": "Xiaoyi",
-    "zhihu": "Zhihu"
-  },
   "miniwindow": {
     "alert": {
       "google_login": "Sfat: Dacă vezi un mesaj 'browser not trusted' când te conectezi la Google, te rugăm să te conectezi mai întâi prin mini-aplicația Google din lista de mini-aplicații, apoi să folosești autentificarea Google în alte mini-aplicații"
@@ -2565,122 +1578,6 @@
   "navigate": {
     "provider_settings": "Mergi la setările furnizorului"
   },
-  "notes": {
-    "auto_rename": {
-      "empty_note": "Notița este goală, nu se poate genera numele",
-      "failed": "Generarea numelui notiței a eșuat",
-      "label": "Generează nume notiță",
-      "success": "Numele notiței a fost generat cu succes"
-    },
-    "characters": "Caractere",
-    "collapse": "Restrânge",
-    "content_placeholder": "Introdu conținutul notiței...",
-    "copyContent": "Copiază conținutul",
-    "crossPlatformRestoreWarning": "Configurația multi-platformă a fost restaurată, dar directorul de notițe este gol. Te rugăm să copiezi fișierele notițelor în: {{path}}",
-    "delete": "Șterge",
-    "delete_confirm": "Ești sigur că vrei să ștergi acest {{type}}?",
-    "delete_folder_confirm": "Ești sigur că vrei să ștergi dosarul \"{{name}}\" și tot conținutul său?",
-    "delete_note_confirm": "Ești sigur că vrei să ștergi notița \"{{name}}\"?",
-    "drop_markdown_hint": "Trage fișiere sau dosare .md aici pentru a importa",
-    "empty": "Încă nu există notițe disponibile",
-    "expand": "Extinde",
-    "exportToWord": "Exportă în Word",
-    "export_failed": "Exportul în baza de cunoștințe a eșuat",
-    "export_knowledge": "Exportă notițele în baza de cunoștințe",
-    "export_success": "Exportat cu succes în baza de cunoștințe",
-    "export_to_word_failed": "Exportul în Word a eșuat",
-    "folder": "Dosar",
-    "new_folder": "Dosar nou",
-    "new_note": "Creează o notiță nouă",
-    "no_content_to_copy": "Niciun conținut de copiat",
-    "no_content_to_export": "Niciun conținut de exportat",
-    "no_file_selected": "Te rugăm să selectezi fișierul de încărcat",
-    "no_note_selected": "Te rog selectează mai întâi o notă",
-    "no_valid_files": "Nu a fost încărcat niciun fișier valid",
-    "open_folder": "Deschide un dosar extern",
-    "open_outside": "Deschide extern",
-    "rename": "Redenumește",
-    "rename_changed": "Din cauza politicilor de securitate, numele fișierului a fost schimbat din {{original}} în {{final}}",
-    "save": "Salvează în Notițe",
-    "search": {
-      "both": "Nume+Conținut",
-      "content": "Conținut",
-      "found_results": "S-au găsit {{count}} rezultate (Nume: {{nameCount}}, Conținut: {{contentCount}})",
-      "more_matches": "mai multe potriviri",
-      "searching": "Se caută...",
-      "show_less": "Afișează mai puțin"
-    },
-    "settings": {
-      "data": {
-        "apply": "Aplică",
-        "apply_path_failed": "Nu s-a putut aplica calea",
-        "current_work_directory": "Director de lucru curent",
-        "invalid_directory": "Directorul selectat este invalid sau accesul este refuzat",
-        "path_required": "Te rugăm să selectezi un director de lucru",
-        "path_updated": "Directorul de lucru a fost actualizat cu succes",
-        "reset_failed": "Resetarea a eșuat",
-        "reset_to_default": "Resetează la implicit",
-        "select": "Selectează",
-        "select_directory_failed": "Nu s-a putut selecta directorul",
-        "title": "Setări date",
-        "work_directory_description": "Directorul de lucru este locul unde sunt stocate toate fișierele notițelor. Schimbarea directorului de lucru nu va muta fișierele existente; te rugăm să migrezi fișierele manual.",
-        "work_directory_placeholder": "Selectează directorul de lucru pentru notițe"
-      },
-      "display": {
-        "compress_content": "Compresie conținut",
-        "compress_content_description": "Când este activat, va limita numărul de caractere pe linie, reducând conținutul afișat pe ecran, dar făcând paragrafele lungi mai ușor de citit.",
-        "default_font": "Font implicit",
-        "font_size": "Dimensiune font",
-        "font_size_description": "Ajustează dimensiunea fontului pentru o experiență de citire mai bună (10-30px)",
-        "font_size_large": "Mare",
-        "font_size_medium": "Mediu",
-        "font_size_small": "Mic",
-        "font_title": "Setări font",
-        "serif_font": "Font cu serife",
-        "show_table_of_contents": "Afișează cuprinsul",
-        "show_table_of_contents_description": "Afișează o bară laterală cu cuprinsul pentru o navigare ușoară în documente",
-        "title": "Setări afișare"
-      },
-      "editor": {
-        "edit_mode": {
-          "description": "În Vizualizarea Editare, modul de editare implicit pentru notițe noi",
-          "preview_mode": "Previzualizare live",
-          "source_mode": "Mod cod sursă",
-          "title": "Vizualizare editare implicită"
-        },
-        "title": "Setări editor",
-        "view_mode": {
-          "description": "Mod vizualizare implicit notițe noi",
-          "edit_mode": "Mod editare",
-          "read_mode": "Mod citire",
-          "title": "Vizualizare implicită"
-        },
-        "view_mode_description": "Setează modul de vizualizare implicit pentru pagina filă nouă."
-      },
-      "title": "Notițe"
-    },
-    "show_starred": "Afișează notițele favorite",
-    "sort_a2z": "Nume fișier (A-Z)",
-    "sort_created_asc": "Ora creării (cele mai vechi întâi)",
-    "sort_created_desc": "Ora creării (cele mai noi întâi)",
-    "sort_updated_asc": "Ora actualizării (cele mai vechi întâi)",
-    "sort_updated_desc": "Ora actualizării (cele mai noi întâi)",
-    "sort_z2a": "Nume fișier (Z-A)",
-    "spell_check": "Verificare ortografică",
-    "spell_check_tooltip": "Activează/Dezactivează verificarea ortografică",
-    "star": "Notiță favorită",
-    "starred_notes": "Notițe colectate",
-    "title": "Notițe",
-    "unsaved_changes": "Ai conținut nesalvat, ești sigur că vrei să pleci?",
-    "unstar": "Elimină de la favorite",
-    "untitled_folder": "Dosar nou",
-    "untitled_note": "Notiță fără titlu",
-    "upload_failed": "Încărcarea notiței a eșuat",
-    "upload_files": "Încarcă fișiere",
-    "upload_folder": "Încarcă dosar",
-    "upload_success": "Notiță încărcată cu succes",
-    "uploading_files": "Se încarcă {{count}} fișiere..."
-  },
   "notification": {
     "assistant": "Răspuns asistent",
     "knowledge": {
@@ -2691,38 +1588,6 @@
       "success": "S-a adăugat cu succes {{type}} în baza de cunoștințe"
     },
     "tip": "Dacă răspunsul este de succes, atunci doar mesajele care depășesc 30 de secunde vor declanșa un memento"
-  },
-  "ocr": {
-    "builtin": {
-      "system": "OCR de sistem"
-    },
-    "error": {
-      "provider": {
-        "cannot_remove_builtin": "Nu se poate șterge furnizorul integrat",
-        "existing": "Furnizorul există deja",
-        "get_providers": "Nu s-au putut obține furnizorii disponibili",
-        "not_found": "Furnizorul OCR nu există",
-        "update_failed": "Nu s-a putut actualiza configurația"
-      },
-      "unknown": "A apărut o eroare în timpul procesului OCR"
-    },
-    "file": {
-      "not_supported": "Tip de fișier neacceptat {{type}}"
-    },
-    "processing": "Procesare OCR...",
-    "warning": {
-      "provider": {
-        "fallback": "S-a recurs la {{name}}, ceea ce poate cauza probleme"
-      }
-    }
-  },
-  "ollama": {
-    "keep_alive_time": {
-      "description": "Timpul în minute pentru a menține conexiunea activă; implicit este 5 minute.",
-      "placeholder": "Minute",
-      "title": "Timp menținere conexiune"
-    },
-    "title": "Ollama"
   },
   "onboarding": {
     "select_model": {
@@ -2743,392 +1608,6 @@
       "setup_hint": "Vă rugăm să configurați cel puțin un furnizor pentru cea mai bună experiență",
       "subtitle": "Bucurați-vă de servicii AI de top cu CherryIN",
       "title": "Bun venit la Cherry Studio"
-    }
-  },
-  "openclaw": {
-    "checking_installation": "Verificare instalare OpenClaw...",
-    "description": "Integrează furnizorii Cherry Studio cu Gateway-ul OpenClaw pentru a permite agenților de codificare AI precum Claude Code, Qwen-Coder și alții.",
-    "error": {
-      "select_provider_model": "Vă rugăm să selectați mai întâi un furnizor și un model"
-    },
-    "gateway": {
-      "port": "Port",
-      "restart": "Repornire",
-      "start": "Pornește Gateway",
-      "status": "Stare",
-      "stop": "Oprește",
-      "version": "Versiune"
-    },
-    "git_missing": {
-      "description": "OpenClaw necesită Git pentru a instala unele dependențe. Te rugăm să instalezi mai întâi Git, apoi apasă din nou pe Instalare.",
-      "download_button": "Descarcă Git",
-      "hint": "macOS: brew install git | Windows: Descarcă de pe git-scm.com (asigură-te că adaugi Git la PATH în timpul instalării)",
-      "title": "Git Necesar"
-    },
-    "install_progress": "Progresul instalării",
-    "installed_at": "OpenClaw instalat la",
-    "migration": {
-      "description": "A fost detectată o versiune învechită a OpenClaw instalată prin npm. Reinstalați pentru a obține cea mai recentă versiune oficială.",
-      "install_button": "Reinstalați OpenClaw",
-      "title": "OpenClaw necesită actualizare"
-    },
-    "model_config": {
-      "auth_token": "Token de autentificare",
-      "auth_token_hint": "Token pentru autentificarea gateway-ului. Lăsați gol pentru a dezactiva autentificarea.",
-      "auth_token_placeholder": "Introduceți sau generați un token",
-      "generate_token": "Generează",
-      "model": "Model",
-      "provider": "Furnizor",
-      "select_model": "Selectați un model",
-      "select_provider": "Selectați un furnizor",
-      "sync_hint": "Furnizorul și modelul selectate vor fi sincronizate în fișierul de configurare OpenClaw.",
-      "title": "Configurare model"
-    },
-    "node_missing": {
-      "description": "OpenClaw necesită Node.js 22+. Te rugăm să instalezi mai întâi Node.js, apoi apasă din nou pe Instalare.",
-      "download_button": "Descarcă Node.js",
-      "hint": "macOS: brew install node | Windows: Descarcă versiunea LTS de pe nodejs.org",
-      "title": "Node.js necesar"
-    },
-    "node_version_low": {
-      "description": "OpenClaw necesită Node.js 22.0 sau o versiune superioară. Versiunea ta actuală este v{{version}}. Te rugăm să actualizezi mai întâi Node.js.",
-      "hint": "nvm: nvm install 22 && nvm use 22 | mise: mise use node@22",
-      "title": "Versiunea Node.js este prea mică"
-    },
-    "not_installed": {
-      "description": "OpenClaw nu este instalat pe sistemul dvs. Vă rugăm să-l instalați mai întâi pentru a utiliza această funcție.",
-      "install_button": "Instalează OpenClaw",
-      "install_guide_title": "Ghid de instalare",
-      "macos_linux_title": "macOS / Linux",
-      "refresh": "Reîmprospătare",
-      "step2_hint": "După instalare, faceți clic pe butonul „Reîmprospătare” de mai sus pentru a detecta OpenClaw",
-      "step2_title": "Pasul 2: Verifică instalarea",
-      "title": "OpenClaw Nu Este Instalat",
-      "windows_title": "Windows"
-    },
-    "quick_actions": {
-      "check_update": "Verifică pentru actualizări",
-      "open_dashboard": "Deschide Tabloul de Bord",
-      "title": "Acțiuni rapide",
-      "uninstall": "Dezinstalare",
-      "view_docs": "Vizualizați documentația"
-    },
-    "status": {
-      "error": "Eroare",
-      "running": "Alergare",
-      "starting": "Pornind",
-      "stopped": "Oprit"
-    },
-    "tips": {
-      "permissions": "OpenClaw are permisiuni de sistem ridicate. Utilizați doar în medii de încredere",
-      "title": "Sfaturi",
-      "token_usage": "Modul agent AI poate consuma mai multe tokenuri. Vă rugăm să monitorizați utilizarea"
-    },
-    "title": "OpenClaw",
-    "uninstall_confirm": "Sigur doriți să dezinstalați OpenClaw? Apăsați OK pentru a confirma.",
-    "uninstall_progress": "Progresul dezinstalării",
-    "uninstalled": {
-      "description": "OpenClaw a fost dezinstalat cu succes.",
-      "title": "Dezinstalare completă"
-    },
-    "uninstalling": {
-      "description": "Vă rugăm să așteptați în timp ce OpenClaw este dezinstalat...",
-      "title": "Dezinstalarea OpenClaw"
-    },
-    "update": {
-      "available": "Versiune nouă disponibilă: v{{latest}} (curentă: v{{current}})",
-      "checking": "Se verifică actualizările...",
-      "confirm_button": "Actualizează acum",
-      "failed": "Nu s-a reușit verificarea actualizărilor",
-      "modal_title": "Actualizare OpenClaw",
-      "success": "Actualizare finalizată cu succes!",
-      "up_to_date": "Deja actualizat (v{{current}})",
-      "updating": "Actualizare..."
-    }
-  },
-  "ovms": {
-    "action": {
-      "install": "Instalează",
-      "installing": "Se instalează",
-      "reinstall": "Reinstalează",
-      "run": "Rulează OVMS",
-      "starting": "Se pornește",
-      "stop": "Oprește OVMS",
-      "stopping": "Se oprește"
-    },
-    "description": "<div><p>1. Descarcă modele OV.</p><p>2. Adaugă modele în 'Manager'.</p><p>Suportă doar Windows!</p><p>Cale instalare OVMS: '%USERPROFILE%\\.cherrystudio\\ovms' .</p><p>Te rugăm să consulți <a href=https://github.com/openvinotoolkit/model_server/blob/c55551763d02825829337b62c2dcef9339706f79/docs/deploying_server_baremetal.md>Ghidul Intel OVMS</a></p></dev>",
-    "download": {
-      "button": "Descarcă",
-      "error": "Eroare descărcare",
-      "model_id": {
-        "label": "ID model:",
-        "model_id_pattern": "ID-ul modelului trebuie să înceapă cu OpenVINO/",
-        "placeholder": "Obligatoriu de ex. OpenVINO/Qwen3-8B-int4-ov",
-        "required": "Te rugăm să introduci ID-ul modelului"
-      },
-      "model_name": {
-        "label": "Nume model:",
-        "placeholder": "Obligatoriu de ex. Qwen3-8B-int4-ov",
-        "required": "Te rugăm să introduci numele modelului"
-      },
-      "model_source": "Sursă model:",
-      "model_task": "Sarcină model:",
-      "success": "Descărcare reușită",
-      "success_desc": "Modelul \"{{modelName}}\"-\"{{modelId}}\" descărcat cu succes, te rugăm să mergi la interfața de gestionare OVMS pentru a adăuga modelul",
-      "tip": "Modelul se descarcă, uneori durează ore întregi. Te rugăm să ai răbdare...",
-      "title": "Descarcă model Intel OpenVINO"
-    },
-    "failed": {
-      "install": "Instalarea OVMS a eșuat:",
-      "install_code_100": "Eroare necunoscută",
-      "install_code_101": "Suportă doar procesoare Intel(R)",
-      "install_code_102": "Suportă doar Windows",
-      "install_code_103": "Descărcarea runtime-ului OVMS a eșuat",
-      "install_code_104": "Nu s-a putut instala runtime-ul OVMS",
-      "install_code_105": "Nu s-a putut crea ovdnd.exe",
-      "install_code_106": "Nu s-a putut crea run.bat",
-      "install_code_110": "Nu s-a putut curăța vechiul runtime OVMS",
-      "run": "Rularea OVMS a eșuat:",
-      "stop": "Oprirea OVMS a eșuat:"
-    },
-    "status": {
-      "not_installed": "OVMS nu este instalat",
-      "not_running": "OVMS nu rulează",
-      "running": "OVMS rulează",
-      "unknown": "Stare OVMS necunoscută"
-    },
-    "title": "Intel OVMS"
-  },
-  "paintings": {
-    "aspect_ratio": "Raport de aspect",
-    "aspect_ratios": {
-      "landscape": "Peisaj",
-      "portrait": "Portret",
-      "square": "Pătrat"
-    },
-    "auto_create_paint": "Creează automat imagine",
-    "auto_create_paint_tip": "După ce imaginea este generată, o nouă imagine va fi creată automat.",
-    "background": "Fundal",
-    "background_options": {
-      "auto": "Auto",
-      "opaque": "Opac",
-      "transparent": "Transparent"
-    },
-    "button": {
-      "delete": {
-        "image": {
-          "confirm": "Ești sigur că vrei să ștergi această imagine?",
-          "label": "Șterge imaginea"
-        }
-      },
-      "new": {
-        "image": "Imagine nouă"
-      }
-    },
-    "custom_size": "Dimensiune personalizată",
-    "dmxapi": {
-      "generating_tip": "Generarea cu modelul oficial, timpul estimat de așteptare este de 2-5 minute pentru cele mai bune rezultate. Te rugăm să verifici logurile backend DMXAPI pentru costul acestei operațiuni.",
-      "style": ", Stil:",
-      "style_types": {
-        "25d_animation": "Animație 2.5D",
-        "3d_cartoon": "Desen animat 3D",
-        "american_retro": "Retro American",
-        "baroque": "Baroc",
-        "cartoon_illustration": "Ilustrație de desen animat",
-        "chinese_gongbi": "Gongbi chinezesc",
-        "clay": "Argilă",
-        "cyberpunk": "Cyberpunk",
-        "felt": "Filț",
-        "flat": "Plat",
-        "fresh_anime": "Anime Proaspăt",
-        "ghibli": "Ghibli",
-        "japanese_anime": "Anime japonez",
-        "little_people_book": "Cartea Oamenilor Mici",
-        "monet_garden": "Grădina Monet",
-        "oil_painting": "Pictură în ulei",
-        "pixar": "Pixar",
-        "pixel_art": "Artă pixelată",
-        "poetic_ancient": "Poetic Antic",
-        "psychedelic": "Psichedelic",
-        "sketch": "Schiță",
-        "street_art": "Artă stradală",
-        "texture": "Textură",
-        "ukiyo_e": "Ukiyo-e",
-        "watercolor": "Acuarelă",
-        "wood_carving": "Sculptură în lemn",
-        "yarn_doll": "Păpușă din fire de lână"
-      }
-    },
-    "edit": {
-      "image_file": "Imagine editată",
-      "image_required": "Vă rugăm să încărcați mai întâi o imagine pentru editare"
-    },
-    "generate": {
-      "height": "Înălțime",
-      "magic_prompt_option_tip": "Îmbunătățește inteligent prompturile pentru rezultate mai bune",
-      "model_tip": "Versiune model: V3 este cea mai recentă versiune, V2 este modelul anterior, V2A este modelul rapid, V_1 este modelul de prima generație, _TURBO este versiunea accelerată",
-      "negative_prompt_tip": "Descrie elementele nedorite, doar pentru V_1, V_1_TURBO, V_2 și V_2_TURBO",
-      "number_images_tip": "Numărul de imagini de generat",
-      "person_generation": "Generare persoană",
-      "person_generation_tip": "Permite modelului să genereze imagini cu persoane",
-      "rendering_speed_tip": "Controlează compromisul dintre viteza de randare și calitate, disponibil doar pentru V_3",
-      "safety_tolerance": "Toleranță de siguranță",
-      "safety_tolerance_tip": "Controlează toleranța de siguranță pentru generarea imaginilor, disponibil doar pentru FLUX.1-Kontext-pro",
-      "seed_tip": "Controlează aleatoriul generării imaginii pentru rezultate reproductibile",
-      "style_type_tip": "Stil generare imagine pentru V_2 și versiuni ulterioare",
-      "width": "Lățime"
-    },
-    "generate_failed": "Nu s-a putut genera imaginea",
-    "generated_image": "Imagine generată",
-    "go_to_settings": "Mergi la Setări",
-    "guidance_scale": "Scară de ghidare",
-    "guidance_scale_tip": "Classifier Free Guidance. Cât de fidel vrei să respecte modelul promptul tău când caută o imagine similară să-ți arate",
-    "image": {
-      "size": "Dimensiune imagine"
-    },
-    "image_file_required": "Te rugăm să încarci mai întâi o imagine",
-    "image_file_retry": "Te rugăm să reîncarci mai întâi o imagine",
-    "image_handle_required": "Te rugăm să încarci mai întâi o imagine.",
-    "image_mix_failed": "Nu s-au putut combina imaginile",
-    "image_placeholder": "Nicio imagine disponibilă",
-    "image_retry": "Reîncearcă",
-    "image_size_options": {
-      "auto": "Auto"
-    },
-    "inference_steps": "Pași de inferență",
-    "inference_steps_tip": "Numărul de pași de inferență de efectuat. Mai mulți pași produc o calitate mai mare, dar durează mai mult",
-    "input_image": "Imagine de intrare",
-    "input_parameters": "Parametri de intrare",
-    "invalid_image_url": "Formatul URL-ului imaginii este invalid",
-    "learn_more": "Află mai multe",
-    "magic_prompt_option": "Prompt magic",
-    "mode": {
-      "edit": "Editează",
-      "generate": "Desenează",
-      "merge": "Îmbină",
-      "remix": "Remix",
-      "upscale": "Upscale"
-    },
-    "model": "Model",
-    "model_and_pricing": "Model și prețuri",
-    "moderation": "Moderare",
-    "moderation_options": {
-      "auto": "Auto",
-      "low": "Scăzut"
-    },
-    "negative_prompt": "Prompt negativ",
-    "negative_prompt_tip": "Descrie ce nu vrei să fie inclus în imagine",
-    "no_image_generation_model": "Niciun model de generare imagini disponibil, te rugăm să adaugi un model și să setezi tipul endpoint-ului la {{endpoint_type}}",
-    "number_images": "Număr imagini",
-    "number_images_tip": "Numărul de imagini de generat (1-4)",
-    "operation_failed": "Operațiunea a eșuat, vă rugăm să încercați din nou mai târziu",
-    "paint_course": "tutorial",
-    "per_image": "pe imagine",
-    "per_images": "pe imagini",
-    "person_generation_options": {
-      "allow_adult": "Permite adulți",
-      "allow_all": "Permite tot",
-      "allow_none": "Nepermis"
-    },
-    "ppio": {
-      "edit_prompt_tip": "Specifică obiectul sau zona de eliminat din imagine, ex: 'câine' sau 'pălărie'",
-      "mask_image": "Imagine mască",
-      "mask_image_tip": "Indică zona de șters. Zonele de șters trebuie să fie albe, zonele de păstrat negre",
-      "output_format": "Format ieșire",
-      "resolution": "Rezoluție țintă",
-      "seed_tip": "Sămânță aleatorie, aceeași sămânță și parametri produc imagini similare, -1 înseamnă aleatoriu",
-      "use_pre_llm_tip": "Activează expansiunea textului pentru optimizarea promptului. Recomandat pentru prompturi scurte, dezactivați pentru cele lungi",
-      "watermark_tip": "Dacă se adaugă filigran la imaginile generate, dezactivat implicit"
-    },
-    "pricing": "Prețuri",
-    "prompt_enhancement": "Îmbunătățire prompt",
-    "prompt_enhancement_tip": "Rescrie prompturile în versiuni detaliate, optimizate pentru model, când este activat",
-    "prompt_placeholder": "Descrie imaginea pe care vrei să o creezi, de ex. Un lac senin la apus cu munți în fundal",
-    "prompt_placeholder_edit": "Introdu descrierea imaginii, desenarea textului folosește \"ghilimele duble\" pentru încadrare",
-    "prompt_placeholder_en": "Introdu descrierea imaginii, momentan acceptă doar prompturi în engleză",
-    "proxy_required": "Deschide proxy-ul și activează \"Modul TUN\" pentru a vizualiza imaginile generate sau copiază-le în browser pentru deschidere. În viitor, conexiunea directă internă va fi acceptată",
-    "quality": "Calitate",
-    "quality_options": {
-      "auto": "Auto",
-      "high": "Înaltă",
-      "low": "Scăzută",
-      "medium": "Medie"
-    },
-    "regenerate": {
-      "confirm": "Aceasta va înlocui imaginile generate existente. Vrei să continui?"
-    },
-    "remix": {
-      "image_file": "Imagine de referință",
-      "image_weight": "Pondere imagine de referință",
-      "image_weight_tip": "Ajustează influența imaginii de referință",
-      "magic_prompt_option_tip": "Îmbunătățește inteligent prompturile de remix",
-      "model_tip": "Selectează versiunea modelului AI pentru remixare",
-      "negative_prompt_tip": "Descrie elementele nedorite în rezultatele remix",
-      "number_images_tip": "Numărul de rezultate remix de generat",
-      "rendering_speed_tip": "Controlează compromisul dintre viteza de randare și calitate, disponibil doar pentru V_3",
-      "seed_tip": "Controlează aleatoriul rezultatului combinat",
-      "style_type_tip": "Stil pentru imaginea remixată, doar pentru V_2 și versiuni ulterioare"
-    },
-    "rendering_speed": "Viteză de randare",
-    "rendering_speeds": {
-      "default": "Implicit",
-      "quality": "Calitate",
-      "turbo": "Turbo"
-    },
-    "req_error_model": "Nu s-a putut prelua modelul",
-    "req_error_no_balance": "Te rugăm să verifici validitatea tokenului",
-    "req_error_text": "Serverul este ocupat sau promptul conține termeni \"protejați prin drepturi de autor\" sau \"sensibili\". Te rugăm să încerci din nou.",
-    "req_error_token": "Te rugăm să verifici validitatea tokenului",
-    "required_field": "Câmp obligatoriu",
-    "seed": "Seed",
-    "seed_desc_tip": "Același seed și prompt pot genera imagini similare; setarea -1 va genera rezultate diferite de fiecare dată",
-    "seed_random": "Aleatoriu",
-    "seed_tip": "Același seed și prompt pot produce imagini similare",
-    "select_model": "Selectează modelul",
-    "style_type": "Stil",
-    "style_types": {
-      "3d": "3D",
-      "anime": "Anime",
-      "auto": "Auto",
-      "design": "Design",
-      "general": "General",
-      "realistic": "Realist"
-    },
-    "text_desc_required": "Te rugăm să introduci mai întâi descrierea imaginii",
-    "title": "Imagini",
-    "top_up": "Reîncarcă ",
-    "translating": "Se traduce...",
-    "uploaded_input": "Intrare încărcată",
-    "upscale": {
-      "detail": "Detaliu",
-      "detail_tip": "Controlează nivelul de îmbunătățire a detaliilor",
-      "image_file": "Imagine de scalat",
-      "magic_prompt_option_tip": "Îmbunătățește inteligent prompturile de upscaling",
-      "number_images_tip": "Numărul de rezultate scalate de generat",
-      "resemblance": "Similaritate",
-      "resemblance_tip": "Controlează similaritatea cu imaginea originală",
-      "seed_tip": "Controlează aleatoriul scalării"
-    },
-    "watermark": "Adaugă filigran",
-    "zhipu": {
-      "custom_size_divisible": "Dimensiunea personalizată trebuie să fie divizibilă cu 16",
-      "custom_size_hint": "Lățimea și înălțimea trebuie să fie între 512px-2048px, divizibile cu 16, iar numărul total de pixeli nu poate depăși 2^21px",
-      "custom_size_pixels": "Numărul total de pixeli ai dimensiunii personalizate nu poate depăși 2.097.152",
-      "custom_size_range": "Dimensiunea personalizată trebuie să fie între 512px și 2048px.",
-      "custom_size_required": "Vă rugăm să setați lățimea și înălțimea personalizate",
-      "image_sizes": {
-        "1024x1024_default": "1024x1024 (Implicit)",
-        "1152x864": "1152x864",
-        "1344x768": "1344x768",
-        "1440x720": "1440x720",
-        "720x1440": "720x1440",
-        "768x1344": "768x1344",
-        "864x1152": "864x1152"
-      },
-      "quality_options": {
-        "hd": "HD",
-        "standard_default": "Standard (Implicit)"
-      }
     }
   },
   "platform": {
@@ -3152,61 +1631,6 @@
     "sync_cli": "Sincronizează CLI",
     "sync_models": "Sincronizează modelele",
     "use_catalog": "Use the platform model catalog"
-  },
-  "plugins": {
-    "actions": "Acțiuni",
-    "agents": "Agenți",
-    "all_categories": "Toate categoriile",
-    "all_types": "Toate",
-    "category": "Categorie",
-    "commands": "Comenzi",
-    "confirm_uninstall": "Ești sigur că vrei să dezinstalezi {{name}}?",
-    "confirm_uninstall_package": "Sigur doriți să dezinstalați pachetul {{name}} și toate componentele sale?",
-    "content_saved": "Conținutul plugin-ului a fost salvat cu succes",
-    "detail": {
-      "allowed_tools": "Unelte Permise",
-      "author": "Autor",
-      "content": "Conținut",
-      "description": "Descriere",
-      "file": "Fișier",
-      "installed": "Instalat",
-      "metadata": "Metadate",
-      "size": "Dimensiune",
-      "source": "Sursă",
-      "tags": "Etichete",
-      "tools": "Unelte"
-    },
-    "install": "Instalează",
-    "install_plugins_from_browser": "Răsfoiește pluginurile disponibile pentru a începe",
-    "installing": "Se instalează...",
-    "name": "Nume",
-    "no_description": "Nicio descriere disponibilă",
-    "no_installed_plugins": "Niciun plugin instalat încă",
-    "no_results": "Nu s-au găsit pluginuri",
-    "no_results_skills": "Nicio abilitate găsită",
-    "search_placeholder": "Caută pluginuri...",
-    "search_placeholder_skills": "Abilități de căutare...",
-    "showing_results": "Se afișează {{count}} plugin",
-    "showing_results_one": "Se afișează {{count}} plugin",
-    "showing_results_other": "Se afișează {{count}} pluginuri",
-    "showing_results_plural": "Se afișează {{count}} pluginuri",
-    "showing_results_skills": "Afișare {{count}} abilitate",
-    "showing_results_skills_one": "Afișare {{count}} abilitate",
-    "showing_results_skills_other": "Afișare {{count}} competențe",
-    "showing_results_skills_plural": "Afișare {{count}} competențe",
-    "skills": "Abilități",
-    "sort": {
-      "downloads": "Descărcări",
-      "label": "Sortare",
-      "relevance": "Relevanță",
-      "stars": "Stele"
-    },
-    "standalone_plugins": "Plugin-uri independente",
-    "try_different_search": "Încearcă să ajustezi căutarea sau filtrele de categorie",
-    "type": "Tip",
-    "uninstall": "Dezinstalează",
-    "uninstall_package": "Dezinstalează pachetul",
-    "uninstalling": "Se dezinstalează..."
   },
   "preview": {
     "copy": {
@@ -3319,426 +1743,6 @@
     },
     "title": "Restaurare date"
   },
-  "richEditor": {
-    "action": {
-      "table": {
-        "deleteColumn": "Șterge coloane",
-        "deleteRow": "Șterge rânduri",
-        "insertColumnAfter": "Inserează după",
-        "insertColumnBefore": "Inserează înainte",
-        "insertRowAfter": "Inserează dedesubt",
-        "insertRowBefore": "Inserează deasupra"
-      }
-    },
-    "commands": {
-      "blockMath": {
-        "description": "Inserează formulă matematică",
-        "title": "Bloc matematic"
-      },
-      "blockquote": {
-        "description": "Capturează un citat",
-        "title": "Citat"
-      },
-      "bold": {
-        "description": "Marcat cu aldine",
-        "title": "Aldine"
-      },
-      "bulletList": {
-        "description": "Creează o listă simplă cu marcatori",
-        "title": "Listă cu marcatori"
-      },
-      "calloutInfo": {
-        "description": "Adaugă o casetă de informații",
-        "title": "Casetă informații"
-      },
-      "calloutWarning": {
-        "description": "Adaugă o casetă de avertizare",
-        "title": "Casetă avertizare"
-      },
-      "code": {
-        "description": "Inserează fragment de cod",
-        "title": "Cod"
-      },
-      "codeBlock": {
-        "description": "Capturează un fragment de cod",
-        "title": "Cod"
-      },
-      "columns": {
-        "description": "Creează aspect pe coloane",
-        "title": "Coloane"
-      },
-      "date": {
-        "description": "Inserează data curentă",
-        "title": "Dată"
-      },
-      "divider": {
-        "description": "Adaugă o linie orizontală",
-        "title": "Divizor"
-      },
-      "hardBreak": {
-        "description": "Inserează o întrerupere de linie",
-        "title": "Întrerupere de linie"
-      },
-      "heading1": {
-        "description": "Titlu secțiune mare",
-        "title": "Titlu 1"
-      },
-      "heading2": {
-        "description": "Titlu secțiune mediu",
-        "title": "Titlu 2"
-      },
-      "heading3": {
-        "description": "Titlu secțiune mic",
-        "title": "Titlu 3"
-      },
-      "heading4": {
-        "description": "Titlu secțiune mai mic",
-        "title": "Titlu 4"
-      },
-      "heading5": {
-        "description": "Titlu secțiune și mai mic",
-        "title": "Titlu 5"
-      },
-      "heading6": {
-        "description": "Cel mai mic titlu de secțiune",
-        "title": "Titlu 6"
-      },
-      "image": {
-        "description": "Inserează o imagine",
-        "title": "Imagine"
-      },
-      "inlineCode": {
-        "description": "Adaugă cod în linie",
-        "title": "Cod în linie"
-      },
-      "inlineMath": {
-        "description": "Inserează formule matematice în linie",
-        "title": "Matematică în linie"
-      },
-      "italic": {
-        "description": "Marcat ca italic",
-        "title": "Italic"
-      },
-      "link": {
-        "description": "Adaugă un link",
-        "title": "Link"
-      },
-      "noCommandsFound": "Nicio comandă găsită",
-      "orderedList": {
-        "description": "Creează o listă numerotată",
-        "title": "Listă numerotată"
-      },
-      "paragraph": {
-        "description": "Începe să scrii cu text simplu",
-        "title": "Text"
-      },
-      "redo": {
-        "description": "Refă ultima acțiune",
-        "title": "Refă"
-      },
-      "strike": {
-        "description": "Marchează ca tăiat",
-        "title": "Tăiat"
-      },
-      "table": {
-        "description": "Inserează un tabel",
-        "title": "Tabel"
-      },
-      "taskList": {
-        "description": "Creează o listă de sarcini",
-        "title": "Listă de sarcini"
-      },
-      "underline": {
-        "description": "Marchează ca subliniat",
-        "title": "Subliniat"
-      },
-      "undo": {
-        "description": "Anulează ultima acțiune",
-        "title": "Anulează"
-      }
-    },
-    "dragHandle": "Trage pentru a muta",
-    "frontMatter": {
-      "addProperty": "Adaugă o proprietate",
-      "addTag": "Adaugă etichetă",
-      "changeToBoolean": "Casetă de bifare",
-      "changeToDate": "Dată",
-      "changeToNumber": "Număr",
-      "changeToTags": "Etichete",
-      "changeToText": "Text",
-      "changeType": "Schimbă tipul",
-      "deleteProperty": "Șterge proprietatea",
-      "editValue": "Editează valoarea",
-      "empty": "Gol",
-      "moreActions": "Mai multe acțiuni",
-      "propertyName": "Nume proprietate"
-    },
-    "image": {
-      "placeholder": "Adaugă o poză"
-    },
-    "imageUploader": {
-      "embedImage": "Încorporează imagine",
-      "embedLink": "Încorporează link",
-      "embedSuccess": "Imagine încorporată cu succes",
-      "invalidType": "Te rugăm să selectezi un fișier imagine",
-      "invalidUrl": "URL imagine invalid",
-      "processing": "Se procesează imaginea...",
-      "title": "Adaugă o imagine",
-      "tooLarge": "Dimensiunea imaginii nu poate depăși 10MB",
-      "upload": "Încarcă",
-      "uploadError": "Încărcarea imaginii a eșuat",
-      "uploadFile": "Încarcă fișier",
-      "uploadHint": "Suportă JPG, PNG, GIF și alte formate, max 10MB",
-      "uploadSuccess": "Imagine încărcată cu succes",
-      "uploadText": "Fă clic sau trage imaginea aici pentru a încărca",
-      "uploading": "Se încarcă imaginea",
-      "urlPlaceholder": "Lipește linkul imaginii",
-      "urlRequired": "Te rugăm să introduci URL-ul imaginii"
-    },
-    "link": {
-      "remove": "Elimină linkul",
-      "text": "Titlu link",
-      "textPlaceholder": "Te rugăm să introduci titlul linkului",
-      "url": "URL link"
-    },
-    "math": {
-      "placeholder": "Introdu formula LaTeX"
-    },
-    "placeholder": "Scrie '/' pentru comenzi",
-    "plusButton": "Fă clic pentru a adăuga dedesubt",
-    "toolbar": {
-      "blockMath": "Bloc matematic",
-      "blockquote": "Citat",
-      "bold": "Aldine",
-      "bulletList": "Listă cu marcatori",
-      "clearMarks": "Șterge formatarea",
-      "code": "Cod în linie",
-      "codeBlock": "Bloc de cod",
-      "heading1": "Titlu 1",
-      "heading2": "Titlu 2",
-      "heading3": "Titlu 3",
-      "heading4": "Titlu 4",
-      "heading5": "Titlu 5",
-      "heading6": "Titlu 6",
-      "image": "Imagine",
-      "inlineMath": "Ecuație în linie",
-      "italic": "Italic",
-      "link": "Link",
-      "orderedList": "Listă ordonată",
-      "paragraph": "Paragraf",
-      "redo": "Refă",
-      "strike": "Tăiat",
-      "table": "Tabel",
-      "taskList": "Listă de sarcini",
-      "underline": "Subliniat",
-      "undo": "Anulează"
-    }
-  },
-  "selection": {
-    "action": {
-      "builtin": {
-        "copy": "Copiază",
-        "explain": "Explică",
-        "quote": "Citează",
-        "refine": "Rafinează",
-        "search": "Caută",
-        "summary": "Rezumat",
-        "translate": "Tradu"
-      },
-      "prompt": {
-        "explain": "Te rog să explici următorul conținut. Cerințe: Răspunde în {{language}}; nu include nicio explicație a acestui prompt, oferă direct răspunsul:",
-        "refine": "Te rugăm să optimizezi sau să îmbunătățești conținutul introdus de utilizator, cuprins în eticheta XML <INPUT>, păstrând sensul și integritatea textului original. Cerințe: rezultatul tău trebuie să fie în aceeași limbă cu cel introdus de utilizator; nu include nicio explicație referitoare la acest prompt, oferă direct răspunsul; nu afișa etichetele XML, ci doar conținutul optimizat.",
-        "summary": "Vă rog să rezumați următorul conținut. Cerințe: Răspundeți în {{language}}; nu includeți nicio explicație a acestui prompt, oferiți direct răspunsul:"
-      },
-      "translate": {
-        "smart_translate_tips": "Traducere inteligentă: Conținutul va fi tradus mai întâi în limba țintă; conținutul aflat deja în limba țintă va fi tradus în limba alternativă"
-      },
-      "window": {
-        "c_copy": "C: Copiază",
-        "esc_close": "Esc: Închide",
-        "esc_stop": "Esc: Oprește",
-        "opacity": "Opacitate fereastră",
-        "original_copy": "Copiază originalul",
-        "original_hide": "Ascunde originalul",
-        "original_show": "Afișează originalul",
-        "pin": "Fixează",
-        "pinned": "Fixat",
-        "r_regenerate": "R: Regenerează"
-      }
-    },
-    "name": "Asistent de selecție",
-    "settings": {
-      "actions": {
-        "add_tooltip": {
-          "disabled": "Numărul maxim de acțiuni personalizate a fost atins ({{max}})",
-          "enabled": "Adaugă acțiune personalizată"
-        },
-        "custom": "Acțiune personalizată",
-        "delete_confirm": "Ești sigur că vrei să ștergi această acțiune personalizată?",
-        "drag_hint": "Trage pentru a reordona. Mută deasupra pentru a activa acțiunea ({{enabled}}/{{max}})",
-        "reset": {
-          "button": "Resetează",
-          "confirm": "Ești sigur că vrei să resetezi la acțiunile implicite? Acțiunile personalizate nu vor fi șterse.",
-          "tooltip": "Resetează la acțiunile implicite. Acțiunile personalizate nu vor fi șterse."
-        },
-        "title": "Acțiuni"
-      },
-      "advanced": {
-        "filter_list": {
-          "description": "Funcție avansată, recomandată utilizatorilor cu experiență",
-          "title": "Listă de filtrare"
-        },
-        "filter_mode": {
-          "blacklist": "Listă neagră",
-          "default": "Oprit",
-          "description": "Poate limita asistentul de selecție să funcționeze doar în anumite aplicații (listă albă) sau să nu funcționeze (listă neagră)",
-          "title": "Filtru aplicații",
-          "whitelist": "Listă albă"
-        },
-        "title": "Avansat"
-      },
-      "enable": {
-        "description": "Momentan acceptat doar pe Windows și macOS",
-        "mac_process_trust_hint": {
-          "button": {
-            "go_to_settings": "Mergi la Setări",
-            "open_accessibility_settings": "Deschide setările de accesibilitate"
-          },
-          "description": {
-            "0": "Asistentul de selecție necesită <strong>Permisiune de accesibilitate</strong> pentru a funcționa corect.",
-            "1": "Te rugăm să faci clic pe \"<strong>Mergi la Setări</strong>\" și să apeși butonul \"<strong>Deschide setările de sistem</strong>\" în fereastra pop-up de solicitare a permisiunii care apare ulterior. Apoi găsește \"<strong>Cherry Studio</strong>\" în lista de aplicații și activează comutatorul de permisiune.",
-            "2": "După finalizarea setărilor, te rugăm să redeschizi asistentul de selecție."
-          },
-          "title": "Permisiune de accesibilitate"
-        },
-        "title": "Activează"
-      },
-      "experimental": "Funcții experimentale",
-      "filter_modal": {
-        "title": "Listă filtrare aplicații",
-        "user_tips": {
-          "mac": "Te rugăm să introduci Bundle ID-ul aplicației, unul pe linie, nu este sensibil la majuscule/minuscule, poate fi potrivit aproximativ. De exemplu: com.google.Chrome, com.apple.mail etc.",
-          "windows": "Te rugăm să introduci numele fișierului executabil al aplicației, unul pe linie, nu este sensibil la majuscule/minuscule, poate fi potrivit aproximativ. De exemplu: chrome.exe, weixin.exe, Cherry Studio.exe etc."
-        }
-      },
-      "linux": {
-        "compositor_incompatible": "Mediul dvs. desktop nu acceptă funcția de selecție. Vă rugăm să treceți la o sesiune X11 pentru o experiență completă.",
-        "filter_warning_text": "Indisponibil în sesiunea Wayland",
-        "input_group_fail": "Nu a fost acordat, te rog să rulezi `sudo usermod -aG input $USER` și să te reconectezi",
-        "input_group_label": "permisiunea grupului de intrare:",
-        "input_group_pass": "Acordat",
-        "wayland_checklist_subtitle": "Asigurați-vă că sunt îndeplinite următoarele condiții pentru a optimiza experiența Wayland:",
-        "wayland_description": "Vă aflați într-o sesiune Wayland. Din cauza limitărilor sistemului, bara de instrumente poate apărea doar în centrul ecranului în loc să urmărească textul selectat pe unele medii desktop. Se recomandă să treceți la o sesiune X11 pentru o experiență completă.",
-        "wayland_title": "Notificare sesiune Wayland",
-        "xwayland_fail": "Nu este activat, vă rugăm să lansați Cherry Studio cu steagul `--ozone-platform=x11`",
-        "xwayland_label": "Mod XWayland:",
-        "xwayland_pass": "Activat"
-      },
-      "search_modal": {
-        "custom": {
-          "name": {
-            "hint": "Te rugăm să introduci numele motorului de căutare",
-            "label": "Nume personalizat",
-            "max_length": "Numele nu poate depăși 16 caractere"
-          },
-          "test": "Test",
-          "url": {
-            "hint": "Folosește {{queryString}} pentru a reprezenta termenul de căutare",
-            "invalid_format": "Te rugăm să introduci un URL valid care începe cu http:// sau https://",
-            "label": "URL căutare personalizată",
-            "missing_placeholder": "URL-ul trebuie să conțină substituentul {{queryString}}",
-            "required": "Te rugăm să introduci URL-ul de căutare"
-          }
-        },
-        "engine": {
-          "custom": "Personalizat",
-          "label": "Motor de căutare"
-        },
-        "title": "Setează motorul de căutare"
-      },
-      "toolbar": {
-        "compact_mode": {
-          "description": "În modul compact, sunt afișate doar pictogramele, fără text",
-          "title": "Mod compact"
-        },
-        "title": "Bară de instrumente",
-        "trigger_mode": {
-          "ctrlkey": "Tasta Ctrl",
-          "ctrlkey_note": "După selecție, ține apăsată tasta Ctrl pentru a afișa bara de instrumente",
-          "description": "Modul de declanșare a asistentului de selecție și de afișare a barei de instrumente",
-          "description_note": {
-            "linux": "Dacă ai remapat tastele modificatoare folosind instrumente precum xmodmap sau xremap, acest lucru poate face ca unele aplicații să nu poată selecta textul.",
-            "mac": "Dacă ai remapat tasta ⌘ folosind scurtături sau instrumente de mapare a tastaturii, acest lucru poate cauza eșecul selecției textului în unele aplicații.",
-            "windows": "Unele aplicații nu acceptă selectarea textului cu tasta Ctrl. Dacă ai remapat tasta Ctrl folosind instrumente precum AHK, acest lucru poate cauza eșecul selecției textului în unele aplicații."
-          },
-          "selected": "Selecție",
-          "selected_note": "Afișează bara de instrumente la selectarea textului",
-          "shortcut": "Comandă rapidă",
-          "shortcut_link": "Mergi la Setările comenzilor rapide",
-          "shortcut_note": "După selecție, folosește comanda rapidă pentru a afișa bara de instrumente. Te rugăm să setezi comanda rapidă în pagina de setări și să o activezi. ",
-          "title": "Mod de declanșare"
-        }
-      },
-      "user_modal": {
-        "assistant": {
-          "default": "Implicit",
-          "label": "Selectează asistentul"
-        },
-        "icon": {
-          "error": "Nume pictogramă invalid, te rugăm să verifici intrarea",
-          "label": "Pictogramă",
-          "placeholder": "Introdu numele pictogramei Lucide",
-          "random": "Pictogramă aleatorie",
-          "tooltip": "Numele pictogramelor Lucide sunt cu litere mici, de ex. arrow-right",
-          "view_all": "Vezi toate pictogramele"
-        },
-        "model": {
-          "assistant": "Folosește asistent",
-          "default": "Model implicit",
-          "label": "Model",
-          "tooltip": "Folosind Asistent: Va folosi atât promptul de sistem al asistentului, cât și parametrii modelului"
-        },
-        "name": {
-          "hint": "Te rugăm să introduci numele acțiunii",
-          "label": "Nume"
-        },
-        "prompt": {
-          "copy_placeholder": "Copiază substituentul",
-          "label": "Prompt utilizator",
-          "placeholder": "Folosește substituentul {{text}} pentru a reprezenta textul selectat. Dacă este gol, textul selectat va fi adăugat la acest prompt",
-          "placeholder_text": "Substituent",
-          "tooltip": "Promptul utilizatorului servește ca o completare la intrarea utilizatorului și nu va suprascrie promptul de sistem al asistentului"
-        },
-        "title": {
-          "add": "Adaugă acțiune personalizată",
-          "edit": "Editează acțiunea personalizată"
-        }
-      },
-      "window": {
-        "auto_close": {
-          "description": "Închide automat fereastra când nu este fixată și pierde focusul",
-          "title": "Închidere automată"
-        },
-        "auto_pin": {
-          "description": "Fixează fereastra în mod implicit",
-          "title": "Fixare automată"
-        },
-        "follow_toolbar": {
-          "description": "Poziția ferestrei va urmări bara de instrumente. Când este dezactivat, va fi întotdeauna centrată.",
-          "title": "Urmărește bara de instrumente"
-        },
-        "opacity": {
-          "description": "Setează opacitatea implicită a ferestrei, 100% este complet opac",
-          "title": "Opacitate"
-        },
-        "remember_size": {
-          "description": "Fereastra se va afișa la ultima dimensiune ajustată în timpul rulării aplicației",
-          "title": "Memorează dimensiunea"
-        },
-        "title": "Fereastră de acțiune"
-      }
-    }
-  },
   "settings": {
     "about": {
       "appVersion": "[to be translated]:Current Version",
@@ -3793,10 +1797,6 @@
         "title": "Site oficial"
       }
     },
-    "advanced": {
-      "auto_switch_to_topics": "Comutare automată la subiect",
-      "title": "Setări avansate"
-    },
     "assistant": {
       "icon": {
         "type": {
@@ -3809,10 +1809,6 @@
       "label": "Asistent implicit",
       "model_params": "Parametri model",
       "title": "Asistent implicit"
-    },
-    "channels": {
-      "description": "Conectați agenți la platforme de mesagerie precum Telegram, Feishu, Discord și altele.",
-      "title": "Canale"
     },
     "data": {
       "app_data": {
@@ -3841,19 +1837,6 @@
         "select_success": "Directorul de date a fost schimbat, aplicația va reporni pentru a aplica modificările",
         "select_title": "Schimbă directorul de date al aplicației",
         "stop_quit_app_reason": "Aplicația migrează datele momentan și nu poate fi închisă"
-      },
-      "app_knowledge": {
-        "button": {
-          "delete": "Șterge fișierul"
-        },
-        "label": "Fișiere bază de cunoștințe",
-        "remove_all": "Elimină fișierele bazei de cunoștințe",
-        "remove_all_confirm": "Ștergerea fișierelor bazei de cunoștințe va reduce spațiul de stocare ocupat, dar nu va șterge datele vectoriale ale bazei de cunoștințe; după ștergere, fișierul sursă nu va mai putea fi deschis. Continui?",
-        "remove_all_success": "Fișiere eliminate cu succes"
-      },
-      "app_logs": {
-        "button": "Deschide jurnalele",
-        "label": "Jurnale aplicație"
       },
       "backup": {
         "skip_file_data_help": "Omite salvarea fișierelor de date precum imagini și baze de cunoștințe în timpul backup-ului și salvează doar înregistrările de chat și setările. Reduce ocuparea spațiului și accelerează viteza de backup.",
@@ -3892,30 +1875,6 @@
       },
       "hour_interval_one": "{{count}} oră",
       "hour_interval_other": "{{count}} ore",
-      "import_settings": {
-        "button": "Importă fișier Json",
-        "chatgpt": "Importă din ChatGPT",
-        "title": "Importă date din aplicație externă"
-      },
-      "joplin": {
-        "check": {
-          "button": "Verifică",
-          "empty_token": "Te rugăm să introduci tokenul de autorizare Joplin",
-          "empty_url": "Te rugăm să introduci URL-ul serviciului Joplin Clipper",
-          "fail": "Verificarea conexiunii Joplin a eșuat",
-          "success": "Verificarea conexiunii Joplin a reușit"
-        },
-        "export_reasoning": {
-          "help": "Când este activat, conținutul exportat va include lanțul de raționament (procesul de gândire).",
-          "title": "Include lanțul de raționament în export"
-        },
-        "help": "În opțiunile Joplin, activează web clipper-ul (nu este necesară extensia de browser), confirmă portul și copiază tokenul de autentificare aici.",
-        "title": "Configurare Joplin",
-        "token": "Token de autorizare Joplin",
-        "token_placeholder": "Token de autorizare Joplin",
-        "url": "URL serviciu Joplin Web Clipper",
-        "url_placeholder": "http://127.0.0.1:41184/"
-      },
       "limit": {
         "appDataDiskQuota": "Avertisment spațiu pe disc",
         "appDataDiskQuotaDescription": "Spațiul directorului de date este aproape plin, te rugăm să eliberezi spațiu pe disc, altfel datele se vor pierde"
@@ -4035,28 +1994,6 @@
       },
       "minute_interval_one": "{{count}} minut",
       "minute_interval_other": "{{count}} minute",
-      "notion": {
-        "api_key": "Cheie API Notion",
-        "api_key_placeholder": "Introdu cheia API Notion",
-        "check": {
-          "button": "Verifică",
-          "empty_api_key": "Cheia API nu este configurată",
-          "empty_database_id": "ID-ul bazei de date nu este configurat",
-          "error": "Eroare de conexiune, te rugăm să verifici configurația rețelei și cheia API și ID-ul bazei de date",
-          "fail": "Conexiune eșuată, te rugăm să verifici rețeaua și cheia API și ID-ul bazei de date",
-          "success": "Conexiune reușită"
-        },
-        "database_id": "ID bază de date Notion",
-        "database_id_placeholder": "Introdu ID-ul bazei de date Notion",
-        "export_reasoning": {
-          "help": "Când este activat, conținutul exportat va include lanțul de raționament (procesul de gândire).",
-          "title": "Include lanțul de raționament în export"
-        },
-        "help": "Documentație configurare Notion",
-        "page_name_key": "Nume câmp titlu pagină",
-        "page_name_key_placeholder": "Introdu numele câmpului pentru titlul paginii, implicit este Name",
-        "title": "Setări Notion"
-      },
       "obsidian": {
         "default_vault": "Seif Obsidian implicit",
         "default_vault_export_failed": "Export eșuat",
@@ -4067,28 +2004,6 @@
         "title": "Configurare Obsidian"
       },
       "obsolete_cache_cleanup_failed": "Datele vechi de test nu au putut fi șterse. Închideți celelalte ferestre ale aplicației și reporniți-o.",
-      "siyuan": {
-        "api_url": "URL API SiYuan Note",
-        "api_url_placeholder": "de ex.: http://127.0.0.1:6806",
-        "box_id": "ID Box SiYuan Note",
-        "box_id_placeholder": "Te rugăm să introduci ID-ul Box SiYuan Note",
-        "check": {
-          "button": "Verifică",
-          "empty_config": "Te rugăm să completezi adresa API și tokenul",
-          "error": "Eroare de conexiune, te rugăm să verifici conexiunea la rețea",
-          "fail": "Conexiune eșuată, te rugăm să verifici adresa API și tokenul",
-          "success": "Conexiune reușită",
-          "title": "Verificare conexiune"
-        },
-        "root_path": "Cale rădăcină SiYuan Note",
-        "root_path_placeholder": "de ex.: /CherryStudio",
-        "title": "Configurare SiYuan Note",
-        "token": {
-          "help": "Obține token SiYuan Note",
-          "label": "Token SiYuan Note"
-        },
-        "token_placeholder": "Te rugăm să introduci tokenul SiYuan Note"
-      },
       "title": "Setări date",
       "webdav": {
         "autoSync": {
@@ -4178,27 +2093,7 @@
           "help": "[to be translated]:When enabled, WebDAV requests will use the User-Agent Zotero/8.0 for providers that require the client app to be Zotero 8 or above.",
           "title": "[to be translated]:Impersonate Zotero 8+"
         }
-      },
-      "yuque": {
-        "check": {
-          "button": "Verifică",
-          "empty_repo_url": "Te rugăm să introduci mai întâi URL-ul bazei de cunoștințe",
-          "empty_token": "Te rugăm să introduci mai întâi tokenul Yuque",
-          "fail": "Verificarea conexiunii Yuque a eșuat",
-          "success": "Conexiunea Yuque a fost verificată cu succes"
-        },
-        "help": "Obține token Yuque",
-        "repo_url": "URL Yuque",
-        "repo_url_placeholder": "https://www.yuque.com/username/xxx",
-        "title": "Configurare Yuque",
-        "token": "Token Yuque",
-        "token_placeholder": "Te rugăm să introduci tokenul Yuque"
       }
-    },
-    "developer": {
-      "enable_developer_mode": "Activează modul dezvoltator",
-      "help": "După activarea modului dezvoltator, poți folosi funcția de urmărire (trace) pentru a vizualiza fluxul de date în timpul invocării modelului.",
-      "title": "Mod dezvoltator"
     },
     "display": {
       "assistant": {
@@ -4307,16 +2202,6 @@
       },
       "view_webdav_settings": "Vezi setările WebDAV"
     },
-    "groq": {
-      "title": "Setări Groq"
-    },
-    "hardware_acceleration": {
-      "confirm": {
-        "content": "Dezactivarea accelerării hardware necesită repornirea aplicației pentru a intra în vigoare. Vrei să repornești acum?",
-        "title": "Repornire necesară"
-      },
-      "title": "Dezactivează accelerarea hardware"
-    },
     "input": {
       "auto_translate_with_space": "Tradu rapid cu 3 spații",
       "clear": {
@@ -4387,61 +2272,6 @@
       "show_message_outline": "Afișează conturul mesajului",
       "title": "Setări mesaje",
       "use_serif_font": "Folosește font serif"
-    },
-    "miniapps": {
-      "cache_change_notice": "Modificările vor intra în vigoare când numărul de mini-aplicații deschise atinge valoarea setată",
-      "cache_description": "Setează numărul maxim de mini-aplicații active de păstrat în memorie",
-      "cache_settings": "Setări cache",
-      "cache_title": "Limită cache mini-aplicații",
-      "custom": {
-        "conflicting_ids": "ID-uri conflictuale cu aplicațiile implicite: {{ids}}",
-        "duplicate_ids": "ID-uri duplicate găsite: {{ids}}",
-        "edit_description": "Editează configurația mini-aplicației personalizate aici. Fiecare aplicație ar trebui să includă câmpurile id, name, url și logo.",
-        "edit_title": "Editează mini-aplicație personalizată",
-        "id": "ID",
-        "id_error": "ID-ul este obligatoriu.",
-        "id_placeholder": "Introdu ID",
-        "logo": "Logo",
-        "logo_file": "Încarcă fișier logo",
-        "logo_upload_button": "Încarcă",
-        "logo_upload_error": "Încărcarea logo-ului a eșuat.",
-        "logo_upload_label": "Încarcă logo",
-        "logo_upload_success": "Logo încărcat cu succes.",
-        "logo_url": "URL logo",
-        "logo_url_label": "URL logo",
-        "logo_url_placeholder": "Introdu URL logo",
-        "name": "Nume",
-        "name_error": "Numele este obligatoriu.",
-        "name_placeholder": "Introdu nume",
-        "placeholder": "Introdu configurația mini-aplicației personalizate (format JSON)",
-        "remove_error": "Eliminarea mini-aplicației personalizate a eșuat.",
-        "remove_success": "Mini-aplicația personalizată a fost eliminată cu succes.",
-        "save": "Salvează",
-        "save_error": "Salvarea mini-aplicației personalizate a eșuat.",
-        "save_success": "Mini-aplicația personalizată a fost salvată cu succes.",
-        "title": "Personalizat",
-        "url": "URL",
-        "url_error": "URL-ul este obligatoriu.",
-        "url_placeholder": "Introdu URL"
-      },
-      "disabled": "Mini-aplicații ascunse",
-      "display_title": "Setări afișare mini-aplicații",
-      "empty": "Trage mini-aplicațiile din stânga pentru a le ascunde",
-      "open_link_external": {
-        "title": "Deschide în browser linkurile care deschid ferestre noi"
-      },
-      "region": {
-        "auto": "Detectare automată",
-        "cn": "China",
-        "description": "Filtrarea aplicațiilor mini care nu sunt acceptate în funcție de regiunea în care vă aflați",
-        "global": "global",
-        "title": "Filtru zonă aplicație miniatură"
-      },
-      "reset_tooltip": "Resetează la implicit",
-      "sidebar_description": "Afișează mini-aplicațiile active în bara laterală",
-      "sidebar_title": "Afișare mini-aplicații active în bara laterală",
-      "title": "Setări mini-aplicații",
-      "visible": "Mini-aplicații vizibile"
     },
     "model": "Model implicit",
     "modelSelection": {
@@ -4538,7 +2368,6 @@
       "label": "Mai multe setări",
       "warn": "Avertisment de risc"
     },
-    "no_provider_selected": "Furnizor neselectat",
     "notification": {
       "assistant": "Mesaj asistent",
       "backup": "Mesaj backup",
@@ -4578,10 +2407,6 @@
         "title": "Verbozitate"
       }
     },
-    "privacy": {
-      "enable_privacy_mode": "Raportare anonimă a erorilor și statisticilor",
-      "title": "Setări confidențialitate"
-    },
     "provider": {
       "add": {
         "name": {
@@ -4590,28 +2415,6 @@
         },
         "title": "Adaugă furnizor",
         "type": "Tip furnizor"
-      },
-      "anthropic": {
-        "apikey": "Cheie API",
-        "auth_failed": "Autentificarea Anthropic a eșuat",
-        "auth_method": "Metodă de autentificare",
-        "auth_success": "Autentificare OAuth Anthropic reușită",
-        "authenticated": "Verificat",
-        "authenticating": "Se autentifică",
-        "cancel": "Anulează",
-        "code_error": "Cod de autorizare invalid, te rugăm să încerci din nou",
-        "code_placeholder": "Te rugăm să introduci codul de autorizare afișat în browser",
-        "code_required": "Codul de autorizare nu poate fi gol",
-        "description": "Autentificare OAuth",
-        "description_detail": "Trebuie să te abonezi la Claude Pro sau o versiune superioară pentru a folosi această metodă de autentificare",
-        "enter_auth_code": "Cod de autorizare",
-        "logout": "Deconectare",
-        "logout_failed": "Deconectarea a eșuat, te rugăm să încerci din nou",
-        "logout_success": "Te-ai deconectat cu succes de la Anthropic",
-        "oauth": "Web OAuth",
-        "oauth_disabled_warning": "Anthropic a suspendat temporar utilizarea Claude prin OAuth. Această metodă de autentificare este momentan indisponibilă. Vă rugăm să utilizați o cheie API deocamdată.",
-        "start_auth": "Începe autorizarea",
-        "submit_code": "Finalizează conectarea"
       },
       "anthropic_api_host": "Gazdă API Anthropic",
       "anthropic_api_host_preview": "Previzualizare Anthropic: {{url}}",
@@ -4680,40 +2483,7 @@
         "tip": "Folosește virgule pentru a separa mai multe chei"
       },
       "api_version": "Versiune API",
-      "aws-bedrock": {
-        "access_key_id": "ID cheie acces AWS",
-        "access_key_id_help": "ID-ul tău de cheie de acces AWS pentru accesarea serviciilor AWS Bedrock",
-        "api_key": "Cheie API Bedrock",
-        "api_key_help": "Cheia ta API AWS Bedrock pentru autentificare",
-        "auth_type": "Tip autentificare",
-        "auth_type_api_key": "Cheie API Bedrock",
-        "auth_type_help": "Alege între credențiale IAM sau autentificare cu cheie API Bedrock",
-        "auth_type_iam": "Credențiale IAM",
-        "description": "AWS Bedrock este serviciul de modele de fundație complet gestionat de Amazon care acceptă diverse modele lingvistice mari avansate",
-        "region": "Regiune AWS",
-        "region_help": "Regiunea serviciului tău AWS, de ex., us-east-1",
-        "secret_access_key": "Cheie secretă acces AWS",
-        "secret_access_key_help": "Cheia ta secretă de acces AWS, te rugăm să o păstrezi în siguranță",
-        "title": "Configurare AWS Bedrock"
-      },
-      "azure": {
-        "apiversion": {
-          "tip": "Versiunea API a Azure OpenAI, dacă dorești să folosești API-ul de Răspuns, te rugăm să introduci versiunea v1"
-        }
-      },
       "balance": "Echilibru",
-      "basic_auth": {
-        "label": "Autentificare HTTP",
-        "password": {
-          "label": "Parolă",
-          "tip": "Introdu parola"
-        },
-        "tip": "Aplicabil instanțelor implementate la distanță (vezi documentația). Momentan, doar schema Basic (RFC 7617) este acceptată.",
-        "user_name": {
-          "label": "Nume utilizator",
-          "tip": "Lasă gol pentru a dezactiva"
-        }
-      },
       "bills": "Facturi taxe",
       "charge": "Reîncărcare sold",
       "copilot": {
@@ -4756,100 +2526,38 @@
         "content": "Ești sigur că vrei să ștergi acest furnizor?",
         "title": "Șterge furnizor"
       },
-      "dmxapi": {
-        "platform_enterprise": "ssvip.DMXAPI.com (Întreprindere)",
-        "platform_international": "www.DMXAPI.com (Internațional)",
-        "platform_official": "www.DMXAPI.cn (CNY)",
-        "select_platform": "Selectează platforma"
-      },
       "docs_check": "Verifică",
       "docs_more_details": "pentru mai multe detalii",
       "empty": "[to be translated]:Add a provider, then select a model to get started.",
-      "filter": {
-        "agent": "Asistat de agent",
-        "all": "Toți furnizorii"
-      },
-      "filter_agent": "Furnizori acceptați de agentul de filtrare",
       "get_api_key": "Obține cheie API",
+      "import_duplicate": "[to be translated]:This provider is already imported.",
+      "import_invalid": "[to be translated]:Import failed. Use a valid Responses or Anthropic provider link.",
+      "import_link": "[to be translated]:Import ccswitch:// Link",
+      "import_link_placeholder": "[to be translated]:Paste ccswitch://v1/import?... link",
+      "import_save_failed": "[to be translated]:Could not save provider credentials to secure storage. Please try again.",
+      "import_success": "[to be translated]:Provider imported.",
+      "import_too_large": "[to be translated]:Import link is too large or too many imports are pending. Nothing was imported; check the link and try again.",
+      "keychain_migrated": {
+        "action_backup": "[to be translated]:Open Backup & Restore",
+        "action_headers": "[to be translated]:Edit Custom Headers",
+        "action_provider": "[to be translated]:Open Provider Settings",
+        "description": "[to be translated]:OS Keychain prompts have been removed and legacy keychain references were safely cleared ({{items}}). Re-enter them once or restore an encrypted backup.",
+        "field_api_key": "[to be translated]:API Key",
+        "field_extra_headers": "[to be translated]:Custom Headers",
+        "field_webdav": "[to be translated]:WebDAV Password",
+        "title": "[to be translated]:Credentials Moved to Isolated Local Store"
+      },
       "misc": "Altele",
       "notes": {
         "markdown_editor_default_value": "Zonă previzualizare",
         "placeholder": "Introdu conținut Markdown...",
         "title": "Note model"
       },
-      "oauth": {
-        "balance": "Sold",
-        "button": "Conectare cu {{provider}}",
-        "cherryIn": {
-          "description": "Autentifică-te cu serverul tău auto-găzduit New-API folosind OAuth 2.0 (PKCE)",
-          "logged_in": "Conectat prin OAuth",
-          "login_button": "Conectare cu OAuth",
-          "logout_button": "Deconectare",
-          "title": "Autentificare OAuth"
-        },
-        "connect": "Conectează {{provider}}",
-        "description": "Acest serviciu este furnizat de <website>{{provider}}</website>",
-        "error": "Autentificare eșuată",
-        "logged_in": "Conectat",
-        "logout": "Deconectare",
-        "logout_confirm": "Ești sigur că vrei să te deconectezi?",
-        "logout_success": "Delogare reușită",
-        "logout_warning": "Deconectat local, dar revocarea token-ului de pe server ar fi putut eșua",
-        "official_website": "Site oficial",
-        "provided_by": "Furnizat de",
-        "provided_by_suffix": "I’m ready—please provide the text you’d like translated into Romanian.",
-        "requests": "Cereri",
-        "topup": "Reîncărcare",
-        "usage_title": "Utilizare"
-      },
-      "openai": {
-        "alert": "Furnizorul OpenAI nu mai acceptă metodele vechi de apelare. Dacă folosești un API terț, te rugăm să creezi un furnizor de servicii nou."
-      },
       "remove_duplicate_keys": "Elimină cheile duplicate",
       "remove_invalid_keys": "Elimină cheile invalide",
       "search": "Caută furnizori...",
       "search_placeholder": "Caută id sau nume model",
-      "title": "Furnizor model",
-      "vertex_ai": {
-        "api_host_help": "Gazda API pentru Vertex AI, nerecomandat de completat, aplicabil în general pentru reverse proxy",
-        "documentation": "Vezi documentația oficială pentru mai multe detalii de configurare:",
-        "learn_more": "Află mai multe",
-        "location": "Locație",
-        "location_help": "Locația serviciului Vertex AI, de ex., us-central1",
-        "project_id": "ID Proiect",
-        "project_id_help": "ID-ul tău de proiect Google Cloud",
-        "project_id_placeholder": "id-ul-tau-proiect-google-cloud",
-        "service_account": {
-          "auth_success": "Cont de serviciu autentificat cu succes",
-          "client_email": "E-mail client",
-          "client_email_help": "Câmpul client_email din fișierul cheie JSON descărcat din Google Cloud Console",
-          "client_email_placeholder": "Introdu e-mailul clientului Contului de Serviciu",
-          "description": "Folosește Contul de Serviciu pentru autentificare, potrivit pentru mediile unde ADC nu este disponibil",
-          "incomplete_config": "Te rugăm să finalizezi mai întâi configurarea Contului de Serviciu",
-          "private_key": "Cheie privată",
-          "private_key_help": "Câmpul private_key din fișierul cheie JSON descărcat din Google Cloud Console",
-          "private_key_placeholder": "Introdu cheia privată a Contului de Serviciu",
-          "title": "Configurare Cont de Serviciu"
-        }
-      }
-    },
-    "proxy": {
-      "address": "Adresă proxy",
-      "bypass": "Reguli de ocolire",
-      "mode": {
-        "custom": "Proxy personalizat",
-        "none": "Fără proxy",
-        "system": "Proxy sistem",
-        "title": "Mod proxy"
-      },
-      "tip": "Acceptă potrivirea cu wildcard (*.test.com, 192.168.0.0/16)"
-    },
-    "quickAssistant": {
-      "click_tray_to_show": "Fă clic pe pictograma din zona de notificare pentru a începe",
-      "enable_quick_assistant": "Activează Asistentul rapid",
-      "read_clipboard_at_startup": "Citește clipboardul la pornire",
-      "title": "Asistent rapid",
-      "use_shortcut_to_show": "Clic dreapta pe pictograma din zona de notificare sau folosește comenzile rapide pentru a începe"
+      "title": "Furnizor model"
     },
     "quickPanel": {
       "back": "Înapoi",
@@ -4876,81 +2584,6 @@
       "titleLabel": "Titlu",
       "titlePlaceholder": "Te rugăm să introduci titlul expresiei"
     },
-    "scheduledTasks": {
-      "description": "Gestionați sarcinile programate pentru toți agenții. Sarcinile rulează automat conform programului configurat.",
-      "noAgents": "Niciun agent găsit. Creează mai întâi un agent pentru a adăuga sarcini programate.",
-      "noAgentsTip": "Sfat: Îți poți ruga, de asemenea, agentul să creeze sarcini programate prin chat.",
-      "noTasks": "Nu există sarcini programate. Faceți clic pe „+ Adăugați” pentru a crea una pentru un agent.",
-      "selectTask": "Selectați o sarcină pentru a vizualiza detaliile",
-      "title": "Sarcini programate"
-    },
-    "shortcuts": {
-      "action": "Acțiune",
-      "actions": "Comandă",
-      "clear_shortcut": "Șterge comanda rapidă",
-      "clear_topic": "Șterge mesajele",
-      "copy_last_message": "Copiază ultimul mesaj",
-      "edit_last_user_message": "Editează ultimul mesaj al utilizatorului",
-      "enabled": "Activează",
-      "exit_fullscreen": "Ieși din ecran complet",
-      "label": "Tastă",
-      "mini_window": "Asistent rapid",
-      "new_topic": "Subiect nou",
-      "press_shortcut": "Apasă comanda rapidă",
-      "rename_topic": "Redenumește subiectul",
-      "reset_defaults": "Resetează la implicite",
-      "reset_defaults_confirm": "Ești sigur că vrei să resetezi toate comenzile rapide?",
-      "reset_to_default": "Resetează la implicit",
-      "search_message": "Caută mesaj",
-      "search_message_in_chat": "Caută mesaj în chat-ul curent",
-      "select_model": "Select Model",
-      "selection_assistant_select_text": "Asistent de selecție: Selectează text",
-      "selection_assistant_toggle": "Comută Asistentul de selecție",
-      "show_app": "Afișează/Ascunde aplicația",
-      "show_settings": "Deschide setările",
-      "title": "Comenzi rapide de la tastatură",
-      "toggle_new_context": "Șterge contextul",
-      "toggle_show_assistants": "Comută asistenții",
-      "toggle_show_topics": "Comută subiectele",
-      "zoom_in": "Mărește",
-      "zoom_out": "Micșorează",
-      "zoom_reset": "Resetează zoom-ul"
-    },
-    "skills": {
-      "author": "Autor",
-      "batchUninstallSuccess": "{{count}} competențe dezinstalate",
-      "builtin": "Încorporat",
-      "confirmBatchUninstall": "Sigur dorești să dezinstalezi {{count}} competențe selectate?",
-      "confirmUninstall": "Ești sigur că vrei să dezinstalezi această abilitate?",
-      "directory": "Director",
-      "dropHint": "Sau trageți și plasați aici un fișier ZIP sau un folder",
-      "emptyDesc": "Instalează abilități din ZIP, director sau caută în registre online pentru a extinde capabilitățile agentului.",
-      "emptyTip": "Sfat: Poți, de asemenea, să ceri unui agent să instaleze abilități pentru tine.",
-      "emptyTitle": "Nicio competență selectată",
-      "filterPlaceholder": "Filtrează abilitățile...",
-      "install": "Instalare",
-      "installFailed": "Nu s-a putut instala abilitatea: {{name}}",
-      "installFromDirectory": "Instalează din director",
-      "installFromZip": "Instalează din fișier ZIP",
-      "installSuccess": "Abilitate instalată: {{name}}",
-      "installed": "Abilități Instalate",
-      "invalidFormat": "Sunt acceptate doar fișiere ZIP și directoare.",
-      "localInstall": "Instalare locală",
-      "multiSelect": "Selecție multiplă",
-      "noFilterResults": "Niciun abilitate potrivită",
-      "noInstalled": "Nicio competență instalată",
-      "noResults": "Nicio competență găsită",
-      "noSkillFile": "Nu s-a găsit SKILL.md",
-      "searchPlaceholder": "Descoperă mai multe competențe...",
-      "searchRegistryTitle": "Caută registre de competențe online",
-      "searchTitle": "Abilități de căutare",
-      "selectFile": "Selectați un fișier pentru vizualizare",
-      "title": "Abilități",
-      "uninstall": "Dezinstalare",
-      "uninstallSuccess": "Abilitate dezinstalată: {{name}}",
-      "viewSource": "Vezi sursa",
-      "zip": "ZIP"
-    },
     "theme": {
       "color_primary": "Culoare primară",
       "dark": "Întunecată",
@@ -4966,53 +2599,6 @@
       }
     },
     "title": "Setări",
-    "tool": {
-      "ocr": {
-        "common": {
-          "langs": "Limbi acceptate"
-        },
-        "error": {
-          "not_system": "OCR-ul de sistem acceptă doar Windows și MacOS"
-        },
-        "image": {
-          "error": {
-            "provider_not_found": "Furnizorul nu există"
-          },
-          "system": {
-            "no_need_configure": "MacOS nu necesită configurare"
-          },
-          "title": "Imagine"
-        },
-        "image_provider": "Furnizor serviciu OCR",
-        "paddleocr": {
-          "aistudio_access_token": "Token de acces Comunitatea AI Studio",
-          "api_url": "URL API",
-          "api_url_label": "Obțineți token-ul de acces și URL-ul API"
-        },
-        "system": {
-          "win": {
-            "langs_tooltip": "Dependent de Windows pentru a furniza servicii, trebuie să descarci pachete lingvistice în sistem pentru a suporta limbile relevante."
-          }
-        },
-        "tesseract": {
-          "langs_tooltip": "Citește documentația pentru a afla ce limbi personalizate sunt acceptate"
-        },
-        "title": "Serviciu OCR"
-      },
-      "preprocess": {
-        "paddleocr": {
-          "aistudio_access_token": "Token de acces al Comunității AI Studio",
-          "api_url": "URL API",
-          "api_url_label": "Obțineți token-ul de acces și URL-ul API",
-          "paddleocr_url_label": "Site-ul oficial PaddleOCR"
-        },
-        "provider": "Furnizor procesare documente",
-        "provider_placeholder": "Alege un furnizor de procesare documente",
-        "title": "Procesare documente",
-        "tooltip": "În Setări -> Instrumente, setează un furnizor de servicii de procesare a documentelor. Procesarea documentelor poate îmbunătăți eficient performanța de recuperare a documentelor cu format complex și a documentelor scanate."
-      },
-      "title": "Alte setări"
-    },
     "topic": {
       "pin_to_top": "Fixează subiectele sus",
       "position": {
@@ -5029,13 +2615,6 @@
       "onclose": "Minimizează în zona de notificare la închidere",
       "show": "Afișează pictograma în zona de notificare",
       "title": "Zonă de notificare"
-    },
-    "use_system_title_bar": {
-      "confirm": {
-        "content": "Schimbarea stilului barei de titlu necesită repornirea aplicației pentru a intra în vigoare. Doriți să reporniți acum?",
-        "title": "Repornire necesară"
-      },
-      "title": "Folosește bara de titlu a sistemului (Linux)"
     },
     "zoom": {
       "reset": "Resetează",
@@ -5057,27 +2636,7 @@
     "store": "Bibliotecă asistenți",
     "translate": "Traducere"
   },
-  "trace": {
-    "backList": "Înapoi la listă",
-    "edasSupport": "Susținut de Alibaba Cloud EDAS",
-    "endTime": "Timp final",
-    "inputs": "Intrări",
-    "label": "Lanț de apelare",
-    "name": "Nume nod",
-    "noTraceList": "Nu s-au găsit informații de urmărire",
-    "outputs": "Ieșiri",
-    "parentId": "ID părinte",
-    "spanDetail": "Detalii interval",
-    "spendTime": "Timp petrecut",
-    "startTime": "Timp de început",
-    "tag": "Etichetă",
-    "tokenUsage": "Utilizare token",
-    "traceWindow": "Fereastră lanț de apelare"
-  },
   "translate": {
-    "error": {
-      "not_configured": "Modelul de traducere nu este configurat"
-    },
     "title": "Traducere"
   },
   "tray": {

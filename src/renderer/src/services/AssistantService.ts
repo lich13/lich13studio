@@ -1,4 +1,3 @@
-import { loggerService } from '@logger'
 import {
   DEFAULT_CONTEXTCOUNT,
   DEFAULT_MAX_TOKENS,
@@ -7,8 +6,6 @@ import {
   UNLIMITED_CONTEXT_COUNT
 } from '@renderer/config/constant'
 import { isEmbeddingModel, isRerankModel } from '@renderer/config/models/embedding'
-import { isQwenMTModel } from '@renderer/config/models/qwen'
-import { UNKNOWN } from '@renderer/config/translate'
 import { getStoreProviders } from '@renderer/hooks/useStore'
 import i18n from '@renderer/i18n'
 import store from '@renderer/store'
@@ -18,76 +15,10 @@ import {
   getDefaultAssistant,
   getDefaultTopic
 } from '@renderer/store/assistants'
-import type {
-  Assistant,
-  AssistantPreset,
-  AssistantSettings,
-  Model,
-  Provider,
-  TranslateAssistant,
-  TranslateLanguage
-} from '@renderer/types'
-import { v4 as uuid } from 'uuid'
+import type { Assistant, AssistantPreset, AssistantSettings, Model, Provider } from '@renderer/types'
+import { getFancyProviderName } from '@renderer/utils/naming'
 
 export { DEFAULT_ASSISTANT_SETTINGS, getDefaultAssistant, getDefaultTopic }
-
-const logger = loggerService.withContext('AssistantService')
-
-/**
- * Creates a default translate assistant.
- *
- * @param targetLanguage - Target language for translation
- * @param text - Text to be translated
- * @param _settings - Optional settings to override default assistant settings
- * @returns Configured translate assistant
- */
-export function getDefaultTranslateAssistant(
-  targetLanguage: TranslateLanguage,
-  text: string,
-  _settings?: Partial<AssistantSettings>
-): TranslateAssistant {
-  const model = getTranslateModel()
-  const assistant: Assistant = getDefaultAssistant()
-
-  if (!model) {
-    logger.error('No translate model')
-    throw new Error(i18n.t('translate.error.not_configured'))
-  }
-
-  if (targetLanguage.langCode === UNKNOWN.langCode) {
-    logger.error('Unknown target language', targetLanguage)
-    throw new Error('Unknown target language')
-  }
-
-  // disable reasoning if it could be disabled, otherwise no configuration
-  const reasoningEffort = 'max'
-  const settings = {
-    reasoning_effort: reasoningEffort,
-    ..._settings
-  } satisfies Partial<AssistantSettings>
-
-  const getTranslateContent = (model: Model, text: string, targetLanguage: TranslateLanguage): string => {
-    if (isQwenMTModel(model)) {
-      return text // QwenMT models handle raw text directly
-    }
-
-    return store
-      .getState()
-      .settings.translateModelPrompt.replaceAll('{{target_language}}', targetLanguage.value)
-      .replaceAll('{{text}}', text)
-  }
-
-  const content = getTranslateContent(model, text, targetLanguage)
-  const translateAssistant = {
-    ...assistant,
-    model,
-    settings,
-    prompt: '',
-    targetLanguage,
-    content
-  } satisfies TranslateAssistant
-  return translateAssistant
-}
 
 /**
  * Gets the CURRENT SETTINGS of the default assistant.
@@ -137,17 +68,22 @@ export function getQuickModel() {
   return currentModelReference(store.getState().llm.quickModel)
 }
 
-export function getTranslateModel() {
-  return currentModelReference(store.getState().llm.translateModel)
-}
-
 export function getAssistantProvider(assistant: Assistant): Provider {
   return getProviderByModel(assistant.model || getDefaultModel())
 }
 
+export function getProviderById(id: string): Provider | undefined {
+  return getStoreProviders().find((p) => p.id === id)
+}
+
+export function getProviderName(model?: Model): string {
+  const provider = model?.provider ? getProviderById(model.provider) : undefined
+  return provider ? getFancyProviderName(provider) : ''
+}
+
 /** A missing selection must never route a request to a different provider. */
 export function getProviderByModel(model?: Model): Provider {
-  return getStoreProviders().find((provider) => provider.id === model?.provider) || EMPTY_PROVIDER
+  return (model?.provider ? getProviderById(model.provider) : undefined) || EMPTY_PROVIDER
 }
 
 /** Resolve a saved reference against the latest shared catalog before sending. */
@@ -207,7 +143,7 @@ export function getAssistantById(id: string) {
 }
 
 export async function createAssistantFromAgent(agent: AssistantPreset) {
-  const assistantId = uuid()
+  const assistantId = crypto.randomUUID()
   const topic = getDefaultTopic(assistantId)
 
   const assistant: Assistant = {

@@ -31,13 +31,17 @@ export function anthropicThinkingMode(modelId: string): 'five' | 'four' | 'three
   return 'budget'
 }
 
+export function clampReasoningEffort(effort: ReasoningEffort, levels?: readonly ReasoningEffort[]): ReasoningEffort {
+  if (!levels?.length) return effort
+  return levels.includes(effort)
+    ? effort
+    : ([...levels].reverse().find((level) => REASONING_EFFORTS.indexOf(level) <= REASONING_EFFORTS.indexOf(effort)) ??
+        levels[0])
+}
+
 export function anthropicEffort(modelId: string, effort: ReasoningEffort): ReasoningEffort {
   const levels = findOfficialModel(modelId, 'anthropic')?.efforts
-  if (levels?.length)
-    return levels.includes(effort)
-      ? effort
-      : ([...levels].reverse().find((level) => REASONING_EFFORTS.indexOf(level) <= REASONING_EFFORTS.indexOf(effort)) ??
-          levels[0])
+  if (levels?.length) return clampReasoningEffort(effort, levels)
   const mode = anthropicThinkingMode(modelId)
   if (mode === 'four' && effort === 'xhigh') return 'high'
   if (mode === 'three' && (effort === 'xhigh' || effort === 'max')) return 'high'

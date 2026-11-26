@@ -1,4 +1,4 @@
-import * as tinyPinyin from 'tiny-pinyin'
+import { getLoadedTinyPinyin, loadTinyPinyin } from '@renderer/utils/pinyin'
 
 import type { QuickPanelFilterFn, QuickPanelListItem, QuickPanelSortFn } from './types'
 
@@ -26,20 +26,26 @@ export const defaultFilterFn: QuickPanelFilterFn = (item, searchText, fuzzyRegex
   }
 
   // Pinyin fuzzy match for Chinese characters
-  if (tinyPinyin.isSupported() && /[\u4e00-\u9fa5]/.test(filterText)) {
-    try {
-      let pinyinText = pinyinCache.get(item)
-      if (!pinyinText) {
-        pinyinText = tinyPinyin.convertToPinyin(filterText, '', true).toLowerCase()
-        pinyinCache.set(item, pinyinText)
-      }
-      return fuzzyRegex.test(pinyinText)
-    } catch (error) {
-      return true
+  if (/[\u4e00-\u9fa5]/.test(filterText)) {
+    const tinyPinyin = getLoadedTinyPinyin()
+    if (!tinyPinyin) {
+      void loadTinyPinyin()
+      return fuzzyRegex.test(lowerFilterText)
     }
-  } else {
-    return fuzzyRegex.test(filterText.toLowerCase())
+    if (tinyPinyin.isSupported()) {
+      try {
+        let pinyinText = pinyinCache.get(item)
+        if (!pinyinText) {
+          pinyinText = tinyPinyin.convertToPinyin(filterText, '', true).toLowerCase()
+          pinyinCache.set(item, pinyinText)
+        }
+        return fuzzyRegex.test(pinyinText)
+      } catch {
+        return true
+      }
+    }
   }
+  return fuzzyRegex.test(lowerFilterText)
 }
 
 /**

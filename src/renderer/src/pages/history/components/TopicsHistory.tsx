@@ -1,4 +1,3 @@
-import { SearchOutlined } from '@ant-design/icons'
 import { VStack } from '@renderer/components/Layout'
 import useScrollPosition from '@renderer/hooks/useScrollPosition'
 import { selectAllTopics } from '@renderer/store/assistants'
@@ -8,6 +7,7 @@ import dayjs from 'dayjs'
 import groupBy from 'lodash/groupBy'
 import isEmpty from 'lodash/isEmpty'
 import orderBy from 'lodash/orderBy'
+import { Search } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSelector } from 'react-redux'
@@ -42,7 +42,7 @@ const TopicsHistory: React.FC<Props> = ({ keywords, onClick, onSearch, ...props 
       <ListContainer {...props}>
         <VStack alignItems="center">
           <Empty description={t('history.search.topics.empty')} />
-          <Button style={{ width: 200, marginTop: 20 }} type="primary" onClick={onSearch} icon={<SearchOutlined />}>
+          <Button style={{ width: 200, marginTop: 20 }} type="primary" onClick={onSearch} icon={<Search size={14} />}>
             {t('history.search.messages')}
           </Button>
         </VStack>
@@ -77,7 +77,7 @@ const TopicsHistory: React.FC<Props> = ({ keywords, onClick, onSearch, ...props 
         ))}
         {keywords && (
           <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
-            <Button style={{ width: 200, marginTop: 20 }} type="primary" onClick={onSearch} icon={<SearchOutlined />}>
+            <Button style={{ width: 200, marginTop: 20 }} type="primary" onClick={onSearch} icon={<Search size={14} />}>
               {t('history.search.messages')}
             </Button>
           </div>

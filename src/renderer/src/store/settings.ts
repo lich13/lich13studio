@@ -39,7 +39,6 @@ import type {
   OpenAIVerbosity
 } from '@renderer/types/aiCoreTypes'
 import { API_SERVER_DEFAULTS, UpgradeChannel } from '@shared/config/constant'
-import { v4 as uuid } from 'uuid'
 
 export type SendMessageShortcut = 'Enter' | 'Shift+Enter' | 'Ctrl+Enter' | 'Command+Enter' | 'Alt+Enter'
 
@@ -237,7 +236,7 @@ export const initialState: SettingsState = {
   proxyUrl: undefined,
   proxyBypassRules: undefined,
   userName: '',
-  userId: uuid(),
+  userId: crypto.randomUUID(),
   showPrompt: true,
   showMessageDivider: true,
   messageFont: 'system',
@@ -387,7 +386,7 @@ export const initialState: SettingsState = {
     enabled: false,
     host: API_SERVER_DEFAULTS.HOST,
     port: API_SERVER_DEFAULTS.PORT,
-    apiKey: `cs-sk-${uuid()}`
+    apiKey: `cs-sk-${crypto.randomUUID()}`
   },
   showMessageOutline: false
 }
@@ -417,29 +416,14 @@ const settingsSlice = createSlice({
     setChatRequestMode: (state, action: PayloadAction<ChatRequestMode>) => {
       state.chatRequestMode = action.payload
     },
-    setLanguage: (state, action: PayloadAction<LanguageVarious>) => {
-      state.language = action.payload
-    },
     setTargetLanguage: (state, action: PayloadAction<TranslateLanguageCode>) => {
       state.targetLanguage = action.payload
-    },
-    setProxyMode: (state, action: PayloadAction<'system' | 'custom' | 'none'>) => {
-      state.proxyMode = action.payload
-    },
-    setProxyUrl: (state, action: PayloadAction<string | undefined>) => {
-      state.proxyUrl = action.payload
-    },
-    setProxyBypassRules: (state, action: PayloadAction<string | undefined>) => {
-      state.proxyBypassRules = action.payload
     },
     setUserName: (state, action: PayloadAction<string>) => {
       state.userName = action.payload
     },
     setShowPrompt: (state, action: PayloadAction<boolean>) => {
       state.showPrompt = action.payload
-    },
-    setShowMessageDivider: (state, action: PayloadAction<boolean>) => {
-      state.showMessageDivider = action.payload
     },
     setMessageFont: (state, action: PayloadAction<'system' | 'serif'>) => {
       state.messageFont = action.payload
@@ -519,14 +503,6 @@ const settingsSlice = createSlice({
     setWebdavUseZoteroAgent: (state, action: PayloadAction<boolean>) => {
       state.webdavUseZoteroAgent = action.payload
     },
-    setCodeExecution: (state, action: PayloadAction<{ enabled?: boolean; timeoutMinutes?: number }>) => {
-      if (action.payload.enabled !== undefined) {
-        state.codeExecution.enabled = action.payload.enabled
-      }
-      if (action.payload.timeoutMinutes !== undefined) {
-        state.codeExecution.timeoutMinutes = action.payload.timeoutMinutes
-      }
-    },
     setCodeEditor: (
       state,
       action: PayloadAction<{
@@ -602,15 +578,6 @@ const settingsSlice = createSlice({
     setMessageStyle: (state, action: PayloadAction<'plain' | 'bubble'>) => {
       state.messageStyle = action.payload
     },
-    setTranslateModelPrompt: (state, action: PayloadAction<string>) => {
-      state.translateModelPrompt = action.payload
-    },
-    setAutoTranslateWithSpace: (state, action: PayloadAction<boolean>) => {
-      state.autoTranslateWithSpace = action.payload
-    },
-    setShowTranslateConfirm: (state, action: PayloadAction<boolean>) => {
-      state.showTranslateConfirm = action.payload
-    },
     setEnableTopicNaming: (state, action: PayloadAction<boolean>) => {
       state.enableTopicNaming = action.payload
     },
@@ -623,20 +590,8 @@ const settingsSlice = createSlice({
     setNarrowMode: (state, action: PayloadAction<boolean>) => {
       state.narrowMode = action.payload
     },
-    setClickTrayToShowQuickAssistant: (state, action: PayloadAction<boolean>) => {
-      state.clickTrayToShowQuickAssistant = action.payload
-    },
-    setEnableQuickAssistant: (state, action: PayloadAction<boolean>) => {
-      state.enableQuickAssistant = action.payload
-    },
-    setReadClipboardAtStartup: (state, action: PayloadAction<boolean>) => {
-      state.readClipboardAtStartup = action.payload
-    },
     setMultiModelMessageStyle: (state, action: PayloadAction<'horizontal' | 'vertical' | 'fold' | 'grid'>) => {
       state.multiModelMessageStyle = action.payload
-    },
-    setmarkdownExportPath: (state, action: PayloadAction<string | null>) => {
-      state.markdownExportPath = action.payload
     },
     setForceDollarMathInMarkdown: (state, action: PayloadAction<boolean>) => {
       state.forceDollarMathInMarkdown = action.payload
@@ -665,30 +620,6 @@ const settingsSlice = createSlice({
     setDefaultObsidianVault: (state, action: PayloadAction<string>) => {
       state.defaultObsidianVault = action.payload
     },
-    setDefaultAgent: (state, action: PayloadAction<string>) => {
-      state.defaultAgent = action.payload
-    },
-    setAgentssubscribeUrl: (state, action: PayloadAction<string>) => {
-      state.agentssubscribeUrl = action.payload
-    },
-    setMaxKeepAliveMinapps: (state, action: PayloadAction<number>) => {
-      state.maxKeepAliveMinapps = action.payload
-    },
-    setShowOpenedMinappsInSidebar: (state, action: PayloadAction<boolean>) => {
-      state.showOpenedMinappsInSidebar = action.payload
-    },
-    setMinappsOpenLinkExternal: (state, action: PayloadAction<boolean>) => {
-      state.minappsOpenLinkExternal = action.payload
-    },
-    setMinAppRegion: (state, action: PayloadAction<MinAppRegionFilter>) => {
-      state.minAppRegion = action.payload
-    },
-    setEnableSpellCheck: (state, action: PayloadAction<boolean>) => {
-      state.enableSpellCheck = action.payload
-    },
-    setSpellCheckLanguages: (state, action: PayloadAction<string[]>) => {
-      state.spellCheckLanguages = action.payload
-    },
     setExportMenuOptions: (state, action: PayloadAction<typeof initialState.exportMenuOptions>) => {
       state.exportMenuOptions = action.payload
     },
@@ -700,9 +631,6 @@ const settingsSlice = createSlice({
     },
     setConfirmRegenerateMessage: (state, action: PayloadAction<boolean>) => {
       state.confirmRegenerateMessage = action.payload
-    },
-    setDisableHardwareAcceleration: (state, action: PayloadAction<boolean>) => {
-      state.disableHardwareAcceleration = action.payload
     },
     setOpenAISummaryText: (state, action: PayloadAction<OpenAIReasoningSummary>) => {
       state.openAI.summaryText = action.payload
@@ -735,33 +663,11 @@ const settingsSlice = createSlice({
     setLocalBackupSkipBackupFile: (state, action: PayloadAction<boolean>) => {
       state.localBackupSkipBackupFile = action.payload
     },
-    setDefaultPaintingProvider: (state, action: PayloadAction<PaintingProvider>) => {
-      state.defaultPaintingProvider = action.payload
-    },
     setEnableDeveloperMode: (state, action: PayloadAction<boolean>) => {
       state.enableDeveloperMode = action.payload
     },
     setNavbarPosition: (state, action: PayloadAction<'left' | 'top'>) => {
       state.navbarPosition = action.payload
-    },
-    // API Server actions
-    setApiServerEnabled: (state, action: PayloadAction<boolean>) => {
-      state.apiServer = {
-        ...state.apiServer,
-        enabled: action.payload
-      }
-    },
-    setApiServerPort: (state, action: PayloadAction<number>) => {
-      state.apiServer = {
-        ...state.apiServer,
-        port: action.payload
-      }
-    },
-    setApiServerApiKey: (state, action: PayloadAction<string>) => {
-      state.apiServer = {
-        ...state.apiServer,
-        apiKey: action.payload
-      }
     },
     setShowMessageOutline: (state, action: PayloadAction<boolean>) => {
       state.showMessageOutline = action.payload
@@ -779,14 +685,9 @@ export const {
   setAssistantsTabSortType,
   setSendMessageShortcut,
   setChatRequestMode,
-  setLanguage,
   setTargetLanguage,
-  setProxyMode,
-  setProxyUrl,
-  setProxyBypassRules,
   setUserName,
   setShowPrompt,
-  setShowMessageDivider,
   setMessageFont,
   setShowInputEstimatedTokens,
   setLaunchOnBoot,
@@ -813,7 +714,6 @@ export const {
   setWebdavSkipBackupFile,
   setWebdavDisableStream,
   setWebdavUseZoteroAgent,
-  setCodeExecution,
   setCodeEditor,
   setCodeViewer,
   setCodeShowLineNumbers,
@@ -827,18 +727,11 @@ export const {
   setGridColumns,
   setGridPopoverTrigger,
   setMessageStyle,
-  setTranslateModelPrompt,
-  setAutoTranslateWithSpace,
-  setShowTranslateConfirm,
   setEnableTopicNaming,
   setPasteLongTextThreshold,
   setTopicNamingPrompt,
   setNarrowMode,
-  setClickTrayToShowQuickAssistant,
-  setEnableQuickAssistant,
-  setReadClipboardAtStartup,
   setMultiModelMessageStyle,
-  setmarkdownExportPath,
   setForceDollarMathInMarkdown,
   setUseTopicNamingForMessageTitle,
   setThoughtAutoCollapse,
@@ -846,37 +739,22 @@ export const {
   setStandardizeCitationsInExport,
   setMessageNavigation,
   setDefaultObsidianVault,
-  setDefaultAgent,
-  setAgentssubscribeUrl,
-  setMaxKeepAliveMinapps,
-  setShowOpenedMinappsInSidebar,
-  setMinappsOpenLinkExternal,
-  setMinAppRegion,
-  setEnableSpellCheck,
-  setSpellCheckLanguages,
   setExportMenuOptions,
   setEnableQuickPanelTriggers,
   setConfirmDeleteMessage,
   setConfirmRegenerateMessage,
-  setDisableHardwareAcceleration,
   setOpenAISummaryText,
   setOpenAIVerbosity,
   setOpenAIStreamOptionsIncludeUsage,
   setNotificationSettings,
-  // Local backup settings
   setLocalBackupDir,
   setLocalBackupAutoSync,
   setLocalBackupSyncInterval,
   setLocalBackupMaxBackups,
   setLocalBackupSkipBackupFile,
-  setDefaultPaintingProvider,
   setEnableDeveloperMode,
   setNavbarPosition,
-  setShowMessageOutline,
-  // API Server actions
-  setApiServerEnabled,
-  setApiServerPort,
-  setApiServerApiKey
+  setShowMessageOutline
 } = settingsSlice.actions
 
 export default settingsSlice.reducer

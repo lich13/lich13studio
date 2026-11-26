@@ -1,4 +1,4 @@
-import { platformRequestHeaders } from './cliIdentity'
+import { stripIdentityHeaders } from './cliIdentity'
 import { emptyCatalogExclusions, mergeCatalogModels } from './modelCatalog/merge'
 import { bundledModelCatalogs } from './modelCatalog/runtime'
 import { assistantModelSelection } from './modelProviderSelection'
@@ -51,20 +51,13 @@ export function sanitizeState<T extends State>(state: T, resetProviders = false)
     state.settings.mathEngine = 'KaTeX'
   }
   if (state.llm) {
+    delete state.llm.settings
     delete state.llm.modelTestSelection
     delete state.llm.modelTestConcurrency
   }
   if (resetProviders && state.llm) {
     state.llm.providers = []
     for (const key of ['defaultModel', 'topicNamingModel', 'quickModel', 'translateModel']) delete state.llm[key]
-    state.llm.settings = {
-      ollama: { keepAliveTime: 0 },
-      lmstudio: { keepAliveTime: 0 },
-      gpustack: { keepAliveTime: 0 },
-      vertexai: { serviceAccount: { privateKey: '', clientEmail: '' }, projectId: '', location: '' },
-      awsBedrock: { authType: 'iam', accessKeyId: '', secretAccessKey: '', apiKey: '', region: '' },
-      cherryIn: { accessToken: '', refreshToken: '' }
-    }
   }
   const providers = state.llm?.providers
   if (Array.isArray(providers)) {
@@ -187,10 +180,7 @@ export function migratePlatformState<T extends State>(state: T): T {
       /* Keep invalid old addresses editable. */
     }
     // Remove stored identity headers; platform identity is generated only at request time.
-    const clean = platformRequestHeaders(inferProviderPlatform(result), undefined, result.extra_headers)
-    for (const key of ['User-Agent', 'originator', 'version', 'x-grok-client-version', 'x-grok-client-identifier'])
-      delete clean[key]
-    result.extra_headers = clean
+    result.extra_headers = stripIdentityHeaders(result.extra_headers)
     for (const key of ['healthCheck', 'healthStatus', 'modelStatuses', 'apiKeyConnectivity', 'latency'])
       delete (result as any)[key]
     return result
@@ -202,6 +192,7 @@ export function migratePlatformState<T extends State>(state: T): T {
 export function migrateModelCatalogState<T extends State>(state: T): T {
   const llm = state.llm
   if (!llm) return state
+  llm.cliVersions ??= {}
   const existing = llm.modelCatalogExclusions
   llm.modelCatalogExclusions = emptyCatalogExclusions()
   for (const platform of PROVIDER_PLATFORMS) {

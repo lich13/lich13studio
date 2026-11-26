@@ -51,9 +51,14 @@ describe('removed model-test preferences', () => {
   it('does not initialize removed preferences for fresh or older state', () => {
     for (const version of [215, 218, 219, 221, 223]) {
       const restored = decode(sanitizePersistedState(encode(fixture(version))))
+      expect(restored.llm).not.toHaveProperty('settings')
       expect(restored.llm).not.toHaveProperty('modelTestSelection')
       expect(restored.llm).not.toHaveProperty('modelTestConcurrency')
     }
+    expect(sanitizeState({ llm: { settings: { ollama: { keepAliveTime: 5 } } } })).toEqual({ llm: {} })
+    expect(sanitizeState({ llm: { settings: { ollama: { keepAliveTime: 5 } } } }, true).llm).not.toHaveProperty(
+      'settings'
+    )
     expect(sanitizeState({})).toEqual({})
   })
 })

@@ -90,6 +90,7 @@ const ThinkingEffect: React.FC<Props> = ({ isThinking, thinkingTimeText, content
 
 const ThinkingContainer = styled.div`
   width: 100%;
+  min-width: 0;
   border-radius: 10px;
   overflow: hidden;
   position: relative;
@@ -113,6 +114,9 @@ const Title = styled.div`
   font-variant-numeric: tabular-nums;
   padding: 10px 0;
   z-index: 99;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   transition: padding-top 150ms;
   &.showThinking {
     padding-top: 12px;
@@ -138,6 +142,7 @@ const LoadingContainer = styled.div`
 
 const TextContainer = styled.div`
   flex: 1;
+  min-width: 0;
   height: 100%;
   padding: 5px 0;
   overflow: hidden;

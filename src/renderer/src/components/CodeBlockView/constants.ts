@@ -1,5 +1,8 @@
-import { GraphvizPreview, MermaidPreview, SvgPreview } from '@renderer/components/Preview'
-import type { ComponentType } from 'react'
+import SvgPreview from '@renderer/components/Preview/SvgPreview'
+import { type ComponentType, lazy } from 'react'
+
+const MermaidPreview = lazy(() => import('@renderer/components/Preview/MermaidPreview'))
+const GraphvizPreview = lazy(() => import('@renderer/components/Preview/GraphvizPreview'))
 
 /**
  * 特殊视图语言列表

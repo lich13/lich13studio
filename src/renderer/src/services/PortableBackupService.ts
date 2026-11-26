@@ -9,12 +9,12 @@ export interface BackupOptions {
 export async function exportPortableBackup(fileName: string, skipBackupFile: boolean, options: BackupOptions = {}) {
   if (options.includeCredentials && !options.password) throw new Error('Backup password is required')
   const { buildBackupSnapshot } = await import('@renderer/tauri-shim')
-  const state = await buildBackupSnapshot(Boolean(options.includeCredentials))
+  const payload = JSON.stringify(await buildBackupSnapshot(Boolean(options.includeCredentials)))
   const targetFileName = options.includeCredentials ? fileName.replace(/\.(zip|bak)$/i, '') + '.lich13backup' : fileName
   try {
     const savedPath = await invoke<string>('export_portable_backup_archive', {
       fileName: targetFileName,
-      state,
+      payload,
       includeFiles: !skipBackupFile,
       password: options.includeCredentials ? options.password : null
     })

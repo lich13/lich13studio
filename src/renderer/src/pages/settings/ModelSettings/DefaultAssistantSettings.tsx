@@ -1,4 +1,3 @@
-import { CloseCircleFilled, QuestionCircleOutlined } from '@ant-design/icons'
 import EmojiPicker from '@renderer/components/EmojiPicker'
 import { ResetIcon } from '@renderer/components/Icons'
 import { HStack } from '@renderer/components/Layout'
@@ -12,6 +11,7 @@ import type { AssistantSettings as AssistantSettingsType } from '@renderer/types
 import { getLeadingEmoji, modalConfirm } from '@renderer/utils'
 import { Button, Col, Divider, Flex, Input, InputNumber, Modal, Popover, Row, Slider, Switch, Tooltip } from 'antd'
 import TextArea from 'antd/es/input/TextArea'
+import { CircleHelp, CircleX } from 'lucide-react'
 import type { Dispatch, FC, SetStateAction } from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -110,7 +110,8 @@ const AssistantSettings: FC = () => {
           <EmojiButtonWrapper>
             <Button style={{ fontSize: 20, padding: '4px', minWidth: '30px', height: '30px' }}>{emoji}</Button>
             {emoji && (
-              <CloseCircleFilled
+              <CircleX
+                size={16}
                 className="delete-icon"
                 onClick={(e) => {
                   e.stopPropagation()
@@ -121,7 +122,6 @@ const AssistantSettings: FC = () => {
                   position: 'absolute',
                   top: '-8px',
                   right: '-8px',
-                  fontSize: '16px',
                   color: '#ff4d4f',
                   cursor: 'pointer'
                 }}
@@ -398,8 +398,7 @@ const Label = styled.p`
   margin-right: 5px;
 `
 
-const QuestionIcon = styled(QuestionCircleOutlined)`
-  font-size: 14px;
+const QuestionIcon = styled(CircleHelp).attrs({ size: 14 })`
   cursor: pointer;
   color: var(--color-text-3);
 `

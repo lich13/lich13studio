@@ -1,15 +1,14 @@
-import { SettingOutlined } from '@ant-design/icons'
 import { showErrorDetailPopup } from '@renderer/components/ErrorDetailModal'
 import { useTimer } from '@renderer/hooks/useTimer'
 import { getHttpMessageLabel, getProviderLabel } from '@renderer/i18n/label'
+import { getProviderById } from '@renderer/services/AssistantService'
 import type { DiagnosisResult } from '@renderer/services/ErrorDiagnosisService'
-import { getProviderById } from '@renderer/services/ProviderService'
 import { useAppDispatch } from '@renderer/store'
 import { removeBlocksThunk } from '@renderer/store/thunk/messageThunk'
 import type { ErrorMessageBlock, Message } from '@renderer/types/newMessage'
 import { classifyError } from '@renderer/utils/errorClassifier'
 import { Button } from 'antd'
-import { AlertTriangle, ChevronRight, X } from 'lucide-react'
+import { AlertTriangle, ChevronRight, Settings, X } from 'lucide-react'
 import React, { useCallback, useMemo } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
@@ -157,7 +156,7 @@ const MessageErrorInfo: React.FC<{ block: ErrorMessageBlock; message: Message }>
             type="default"
             className="inline-flex items-center gap-1 rounded-[5px] border-[color-mix(in_srgb,var(--color-error)_25%,transparent)] text-(--color-error) text-xs hover:border-(--color-error)"
             onClick={onNavigate}>
-            <SettingOutlined style={{ fontSize: 12 }} />
+            <Settings size={12} />
             {t('error.diagnosis.go_to_settings')}
           </Button>
         )}

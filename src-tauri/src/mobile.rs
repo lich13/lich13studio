@@ -187,13 +187,13 @@ mod commands {
         file_name: String,
         staged_path: &std::path::Path,
     ) -> Result<String, String> {
+        let _guard = crate::TempFileGuard(staged_path.to_path_buf());
         let result = mobile_command(
             app,
             "saveFile".into(),
             Some(serde_json::json!({"path": staged_path, "name": file_name})),
         )
         .await;
-        let _ = std::fs::remove_file(staged_path);
         result.map(|value| value["uri"].as_str().unwrap_or_default().to_owned())
     }
     pub(crate) async fn save_file_bytes(
@@ -215,6 +215,7 @@ mod commands {
                 .unwrap_or_default()
                 .to_string_lossy()
         ));
+        let _guard = crate::TempFileGuard(path.clone());
         let path_for_write = path.clone();
         tauri::async_runtime::spawn_blocking(move || {
             std::fs::write(&path_for_write, bytes)

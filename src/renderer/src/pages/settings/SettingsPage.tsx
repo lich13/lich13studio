@@ -124,11 +124,13 @@ const Container = styled.div`
   display: flex;
   flex-direction: column;
   flex: 1;
+  min-width: 0;
 `
 
 const ContentContainer = styled.div`
   display: flex;
   flex: 1;
+  min-width: 0;
   flex-direction: row;
   height: calc(100vh - var(--navbar-height));
   padding: 1px 0;
@@ -156,15 +158,12 @@ const MenuItem = styled.li`
   gap: 8px;
   padding: 6px 10px;
   width: 100%;
+  min-width: 0;
   cursor: pointer;
   border-radius: var(--list-item-border-radius);
   font-weight: 500;
   transition: all 0.2s ease-in-out;
   border: 0.5px solid transparent;
-  .anticon {
-    font-size: 16px;
-    opacity: 0.8;
-  }
   &:hover {
     background: var(--color-background-soft);
   }
@@ -178,6 +177,7 @@ const SettingContent = styled.div`
   display: flex;
   height: 100%;
   flex: 1;
+  min-width: 0;
 `
 
 const Divider = styled(AntDivider)`

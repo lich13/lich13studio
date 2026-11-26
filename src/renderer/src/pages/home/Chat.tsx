@@ -101,23 +101,26 @@ const Chat: FC<Props> = (props) => {
     }
   })
 
-  const contentSearchFilter: NodeFilter = {
-    acceptNode(node) {
-      const container = node.parentElement?.closest('.message-content-container')
-      if (!container) return NodeFilter.FILTER_REJECT
+  const contentSearchFilter = React.useMemo<NodeFilter>(
+    () => ({
+      acceptNode(node) {
+        const container = node.parentElement?.closest('.message-content-container')
+        if (!container) return NodeFilter.FILTER_REJECT
 
-      const message = container.closest('.message')
-      if (!message) return NodeFilter.FILTER_REJECT
+        const message = container.closest('.message')
+        if (!message) return NodeFilter.FILTER_REJECT
 
-      if (filterIncludeUser) {
-        return NodeFilter.FILTER_ACCEPT
+        if (filterIncludeUser) {
+          return NodeFilter.FILTER_ACCEPT
+        }
+        if (message.classList.contains('message-assistant')) {
+          return NodeFilter.FILTER_ACCEPT
+        }
+        return NodeFilter.FILTER_REJECT
       }
-      if (message.classList.contains('message-assistant')) {
-        return NodeFilter.FILTER_ACCEPT
-      }
-      return NodeFilter.FILTER_REJECT
-    }
-  }
+    }),
+    [filterIncludeUser]
+  )
 
   const userOutlinedItemClickHandler = () => {
     setFilterIncludeUser(!filterIncludeUser)
@@ -274,7 +277,6 @@ const Main = styled(Flex)`
   [navbar-position='left'] & {
     height: calc(var(--app-viewport-height) - var(--navbar-height));
   }
-  transform: translateZ(0);
   position: relative;
 `
 

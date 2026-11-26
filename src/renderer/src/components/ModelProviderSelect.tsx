@@ -8,12 +8,22 @@ import { type ModelProviderSelection, resolveModelProviderSelection } from '@sha
 import { PLATFORM_NAMES, PROVIDER_PLATFORMS, type ProviderPlatform } from '@shared/platforms'
 import { Select, Tooltip, Typography } from 'antd'
 import { CircleAlert } from 'lucide-react'
+import type { CSSProperties } from 'react'
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
 import ModelAvatar from './Avatar/ModelAvatar'
 import ModelTagsWithLabel from './ModelTagsWithLabel'
+
+const SELECT_DROPDOWN_ALIGN = {
+  overflow: { adjustX: 1, adjustY: 1, shiftX: true, shiftY: true }
+}
+
+const SELECT_POPUP_ROOT_STYLE: CSSProperties = {
+  maxWidth: 'calc(var(--app-viewport-width, 100vw) - 16px)',
+  maxHeight: 'calc(var(--app-viewport-height, 100vh) - 64px)'
+}
 
 export function parseModelProviderSelectionValue(value: unknown): [ProviderPlatform, string] | null {
   if (typeof value !== 'string' || !value.trim()) return null
@@ -198,9 +208,11 @@ export default function ModelProviderSelect({
                 .toLowerCase()
                 .includes(input.toLowerCase())
             }
-            popupMatchSelectWidth={420}
+            popupMatchSelectWidth={compact ? 340 : 420}
+            listHeight={compact ? 220 : 256}
+            dropdownAlign={SELECT_DROPDOWN_ALIGN}
             getPopupContainer={() => document.body}
-            styles={{ popup: { root: { maxWidth: 'calc(100vw - 24px)' } } }}
+            styles={{ popup: { root: SELECT_POPUP_ROOT_STYLE } }}
             size={compact ? 'small' : 'middle'}
             options={models}
             optionRender={(option) => {
@@ -238,6 +250,10 @@ export default function ModelProviderSelect({
             title={providers.find((provider) => provider.value === selection.providerId)?.label}
             showSearch
             optionFilterProp="label"
+            popupMatchSelectWidth={compact ? 220 : 260}
+            listHeight={compact ? 220 : 256}
+            dropdownAlign={SELECT_DROPDOWN_ALIGN}
+            styles={{ popup: { root: SELECT_POPUP_ROOT_STYLE } }}
             size={compact ? 'small' : 'middle'}
             options={providers}
             value={activeSelection.providerId}

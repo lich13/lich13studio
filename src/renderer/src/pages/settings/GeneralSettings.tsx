@@ -1,4 +1,3 @@
-import { GithubOutlined, ReloadOutlined } from '@ant-design/icons'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import { useSettings } from '@renderer/hooks/useSettings'
 import {
@@ -12,6 +11,7 @@ import { useAppDispatch } from '@renderer/store'
 import { setNotificationSettings } from '@renderer/store/settings'
 import type { AppInfo } from '@renderer/types'
 import { Button, Space, Switch, Typography } from 'antd'
+import { ExternalLink, RefreshCw } from 'lucide-react'
 import type { FC } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -160,7 +160,7 @@ const GeneralSettings: FC = () => {
         <SettingDivider />
         <SettingRow>
           <SettingRowTitle>{t('settings.about.github.title')}</SettingRowTitle>
-          <Button size="small" icon={<GithubOutlined />} onClick={() => openExternal(GITHUB_REPO_URL)}>
+          <Button size="small" icon={<ExternalLink size={14} />} onClick={() => openExternal(GITHUB_REPO_URL)}>
             {t('settings.about.github.button')}
           </Button>
         </SettingRow>
@@ -171,7 +171,7 @@ const GeneralSettings: FC = () => {
             <Button size="small" onClick={() => openExternal(releaseInfo?.releaseUrl || GITHUB_RELEASES_URL)}>
               {t('settings.about.releases.button')}
             </Button>
-            <Button size="small" icon={<ReloadOutlined />} loading={checkingUpdate} onClick={handleCheckUpdate}>
+            <Button size="small" icon={<RefreshCw size={14} />} loading={checkingUpdate} onClick={handleCheckUpdate}>
               {checkingUpdate ? t('settings.about.checkingUpdate') : checkUpdateLabel}
             </Button>
           </Space>

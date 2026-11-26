@@ -6,20 +6,19 @@ export const bundledModelCatalogs = bundled as Record<ProviderPlatform, Platform
 const catalogs = { ...bundledModelCatalogs }
 const indexes = new Map<ProviderPlatform, Map<string, OfficialModel>>()
 
+function deepFreeze<T>(value: T): T {
+  if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value
+  Object.freeze(value)
+  for (const child of Object.values(value as Record<string, unknown>)) {
+    deepFreeze(child)
+  }
+  return value
+}
+
 /** Updated before the matching Redux action reaches subscribers, including other windows. */
 export function installModelCatalog(snapshot: PlatformModelCatalogSnapshot) {
   validateCatalog(snapshot)
-  const copy = JSON.parse(JSON.stringify(snapshot)) as PlatformModelCatalogSnapshot
-  for (const model of copy.models) {
-    Object.freeze(model.aliases)
-    Object.freeze(model.input)
-    Object.freeze(model.output)
-    Object.freeze(model.capabilities)
-    if (model.efforts) Object.freeze(model.efforts)
-    Object.freeze(model)
-  }
-  Object.freeze(copy.models)
-  catalogs[snapshot.platform] = Object.freeze(copy)
+  catalogs[snapshot.platform] = deepFreeze(structuredClone(snapshot))
   indexes.delete(snapshot.platform)
 }
 

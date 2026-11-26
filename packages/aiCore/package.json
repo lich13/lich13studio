@@ -15,13 +15,10 @@
   },
   "dependencies": {
     "@ai-sdk/anthropic": "3.0.64",
-    "@ai-sdk/provider": "^3.0.8",
-    "zod": "^4.6.7"
+    "@ai-sdk/provider": "^3.0.8"
   },
   "devDependencies": {
-    "@typescript/native": "npm:typescript@7.0.2",
-    "typescript": "npm:@typescript/typescript6@6.0.2",
-    "vitest": "5.0.4"
+    "typescript": "npm:@typescript/typescript6@6.0.2"
   },
   "sideEffects": false,
   "exports": {

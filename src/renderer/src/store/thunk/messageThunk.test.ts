@@ -22,6 +22,14 @@ import {
 import { AssistantMessageStatus, MessageBlockStatus, MessageBlockType } from '@renderer/types/newMessage'
 import { describe, expect, it, vi } from 'vitest'
 
+const apiServiceMocks = vi.hoisted(() => ({
+  transformMessagesAndFetch: vi.fn<(...args: any[]) => Promise<void>>(async () => {})
+}))
+
+vi.mock('@renderer/services/ApiService', () => ({
+  transformMessagesAndFetch: apiServiceMocks.transformMessagesAndFetch
+}))
+
 describe('message thunk topic fulfilled state & streaming block flush invariants', () => {
   it('does not show an unread marker when the active topic finishes', () => {
     expect(shouldMarkTopicFulfilled('topic-1', 'topic-1')).toBe(false)
@@ -651,5 +659,114 @@ describe('message thunk topic fulfilled state & streaming block flush invariants
     fetchSpy.mockRestore()
     updateBlocksSpy.mockRestore()
     updateMsgSpy.mockRestore()
+  })
+
+  it('keeps topic queue active in sendMessage when a prior request finishes while assistantMessage DB persistence is awaiting', async () => {
+    vi.stubGlobal('window', { api: { notification: { onClick: vi.fn(), send: vi.fn() } } })
+    vi.stubGlobal('document', { hasFocus: () => true })
+    const { abortTopicStream } = await import('@renderer/services/StreamRegistry')
+    const { getTopicQueue, hasTopicPendingRequests, waitForTopicQueue } = await import('@renderer/utils/queue')
+
+    const topicId = 'topic-send-idle-race'
+    let finishPrior!: () => void
+    const priorPromise = new Promise<void>((resolve) => {
+      finishPrior = resolve
+    })
+    const priorTask = getTopicQueue(topicId).add(() => priorPromise)
+    expect(hasTopicPendingRequests(topicId)).toBe(true)
+
+    let releaseAssistantDbAppend!: () => void
+    const assistantDbAppendGate = new Promise<void>((resolve) => {
+      releaseAssistantDbAppend = resolve
+    })
+    let appendCall = 0
+    const appendSpy = vi.spyOn(dbService, 'appendMessage').mockImplementation(async () => {
+      appendCall += 1
+      if (appendCall === 2) {
+        // Prior request finishes while sendMessage is awaiting assistantMessage persistence!
+        finishPrior()
+        await priorTask
+        await waitForTopicQueue(topicId)
+        await assistantDbAppendGate
+      }
+    })
+    const updateMsgSpy = vi.spyOn(dbService, 'updateMessage').mockResolvedValue(undefined)
+
+    let releaseSecondStream!: () => void
+    let secondStreamEntered!: () => void
+    const secondStreamEnteredPromise = new Promise<void>((resolve) => {
+      secondStreamEntered = resolve
+    })
+    const secondStreamGate = new Promise<void>((resolve) => {
+      releaseSecondStream = resolve
+    })
+    apiServiceMocks.transformMessagesAndFetch.mockImplementationOnce(async () => {
+      secondStreamEntered()
+      await secondStreamGate
+    })
+
+    let messagesState = messagesReducer(undefined, newMessagesActions.setCurrentTopicId(topicId))
+    let messageBlocksState = messageBlocksReducer(undefined, { type: '@@INIT' })
+    const getState = () => ({ messages: messagesState, messageBlocks: messageBlocksState }) as any
+    const dispatch = vi.fn((action: any) => {
+      if (typeof action === 'function') return action(dispatch, getState)
+      if (typeof action?.type === 'string') {
+        if (action.type.startsWith('newMessages/')) messagesState = messagesReducer(messagesState, action)
+        if (action.type.startsWith('messageBlocks/'))
+          messageBlocksState = messageBlocksReducer(messageBlocksState, action)
+      }
+      return action
+    })
+
+    const userMsg = {
+      id: 'user-race-1',
+      role: 'user',
+      assistantId: 'ast-1',
+      topicId,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      status: 'success',
+      blocks: ['blk-user-race-1']
+    } as any
+    const userBlock = {
+      id: 'blk-user-race-1',
+      messageId: 'user-race-1',
+      type: MessageBlockType.MAIN_TEXT,
+      content: 'hello',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      status: MessageBlockStatus.SUCCESS
+    } as any
+    const assistant = {
+      id: 'ast-1',
+      name: 'Assistant',
+      prompt: '',
+      topics: [{ id: topicId, assistantId: 'ast-1', name: 'Topic', createdAt: '', updatedAt: '', messages: [] }],
+      type: 'assistant'
+    } as any
+
+    try {
+      const sendPromise = sendMessage(userMsg, [userBlock], assistant, topicId)(dispatch as any, getState)
+      while (appendCall < 2) {
+        await Promise.resolve()
+      }
+      await priorTask
+
+      releaseAssistantDbAppend()
+      await sendPromise
+      await secondStreamEnteredPromise
+
+      // Even though priorTask went idle during await dbService.appendMessage, the active stream MUST be tracked!
+      expect(apiServiceMocks.transformMessagesAndFetch).toHaveBeenCalledTimes(1)
+      expect(hasTopicPendingRequests(topicId)).toBe(true)
+
+      abortTopicStream(topicId)
+      releaseSecondStream()
+      await waitForTopicQueue(topicId)
+      expect(hasTopicPendingRequests(topicId)).toBe(false)
+    } finally {
+      appendSpy.mockRestore()
+      updateMsgSpy.mockRestore()
+      apiServiceMocks.transformMessagesAndFetch.mockReset()
+      vi.unstubAllGlobals()
+    }
   })
 })

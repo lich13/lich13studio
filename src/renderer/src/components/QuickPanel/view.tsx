@@ -1,13 +1,13 @@
-import { RightOutlined } from '@ant-design/icons'
 import { DynamicVirtualList, type DynamicVirtualListRef } from '@renderer/components/VirtualList'
 import { isMac } from '@renderer/config/constant'
 import { useTimer } from '@renderer/hooks/useTimer'
 import useUserTheme from '@renderer/hooks/useUserTheme'
 import { classNames } from '@renderer/utils'
+import { getLoadedTinyPinyin, loadTinyPinyin } from '@renderer/utils/pinyin'
 import { Flex } from 'antd'
 import { t } from 'i18next'
 import debounce from 'lodash/debounce'
-import { ArrowLeftRight, ArrowUpDown, Check, CornerDownLeft } from 'lucide-react'
+import { ArrowLeftRight, ArrowUpDown, Check, ChevronRight, CornerDownLeft } from 'lucide-react'
 import React, { use, useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import styled from 'styled-components'
 
@@ -68,6 +68,18 @@ export const QuickPanelView: React.FC<Props> = ({ setInputText }) => {
 
   // 缓存：按 item 缓存拼音文本，避免重复转换
   const pinyinCacheRef = useRef<WeakMap<QuickPanelListItem, string>>(new WeakMap())
+  const [pinyinReady, setPinyinReady] = useState(() => Boolean(getLoadedTinyPinyin()))
+
+  useEffect(() => {
+    if (pinyinReady || (!ctx.isVisible && !ctx.symbol)) return
+    let active = true
+    void loadTinyPinyin().then(() => {
+      if (active) setPinyinReady(true)
+    })
+    return () => {
+      active = false
+    }
+  }, [ctx.isVisible, ctx.symbol, pinyinReady])
 
   // 跟踪上一次的搜索文本和符号，用于判断是否需要重置index
   const prevSearchTextRef = useRef('')
@@ -112,7 +124,7 @@ export const QuickPanelView: React.FC<Props> = ({ setInputText }) => {
       .split('')
       .map((char) => char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
       .join('.*')
-    const fuzzyRegex = new RegExp(fuzzyPattern, 'ig')
+    const fuzzyRegex = new RegExp(fuzzyPattern, 'i')
 
     // 拆分：固定显示项（不参与过滤）与普通项
     const pinnedItems = baseList.filter((item) => item.alwaysVisible)
@@ -155,8 +167,19 @@ export const QuickPanelView: React.FC<Props> = ({ setInputText }) => {
     prevSymbolRef.current = ctx.symbol
 
     // 固定项置顶 + 排序后的普通项
+    void pinyinReady
     return [...pinnedItems, ...sortedNormalItems]
-  }, [ctx.isVisible, ctx.symbol, ctx.manageListExternally, ctx.list, ctx.defaultIndex, searchText, filterFn, sortFn])
+  }, [
+    ctx.isVisible,
+    ctx.symbol,
+    ctx.manageListExternally,
+    ctx.list,
+    ctx.defaultIndex,
+    searchText,
+    filterFn,
+    sortFn,
+    pinyinReady
+  ])
 
   const canForwardAndBackward = useMemo(() => {
     return list.some((item) => item.isMenu) || historyPanel.length > 0
@@ -668,23 +691,63 @@ export const QuickPanelView: React.FC<Props> = ({ setInputText }) => {
   ])
 
   const [footerWidth, setFooterWidth] = useState(0)
+  const [availablePanelHeight, setAvailablePanelHeight] = useState<number | null>(null)
 
-  useEffect(() => {
-    if (!footerRef.current || !ctx.isVisible) return
-    const footerWidth = footerRef.current.clientWidth
-    setFooterWidth(footerWidth)
-
-    const handleResize = () => {
-      const footerWidth = footerRef.current!.clientWidth
-      setFooterWidth(footerWidth)
+  useLayoutEffect(() => {
+    if (!ctx.isVisible) {
+      setAvailablePanelHeight(null)
+      return
     }
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
+
+    const anchorEl =
+      (bodyRef.current?.closest('.inputbar-anchor') as HTMLElement | null) ?? document.getElementById('inputbar')
+
+    const updateGeometry = () => {
+      if (footerRef.current) {
+        setFooterWidth(footerRef.current.clientWidth)
+      }
+      if (!anchorEl) return
+      const rect = anchorEl.getBoundingClientRect()
+      if (rect.width === 0 && rect.height === 0 && rect.top === 0 && rect.bottom === 0) {
+        setAvailablePanelHeight(null)
+        return
+      }
+      const viewportTop = window.visualViewport?.offsetTop ?? 0
+      setAvailablePanelHeight(Math.max(0, Math.floor(rect.top - viewportTop - 8)))
+    }
+
+    updateGeometry()
+    window.addEventListener('resize', updateGeometry)
+    const vv = window.visualViewport
+    vv?.addEventListener('resize', updateGeometry)
+    vv?.addEventListener('scroll', updateGeometry)
+    let ro: ResizeObserver | null = null
+    if (anchorEl && typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(updateGeometry)
+      ro.observe(anchorEl)
+    }
+
+    return () => {
+      window.removeEventListener('resize', updateGeometry)
+      vv?.removeEventListener('resize', updateGeometry)
+      vv?.removeEventListener('scroll', updateGeometry)
+      ro?.disconnect()
+    }
   }, [ctx.isVisible])
 
+  const PANEL_CHROME_HEIGHT = 45
+  const naturalMaxHeight = ctx.pageSize * ITEM_HEIGHT + 100
+  const maxPanelHeight = useMemo(() => {
+    if (availablePanelHeight === null) return naturalMaxHeight
+    return Math.min(naturalMaxHeight, Math.max(ITEM_HEIGHT + PANEL_CHROME_HEIGHT, availablePanelHeight))
+  }, [availablePanelHeight, naturalMaxHeight])
+
   const listHeight = useMemo(() => {
-    return Math.min(ctx.pageSize, list.length) * ITEM_HEIGHT
-  }, [ctx.pageSize, list.length])
+    const natural = Math.min(ctx.pageSize, list.length) * ITEM_HEIGHT
+    if (list.length === 0 || availablePanelHeight === null) return natural
+    const maxList = Math.max(ITEM_HEIGHT, availablePanelHeight - PANEL_CHROME_HEIGHT)
+    return Math.min(natural, maxList)
+  }, [availablePanelHeight, ctx.pageSize, list.length])
   const hasSearchText = useMemo(() => searchText.replace(/^[/@]/, '').length > 0, [searchText])
   // 折叠仅依据“非固定项”的匹配数；仅剩固定项（如“清除”）时仍视为无匹配，保持折叠
   const visibleNonPinnedCount = useMemo(() => list.filter((i) => !i.alwaysVisible).length, [list])
@@ -721,7 +784,7 @@ export const QuickPanelView: React.FC<Props> = ({ setInputText }) => {
               ) : item.isSelected ? (
                 <Check />
               ) : (
-                item.isMenu && !item.disabled && <RightOutlined />
+                item.isMenu && !item.disabled && <ChevronRight />
               )}
             </QuickPanelItemSuffixIcon>
           </QuickPanelItemRight>
@@ -733,7 +796,8 @@ export const QuickPanelView: React.FC<Props> = ({ setInputText }) => {
 
   return (
     <QuickPanelContainer
-      $pageSize={ctx.pageSize}
+      $maxHeight={maxPanelHeight}
+      $mouseActive={isMouseOver}
       $selectedColor={selectedColor}
       $selectedColorHover={selectedColorHover}
       $collapsed={collapsed}
@@ -750,15 +814,7 @@ export const QuickPanelView: React.FC<Props> = ({ setInputText }) => {
         {collapsed ? (
           <QuickPanelEmpty>{t('settings.quickPanel.noResult', 'No results')}</QuickPanelEmpty>
         ) : (
-          <DynamicVirtualList
-            ref={listRef}
-            list={list}
-            size={listHeight}
-            estimateSize={estimateSize}
-            overscan={5}
-            scrollerStyle={{
-              pointerEvents: isMouseOver ? 'auto' : 'none'
-            }}>
+          <DynamicVirtualList ref={listRef} list={list} size={listHeight} estimateSize={estimateSize} overscan={5}>
             {rowRenderer}
           </DynamicVirtualList>
         )}
@@ -804,7 +860,8 @@ export const QuickPanelView: React.FC<Props> = ({ setInputText }) => {
 }
 
 const QuickPanelContainer = styled.div<{
-  $pageSize: number
+  $maxHeight: number
+  $mouseActive: boolean
   $selectedColor: string
   $selectedColorHover: string
   $collapsed?: boolean
@@ -818,7 +875,7 @@ const QuickPanelContainer = styled.div<{
   left: 0;
   right: 0;
   width: 100%;
-  padding: 0 35px 0 35px;
+  padding: 0 17px;
   transform: translateY(-100%);
   transform-origin: bottom;
   transition: max-height 0.2s ease;
@@ -827,11 +884,21 @@ const QuickPanelContainer = styled.div<{
 
   &.visible {
     pointer-events: ${(props) => (props.$collapsed ? 'none' : 'auto')};
-    max-height: ${(props) => (props.$collapsed ? 0 : props.$pageSize * ITEM_HEIGHT + 100)}px;
+    max-height: ${(props) => (props.$collapsed ? 0 : props.$maxHeight)}px;
   }
   body[theme-mode='dark'] & {
     --focused-color: rgba(255, 255, 255, 0.1);
   }
+  ${(props) =>
+    props.$mouseActive &&
+    `
+    [data-id]:hover:not(.disabled) {
+      background-color: var(--focused-color);
+    }
+    [data-id].selected:hover:not(.disabled) {
+      background-color: var(--selected-color-dark);
+    }
+  `}
 `
 
 const QuickPanelBody = styled.div`
@@ -899,7 +966,7 @@ const QuickPanelItem = styled.div`
   height: 30px;
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 12px;
   justify-content: space-between;
   margin: 0 5px 1px 5px;
   padding: 5px;
@@ -907,16 +974,9 @@ const QuickPanelItem = styled.div`
   cursor: pointer;
   transition: background-color 0.1s ease;
 
-  &:hover:not(.disabled) {
-    background-color: var(--focused-color);
-  }
-
   &.selected {
     background-color: var(--selected-color);
     &.focused {
-      background-color: var(--selected-color-dark);
-    }
-    &:hover:not(.disabled) {
       background-color: var(--selected-color-dark);
     }
   }
@@ -932,16 +992,17 @@ const QuickPanelItem = styled.div`
 
 const QuickPanelItemLeft = styled.div`
   max-width: 60%;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 5px;
   flex: 1;
-  flex-shrink: 0;
 `
 
 const QuickPanelItemIcon = styled.span`
   font-size: 13px;
   color: var(--color-text-3);
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -954,16 +1015,18 @@ const QuickPanelItemIcon = styled.span`
 
 const QuickPanelItemLabel = styled.span`
   flex: 1;
+  min-width: 0;
   font-size: 13px;
   line-height: 16px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  flex-shrink: 0;
 `
 
 const QuickPanelItemRight = styled.div`
-  min-width: 20%;
+  min-width: 0;
+  max-width: 40%;
+  flex-shrink: 0;
   font-size: 11px;
   display: flex;
   align-items: center;

@@ -1,13 +1,3 @@
-import {
-  CopyOutlined,
-  DownloadOutlined,
-  RotateLeftOutlined,
-  RotateRightOutlined,
-  SwapOutlined,
-  UndoOutlined,
-  ZoomInOutlined,
-  ZoomOutOutlined
-} from '@ant-design/icons'
 import { loggerService } from '@logger'
 import { attachmentMime } from '@renderer/utils/attachmentMime'
 import { download } from '@renderer/utils/download'
@@ -15,7 +5,17 @@ import { convertImageToPng } from '@renderer/utils/image'
 import { parseDataUrl } from '@shared/utils'
 import type { ImageProps as AntImageProps } from 'antd'
 import { Dropdown, Image as AntImage, Space } from 'antd'
-import { DownloadIcon } from 'lucide-react'
+import {
+  Copy,
+  DownloadIcon,
+  FlipHorizontal2,
+  FlipVertical2,
+  RotateCcw,
+  RotateCw,
+  Undo2,
+  ZoomIn,
+  ZoomOut
+} from 'lucide-react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
@@ -119,15 +119,33 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ src, style, ...props }) => {
             }
           ) => (
             <ToolbarWrapper size={12} className="toolbar-wrapper">
-              <SwapOutlined rotate={90} onClick={onFlipY} />
-              <SwapOutlined onClick={onFlipX} />
-              <RotateLeftOutlined onClick={onRotateLeft} />
-              <RotateRightOutlined onClick={onRotateRight} />
-              <ZoomOutOutlined disabled={scale === 1} onClick={onZoomOut} />
-              <ZoomInOutlined disabled={scale === 50} onClick={onZoomIn} />
-              <UndoOutlined onClick={onReset} />
-              <CopyOutlined onClick={() => handleCopyImage(src)} />
-              <DownloadOutlined onClick={() => download(src)} />
+              <ToolbarIconButton type="button" onClick={onFlipY}>
+                <FlipVertical2 size={18} />
+              </ToolbarIconButton>
+              <ToolbarIconButton type="button" onClick={onFlipX}>
+                <FlipHorizontal2 size={18} />
+              </ToolbarIconButton>
+              <ToolbarIconButton type="button" onClick={onRotateLeft}>
+                <RotateCcw size={18} />
+              </ToolbarIconButton>
+              <ToolbarIconButton type="button" onClick={onRotateRight}>
+                <RotateCw size={18} />
+              </ToolbarIconButton>
+              <ToolbarIconButton type="button" disabled={scale === 1} onClick={onZoomOut}>
+                <ZoomOut size={18} />
+              </ToolbarIconButton>
+              <ToolbarIconButton type="button" disabled={scale === 50} onClick={onZoomIn}>
+                <ZoomIn size={18} />
+              </ToolbarIconButton>
+              <ToolbarIconButton type="button" onClick={onReset}>
+                <Undo2 size={18} />
+              </ToolbarIconButton>
+              <ToolbarIconButton type="button" onClick={() => handleCopyImage(src)}>
+                <Copy size={18} />
+              </ToolbarIconButton>
+              <ToolbarIconButton type="button" onClick={() => download(src)}>
+                <DownloadIcon size={18} />
+              </ToolbarIconButton>
             </ToolbarWrapper>
           )
         }}
@@ -142,12 +160,23 @@ const ToolbarWrapper = styled(Space)`
   font-size: 20px;
   background-color: rgba(0, 0, 0, 0.1);
   border-radius: 100px;
-  .anticon {
-    padding: 12px;
-    cursor: pointer;
-  }
-  .anticon:hover {
+`
+
+const ToolbarIconButton = styled.button`
+  background: none;
+  border: 0;
+  color: inherit;
+  padding: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  &:hover:not(:disabled) {
     opacity: 0.3;
+  }
+  &:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
   }
 `
 

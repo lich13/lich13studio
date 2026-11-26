@@ -1,20 +1,18 @@
-import {
-  FileExcelFilled,
-  FileImageFilled,
-  FileMarkdownFilled,
-  FilePdfFilled,
-  FilePptFilled,
-  FileTextFilled,
-  FileUnknownFilled,
-  FileWordFilled,
-  FileZipFilled,
-  FolderOpenFilled,
-  GlobalOutlined,
-  LinkOutlined,
-  VideoCameraFilled
-} from '@ant-design/icons'
 import { videoExts } from '@shared/config/constant'
 import { Flex } from 'antd'
+import {
+  FileArchive,
+  FileCode,
+  FileImage,
+  FileQuestion,
+  FileSpreadsheet,
+  FileText,
+  FolderOpen,
+  Globe,
+  Link,
+  Presentation,
+  Video
+} from 'lucide-react'
 import React, { memo } from 'react'
 import styled from 'styled-components'
 
@@ -29,56 +27,53 @@ interface FileItemProps {
   style?: React.CSSProperties
 }
 
-const getFileIcon = (type?: string) => {
-  if (!type) return <FileUnknownFilled />
+export const getFileIcon = (type?: string, size: number | string = '1em') => {
+  if (!type) return <FileQuestion size={size} />
 
   const ext = type.toLowerCase()
 
   if (['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'].includes(ext)) {
-    return <FileImageFilled />
+    return <FileImage size={size} />
   }
 
-  if (['.doc', '.docx'].includes(ext)) {
-    return <FileWordFilled />
+  if (['.doc', '.docx', '.pdf'].includes(ext)) {
+    return <FileText size={size} />
   }
   if (['.xls', '.xlsx'].includes(ext)) {
-    return <FileExcelFilled />
+    return <FileSpreadsheet size={size} />
   }
   if (['.ppt', '.pptx'].includes(ext)) {
-    return <FilePptFilled />
+    return <Presentation size={size} />
   }
-  if (ext === '.pdf') {
-    return <FilePdfFilled />
-  }
-  if (['.md', '.markdown'].includes(ext)) {
-    return <FileMarkdownFilled />
+  if (['.md', '.markdown', '.tscn', '.gd'].includes(ext)) {
+    return <FileCode size={size} />
   }
 
   if (['.zip', '.rar', '.7z', '.tar', '.gz'].includes(ext)) {
-    return <FileZipFilled />
+    return <FileArchive size={size} />
   }
 
   if (['.txt', '.json', '.log', '.yml', '.yaml', '.xml', '.csv'].includes(ext)) {
-    return <FileTextFilled />
+    return <FileText size={size} />
   }
 
   if (['.url'].includes(ext)) {
-    return <LinkOutlined />
+    return <Link size={size} />
   }
 
   if (['.sitemap'].includes(ext)) {
-    return <GlobalOutlined />
+    return <Globe size={size} />
   }
 
   if (['.folder'].includes(ext)) {
-    return <FolderOpenFilled />
+    return <FolderOpen size={size} />
   }
 
   if (videoExts.includes(ext)) {
-    return <VideoCameraFilled />
+    return <Video size={size} />
   }
 
-  return <FileUnknownFilled />
+  return <FileQuestion size={size} />
 }
 
 const FileItem: React.FC<FileItemProps> = ({ fileInfo, style }) => {

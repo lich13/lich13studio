@@ -20,7 +20,7 @@ import { useSettings } from '@renderer/hooks/useSettings'
 import { extractHtmlTitle, getFileNameFromHtmlTitle } from '@renderer/utils/formats'
 import dayjs from 'dayjs'
 import { FileCode } from 'lucide-react'
-import React, { memo, startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { memo, startTransition, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled, { css } from 'styled-components'
 
@@ -32,6 +32,7 @@ const logger = loggerService.withContext('CodeBlockView')
 interface Props {
   children: string
   language: string
+  isStreaming?: boolean
   onSave?: (newContent: string) => void
 }
 
@@ -51,7 +52,7 @@ interface Props {
  * - quick 工具
  * - core 工具
  */
-export const CodeBlockView: React.FC<Props> = memo(({ children, language, onSave }) => {
+export const CodeBlockView: React.FC<Props> = memo(({ children, language, isStreaming = false, onSave }) => {
   const { t } = useTranslation()
   const { codeEditor, codeImageTools, codeCollapsible, codeWrappable } = useSettings()
 
@@ -231,6 +232,7 @@ export const CodeBlockView: React.FC<Props> = memo(({ children, language, onSave
           className="source-view"
           value={children}
           language={language}
+          isStreaming={isStreaming}
           onHeightChange={handleHeightChange}
           expanded={shouldExpand}
           wrapped={shouldWrap}
@@ -238,7 +240,17 @@ export const CodeBlockView: React.FC<Props> = memo(({ children, language, onSave
           onRequestExpand={codeCollapsible ? () => setExpandOverride(true) : undefined}
         />
       ),
-    [children, codeCollapsible, codeEditor.enabled, handleHeightChange, language, onSave, shouldExpand, shouldWrap]
+    [
+      children,
+      codeCollapsible,
+      codeEditor.enabled,
+      handleHeightChange,
+      isStreaming,
+      language,
+      onSave,
+      shouldExpand,
+      shouldWrap
+    ]
   )
 
   // 特殊视图组件映射
@@ -248,9 +260,11 @@ export const CodeBlockView: React.FC<Props> = memo(({ children, language, onSave
     if (!SpecialView) return null
 
     return (
-      <SpecialView ref={specialViewRef} enableToolbar={codeImageTools}>
-        {children}
-      </SpecialView>
+      <Suspense fallback={null}>
+        <SpecialView ref={specialViewRef} enableToolbar={codeImageTools}>
+          {children}
+        </SpecialView>
+      </Suspense>
     )
   }, [children, codeImageTools, language])
 

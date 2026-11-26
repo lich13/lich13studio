@@ -29,8 +29,7 @@ vi.mock('@cherrystudio/ai-core', async (importOriginal) => {
 })
 
 vi.mock('@renderer/hooks/useSettings', () => ({
-  getStoreSetting: () => ({}),
-  getEnableDeveloperMode: () => false
+  getStoreSetting: () => ({})
 }))
 vi.mock('@renderer/services/AssistantService', () => ({
   requireCurrentModel: (model: Model) => model,

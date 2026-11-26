@@ -1,11 +1,3 @@
-import {
-  ColumnHeightOutlined,
-  ColumnWidthOutlined,
-  DeleteOutlined,
-  FolderOutlined,
-  NumberOutlined,
-  ReloadOutlined
-} from '@ant-design/icons'
 import { HStack } from '@renderer/components/Layout'
 import { useAssistant } from '@renderer/hooks/useAssistant'
 import { useMessageOperations } from '@renderer/hooks/useMessageOperations'
@@ -15,6 +7,7 @@ import type { Message } from '@renderer/types/newMessage'
 import { AssistantMessageStatus } from '@renderer/types/newMessage'
 import { getMainTextContent } from '@renderer/utils/messageUtils/find'
 import { Button, Tooltip } from 'antd'
+import { Columns2, Folder, Hash, RefreshCw, Rows2, Trash2 } from 'lucide-react'
 import type { FC } from 'react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -113,13 +106,13 @@ const MessageGroupMenuBar: FC<Props> = ({
                 $active={multiModelMessageStyle === layout}
                 onClick={() => setMultiModelMessageStyle(layout)}>
                 {layout === 'fold' ? (
-                  <FolderOutlined />
+                  <Folder size={14} />
                 ) : layout === 'horizontal' ? (
-                  <ColumnWidthOutlined />
+                  <Columns2 size={14} />
                 ) : layout === 'vertical' ? (
-                  <ColumnHeightOutlined />
+                  <Rows2 size={14} />
                 ) : (
-                  <NumberOutlined />
+                  <Hash size={14} />
                 )}
               </LayoutOption>
             </Tooltip>
@@ -139,7 +132,7 @@ const MessageGroupMenuBar: FC<Props> = ({
           <Button
             type="text"
             size="small"
-            icon={<ReloadOutlined />}
+            icon={<RefreshCw size={14} />}
             onClick={handleRetryAll}
             style={{ marginRight: 4 }}
           />
@@ -148,7 +141,7 @@ const MessageGroupMenuBar: FC<Props> = ({
       <Button
         type="text"
         size="small"
-        icon={<DeleteOutlined style={{ color: 'var(--color-error)' }} />}
+        icon={<Trash2 size={14} style={{ color: 'var(--color-error)' }} />}
         onClick={handleDeleteGroup}
       />
     </GroupMenuBar>

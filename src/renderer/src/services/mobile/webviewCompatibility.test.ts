@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { installWebviewCompatibility } from './webviewCompatibility'
+import { ensureLegacyCoreJsPolyfills, installWebviewCompatibility } from './webviewCompatibility'
 
 function propertyOwner(target: object, key: PropertyKey): object {
   let owner: object | null = target
@@ -273,5 +273,23 @@ describe('WebView compatibility', () => {
     }
     expect(new Set(identifiers).size).toBe(identifiers.length)
     expect(entropy).toHaveBeenCalled()
+  })
+
+  it('loads legacy core-js polyfills on demand when ES2022+ APIs are missing', async () => {
+    const origHasOwn = Object.getOwnPropertyDescriptor(Object, 'hasOwn')
+    const origWithResolvers = Object.getOwnPropertyDescriptor(Promise, 'withResolvers')
+    try {
+      Reflect.deleteProperty(Object, 'hasOwn')
+      installWebviewCompatibility()
+      expect(Object.hasOwn({ ok: 1 }, 'ok')).toBe(true)
+
+      Reflect.deleteProperty(Promise, 'withResolvers')
+      expect((Promise as unknown as Record<string, unknown>).withResolvers).toBeUndefined()
+      await ensureLegacyCoreJsPolyfills()
+      expect((Promise as unknown as Record<string, unknown>).withResolvers).toBeTypeOf('function')
+    } finally {
+      if (origHasOwn) Object.defineProperty(Object, 'hasOwn', origHasOwn)
+      if (origWithResolvers) Object.defineProperty(Promise, 'withResolvers', origWithResolvers)
+    }
   })
 })

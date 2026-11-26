@@ -1,11 +1,10 @@
-export {
-  formatApiHost,
-  formatApiKeys,
-  hasAPIVersion,
-  isWithTrailingSharp,
-  withoutTrailingSharp,
-  withoutTrailingSlash
-} from '@shared/utils/api'
+export function formatApiKeys(value: string): string {
+  return value.replaceAll('，', ',').replaceAll('\n', ',')
+}
+
+export function withoutTrailingSlash(url: string): string {
+  return url.replace(/\/$/, '')
+}
 
 export function maskApiKey(key: string): string {
   if (!key) return ''

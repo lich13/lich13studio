@@ -10,11 +10,10 @@
   -webkit-app-region: no-drag;
 }
 
-/* minapp-drawer 有自己的拖拽规则 */
-
 /* 下拉菜单和弹出框内容不应该可拖拽 */
 .ant-dropdown,
 .ant-dropdown-menu,
+.ant-select-dropdown,
 .ant-popover-content,
 .ant-tooltip-content,
 .ant-popconfirm {
@@ -52,48 +51,7 @@
   gap: 4px;
 }
 
-.minapp-drawer .ant-drawer-content-wrapper {
-  box-shadow: none;
-}
-
-.minapp-drawer .ant-drawer-header {
-  position: absolute;
-  -webkit-app-region: drag;
-  min-height: calc(var(--navbar-height) + 0.5px);
-  margin-top: -0.5px;
-  border-bottom: none;
-}
-
-.minapp-drawer .ant-drawer-body {
-  padding: 0;
-  margin-top: var(--navbar-height);
-  overflow: hidden;
-  /* 手动展开 @extend #content-container 的内容 */
-  background-color: var(--color-background);
-}
-
-.minapp-drawer .minapp-mask {
-  background-color: transparent !important;
-}
-
-[navbar-position='left'] .minapp-drawer {
-  max-width: calc(var(--app-viewport-width) - var(--sidebar-width));
-}
-
-[navbar-position='left'] .minapp-drawer .ant-drawer-header {
-  width: calc(var(--app-viewport-width) - var(--sidebar-width));
-}
-
-[navbar-position='top'] .minapp-drawer {
-  max-width: var(--app-viewport-width);
-}
-
-[navbar-position='top'] .minapp-drawer .ant-drawer-header {
-  width: var(--app-viewport-width);
-}
-
 .ant-drawer-header {
-  /* 普通 drawer header 不应该可拖拽，除非被 minapp-drawer 覆盖 */
   -webkit-app-region: no-drag;
 }
 

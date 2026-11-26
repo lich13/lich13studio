@@ -1,6 +1,5 @@
 import '@xyflow/react/dist/style.css'
 
-import { RobotOutlined, UserOutlined } from '@ant-design/icons'
 import EmojiAvatar from '@renderer/components/Avatar/EmojiAvatar'
 import ModelAvatar from '@renderer/components/Avatar/ModelAvatar'
 import { getModelLogoById } from '@renderer/config/models'
@@ -18,6 +17,7 @@ import { Controls, Handle, MiniMap, ReactFlow, ReactFlowProvider } from '@xyflow
 import { Position, useEdgesState, useNodesState } from '@xyflow/react'
 import { Avatar, Spin, Tooltip } from 'antd'
 import isEqual from 'lodash/isEqual'
+import { Bot, User } from 'lucide-react'
 import type { FC } from 'react'
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -78,7 +78,7 @@ const CustomNode: FC<{ data: any }> = ({ data }) => {
         avatar = <Avatar src={data.userAvatar} alt={title} />
       }
     } else {
-      avatar = <Avatar icon={<UserOutlined />} style={{ backgroundColor: 'var(--color-link)' }} />
+      avatar = <Avatar icon={<User size={16} />} style={{ backgroundColor: 'var(--color-link)' }} />
     }
   } else if (nodeType === 'assistant') {
     borderColor = 'var(--color-primary)'
@@ -94,12 +94,12 @@ const CustomNode: FC<{ data: any }> = ({ data }) => {
       avatar = (
         <Avatar
           src={modelLogo}
-          icon={!modelLogo ? <RobotOutlined /> : undefined}
+          icon={!modelLogo ? <Bot size={16} /> : undefined}
           style={{ backgroundColor: 'var(--color-primary)' }}
         />
       )
     } else {
-      avatar = <Avatar icon={<RobotOutlined />} style={{ backgroundColor: 'var(--color-primary)' }} />
+      avatar = <Avatar icon={<Bot size={16} />} style={{ backgroundColor: 'var(--color-primary)' }} />
     }
   }
 
@@ -266,6 +266,29 @@ const ChatFlowHistory: FC<ChatFlowHistoryProps> = ({ conversationId }) => {
       return { nodes: [], edges: [] }
     }
 
+    const userTimes = userMessages.map((msg) => new Date(msg.createdAt).getTime())
+    const assistantBuckets: Array<typeof assistantMessages> = Array.from({ length: userMessages.length }, () => [])
+    const placedAssistantIds = new Set<string>()
+
+    if (userMessages.length > 0) {
+      const sortedAssistants = assistantMessages
+        .map((msg, idx) => ({ msg, idx, time: new Date(msg.createdAt).getTime() }))
+        .sort((a, b) => a.time - b.time || a.idx - b.idx)
+
+      let uIdx = 0
+      for (const item of sortedAssistants) {
+        while (uIdx + 1 < userMessages.length && item.time >= userTimes[uIdx + 1]) {
+          uIdx += 1
+        }
+        const start = userTimes[uIdx]
+        const end = uIdx + 1 < userMessages.length ? userTimes[uIdx + 1] : Number.POSITIVE_INFINITY
+        if (item.time > start && item.time < end) {
+          assistantBuckets[uIdx].push(item.msg)
+          placedAssistantIds.add(item.msg.id)
+        }
+      }
+    }
+
     // 为所有用户消息创建节点
     userMessages.forEach((message, index) => {
       const nodeId = `user-${message.id}`
@@ -292,15 +315,7 @@ const ChatFlowHistory: FC<ChatFlowHistoryProps> = ({ conversationId }) => {
         targetPosition: Position.Top
       })
 
-      // 找到用户消息之后的助手回复
-      const userMsgTime = new Date(message.createdAt).getTime()
-      const relatedAssistantMsgs = assistantMessages.filter((aMsg) => {
-        const aMsgTime = new Date(aMsg.createdAt).getTime()
-        return (
-          aMsgTime > userMsgTime &&
-          (index === userMessages.length - 1 || aMsgTime < new Date(userMessages[index + 1].createdAt).getTime())
-        )
-      })
+      const relatedAssistantMsgs = assistantBuckets[index]
 
       // 为相关的助手消息创建节点
       relatedAssistantMsgs.forEach((aMsg, aIndex) => {
@@ -308,28 +323,10 @@ const ChatFlowHistory: FC<ChatFlowHistoryProps> = ({ conversationId }) => {
         const isMultipleResponses = relatedAssistantMsgs.length > 1
         const assistantX = baseX + (isMultipleResponses ? horizontalGap * aIndex : 0)
         const assistantY = yPosition + verticalGap
-
-        // 根据位置确定连接点位置
-        let sourcePos = Position.Bottom // 默认向下输出
-        let targetPos = Position.Top // 默认从上方输入
-
-        // 横向排列多个助手消息时调整连接点
-        // 注意：现在所有助手节点都直接连接到用户节点，而不是相互连接
-        if (isMultipleResponses) {
-          // 所有助手节点都使用顶部作为输入点(从用户节点)
-          targetPos = Position.Top
-
-          // 所有助手节点都使用底部作为输出点(到下一个用户节点)
-          sourcePos = Position.Bottom
-        }
-
-        // 获取模型名称
+        const sourcePos = Position.Bottom
+        const targetPos = Position.Top
         const modelName = (aMsg.model && aMsg.model.name) || t('chat.history.assistant_node')
-
-        // 获取模型ID
         const modelId = (aMsg.model && aMsg.model.id) || ''
-
-        // 完整的模型信息
         const modelInfo = aMsg.model
 
         flowNodes.push({
@@ -348,37 +345,19 @@ const ChatFlowHistory: FC<ChatFlowHistoryProps> = ({ conversationId }) => {
           targetPosition: targetPos
         })
 
-        // 连接消息 - 将每个助手节点直接连接到用户节点
-        if (aIndex === 0) {
-          // 连接用户消息到第一个助手回复
-          flowEdges.push({
-            id: `edge-${nodeId}-to-${assistantNodeId}`,
-            source: nodeId,
-            target: assistantNodeId
-          })
-        } else {
-          // 直接连接用户消息到所有其他助手回复
-          flowEdges.push({
-            id: `edge-${nodeId}-to-${assistantNodeId}`,
-            source: nodeId,
-            target: assistantNodeId
-          })
-        }
+        flowEdges.push({
+          id: `edge-${nodeId}-to-${assistantNodeId}`,
+          source: nodeId,
+          target: assistantNodeId
+        })
       })
 
       // 连接相邻的用户消息
       if (index > 0) {
         const prevUserNodeId = `user-${userMessages[index - 1].id}`
-        const prevUserTime = new Date(userMessages[index - 1].createdAt).getTime()
-
-        // 查找前一个用户消息的所有助手回复
-        const prevAssistantMsgs = assistantMessages.filter((aMsg) => {
-          const aMsgTime = new Date(aMsg.createdAt).getTime()
-          return aMsgTime > prevUserTime && aMsgTime < userMsgTime
-        })
+        const prevAssistantMsgs = assistantBuckets[index - 1]
 
         if (prevAssistantMsgs.length > 0) {
-          // 所有前一个用户的助手消息都连接到当前用户消息
           prevAssistantMsgs.forEach((aMsg) => {
             const assistantId = `assistant-${aMsg.id}`
             flowEdges.push({
@@ -388,7 +367,6 @@ const ChatFlowHistory: FC<ChatFlowHistoryProps> = ({ conversationId }) => {
             })
           })
         } else {
-          // 如果没有助手消息，直接连接两个用户消息
           flowEdges.push({
             id: `edge-${prevUserNodeId}-to-${nodeId}`,
             source: prevUserNodeId,
@@ -399,9 +377,7 @@ const ChatFlowHistory: FC<ChatFlowHistoryProps> = ({ conversationId }) => {
     })
 
     // 处理孤立的助手消息（没有对应的用户消息）
-    const orphanAssistantMsgs = assistantMessages.filter(
-      (aMsg) => !flowNodes.some((node) => node.id === `assistant-${aMsg.id}`)
-    )
+    const orphanAssistantMsgs = assistantMessages.filter((aMsg) => !placedAssistantIds.has(aMsg.id))
 
     if (orphanAssistantMsgs.length > 0) {
       // 在图表顶部添加这些孤立消息

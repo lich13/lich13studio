@@ -46,10 +46,120 @@ function emptyCredentialValue(secret: unknown, field: string): unknown {
   return ''
 }
 
+const STANDARD_CATALOG_STRING_KEYS = new Set(['id', 'name', 'group', 'owned_by', 'description'])
+const STANDARD_ENDPOINT_TYPES = new Set([
+  'openai',
+  'openai-response',
+  'anthropic',
+  'gemini',
+  'image-generation',
+  'jina-rerank'
+])
+const STANDARD_CAPABILITY_TYPES = new Set(['text', 'vision', 'embedding', 'reasoning', 'function_calling', 'rerank'])
+const STANDARD_PRICING_NUMBER_KEYS = new Set([
+  'input',
+  'output',
+  'input_per_million_tokens',
+  'output_per_million_tokens'
+])
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false
+  const proto = Object.getPrototypeOf(value)
+  return proto === Object.prototype || proto === null
+}
+
+function isSafeCatalogPlainString(value: unknown): value is string {
+  return typeof value === 'string' && !value.startsWith(PREFIX) && !value.includes(PREFIX) && !/^\s*[[{]/.test(value)
+}
+
+function isStandardCatalogEntry(entry: unknown): boolean {
+  if (!isPlainObject(entry)) return false
+  for (const [key, val] of Object.entries(entry)) {
+    if (STANDARD_CATALOG_STRING_KEYS.has(key)) {
+      if (val !== undefined && !isSafeCatalogPlainString(val)) return false
+      continue
+    }
+    if (key === 'endpoint_type') {
+      if (val !== undefined && (typeof val !== 'string' || !STANDARD_ENDPOINT_TYPES.has(val))) return false
+      continue
+    }
+    if (key === 'supported_text_delta') {
+      if (val !== undefined && typeof val !== 'boolean') return false
+      continue
+    }
+    if (key === 'supported_endpoint_types') {
+      if (val === undefined) continue
+      if (!Array.isArray(val)) return false
+      for (let i = 0; i < val.length; i += 1) {
+        const item = val[i]
+        if (typeof item !== 'string' || !STANDARD_ENDPOINT_TYPES.has(item)) return false
+      }
+      continue
+    }
+    if (key === 'pricing') {
+      if (val === undefined) continue
+      if (!isPlainObject(val)) return false
+      for (const [pKey, pVal] of Object.entries(val)) {
+        if (STANDARD_PRICING_NUMBER_KEYS.has(pKey)) {
+          if (pVal !== undefined && (typeof pVal !== 'number' || !Number.isFinite(pVal))) return false
+        } else if (pKey === 'currencySymbol') {
+          if (pVal !== undefined && !isSafeCatalogPlainString(pVal)) return false
+        } else {
+          return false
+        }
+      }
+      continue
+    }
+    if (key === 'capabilities') {
+      if (val === undefined) continue
+      if (!Array.isArray(val)) return false
+      for (let i = 0; i < val.length; i += 1) {
+        const cap = val[i]
+        if (!isPlainObject(cap)) return false
+        let hasType = false
+        for (const [cKey, cVal] of Object.entries(cap)) {
+          if (cKey === 'type') {
+            if (typeof cVal !== 'string' || !STANDARD_CAPABILITY_TYPES.has(cVal)) return false
+            hasType = true
+          } else if (cKey === 'isUserSelected') {
+            if (cVal !== undefined && typeof cVal !== 'boolean') return false
+          } else {
+            return false
+          }
+        }
+        if (!hasType) return false
+      }
+      continue
+    }
+    return false
+  }
+  return true
+}
+
+function isStandardPlatformModels(value: unknown): boolean {
+  if (!isPlainObject(value)) return false
+  for (const [platform, list] of Object.entries(value)) {
+    if (secretField.test(platform) || !Array.isArray(list)) return false
+    for (let i = 0; i < list.length; i += 1) {
+      if (!isStandardCatalogEntry(list[i])) return false
+    }
+  }
+  return true
+}
+
 // Redux persist serializes each slice as JSON inside an outer JSON object.
 // Walk only credential-bearing inner slices without inspecting ordinary chat or assistant payloads.
-export function mapCredentials(value: unknown, visit: (value: unknown, field: string) => unknown, field = ''): unknown {
+export function mapCredentials(
+  value: unknown,
+  visit: (value: unknown, field: string) => unknown,
+  field = '',
+  fastCatalog = false
+): unknown {
   if (secretField.test(field)) return visit(value, field)
+  if (fastCatalog && field === 'platformModels' && isStandardPlatformModels(value)) {
+    return value
+  }
   if (typeof value === 'string') {
     if (value.startsWith(PREFIX)) return visit(value, field)
     if ((field === '' || field === 'persist:cherry-studio' || CREDENTIAL_SLICES.has(field)) && /^\s*[[{]/.test(value)) {
@@ -59,13 +169,15 @@ export function mapCredentials(value: unknown, visit: (value: unknown, field: st
       } catch {
         return value
       }
-      return JSON.stringify(mapCredentials(parsed, visit))
+      return JSON.stringify(mapCredentials(parsed, visit, '', fastCatalog))
     }
     return value
   }
-  if (Array.isArray(value)) return value.map((entry) => mapCredentials(entry, visit))
+  if (Array.isArray(value)) return value.map((entry) => mapCredentials(entry, visit, '', fastCatalog))
   if (value && typeof value === 'object') {
-    return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, mapCredentials(entry, visit, key)]))
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entry]) => [key, mapCredentials(entry, visit, key, fastCatalog)])
+    )
   }
   return value
 }
@@ -335,21 +447,26 @@ function redactState(value: string) {
     }
   }
 
-  const redacted = mapCredentials(value, (secret) => {
-    if (secret === '' || secret == null || (typeof secret === 'object' && !Object.keys(secret).length)) return secret
-    const resolved = isRef(secret) ? secrets[secret] : secret
-    if (resolved === undefined) throw new Error('Credential unavailable')
-    const serialized = JSON.stringify(resolved)
-    let ref = serialized !== undefined ? refBySerializedSecret.get(serialized) : undefined
-    if (!ref) {
-      ref = `${PREFIX}${crypto.randomUUID()}`
-      if (serialized !== undefined) {
-        refBySerializedSecret.set(serialized, ref)
+  const redacted = mapCredentials(
+    value,
+    (secret) => {
+      if (secret === '' || secret == null || (typeof secret === 'object' && !Object.keys(secret).length)) return secret
+      const resolved = isRef(secret) ? secrets[secret] : secret
+      if (resolved === undefined) throw new Error('Credential unavailable')
+      const serialized = JSON.stringify(resolved)
+      let ref = serialized !== undefined ? refBySerializedSecret.get(serialized) : undefined
+      if (!ref) {
+        ref = `${PREFIX}${crypto.randomUUID()}`
+        if (serialized !== undefined) {
+          refBySerializedSecret.set(serialized, ref)
+        }
       }
-    }
-    nextSecrets[ref] = resolved
-    return ref
-  }) as string
+      nextSecrets[ref] = resolved
+      return ref
+    },
+    '',
+    true
+  ) as string
   return { redacted, nextSecrets }
 }
 

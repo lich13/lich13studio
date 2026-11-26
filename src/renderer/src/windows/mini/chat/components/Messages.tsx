@@ -1,8 +1,7 @@
-import { LoadingOutlined } from '@ant-design/icons'
 import Scrollbar from '@renderer/components/Scrollbar'
 import { useTopicMessages } from '@renderer/hooks/useMessageOperations'
 import type { Assistant, Topic } from '@renderer/types'
-import { Sparkles } from 'lucide-react'
+import { Loader2, Sparkles } from 'lucide-react'
 import type { FC } from 'react'
 import { lazy, Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -43,7 +42,7 @@ const Messages: FC<Props> = ({ assistant, topic, isOutputted, isLoading, hasErro
           {modelName ? <EmptyModel>{modelName}</EmptyModel> : null}
         </EmptyState>
       )}
-      {showPendingSpinner && <PendingSpinner style={{ fontSize: 15 }} spin />}
+      {showPendingSpinner && <PendingSpinner size={15} className="animate-spin" />}
       {messages.length > 0 && (
         <Suspense fallback={null}>
           {[...messages].reverse().map((message) => (
@@ -66,7 +65,7 @@ const Container = styled(Scrollbar)<ContainerProps>`
   background-color: transparent !important;
 `
 
-const PendingSpinner = styled(LoadingOutlined)`
+const PendingSpinner = styled(Loader2)`
   margin: 18px 0 4px;
   color: var(--color-text-secondary);
 `

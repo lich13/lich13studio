@@ -5,13 +5,15 @@ import reducer, {
   addModel,
   addProvider,
   applyPlatformCatalog,
+  applyPlatformCatalogs,
   importPlatformProvider,
   initialState,
   removeModel,
   setDefaultModel,
   setPlatformModels
 } from '@renderer/store/llm'
-import { bundledModelCatalogs } from '@shared/modelCatalog/runtime'
+import { modelCatalogMiddleware } from '@renderer/store/modelCatalogMiddleware'
+import { bundledModelCatalogs, findOfficialModel, installModelCatalog } from '@shared/modelCatalog/runtime'
 import { inferProviderPlatform, resolveProviders } from '@shared/platforms'
 import type { Provider } from '@types'
 
@@ -110,5 +112,18 @@ describe('shared platform catalogs', () => {
       id: 'custom-responses-model',
       provider: 'ccs-1'
     })
+  })
+  it('installs runtime official model metadata when batch applyPlatformCatalogs dispatches at startup', () => {
+    const customSnapshot = structuredClone(bundledModelCatalogs.openai)
+    customSnapshot.models.find((m) => m.id === 'gpt-6.1-sol')!.aliases.push('gpt-6.1-sol-cached-startup')
+    const next = vi.fn((action) => action)
+    const dispatch = modelCatalogMiddleware({ dispatch: vi.fn(), getState: () => ({}) } as any)(next)
+    try {
+      dispatch(applyPlatformCatalogs([customSnapshot]))
+      expect(findOfficialModel('gpt-6.1-sol-cached-startup')?.id).toBe('gpt-6.1-sol')
+      expect(next).toHaveBeenCalledTimes(1)
+    } finally {
+      installModelCatalog(bundledModelCatalogs.openai)
+    }
   })
 })

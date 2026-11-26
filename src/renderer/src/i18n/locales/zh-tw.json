@@ -1,663 +1,6 @@
 {
   "agent": {
-    "add": {
-      "description": "呼叫各種工具處理複雜任務",
-      "error": {
-        "failed": "無法新增 Agent",
-        "invalid_agent": "無效的 Agent"
-      },
-      "model": {
-        "supported_providers": "支援的服務商",
-        "tooltip": "目前，僅支援 Anthropic 端點的模型可供 Agent 功能使用。",
-        "view_providers": "檢視支援的服務商"
-      },
-      "title": "新增 Agent",
-      "type": {
-        "placeholder": "選擇 Agent 類型"
-      }
-    },
-    "askUserQuestion": {
-      "answered": "已回答",
-      "customPlaceholder": "輸入你的答案...",
-      "loading": "載入問題中...",
-      "multiSelect": "多重選擇",
-      "next": "下一個",
-      "noQuestions": "沒有可用的問題",
-      "other": "其他",
-      "previous": "之前",
-      "submit": "提交",
-      "title": "來自Agent的提問"
-    },
-    "cherryClaw": {
-      "channels": {
-        "add": "新增",
-        "bindAgent": "綁定代理",
-        "chatIdsAutoTrackHint": "若留空，系統將自動追蹤：您需先在平台上向機器人發送一則訊息，系統才會記錄聊天 ID，以供後續通知使用。",
-        "comingSoon": "即將推出",
-        "connected": "已連線",
-        "connecting": "連接",
-        "deleteConfirm": "確定刪除頻道「{{name}}」？",
-        "description": "將您的 Agent 連接到訊息平台。",
-        "disconnected": "已中斷連線",
-        "discord": {
-          "botToken": "Bot Token",
-          "botTokenPlaceholder": "輸入您的 Discord 機器人 Token",
-          "channelIds": "允許的頻道 ID",
-          "channelIdsHint": "格式：channel:id 或 dm:id。留空表示允許所有。",
-          "channelIdsPlaceholder": "channel:123456789, dm:987654321",
-          "description": "透過 Discord 機器人使用 WebSocket 閘道接收和回覆訊息。",
-          "title": "Discord",
-          "whoamiTip": "💡 提示：發送 /whoami 給機器人即可取得正確格式的頻道 ID。"
-        },
-        "error": "錯誤",
-        "feishu": {
-          "appId": "應用程式 ID",
-          "appIdPlaceholder": "輸入您的飛書應用程式 ID",
-          "appSecret": "應用程式密鑰",
-          "appSecretPlaceholder": "輸入你的飛書應用程式密鑰",
-          "chatIds": "允許的聊天 ID",
-          "chatIdsHint": "逗號分隔的聊天 ID。留空以允許所有聊天。",
-          "chatIdsPlaceholder": "oc_xxxxx, oc_yyyyy",
-          "connected": "已連線",
-          "description": "透過 WebSocket 使用飛書/Lark 機器人接收並回覆訊息。",
-          "domain": "網域",
-          "domainFeishu": "飛書（中國）",
-          "domainLark": "Lark（國際版）",
-          "encryptKey": "加密金鑰",
-          "encryptKeyPlaceholder": "從您的飛書應用程式輸入加密金鑰",
-          "loginHint": "未設定憑證。啟用頻道以開始 QR 碼註冊，或手動輸入應用程式 ID 與應用程式密鑰。",
-          "qrExpired": "QR碼已過期，請切換頻道後重試。",
-          "qrHint": "等待掃描 QR 碼...",
-          "qrScanHint": "在手機上開啟飛書，掃描 QR Code 以建立機器人應用程式。",
-          "qrTitle": "飛書 QR 報名",
-          "title": "飛書",
-          "verificationToken": "驗證權杖",
-          "verificationTokenPlaceholder": "從您的 Feishu 應用程式輸入驗證碼"
-        },
-        "logs": "紀錄",
-        "noInstances": "尚無 {{type}} 頻道，點擊「+ 新增」建立。",
-        "noLogs": "尚無日誌",
-        "notifyReceiver": "接收任務通知",
-        "notifyReceiverHint": "將排程任務結果傳送到此頻道。",
-        "qq": {
-          "appId": "App ID",
-          "appIdPlaceholder": "輸入您的 QQ 機器人 App ID",
-          "chatIds": "允許的對話 ID",
-          "chatIdsHint": "格式：c2c:openid, group:groupid, channel:channelid。留空表示允許所有。",
-          "chatIdsPlaceholder": "c2c:abc123, group:xyz789",
-          "clientSecret": "Client Secret",
-          "clientSecretPlaceholder": "輸入您的 QQ 機器人 Client Secret",
-          "description": "透過 QQ 機器人官方 API 接收和回覆訊息。",
-          "title": "QQ",
-          "whoamiTip": "💡 提示：發送 /whoami 給機器人即可獲取正確格式的對話 ID。"
-        },
-        "security": {
-          "inheritFromAgent": "繼承智能體設定",
-          "permissionMode": "頻道權限模式",
-          "permissionModeHint": "覆寫此頻道訊息的智能體權限模式。選擇「繼承」則使用智能體預設設定。"
-        },
-        "selectAgent": "選擇要綁定的代理",
-        "slack": {
-          "appToken": "應用層級 Token",
-          "appTokenPlaceholder": "xapp-...",
-          "botToken": "Bot Token",
-          "botTokenPlaceholder": "xoxb-...",
-          "channelIds": "允許的頻道 ID",
-          "channelIdsHint": "Slack 頻道 ID。留空表示允許所有。",
-          "channelIdsPlaceholder": "C01234567, D89012345",
-          "description": "透過 Slack 機器人使用 Socket Mode 接收和回覆訊息。",
-          "title": "Slack",
-          "whoamiTip": "💡 提示：發送 /whoami 給機器人即可取得頻道 ID。"
-        },
-        "soulModeRequired": "此代理未啟用自主模式，頻道功能將無法運作。請在代理設定中啟用。",
-        "tab": "頻道",
-        "telegram": {
-          "botToken": "Bot Token",
-          "botTokenPlaceholder": "輸入您的 Telegram 機器人 Token",
-          "chatIds": "允許的對話 ID",
-          "chatIdsHint": "用逗號分隔。留空表示允許所有對話。",
-          "chatIdsPlaceholder": "123456789, 987654321",
-          "description": "透過 Telegram 機器人使用長輪詢方式接收和回覆訊息。",
-          "title": "Telegram"
-        },
-        "title": "頻道",
-        "wechat": {
-          "addAccount": "新增微信帳號",
-          "chatIds": "允許的使用者 ID",
-          "chatIdsHint": "以逗號分隔。留空以允許所有使用者。",
-          "chatIdsPlaceholder": "wxid_abc123, wxid_def456",
-          "connected": "已連線",
-          "description": "透過 iLink Bot API 在微信上接收並回覆訊息。",
-          "disconnected": "已斷線",
-          "loginHint": "首次登入需要掃描 QR 碼。請查看應用程式記錄以取得登入網址。",
-          "qrHint": "打開手機上的微信，掃描 QR 碼登入。",
-          "qrTitle": "微信 QR 碼登入",
-          "title": "微信",
-          "whoamiTip": "提示：在微信中發送 /whoami 可取得使用者的 ID。"
-        }
-      },
-      "heartbeat": {
-        "enabled": "啟用心跳",
-        "enabledHelper": "啟用後，如果工作區存在 heartbeat.md 檔案，排程器會按設定的間隔讀取其內容並傳送到主對話。",
-        "interval": "間隔（分鐘）",
-        "intervalHelper": "心跳執行的頻率，單位為分鐘。"
-      },
-      "sandbox": {
-        "description": "使用作業系統級沙箱限制 Agent 的檔案系統和網路存取，僅限於工作區目錄。",
-        "helper": "將檔案系統和命令存取限制在工作區路徑內。",
-        "label": "沙箱模式"
-      },
-      "scheduler": {
-        "cron": {
-          "helper": "標準 cron 表達式（例如 '*/30 * * * *' 表示每 30 分鐘）。",
-          "label": "Cron 表達式",
-          "placeholder": "*/30 * * * *"
-        },
-        "description": "排程器按計劃自動觸發 Agent 執行。",
-        "enabled": "啟用排程器",
-        "enabledHelper": "啟用後，Agent 將根據設定的計劃自動執行。",
-        "errors": {
-          "invalidCron": "無效的 cron 表達式",
-          "invalidDelay": "延遲必須是正數",
-          "invalidInterval": "間隔必須是正數"
-        },
-        "interval": {
-          "helper": "Agent 執行的頻率，單位為秒。",
-          "label": "間隔（秒）"
-        },
-        "lastRun": "上次執行",
-        "never": "從未",
-        "nextRun": "下次執行",
-        "oneTime": {
-          "helper": "Agent 執行前的一次性延遲，單位為秒。",
-          "label": "延遲（秒）"
-        },
-        "status": {
-          "running": "執行中",
-          "stopped": "已停止",
-          "tickInProgress": "執行中"
-        },
-        "tab": "排程器",
-        "title": "排程器設定",
-        "type": {
-          "cron": "Cron 表達式",
-          "interval": "固定間隔",
-          "label": "排程類型",
-          "one-time": "一次性延遲"
-        }
-      },
-      "soul": {
-        "description": "靈魂定義了 Agent 的個性和基礎行為。它從工作區根目錄的 soul.md 檔案中讀取。",
-        "empty": "在工作區根目錄未找到 soul.md 檔案。建立一個來定義 Agent 的個性。",
-        "enabled": "啟用靈魂",
-        "enabledHelper": "啟用後，Agent 會從工作區根目錄讀取 soul.md 並將其添加到系統提示詞前面。",
-        "fileLabel": "soul.md",
-        "preview": "靈魂預覽",
-        "tab": "靈魂",
-        "title": "靈魂設定"
-      },
-      "tasks": {
-        "add": "新增任務",
-        "cancel": "取消",
-        "channels": {
-          "label": "傳送至頻道",
-          "noActiveChatIds": "所選頻道沒有可用的收件人（聊天 ID）。任務結果可能無法送達。請先在平台上向機器人發送一則訊息。",
-          "placeholder": "選擇接收結果的頻道"
-        },
-        "cronPlaceholder": "例如 0 9 * * *（每天上午 9 點）",
-        "delete": {
-          "confirm": "確定要刪除此任務嗎？",
-          "label": "刪除"
-        },
-        "edit": "編輯",
-        "empty": "暫無排程任務。新增一個開始吧。",
-        "intervalPlaceholder": "間隔（分鐘）",
-        "intervalUnit": "分鐘",
-        "lastRun": "上次執行",
-        "logs": {
-          "duration": "耗時",
-          "empty": "暫無執行歷史。",
-          "error": "錯誤",
-          "justNow": "剛剛",
-          "label": "執行歷史",
-          "result": "結果",
-          "runAt": "執行時間",
-          "running": "執行中...",
-          "search": "搜尋執行記錄...",
-          "status": "狀態",
-          "success": "成功",
-          "viewSession": "查看會話"
-        },
-        "name": {
-          "label": "名稱",
-          "placeholder": "例如：每日程式碼審查"
-        },
-        "nextRun": "下次執行",
-        "oncePlaceholder": "選擇日期和時間",
-        "pause": "暫停",
-        "prompt": {
-          "expand": "展開編輯器",
-          "label": "提示詞",
-          "placeholder": "此任務執行時 Agent 應該做什麼？"
-        },
-        "resume": "恢復",
-        "run": "執行",
-        "runTriggered": "任務已觸發",
-        "save": "儲存",
-        "scheduleType": {
-          "cron": "Cron",
-          "interval": "間隔",
-          "label": "排程類型",
-          "once": "一次性"
-        },
-        "scheduleValue": "排程值",
-        "status": {
-          "active": "活躍",
-          "completed": "已完成",
-          "paused": "已暫停"
-        },
-        "tab": "任務",
-        "time": {
-          "hoursAgo": "{{count}}小時前",
-          "minutesAgo": "{{count}}分鐘前"
-        },
-        "timeout": {
-          "label": "逾時時間",
-          "placeholder": "無限制"
-        },
-        "title": "排程任務"
-      },
-      "warning": {
-        "bypassPermissions": "CherryClaw Agent 預設以全自動模式執行。所有工具執行時不會請求批准。"
-      }
-    },
-    "delete": {
-      "content": "刪除該 Agent 會強制停止並刪除該 Agent 的所有工作階段。確定要刪除嗎？",
-      "error": {
-        "failed": "刪除 Agent 失敗"
-      },
-      "title": "刪除 Agent"
-    },
-    "edit": {
-      "title": "編輯 Agent"
-    },
-    "empty": {
-      "description": "建立 Agent 以透過 AI 驅動的工具處理複雜任務",
-      "title": "尚無 Agent"
-    },
-    "get": {
-      "error": {
-        "failed": "無法取得 Agent。",
-        "null_id": "Agent ID 為空。"
-      }
-    },
-    "gitBash": {
-      "autoDetected": "使用自動偵測的 Git Bash",
-      "autoDiscoveredHint": "自動發現",
-      "clear": {
-        "button": "清除自訂路徑"
-      },
-      "customPath": "使用自訂路徑：{{path}}",
-      "error": {
-        "description": "在 Windows 上執行 Agent 需要 Git Bash。沒有它 Agent 無法運作。請從以下網址安裝 Git for Windows",
-        "recheck": "重新偵測 Git Bash 安裝",
-        "required": "在 Windows 上需要設定 Git Bash 路徑",
-        "title": "需要 Git Bash"
-      },
-      "found": {
-        "title": "已設定 Git Bash"
-      },
-      "notFound": "找不到 Git Bash。請先安裝。",
-      "pick": {
-        "button": "選擇 Git Bash 路徑",
-        "failed": "設定 Git Bash 路徑失敗",
-        "invalidPath": "選擇的檔案不是有效的 Git Bash 可執行檔（bash.exe）。",
-        "title": "選擇 Git Bash 可執行檔"
-      },
-      "placeholder": "選擇 bash.exe 路徑",
-      "success": "成功偵測到 Git Bash！",
-      "tooltip": "在 Windows 上執行 Agent 需要 Git Bash。如未安裝，請從 git-scm.com 下載安裝。"
-    },
-    "input": {
-      "placeholder": "在這裡輸入您的訊息，使用 {{key}} 傳送 - @ 選擇路徑，/ 選擇命令",
-      "soul_placeholder": "幫我連接微信"
-    },
-    "list": {
-      "error": {
-        "failed": "無法列出 Agent。"
-      }
-    },
-    "reorder": {
-      "error": {
-        "failed": "Agent 排序失敗"
-      }
-    },
-    "server": {
-      "error": {
-        "not_running": "API 伺服器已啟用，但運作不正常。"
-      }
-    },
-    "session": {
-      "accessible_paths": {
-        "add": "新增目錄",
-        "default_hint": "未指定時將自動建立預設工作目錄。",
-        "duplicate": "此目錄已包含在內。",
-        "empty": "選擇至少一個代理可以存取的目錄。",
-        "error": {
-          "at_least_one": "請至少選取一個可存取的目錄。"
-        },
-        "label": "可存取的目錄",
-        "select_failed": "無法選擇目錄。"
-      },
-      "add": {
-        "title": "新增工作階段"
-      },
-      "allowed_tools": {
-        "empty": "目前此代理沒有可用的工具。",
-        "helper": "預先核准的工具可直接執行；未選取的工具在使用前需要手動核准。",
-        "label": "預先授權工具",
-        "placeholder": "選擇預先授權的工具"
-      },
-      "create": {
-        "error": {
-          "failed": "無法新增工作階段"
-        }
-      },
-      "delete": {
-        "content": "您確定要刪除此工作階段嗎？",
-        "error": {
-          "failed": "無法刪除工作階段",
-          "last": "至少必須保留一個工作階段"
-        },
-        "title": "刪除工作階段"
-      },
-      "edit": {
-        "title": "編輯工作階段"
-      },
-      "get": {
-        "error": {
-          "failed": "無法取得工作階段",
-          "null_id": "工作階段 ID 為空"
-        }
-      },
-      "label_one": "工作階段",
-      "label_other": "工作階段",
-      "reorder": {
-        "error": {
-          "failed": "無法重新排序工作階段"
-        }
-      },
-      "update": {
-        "error": {
-          "failed": "無法更新工作階段"
-        }
-      }
-    },
-    "settings": {
-      "advance": {
-        "envVars": {
-          "description": "為智慧體執行環境設置自訂環境變數。",
-          "helper": "輸入自訂環境變數（每行一個，格式：KEY=value）",
-          "label": "環境變數"
-        },
-        "maxTurns": {
-          "description": "設定代理自動執行的請求／回覆輪次數。",
-          "helper": "數值越高可自動運作越久；數值越低更容易掌控。",
-          "label": "會話輪次上限"
-        },
-        "permissionMode": {
-          "description": "控制代理在需要授權時的處理方式。",
-          "label": "權限模式",
-          "options": {
-            "acceptEdits": "自動接受編輯",
-            "bypassPermissions": "略過權限檢查",
-            "default": "預設（繼續前先詢問）",
-            "plan": "規劃模式（需核准計畫）"
-          },
-          "placeholder": "選擇權限模式"
-        },
-        "title": "進階設定"
-      },
-      "essential": "必要設定",
-      "permissionMode": {
-        "tab": "權限模式",
-        "title": "權限模式"
-      },
-      "plugins": {
-        "available": {
-          "title": "可用外掛"
-        },
-        "confirm": {
-          "uninstall": "確定要解除安裝此外掛嗎？"
-        },
-        "empty": {
-          "available": "未找到符合的外掛。請嘗試調整搜尋或類別篩選。"
-        },
-        "error": {
-          "install": "安裝外掛失敗",
-          "load": "載入外掛失敗",
-          "load_more": "無法載入更多外掛程式",
-          "uninstall": "解除安裝外掛失敗"
-        },
-        "filter": {
-          "all": "所有類別"
-        },
-        "install": {
-          "button": "安裝",
-          "title": "安裝外掛程式"
-        },
-        "installed": {
-          "empty": "尚未安裝任何技能。瀏覽可用技能以開始使用。",
-          "title": "已安裝技能"
-        },
-        "installing": "安裝中...",
-        "plugin_upload": {
-          "all_failed": "全部 {{failed}} 個元件安裝失敗",
-          "error": "安裝失敗",
-          "format_hint": "支援技能包格式（.claude-plugin/plugin.json）",
-          "hint": "拖曳技能 ZIP 至此處，或點擊選擇檔案",
-          "invalid_format": "請上傳 ZIP 格式的檔案",
-          "partial_success": "已安裝 {{installed}} 個元件，{{failed}} 個失敗",
-          "select_folder": "選擇資料夾",
-          "select_folder_title": "選擇外掛資料夾",
-          "success": "外掛 \"{{name}}\" 安裝成功（{{count}} 個元件）",
-          "success_multi": "已從 {{packages}} 個外掛包安裝 {{count}} 個元件",
-          "uploading": "正在上傳並安裝..."
-        },
-        "results": "找到 {{count}} 個外掛",
-        "search": {
-          "placeholder": "搜尋外掛..."
-        },
-        "standalone_plugins": "獨立外掛",
-        "success": {
-          "install": "外掛安裝成功",
-          "uninstall": "外掛解除安裝成功",
-          "uninstall_package": "外掛包 \"{{name}}\" 解除安裝成功"
-        },
-        "tab": "外掛",
-        "type": {
-          "agent": "代理",
-          "agents": "代理",
-          "all": "全部",
-          "command": "指令",
-          "commands": "指令",
-          "skills": "技能"
-        },
-        "uninstall": "解除安裝",
-        "uninstall_package": "解除安裝整個包",
-        "uninstall_package_confirm": "確定要解除安裝整個 \"{{name}}\" 外掛包嗎？這將刪除 {{count}} 個元件。",
-        "uninstalling": "解除安裝中..."
-      },
-      "prompt": "提示設定",
-      "skills": {
-        "builtin": "內建",
-        "noFilterResults": "沒有符合的技能",
-        "noSkills": "未安裝任何技能。請前往「設定」>「技能」安裝技能。",
-        "searchPlaceholder": "搜尋技巧...",
-        "tab": "技能",
-        "title": "已安裝技能"
-      },
-      "soulMode": {
-        "description": "啟用後，代理程式會使用來自工作區靈魂檔案的自訂系統提示，注入自主任務管理工具，並停用不適合自主操作的互動式工具。",
-        "disabledBadge": "被自主模式停用",
-        "disabledTooltip": "當自主模式啟用時，此工具會自動停用",
-        "title": "自主模式"
-      },
-      "tooling": {
-        "permissionMode": {
-          "acceptEdits": {
-            "description": "檔案編輯與檔案系統操作會自動核准。",
-            "title": "自動接受檔案編輯"
-          },
-          "bypassPermissions": {
-            "description": "所有權限提示都會被略過，請務必謹慎使用。",
-            "title": "略過所有權限檢查",
-            "warning": "警告：所有工具都會在無核准情況下執行。"
-          },
-          "confirmChange": {
-            "description": "切換模式會更新自動預先授權的工具。",
-            "title": "確認切換權限模式？"
-          },
-          "default": {
-            "description": "唯讀工具會自動預先授權，其它操作仍需核准。",
-            "title": "預設（繼續前先詢問）"
-          },
-          "helper": "指定助手如何處理工具使用授權",
-          "placeholder": "選擇權限模式",
-          "plan": {
-            "description": "沿用預設的唯讀工具集，並會在執行前先呈現計畫。",
-            "title": "規劃模式"
-          },
-          "title": "權限模式"
-        },
-        "preapproved": {
-          "autoBadge": "模式自動新增",
-          "autoDescription": "此工具由目前的權限模式自動預先授權。",
-          "autoDisabledTooltip": "由「{{mode}}」自動授權，無法停用。",
-          "empty": "沒有符合篩選條件的工具。",
-          "requiresApproval": "停用時需要人工核准",
-          "search": "搜尋工具",
-          "title": "預授權工具",
-          "toggle": "切換 {{name}}"
-        }
-      },
-      "tools": {
-        "approved": "已授權",
-        "caution": "預先授權的工具會略過人工審查，請僅啟用可信任的工具。",
-        "description": "選擇哪些工具可在無需人工核准的情況下執行。",
-        "requiresPermission": "未預先授權時需要人工核准。",
-        "tab": "預先授權工具",
-        "title": "預先授權工具",
-        "toggle": "{{defaultValue}}"
-      }
-    },
-    "sidebar_title": "Agents",
-    "todo": {
-      "panel": {
-        "title": "已完成 {{completed}}/{{total}} 個任務"
-      },
-      "status": {
-        "completed": "已完成",
-        "in_progress": "進行中",
-        "pending": "待處理"
-      }
-    },
-    "toolPermission": {
-      "aria": {
-        "allowAllRequest": "總是允許此工具",
-        "allowRequest": "允許工具請求",
-        "denyRequest": "拒絕工具請求",
-        "hideDetails": "隱藏工具詳細資訊",
-        "runWithOptions": "帶選項執行",
-        "showDetails": "顯示工具詳細資訊"
-      },
-      "button": {
-        "allowAll": "總是允許",
-        "cancel": "取消",
-        "run": "執行"
-      },
-      "confirmation": "確定要執行此 Claude 工具嗎？",
-      "defaultDenyMessage": "使用者拒絕了該工具的權限。",
-      "defaultDescription": "在您的環境中執行程式碼或系統操作。執行前請確保指令安全。",
-      "error": {
-        "sendFailed": "傳送您的決定失敗，請重試。"
-      },
-      "executing": "執行中...",
-      "expired": "已過期",
-      "inputPreview": "工具輸入預覽",
-      "pending": "等待審批",
-      "permissionExpired": "權限請求已過期。等待新指令...",
-      "requiresElevatedPermissions": "此工具需要提升的權限。",
-      "suggestion": {
-        "permissionUpdateMultiple": "如果您選擇總是允許此工具，核准可能會更新多個工作階段權限。",
-        "permissionUpdateSingle": "如果您選擇總是允許此工具，核准可能會更新您的工作階段權限。"
-      },
-      "toast": {
-        "denied": "工具請求已被拒絕。",
-        "timeout": "工具請求在收到核准前逾時。"
-      },
-      "toolPendingFallback": "工具",
-      "waiting": "等待工具權限決定..."
-    },
-    "tools": {
-      "builtin": {
-        "Bash": {
-          "description": "在你的環境中執行 Shell 命令"
-        },
-        "Edit": {
-          "description": "對特定檔案進行精確編輯"
-        },
-        "Glob": {
-          "description": "根據模式匹配尋找檔案"
-        },
-        "Grep": {
-          "description": "在檔案內容中搜尋模式"
-        },
-        "MultiEdit": {
-          "description": "在單一檔案上原子性地執行多次編輯"
-        },
-        "NotebookEdit": {
-          "description": "修改 Jupyter notebook 儲存格"
-        },
-        "NotebookRead": {
-          "description": "讀取並顯示 Jupyter notebook 內容"
-        },
-        "Read": {
-          "description": "讀取檔案內容"
-        },
-        "Task": {
-          "description": "執行子代理來處理複雜的多步驟任務"
-        },
-        "TodoWrite": {
-          "description": "建立和管理結構化任務清單"
-        },
-        "ToolSearch": {
-          "description": "從大型函式庫中發現延遲載入的工具"
-        },
-        "WebFetch": {
-          "description": "從指定 URL 取得內容"
-        },
-        "Write": {
-          "description": "建立或覆寫檔案"
-        }
-      }
-    },
-    "type": {
-      "label": "Agent 類型",
-      "unknown": "未知類型"
-    },
-    "update": {
-      "error": {
-        "failed": "無法更新 Agent"
-      }
-    },
-    "warning": {
-      "enable_and_start": "啟用並啟動",
-      "enable_server": "啟用 API 伺服器以使用 Agent。",
-      "enable_server_description": "智能體功能需要啟用 API 伺服器。你可以直接啟用，或前往設定頁面進行配置。",
-      "server_not_running": "API 伺服器已啟用但未執行。請檢查伺服器設定。",
-      "server_not_running_description": "智能體功能需要 API 伺服器運行。你可以直接啟動伺服器，或前往設定頁面檢查配置。"
-    }
+    "sidebar_title": "Agents"
   },
   "assistants": {
     "abbr": "助手",
@@ -899,11 +242,6 @@
       "topic": {
         "title": "新增話題"
       }
-    },
-    "alerts": {
-      "create_agent": "建立 Agent 以開始",
-      "create_session": "建立工作階段",
-      "select_agent": "選擇一個智能體"
     },
     "artifacts": {
       "button": {
@@ -1228,9 +566,6 @@
         "tip": "模型產生文字的隨機程度。值越小，AI 產生的內容越單調，也越容易理解；值越大，AI 回應的詞彙範圍越大，越多樣化"
       }
     },
-    "suggestions": {
-      "title": "建議的問題"
-    },
     "thinking": "思考中（用時 {{seconds}} 秒）",
     "topics": {
       "auto_rename": "自動重新命名",
@@ -1342,45 +677,10 @@
       },
       "title": "話題",
       "unpin": "取消固定"
-    },
-    "translate": "翻譯"
+    }
   },
   "code": {
-    "auto_update_to_latest": "檢查更新並安裝最新版本",
-    "bun_required_message": "運作 CLI 工具需要安裝 Bun 環境",
-    "cli_tool": "CLI 工具",
-    "cli_tool_placeholder": "選擇要使用的 CLI 工具",
-    "custom_path": "自訂路徑",
-    "custom_path_error": "設定自訂終端機路徑失敗",
-    "custom_path_required": "此終端機需要設定自訂路徑",
-    "custom_path_set": "自訂終端機路徑設定成功",
-    "description": "快速啟動多個程式碼 CLI 工具，提高開發效率",
-    "env_vars_help": "輸入自訂環境變數（每行一個，格式：KEY=value）",
-    "environment_variables": "環境變數",
-    "folder_placeholder": "選擇工作目錄",
-    "installError": "安裝相依套件失敗",
-    "installSuccess": "相依套件安裝成功",
-    "install_bun": "安裝 Bun",
-    "installing_bun": "安裝中...",
-    "launch": {
-      "bun_required": "請先安裝 Bun 環境再啟動 CLI 工具",
-      "error": "啟動失敗，請重試",
-      "label": "啟動",
-      "success": "啟動成功",
-      "validation_error": "請完成所有必填欄位：CLI 工具、模型和工作目錄"
-    },
-    "launching": "啟動中...",
-    "model": "模型",
-    "model_placeholder": "選擇要使用的模型",
-    "model_required": "請選擇模型",
-    "select_folder": "選擇資料夾",
-    "set_custom_path": "設定自訂終端機路徑",
-    "supported_providers": "支援的供應商",
-    "terminal": "終端機",
-    "terminal_placeholder": "選擇終端機應用程式",
-    "title": "程式碼工具",
-    "update_options": "更新選項",
-    "working_directory": "工作目錄"
+    "title": "程式碼工具"
   },
   "code_block": {
     "collapse": "收合",
@@ -1741,14 +1041,6 @@
     "title": "檔案",
     "type": "類型"
   },
-  "gpustack": {
-    "keep_alive_time": {
-      "description": "模型在記憶體中保持的時間（預設為 5 分鐘）",
-      "placeholder": "分鐘",
-      "title": "保持活躍時間"
-    },
-    "title": "GPUStack"
-  },
   "history": {
     "continue_chat": "繼續聊天",
     "error": {
@@ -1818,15 +1110,10 @@
     "title": "匯入外部對話"
   },
   "knowledge": {
-    "drag_file": "拖曳檔案到這裡",
     "error": {
       "model_invalid": "未選擇模型"
     },
-    "file_hint": "支援 {{file_types}} 格式",
-    "search_placeholder": "輸入查詢內容",
-    "subtitle_file": "字幕檔案",
-    "title": "知識庫",
-    "videos_file": "影片檔案"
+    "title": "知識庫"
   },
   "languages": {
     "arabic": "阿拉伯文",
@@ -1850,14 +1137,6 @@
     "unknown": "未知",
     "urdu": "烏爾都文",
     "vietnamese": "越南文"
-  },
-  "lmstudio": {
-    "keep_alive_time": {
-      "description": "對話後模型在記憶體中保持的時間（預設為 5 分鐘）",
-      "placeholder": "分鐘",
-      "title": "保持活躍時間"
-    },
-    "title": "LM Studio"
   },
   "message": {
     "agents": {
@@ -2310,14 +1589,6 @@
     },
     "tip": "如果回應成功，則只針對超過 30 秒的訊息發出提醒"
   },
-  "ollama": {
-    "keep_alive_time": {
-      "description": "對話後模型在記憶體中保持的時間（預設為 5 分鐘）",
-      "placeholder": "分鐘",
-      "title": "保持活躍時間"
-    },
-    "title": "Ollama"
-  },
   "onboarding": {
     "select_model": {
       "change_later": "您可以隨時在設定中更改此項目",
@@ -2526,10 +1797,6 @@
         "title": "官方網站"
       }
     },
-    "advanced": {
-      "auto_switch_to_topics": "自動切換到話題",
-      "title": "進階設定"
-    },
     "assistant": {
       "icon": {
         "type": {
@@ -2542,10 +1809,6 @@
       "label": "預設助手",
       "model_params": "模型參數",
       "title": "預設助手"
-    },
-    "channels": {
-      "description": "將代理連接到 Telegram、飛書、Discord 等訊息平台。",
-      "title": "頻道"
     },
     "data": {
       "app_data": {
@@ -2574,19 +1837,6 @@
         "select_success": "資料目錄已變更，應用程式將重新啟動以套用變更",
         "select_title": "變更應用程式資料目錄",
         "stop_quit_app_reason": "應用程式目前正在移轉資料，無法關閉"
-      },
-      "app_knowledge": {
-        "button": {
-          "delete": "刪除檔案"
-        },
-        "label": "知識庫文件",
-        "remove_all": "刪除知識庫檔案",
-        "remove_all_confirm": "刪除知識庫文件可以減少儲存空間佔用，但不會刪除知識庫向量化資料，刪除之後將無法開啟原始檔，是否刪除？",
-        "remove_all_success": "檔案刪除成功"
-      },
-      "app_logs": {
-        "button": "開啟日誌",
-        "label": "應用程式日誌"
       },
       "backup": {
         "skip_file_data_help": "備份時跳過圖片、知識庫等資料檔案，只備份聊天記錄與設定。可減少空間佔用並加快備份速度",
@@ -2625,30 +1875,6 @@
       },
       "hour_interval_one": "{{count}} 小時",
       "hour_interval_other": "{{count}} 小時",
-      "import_settings": {
-        "button": "匯入 JSON 檔案",
-        "chatgpt": "匯入 ChatGPT 資料",
-        "title": "匯入外部應用程式資料"
-      },
-      "joplin": {
-        "check": {
-          "button": "檢查",
-          "empty_token": "請先輸入 Joplin 授權 Token",
-          "empty_url": "請先輸入 Joplin 剪輯服務 URL",
-          "fail": "Joplin 連結驗證失敗",
-          "success": "Joplin 連結驗證成功"
-        },
-        "export_reasoning": {
-          "help": "啟用後，匯出內容將包含助手產生的思維鏈（思考過程）。",
-          "title": "匯出時包含思維鏈"
-        },
-        "help": "在 Joplin 選項中，啟用剪輯服務（無需安裝瀏覽器外掛），確認埠編號，並複製授權 Token",
-        "title": "Joplin 設定",
-        "token": "Joplin 授權 Token",
-        "token_placeholder": "請輸入 Joplin 授權 Token",
-        "url": "Joplin 剪輯服務 URL",
-        "url_placeholder": "http://127.0.0.1:41184/"
-      },
       "limit": {
         "appDataDiskQuota": "磁碟空間警告",
         "appDataDiskQuotaDescription": "資料目錄空間即將用盡，請清理磁碟空間，否則可能導致資料遺失"
@@ -2768,28 +1994,6 @@
       },
       "minute_interval_one": "{{count}} 分鐘",
       "minute_interval_other": "{{count}} 分鐘",
-      "notion": {
-        "api_key": "Notion 金鑰",
-        "api_key_placeholder": "請輸入 Notion 金鑰",
-        "check": {
-          "button": "檢查",
-          "empty_api_key": "未設定 API key",
-          "empty_database_id": "未設定 Database ID",
-          "error": "連線異常，請檢查網路及 API key 和 Database ID 是否正確",
-          "fail": "連線失敗，請檢查網路及 API key 和 Database ID 是否正確",
-          "success": "連線成功"
-        },
-        "database_id": "Notion 資料庫 ID",
-        "database_id_placeholder": "請輸入 Notion 資料庫 ID",
-        "export_reasoning": {
-          "help": "啟用後，匯出到 Notion 時會包含思維鏈內容。",
-          "title": "匯出時包含思維鏈"
-        },
-        "help": "Notion 說明文件",
-        "page_name_key": "頁面標題欄位名稱",
-        "page_name_key_placeholder": "請輸入頁面標題欄位名稱，預設為 Name",
-        "title": "Notion 設定"
-      },
       "obsidian": {
         "default_vault": "預設 Obsidian 倉庫",
         "default_vault_export_failed": "匯出失敗",
@@ -2800,28 +2004,6 @@
         "title": "Obsidian 設定"
       },
       "obsolete_cache_cleanup_failed": "舊版測試快取清理未完成，請關閉其他應用程式視窗後重新啟動。",
-      "siyuan": {
-        "api_url": "思源筆記 API URL",
-        "api_url_placeholder": "例如：http://127.0.0.1:6806",
-        "box_id": "筆記本 ID",
-        "box_id_placeholder": "請輸入筆記本 ID",
-        "check": {
-          "button": "檢查",
-          "empty_config": "請填寫 API 位址和權杖",
-          "error": "連線異常，請檢查網路連線",
-          "fail": "連線失敗，請檢查 API 位址和權杖",
-          "success": "連線成功",
-          "title": "連線檢查"
-        },
-        "root_path": "思源筆記根路徑",
-        "root_path_placeholder": "例如：/CherryStudio",
-        "title": "思源筆記設定",
-        "token": {
-          "help": "在思源筆記 → 設定 → 關於中取得",
-          "label": "思源筆記權杖"
-        },
-        "token_placeholder": "請輸入思源筆記權杖"
-      },
       "title": "資料設定",
       "webdav": {
         "autoSync": {
@@ -2911,27 +2093,7 @@
           "help": "[to be translated]:When enabled, WebDAV requests will use the User-Agent Zotero/8.0 for providers that require the client app to be Zotero 8 or above.",
           "title": "[to be translated]:Impersonate Zotero 8+"
         }
-      },
-      "yuque": {
-        "check": {
-          "button": "檢查",
-          "empty_repo_url": "請先輸入知識庫 URL",
-          "empty_token": "請先輸入語雀 Token",
-          "fail": "語雀連結驗證失敗",
-          "success": "語雀連結驗證成功"
-        },
-        "help": "取得語雀 Token",
-        "repo_url": "知識庫 URL",
-        "repo_url_placeholder": "https://www.yuque.com/username/xxx",
-        "title": "語雀設定",
-        "token": "語雀 Token",
-        "token_placeholder": "請輸入語雀 Token"
       }
-    },
-    "developer": {
-      "enable_developer_mode": "啟用開發者模式",
-      "help": "啟用開發者模式後，可使用呼叫鏈功能檢視模型呼叫過程的資料流。",
-      "title": "開發者模式"
     },
     "display": {
       "assistant": {
@@ -3040,16 +2202,6 @@
       },
       "view_webdav_settings": "檢視 WebDAV 設定"
     },
-    "groq": {
-      "title": "Groq 設定"
-    },
-    "hardware_acceleration": {
-      "confirm": {
-        "content": "停用硬體加速需要重新啟動應用程式才能生效。要立即重新啟動嗎？",
-        "title": "需要重新啟動"
-      },
-      "title": "停用硬體加速"
-    },
     "input": {
       "auto_translate_with_space": "快速敲擊 3 次空格翻譯",
       "clear": {
@@ -3120,61 +2272,6 @@
       "show_message_outline": "顯示訊息大綱",
       "title": "訊息設定",
       "use_serif_font": "使用襯線字型"
-    },
-    "miniapps": {
-      "cache_change_notice": "變更會在開啟的小程式數量調整至設定值後生效",
-      "cache_description": "設定同時保持活躍狀態的小程式最大數量",
-      "cache_settings": "快取設定",
-      "cache_title": "小程式快取數量",
-      "custom": {
-        "conflicting_ids": "與預設應用 ID 衝突：{{ids}}",
-        "duplicate_ids": "發現重複的 ID: {{ids}}",
-        "edit_description": "編輯自訂小程式設定",
-        "edit_title": "編輯自訂小程式",
-        "id": "ID",
-        "id_error": "ID 是必填項",
-        "id_placeholder": "請輸入 ID",
-        "logo": "Logo",
-        "logo_file": "上傳 Logo 檔案",
-        "logo_upload_button": "上傳",
-        "logo_upload_error": "Logo 上傳失敗",
-        "logo_upload_label": "上傳 Logo",
-        "logo_upload_success": "Logo 上傳成功",
-        "logo_url": "Logo URL",
-        "logo_url_label": "Logo URL",
-        "logo_url_placeholder": "請輸入 Logo URL",
-        "name": "名稱",
-        "name_error": "名稱為必填欄位",
-        "name_placeholder": "請輸入名稱",
-        "placeholder": "請輸入自訂小程式設定（JSON 格式）",
-        "remove_error": "自訂小程式刪除失敗",
-        "remove_success": "自訂小程式刪除成功",
-        "save": "儲存",
-        "save_error": "自訂小程式儲存失敗",
-        "save_success": "自訂小程式儲存成功",
-        "title": "自訂",
-        "url": "URL",
-        "url_error": "URL 是必填項",
-        "url_placeholder": "請輸入 URL"
-      },
-      "disabled": "隱藏的小程式",
-      "display_title": "小程式顯示設定",
-      "empty": "把要隱藏的小程式從左側拖曳到這裡",
-      "open_link_external": {
-        "title": "在瀏覽器中開啟新視窗連結"
-      },
-      "region": {
-        "auto": "自動檢測",
-        "cn": "中國",
-        "description": "根據所在地區篩選不支援的小程式",
-        "global": "全球",
-        "title": "小程式區域篩選"
-      },
-      "reset_tooltip": "重設為預設值",
-      "sidebar_description": "設定側邊欄是否顯示活躍的小程式",
-      "sidebar_title": "側邊欄活躍小程式顯示設定",
-      "title": "小程式設定",
-      "visible": "顯示的小程式"
     },
     "model": "預設模型",
     "modelSelection": {
@@ -3271,7 +2368,6 @@
       "label": "更多設定",
       "warn": "風險警告"
     },
-    "no_provider_selected": "未選擇供應商",
     "notification": {
       "assistant": "助手訊息",
       "backup": "備份訊息",
@@ -3311,10 +2407,6 @@
         "title": "詳細程度"
       }
     },
-    "privacy": {
-      "enable_privacy_mode": "匿名傳送錯誤報告和資料統計",
-      "title": "隱私設定"
-    },
     "provider": {
       "add": {
         "name": {
@@ -3323,28 +2415,6 @@
         },
         "title": "新增提供者",
         "type": "供應商類型"
-      },
-      "anthropic": {
-        "apikey": "API 金鑰",
-        "auth_failed": "Anthropic 身份驗證失敗",
-        "auth_method": "認證方式",
-        "auth_success": "Anthropic OAuth 認證成功",
-        "authenticated": "已認證",
-        "authenticating": "正在認證",
-        "cancel": "取消",
-        "code_error": "無效的授權碼，請重試",
-        "code_placeholder": "請輸入瀏覽器中顯示的授權碼",
-        "code_required": "授權碼不能為空",
-        "description": "OAuth 身份認證",
-        "description_detail": "您需要訂閱 Claude Pro 或更高版本才能使用此認證方式",
-        "enter_auth_code": "授權碼",
-        "logout": "登出",
-        "logout_failed": "登出失敗，請重試",
-        "logout_success": "成功登出 Anthropic",
-        "oauth": "網頁 OAuth",
-        "oauth_disabled_warning": "Anthropic 已暫時中止透過 OAuth 使用 Claude。此驗證方式目前無法使用。請暫時使用 API 金鑰。",
-        "start_auth": "開始授權",
-        "submit_code": "完成登入"
       },
       "anthropic_api_host": "Anthropic API 主機位址",
       "anthropic_api_host_preview": "Anthropic 預覽：{{url}}",
@@ -3413,40 +2483,7 @@
         "tip": "多個金鑰使用逗號分隔"
       },
       "api_version": "API 版本",
-      "aws-bedrock": {
-        "access_key_id": "AWS 存取金鑰 ID",
-        "access_key_id_help": "您的 AWS 存取金鑰 ID，用於存取 AWS Bedrock 服務",
-        "api_key": "Bedrock API 金鑰",
-        "api_key_help": "您的 AWS Bedrock API 金鑰，用於身份驗證",
-        "auth_type": "認證方式",
-        "auth_type_api_key": "Bedrock API 金鑰",
-        "auth_type_help": "選擇使用 IAM 憑證或 Bedrock API 金鑰進行身份驗證",
-        "auth_type_iam": "IAM 憑證",
-        "description": "AWS Bedrock 是亞馬遜提供的全託管基礎模型服務，支援多種先進的大型語言模型",
-        "region": "AWS 區域",
-        "region_help": "您的 AWS 服務區域，例如 us-east-1",
-        "secret_access_key": "AWS 存取金鑰",
-        "secret_access_key_help": "您的 AWS 存取金鑰，請妥善保管",
-        "title": "AWS Bedrock 設定"
-      },
-      "azure": {
-        "apiversion": {
-          "tip": "Azure OpenAI 的 API 版本，如果想要使用 Response API，請輸入 v1 版本"
-        }
-      },
       "balance": "餘額",
-      "basic_auth": {
-        "label": "HTTP 認證",
-        "password": {
-          "label": "密碼",
-          "tip": "輸入密碼"
-        },
-        "tip": "適用於透過伺服器部署的執行個體（請參閱文件）。目前僅支援 Basic 方案（RFC7617）",
-        "user_name": {
-          "label": "使用者",
-          "tip": "留空以停用"
-        }
-      },
       "bills": "費用帳單",
       "charge": "餘額儲值",
       "copilot": {
@@ -3489,12 +2526,6 @@
         "content": "確定要刪除此提供者嗎？",
         "title": "刪除提供者"
       },
-      "dmxapi": {
-        "platform_enterprise": "ssvip.DMXAPI.com（企業版）",
-        "platform_international": "www.DMXAPI.com（國際）",
-        "platform_official": "www.DMXAPI.cn（人民幣）",
-        "select_platform": "選擇平台"
-      },
       "docs_check": "檢查",
       "docs_more_details": "檢視更多細節",
       "empty": "暂无服务商，请添加服务商并选择模型。",
@@ -3522,79 +2553,11 @@
         "placeholder": "輸入 Markdown 格式內容...",
         "title": "模型備註"
       },
-      "oauth": {
-        "balance": "餘額",
-        "button": "使用 {{provider}} 帳號登入",
-        "cherryIn": {
-          "description": "使用 OAuth 2.0 登入 CherryIN",
-          "logged_in": "已透過 OAuth 登入",
-          "login_button": "OAuth 登入",
-          "logout_button": "登出",
-          "title": "OAuth 登入"
-        },
-        "connect": "關聯 {{provider}} 帳號",
-        "description": "本服務由 <website>{{provider}}</website> 提供",
-        "error": "認證失敗",
-        "logged_in": "已登入",
-        "logout": "登出",
-        "logout_confirm": "確定要登出嗎？",
-        "logout_success": "已成功登出",
-        "logout_warning": "已在本機登出，但伺服器端權杖撤銷可能失敗",
-        "official_website": "官方網站",
-        "provided_by": "本服務由",
-        "provided_by_suffix": " 提供",
-        "requests": "請求數",
-        "topup": "儲值",
-        "usage_title": "用量"
-      },
-      "openai": {
-        "alert": "OpenAI Provider 不再支援舊的呼叫方法。如果使用第三方 API，請建立新的服務供應商"
-      },
       "remove_duplicate_keys": "移除重複金鑰",
       "remove_invalid_keys": "刪除無效金鑰",
       "search": "搜尋模型平臺...",
       "search_placeholder": "搜尋模型 ID 或名稱",
-      "title": "模型提供者",
-      "vertex_ai": {
-        "api_host_help": "Vertex AI 的 API 位址，不建議填寫，通常適用於反向代理",
-        "documentation": "檢視官方文件以取得更多設定詳細資訊：",
-        "learn_more": "瞭解更多",
-        "location": "地區",
-        "location_help": "Vertex AI 服務地區，例如：us-central1",
-        "project_id": "專案 ID",
-        "project_id_help": "您的 Google Cloud 專案 ID",
-        "project_id_placeholder": "your-google-cloud-project-id",
-        "service_account": {
-          "auth_success": "服務帳戶驗證成功",
-          "client_email": "Client Email",
-          "client_email_help": "從 Google Cloud Console 下載的 JSON 金鑰檔案中的 client_email 欄位",
-          "client_email_placeholder": "輸入服務帳戶 client email",
-          "description": "使用服務帳戶進行身份驗證，適用於 ADC 無法使用的環境",
-          "incomplete_config": "請先完成服務帳戶設定",
-          "private_key": "私密金鑰",
-          "private_key_help": "從 Google Cloud Console 下載的 JSON 金鑰檔案中的 private_key 欄位",
-          "private_key_placeholder": "輸入服務帳戶私密金鑰",
-          "title": "服務帳戶設定"
-        }
-      }
-    },
-    "proxy": {
-      "address": "代理伺服器位址",
-      "bypass": "代理略過規則",
-      "mode": {
-        "custom": "自訂代理伺服器",
-        "none": "不使用代理伺服器",
-        "system": "系統代理伺服器",
-        "title": "代理伺服器模式"
-      },
-      "tip": "支援模糊比對（*.test.com，192.168.0.0/16）"
-    },
-    "quickAssistant": {
-      "click_tray_to_show": "點選工具列圖示啟動",
-      "enable_quick_assistant": "啟用快捷助手",
-      "read_clipboard_at_startup": "啟動時讀取剪貼簿",
-      "title": "快捷助手",
-      "use_shortcut_to_show": "右鍵點選工具列圖示或使用快捷鍵啟動"
+      "title": "模型提供者"
     },
     "quickPanel": {
       "back": "後退",
@@ -3621,81 +2584,6 @@
       "titleLabel": "標題",
       "titlePlaceholder": "請輸入短語標題"
     },
-    "scheduledTasks": {
-      "description": "管理所有代理的排程任務。任務將依設定好的排程自動執行。",
-      "noAgents": "排程任務需要開啟靈魂模式或無權限模式的代理才能執行。請先在代理設定中啟用。",
-      "noAgentsTip": "提示：你也可以直接在對話中讓代理建立排程任務。",
-      "noTasks": "沒有排程任務。點擊「+ 新增」為代理程式建立一個。",
-      "selectTask": "選擇一個任務來查看詳細資訊",
-      "title": "排程工作"
-    },
-    "shortcuts": {
-      "action": "操作",
-      "actions": "操作",
-      "clear_shortcut": "清除快捷鍵",
-      "clear_topic": "清除所有訊息",
-      "copy_last_message": "複製上一則訊息",
-      "edit_last_user_message": "編輯最後一則使用者訊息",
-      "enabled": "啟用",
-      "exit_fullscreen": "離開全螢幕",
-      "label": "按鍵",
-      "mini_window": "快捷助手",
-      "new_topic": "新增話題",
-      "press_shortcut": "按下快捷鍵",
-      "rename_topic": "重新命名話題",
-      "reset_defaults": "重設預設快捷鍵",
-      "reset_defaults_confirm": "確定要重設所有快捷鍵嗎？",
-      "reset_to_default": "重設為預設",
-      "search_message": "搜尋訊息",
-      "search_message_in_chat": "在目前對話中搜尋訊息",
-      "select_model": "選擇模型",
-      "selection_assistant_select_text": "劃詞助手：取詞",
-      "selection_assistant_toggle": "開關劃詞助手",
-      "show_app": "顯示 / 隱藏應用程式",
-      "show_settings": "開啟設定",
-      "title": "快捷鍵",
-      "toggle_new_context": "清除上下文",
-      "toggle_show_assistants": "切換助手顯示",
-      "toggle_show_topics": "切換話題顯示",
-      "zoom_in": "放大介面",
-      "zoom_out": "縮小介面",
-      "zoom_reset": "重設縮放"
-    },
-    "skills": {
-      "author": "作者",
-      "batchUninstallSuccess": "{{count}} 個技能已解除安裝",
-      "builtin": "內建",
-      "confirmBatchUninstall": "您確定要解除安裝所選的 {{count}} 項技能嗎？",
-      "confirmUninstall": "確定要解除安裝此技能嗎？",
-      "directory": "資料夾",
-      "dropHint": "或將 ZIP 檔案或資料夾拖放到此處",
-      "emptyDesc": "透過 ZIP、資料夾安裝，或在線搜尋登錄檔來擴展 Agent 的能力。",
-      "emptyTip": "提示：你也可以讓 Agent 幫你安裝技能。",
-      "emptyTitle": "未選擇技能",
-      "filterPlaceholder": "篩選技能...",
-      "install": "安裝",
-      "installFailed": "技能安裝失敗：{{name}}",
-      "installFromDirectory": "從資料夾安裝",
-      "installFromZip": "從 ZIP 檔案安裝",
-      "installSuccess": "技能已安裝：{{name}}",
-      "installed": "已安裝",
-      "invalidFormat": "僅支援 ZIP 檔案和資料夾",
-      "localInstall": "本機安裝",
-      "multiSelect": "多選",
-      "noFilterResults": "沒有匹配的技能",
-      "noInstalled": "暫無已安裝的技能",
-      "noResults": "未找到技能",
-      "noSkillFile": "未找到 SKILL.md 檔案",
-      "searchPlaceholder": "發現更多技能...",
-      "searchRegistryTitle": "在線搜尋技能登錄檔",
-      "searchTitle": "搜尋技能",
-      "selectFile": "選擇一個檔案查看",
-      "title": "技能",
-      "uninstall": "解除安裝",
-      "uninstallSuccess": "技能已解除安裝：{{name}}",
-      "viewSource": "查看原始碼",
-      "zip": "ZIP"
-    },
     "theme": {
       "color_primary": "主題顏色",
       "dark": "深色",
@@ -3711,53 +2599,6 @@
       }
     },
     "title": "設定",
-    "tool": {
-      "ocr": {
-        "common": {
-          "langs": "支援的語言"
-        },
-        "error": {
-          "not_system": "系統 OCR 僅支援 Windows 與 MacOS"
-        },
-        "image": {
-          "error": {
-            "provider_not_found": "該供應商不存在"
-          },
-          "system": {
-            "no_need_configure": "MacOS 無需設定"
-          },
-          "title": "圖片"
-        },
-        "image_provider": "OCR 服務供應商",
-        "paddleocr": {
-          "aistudio_access_token": "星河社區訪問令牌",
-          "api_url": "API 網址",
-          "api_url_label": "取得訪問令牌及 API 網址"
-        },
-        "system": {
-          "win": {
-            "langs_tooltip": "仰賴 Windows 提供的服務，需要在系統中下載語言套件，才能支援相關語言。"
-          }
-        },
-        "tesseract": {
-          "langs_tooltip": "閱讀文件以了解哪些自訂語言受支援"
-        },
-        "title": "OCR 服務"
-      },
-      "preprocess": {
-        "paddleocr": {
-          "aistudio_access_token": "星河社區訪問令牌",
-          "api_url": "API 網址",
-          "api_url_label": "取得訪問令牌及 API 網址",
-          "paddleocr_url_label": "PaddleOCR 官方網站"
-        },
-        "provider": "文件處理供應商",
-        "provider_placeholder": "選擇一個文件處理供應商",
-        "title": "文件處理",
-        "tooltip": "在「設定」->「工具」中設定文件處理服務供應商。文件處理可有效提升複雜格式文件及掃描文件的檢索效能"
-      },
-      "title": "其他設定"
-    },
     "topic": {
       "pin_to_top": "固定話題置頂",
       "position": {
@@ -3774,13 +2615,6 @@
       "onclose": "關閉時最小化到系統匣",
       "show": "顯示系統匣圖示",
       "title": "系統匣"
-    },
-    "use_system_title_bar": {
-      "confirm": {
-        "content": "變更標題列樣式需要重新啟動應用程式才能生效。您要立即重新啟動嗎？",
-        "title": "需要重新啟動"
-      },
-      "title": "使用系統標題列（Linux）"
     },
     "zoom": {
       "reset": "重設",
@@ -3803,9 +2637,6 @@
     "translate": "翻譯"
   },
   "translate": {
-    "error": {
-      "not_configured": "翻譯模型未設定"
-    },
     "title": "翻譯"
   },
   "tray": {

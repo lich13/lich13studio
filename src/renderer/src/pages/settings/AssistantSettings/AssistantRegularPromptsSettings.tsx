@@ -1,15 +1,13 @@
-import { ExclamationCircleOutlined } from '@ant-design/icons'
 import { DraggableList } from '@renderer/components/DraggableList'
 import FileItem from '@renderer/components/FileItem'
 import { DeleteIcon, EditIcon } from '@renderer/components/Icons'
 import type { Assistant, QuickPhrase } from '@renderer/types'
 import { Button, Flex, Input, Modal, Popconfirm, Space } from 'antd'
-import { PlusIcon } from 'lucide-react'
+import { CircleAlert, PlusIcon } from 'lucide-react'
 import type { FC } from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
-import { v4 as uuidv4 } from 'uuid'
 
 import { SettingDivider, SettingRow, SettingTitle } from '..'
 
@@ -62,7 +60,7 @@ const AssistantRegularPromptsSettings: FC<AssistantRegularPromptsSettingsProps> 
       )
     } else {
       const newPrompt: QuickPhrase = {
-        id: uuidv4(),
+        id: crypto.randomUUID(),
         createdAt: Date.now(),
         updatedAt: Date.now(),
         ...formData
@@ -115,7 +113,7 @@ const AssistantRegularPromptsSettings: FC<AssistantRegularPromptsSettingsProps> 
                         okText={t('common.confirm')}
                         cancelText={t('common.cancel')}
                         onConfirm={() => handleDelete(prompt.id)}
-                        icon={<ExclamationCircleOutlined style={{ color: 'red' }} />}>
+                        icon={<CircleAlert size={14} style={{ color: 'red', marginRight: 6 }} />}>
                         <Button
                           key="delete"
                           type="text"

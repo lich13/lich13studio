@@ -3,7 +3,6 @@ import { CopyIcon } from '@renderer/components/Icons'
 import { useTemporaryValue } from '@renderer/hooks/useTemporaryValue'
 import store from '@renderer/store'
 import { messageBlocksSelectors } from '@renderer/store/messageBlock'
-import { exportTableToExcel } from '@renderer/utils/exportExcel'
 import { Tooltip } from 'antd'
 import { Check, FileSpreadsheet } from 'lucide-react'
 import React, { memo, useCallback, useRef } from 'react'
@@ -76,6 +75,7 @@ const Table: React.FC<Props> = ({ children, node, blockId, lineOffset = 0, charO
     }
 
     try {
+      const { exportTableToExcel } = await import('@renderer/utils/exportExcel')
       const result = await exportTableToExcel(tableMarkdown)
       if (result) {
         window.toast?.success(t('message.success.excel.export'))

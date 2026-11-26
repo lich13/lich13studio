@@ -20,7 +20,7 @@ export function getPlatformHeaders(platform: ProviderPlatform, version?: string,
 export function syncCliVersion(platform: ProviderPlatform, force = false): Promise<void> {
   const active = pending.get(platform)
   if (active) return active
-  const previous = store.getState().llm.cliVersions[platform]
+  const previous = store.getState().llm.cliVersions?.[platform]
   const now = Date.now()
   if (!force && previous && now >= previous.checkedAt && now - previous.checkedAt < CLI_SYNC_INTERVAL)
     return Promise.resolve()

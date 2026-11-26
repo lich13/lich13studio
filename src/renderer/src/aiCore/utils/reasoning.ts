@@ -5,8 +5,8 @@ import { findOfficialModel } from '@shared/modelCatalog/runtime'
 import {
   anthropicEffort,
   anthropicThinkingMode,
+  clampReasoningEffort,
   normalizeReasoningEffort,
-  REASONING_EFFORTS,
   thinkingBudget
 } from '@shared/reasoning'
 
@@ -14,13 +14,7 @@ export function getOpenAIReasoningParams(assistant: Assistant, _model: Model) {
   const levels = findOfficialModel(_model.id)?.efforts
   const requested = normalizeReasoningEffort(assistant.settings?.reasoning_effort)
   return {
-    reasoningEffort: levels?.length
-      ? levels.includes(requested)
-        ? requested
-        : ([...levels]
-            .reverse()
-            .find((level) => REASONING_EFFORTS.indexOf(level) <= REASONING_EFFORTS.indexOf(requested)) ?? levels[0])
-      : requested,
+    reasoningEffort: clampReasoningEffort(requested, levels),
     reasoningSummary: getStoreSetting('openAI')?.summaryText
   }
 }

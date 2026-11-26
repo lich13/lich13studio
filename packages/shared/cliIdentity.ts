@@ -90,15 +90,18 @@ export async function fetchCliVersion(
   return version
 }
 
+export const IDENTITY_HEADER_NAMES = [
+  'user-agent',
+  'originator',
+  'version',
+  'x-grok-client-version',
+  'x-grok-client-identifier'
+] as const
+
+const IDENTITY_HEADER_SET = new Set<string>(IDENTITY_HEADER_NAMES)
+
 export function stripIdentityHeaders(existing: Record<string, string> = {}): Record<string, string> {
-  return Object.fromEntries(
-    Object.entries(existing).filter(
-      ([key]) =>
-        !['user-agent', 'originator', 'version', 'x-grok-client-version', 'x-grok-client-identifier'].includes(
-          key.toLowerCase()
-        )
-    )
-  )
+  return Object.fromEntries(Object.entries(existing).filter(([key]) => !IDENTITY_HEADER_SET.has(key.toLowerCase())))
 }
 
 export function platformRequestHeaders(

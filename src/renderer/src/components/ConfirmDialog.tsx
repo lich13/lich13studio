@@ -1,6 +1,6 @@
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons'
 import { useMobileBack } from '@renderer/services/mobile/back'
 import { Button } from 'antd'
+import { Check, X } from 'lucide-react'
 import type { FC } from 'react'
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
@@ -53,7 +53,7 @@ const ConfirmDialog: FC<Props> = ({ x, y, message, onConfirm, onCancel }) => {
               shape="circle"
               size="small"
               danger
-              icon={<CloseOutlined />}
+              icon={<X size={14} />}
               style={{ width: 24, height: 24, minWidth: 24 }}
             />
             <Button
@@ -61,7 +61,7 @@ const ConfirmDialog: FC<Props> = ({ x, y, message, onConfirm, onCancel }) => {
               shape="circle"
               size="small"
               type="primary"
-              icon={<CheckOutlined />}
+              icon={<Check size={14} />}
               style={{ width: 24, height: 24, minWidth: 24, backgroundColor: '#52c41a' }}
             />
           </div>

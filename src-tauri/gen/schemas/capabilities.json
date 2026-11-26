@@ -1,1 +1,1 @@
-{"main-capability":{"identifier":"main-capability","description":"Default capability set for the lich13studio main window","local":true,"windows":["main","mini"],"permissions":["core:default","notification:default"]}}
+{"main-capability":{"identifier":"main-capability","description":"Default capability set for the lich13studio main window","local":true,"windows":["main","mini"],"permissions":["core:default","core:webview:allow-set-webview-zoom","notification:default"]}}

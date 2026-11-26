@@ -1,4 +1,3 @@
-import { ExclamationCircleOutlined } from '@ant-design/icons'
 import { DraggableList } from '@renderer/components/DraggableList'
 import FileItem from '@renderer/components/FileItem'
 import { DeleteIcon, EditIcon } from '@renderer/components/Icons'
@@ -6,7 +5,7 @@ import { useTheme } from '@renderer/context/ThemeProvider'
 import QuickPhraseService from '@renderer/services/QuickPhraseService'
 import type { QuickPhrase } from '@renderer/types'
 import { Button, Flex, Input, Modal, Popconfirm, Space } from 'antd'
-import { PlusIcon } from 'lucide-react'
+import { CircleAlert, PlusIcon } from 'lucide-react'
 import type { FC } from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -109,7 +108,7 @@ const QuickPhraseSettings: FC = () => {
                           okText={t('common.confirm')}
                           cancelText={t('common.cancel')}
                           onConfirm={() => handleDelete(phrase.id)}
-                          icon={<ExclamationCircleOutlined style={{ color: 'red' }} />}>
+                          icon={<CircleAlert size={14} style={{ color: 'red', marginRight: 6 }} />}>
                           <Button
                             key="delete"
                             type="text"

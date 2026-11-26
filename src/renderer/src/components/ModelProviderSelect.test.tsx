@@ -23,11 +23,15 @@ vi.mock('@renderer/components/Avatar/ModelAvatar', () => ({ default: () => null 
 vi.mock('@renderer/components/ModelTagsWithLabel', () => ({ default: () => null }))
 vi.mock('@renderer/config/models', () => ({ isEmbeddingModel: () => false, isRerankModel: () => false }))
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
+const renderedSelectProps: any[] = []
+
 vi.mock('antd', () => ({
   Tooltip: ({ children }: any) => children,
   Typography: { Text: ({ children, ...props }: any) => createElement('span', props, children) },
-  Select: ({ options, value, onChange, disabled, 'aria-label': label }: any) =>
-    createElement(
+  Select: (props: any) => {
+    renderedSelectProps.push(props)
+    const { options, value, onChange, disabled, 'aria-label': label } = props
+    return createElement(
       'select',
       {
         'aria-label': label,
@@ -44,15 +48,27 @@ vi.mock('antd', () => ({
         )
       ]
     )
+  }
 }))
 
 import { type ModelProviderSelection, resolveModelProviderSelection } from '@shared/modelProviderSelection'
 
 const loadAndroidComponent = async () => {
   vi.resetModules()
+  renderedSelectProps.length = 0
   Object.defineProperty(globalThis.navigator, 'userAgent', {
     configurable: true,
     value: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36'
+  })
+  return import('./ModelProviderSelect')
+}
+
+const loadDesktopComponent = async () => {
+  vi.resetModules()
+  renderedSelectProps.length = 0
+  Object.defineProperty(globalThis.navigator, 'userAgent', {
+    configurable: true,
+    value: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
   })
   return import('./ModelProviderSelect')
 }
@@ -181,4 +197,45 @@ it('rejects malformed, null, unknown-platform, empty, and wrong-shape selection 
   ]) {
     expect(parseModelProviderSelectionValue(value)).toBeNull()
   }
+})
+
+it('preserves virtual list numeric widths and injects shiftX/shiftY dropdownAlign on desktop', async () => {
+  const { default: ModelProviderSelect } = await loadDesktopComponent()
+  vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
+  const container = document.createElement('div')
+  const root = createRoot(container)
+  const selection: ModelProviderSelection = { platform: 'openai', modelId: 'gpt-6-sol', providerId: 'one' }
+
+  await act(async () => {
+    root.render(createElement(ModelProviderSelect, { selection, onChange: vi.fn(), compact: true }))
+  })
+
+  expect(renderedSelectProps).toHaveLength(2)
+  const [compactModel, compactProvider] = renderedSelectProps
+  expect(compactModel.popupMatchSelectWidth).toBe(340)
+  expect(compactProvider.popupMatchSelectWidth).toBe(220)
+  expect(compactModel.listHeight).toBe(220)
+  expect(compactProvider.listHeight).toBe(220)
+  for (const selectProps of [compactModel, compactProvider]) {
+    expect(selectProps.popupMatchSelectWidth).not.toBe(false)
+    expect(selectProps.dropdownAlign).toEqual({
+      overflow: { adjustX: 1, adjustY: 1, shiftX: true, shiftY: true }
+    })
+    expect(selectProps.styles?.popup?.root).toEqual({
+      maxWidth: 'calc(var(--app-viewport-width, 100vw) - 16px)',
+      maxHeight: 'calc(var(--app-viewport-height, 100vh) - 64px)'
+    })
+  }
+
+  renderedSelectProps.length = 0
+  await act(async () => {
+    root.render(createElement(ModelProviderSelect, { selection, onChange: vi.fn(), compact: false }))
+  })
+  const [normalModel, normalProvider] = renderedSelectProps
+  expect(normalModel.popupMatchSelectWidth).toBe(420)
+  expect(normalProvider.popupMatchSelectWidth).toBe(260)
+  expect(normalModel.listHeight).toBe(256)
+  expect(normalProvider.listHeight).toBe(256)
+
+  await act(async () => root.unmount())
 })

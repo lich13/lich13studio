@@ -1,663 +1,6 @@
 {
   "agent": {
-    "add": {
-      "description": "Handle complex tasks with various tools",
-      "error": {
-        "failed": "Failed to add a agent",
-        "invalid_agent": "Invalid Agent"
-      },
-      "model": {
-        "supported_providers": "Supported Providers",
-        "tooltip": "Currently, only models that support Anthropic endpoints are available for the Agent feature.",
-        "view_providers": "View supported providers"
-      },
-      "title": "Add Agent",
-      "type": {
-        "placeholder": "Select an agent type"
-      }
-    },
-    "askUserQuestion": {
-      "answered": "answered",
-      "customPlaceholder": "Enter your answer...",
-      "loading": "Loading questions...",
-      "multiSelect": "Multi-select",
-      "next": "Next",
-      "noQuestions": "No questions available",
-      "other": "Other",
-      "previous": "Previous",
-      "submit": "Submit",
-      "title": "Questions from Agent"
-    },
-    "cherryClaw": {
-      "channels": {
-        "add": "Add",
-        "bindAgent": "Bind Agent",
-        "chatIdsAutoTrackHint": "When left empty, the system will auto-track: you need to send a message to the Bot on the platform first, then the system will record the Chat ID for future notifications.",
-        "comingSoon": "Coming soon",
-        "connected": "Connected",
-        "connecting": "Connecting",
-        "deleteConfirm": "Delete channel \"{{name}}\"?",
-        "description": "Connect your agent to messaging platforms.",
-        "disconnected": "Disconnected",
-        "discord": {
-          "botToken": "Bot Token",
-          "botTokenPlaceholder": "Enter your Discord bot token",
-          "channelIds": "Allowed Channel IDs",
-          "channelIdsHint": "Format: channel:id or dm:id. Leave empty to allow all.",
-          "channelIdsPlaceholder": "channel:123456789, dm:987654321",
-          "description": "Receive and respond to messages via a Discord bot using WebSocket gateway.",
-          "title": "Discord",
-          "whoamiTip": "💡 Tip: Send /whoami to the bot to get your channel ID in the correct format."
-        },
-        "error": "Error",
-        "feishu": {
-          "appId": "App ID",
-          "appIdPlaceholder": "Enter your Feishu app ID",
-          "appSecret": "App Secret",
-          "appSecretPlaceholder": "Enter your Feishu app secret",
-          "chatIds": "Allowed Chat IDs",
-          "chatIdsHint": "Comma-separated chat IDs. Leave empty to allow all chats.",
-          "chatIdsPlaceholder": "oc_xxxxx, oc_yyyyy",
-          "connected": "Connected",
-          "description": "Receive and respond to messages via a Feishu/Lark bot using WebSocket.",
-          "domain": "Domain",
-          "domainFeishu": "Feishu (China)",
-          "domainLark": "Lark (International)",
-          "encryptKey": "Encrypt Key",
-          "encryptKeyPlaceholder": "Enter the Encrypt Key from your Feishu app",
-          "loginHint": "No credentials configured. Enable the channel to start QR code registration, or enter App ID and App Secret manually.",
-          "qrExpired": "QR code expired. Please retry by toggling the channel.",
-          "qrHint": "Waiting for QR code scan...",
-          "qrScanHint": "Open Feishu on your phone and scan the QR code to create a bot app.",
-          "qrTitle": "Feishu QR Registration",
-          "title": "Feishu",
-          "verificationToken": "Verification Token",
-          "verificationTokenPlaceholder": "Enter the Verification Token from your Feishu app"
-        },
-        "logs": "Logs",
-        "noInstances": "No {{type}} channels configured. Click \"+ Add\" to create one.",
-        "noLogs": "No logs yet",
-        "notifyReceiver": "Receive task notifications",
-        "notifyReceiverHint": "Send scheduler task results to this channel.",
-        "qq": {
-          "appId": "App ID",
-          "appIdPlaceholder": "Enter your QQ Bot App ID",
-          "chatIds": "Allowed Chat IDs",
-          "chatIdsHint": "Format: c2c:openid, group:groupid, channel:channelid. Leave empty to allow all.",
-          "chatIdsPlaceholder": "c2c:abc123, group:xyz789",
-          "clientSecret": "Client Secret",
-          "clientSecretPlaceholder": "Enter your QQ Bot client secret",
-          "description": "Receive and respond to messages via QQ Bot official API.",
-          "title": "QQ",
-          "whoamiTip": "💡 Tip: Send /whoami to the bot to get your chat ID in the correct format."
-        },
-        "security": {
-          "inheritFromAgent": "Inherit from agent",
-          "permissionMode": "Channel Permission Mode",
-          "permissionModeHint": "Override the agent's permission mode for messages from this channel. \"Inherit\" uses the agent's default."
-        },
-        "selectAgent": "Select an agent to bind",
-        "slack": {
-          "appToken": "App-Level Token",
-          "appTokenPlaceholder": "xapp-...",
-          "botToken": "Bot Token",
-          "botTokenPlaceholder": "xoxb-...",
-          "channelIds": "Allowed Channel IDs",
-          "channelIdsHint": "Slack channel IDs. Leave empty to allow all.",
-          "channelIdsPlaceholder": "C01234567, D89012345",
-          "description": "Receive and respond to messages via a Slack bot using Socket Mode.",
-          "title": "Slack",
-          "whoamiTip": "💡 Tip: Send /whoami to the bot to get the channel ID."
-        },
-        "soulModeRequired": "This agent does not have Autonomous Mode enabled. Channel features will not work. Please enable it in agent settings.",
-        "tab": "Channels",
-        "telegram": {
-          "botToken": "Bot Token",
-          "botTokenPlaceholder": "Enter your Telegram bot token",
-          "chatIds": "Allowed Chat IDs",
-          "chatIdsHint": "Comma-separated. Leave empty to allow all chats.",
-          "chatIdsPlaceholder": "123456789, 987654321",
-          "description": "Receive and respond to messages via a Telegram bot using long polling.",
-          "title": "Telegram"
-        },
-        "title": "Channels",
-        "wechat": {
-          "addAccount": "Add WeChat Account",
-          "chatIds": "Allowed User IDs",
-          "chatIdsHint": "Comma-separated. Leave empty to allow all users.",
-          "chatIdsPlaceholder": "wxid_abc123, wxid_def456",
-          "connected": "Logged in",
-          "description": "Receive and respond to messages via WeChat using the iLink Bot API.",
-          "disconnected": "Not logged in",
-          "loginHint": "First login requires scanning a QR code. A QR code will appear automatically when the channel connects.",
-          "qrHint": "Open WeChat on your phone, scan the QR code to log in.",
-          "qrTitle": "WeChat QR Login",
-          "title": "WeChat",
-          "whoamiTip": "Tip: Send /whoami in WeChat to get a user's ID."
-        }
-      },
-      "heartbeat": {
-        "enabled": "Enable Heartbeat",
-        "enabledHelper": "When enabled and heartbeat.md exists in the workspace, the scheduler reads its content and sends it to the main session at the configured interval.",
-        "interval": "Interval (minutes)",
-        "intervalHelper": "How often the heartbeat runs, in minutes."
-      },
-      "sandbox": {
-        "description": "Restricts the agent's filesystem and network access to the workspace directory using OS-level sandboxing.",
-        "helper": "Restrict filesystem and command access to the workspace path.",
-        "label": "Sandbox Mode"
-      },
-      "scheduler": {
-        "cron": {
-          "helper": "Standard cron expression (e.g., '*/30 * * * *' for every 30 minutes).",
-          "label": "Cron Expression",
-          "placeholder": "*/30 * * * *"
-        },
-        "description": "The scheduler triggers the agent autonomously on a schedule.",
-        "enabled": "Enable Scheduler",
-        "enabledHelper": "When enabled, the agent will run automatically based on the configured schedule.",
-        "errors": {
-          "invalidCron": "Invalid cron expression",
-          "invalidDelay": "Delay must be a positive number",
-          "invalidInterval": "Interval must be a positive number"
-        },
-        "interval": {
-          "helper": "How often the agent should run, in seconds.",
-          "label": "Interval (seconds)"
-        },
-        "lastRun": "Last Run",
-        "never": "Never",
-        "nextRun": "Next Run",
-        "oneTime": {
-          "helper": "One-time delay in seconds before the agent runs.",
-          "label": "Delay (seconds)"
-        },
-        "status": {
-          "running": "Running",
-          "stopped": "Stopped",
-          "tickInProgress": "Tick in progress"
-        },
-        "tab": "Scheduler",
-        "title": "Scheduler Configuration",
-        "type": {
-          "cron": "Cron Expression",
-          "interval": "Fixed Interval",
-          "label": "Schedule Type",
-          "one-time": "One-Time Delay"
-        }
-      },
-      "soul": {
-        "description": "The soul defines the agent's personality and base behavior. It is read from soul.md in the workspace root.",
-        "empty": "No soul.md found in the workspace root. Create one to define the agent's personality.",
-        "enabled": "Enable Soul",
-        "enabledHelper": "When enabled, the agent reads soul.md from the workspace root and prepends it to the system prompt.",
-        "fileLabel": "soul.md",
-        "preview": "Soul Preview",
-        "tab": "Soul",
-        "title": "Soul Configuration"
-      },
-      "tasks": {
-        "add": "Add Task",
-        "cancel": "Cancel",
-        "channels": {
-          "label": "Send to Channels",
-          "noActiveChatIds": "The selected channels have no available recipients (Chat ID). Task results may not be delivered. Please send a message to the Bot on the platform first.",
-          "placeholder": "Select channels to receive results"
-        },
-        "cronPlaceholder": "e.g. 0 9 * * * (every day at 9 AM)",
-        "delete": {
-          "confirm": "Are you sure you want to delete this task?",
-          "label": "Delete"
-        },
-        "edit": "Edit",
-        "empty": "No scheduled tasks. Add one to get started.",
-        "intervalPlaceholder": "Interval in minutes",
-        "intervalUnit": "minutes",
-        "lastRun": "Last Run",
-        "logs": {
-          "duration": "Duration",
-          "empty": "No run history yet.",
-          "error": "Error",
-          "justNow": "just now",
-          "label": "Run History",
-          "result": "Result",
-          "runAt": "Run At",
-          "running": "Running...",
-          "search": "Search logs...",
-          "status": "Status",
-          "success": "Success",
-          "viewSession": "View session"
-        },
-        "name": {
-          "label": "Name",
-          "placeholder": "e.g. Daily code review"
-        },
-        "nextRun": "Next Run",
-        "oncePlaceholder": "Select date and time",
-        "pause": "Pause",
-        "prompt": {
-          "expand": "Expand editor",
-          "label": "Prompt",
-          "placeholder": "What should the agent do when this task runs?"
-        },
-        "resume": "Resume",
-        "run": "Run",
-        "runTriggered": "Task triggered",
-        "save": "Save",
-        "scheduleType": {
-          "cron": "Cron",
-          "interval": "Interval",
-          "label": "Schedule Type",
-          "once": "Once"
-        },
-        "scheduleValue": "Schedule Value",
-        "status": {
-          "active": "Active",
-          "completed": "Completed",
-          "paused": "Paused"
-        },
-        "tab": "Tasks",
-        "time": {
-          "hoursAgo": "{{count}}h ago",
-          "minutesAgo": "{{count}}m ago"
-        },
-        "timeout": {
-          "label": "Timeout",
-          "placeholder": "No limit"
-        },
-        "title": "Scheduled Tasks"
-      },
-      "warning": {
-        "bypassPermissions": "CherryClaw agents run with Full Auto Mode by default. All tools execute without asking for approval."
-      }
-    },
-    "delete": {
-      "content": "Deleting the agent will forcibly stop and delete all sessions associated with the agent. Are you sure?",
-      "error": {
-        "failed": "Failed to delete the agent"
-      },
-      "title": "Delete Agent"
-    },
-    "edit": {
-      "title": "Edit Agent"
-    },
-    "empty": {
-      "description": "Create an agent to handle complex tasks with AI-powered tools",
-      "title": "No agents yet"
-    },
-    "get": {
-      "error": {
-        "failed": "Failed to get the agent.",
-        "null_id": "Agent ID is null."
-      }
-    },
-    "gitBash": {
-      "autoDetected": "Using auto-detected Git Bash",
-      "autoDiscoveredHint": "Auto-discovered",
-      "clear": {
-        "button": "Clear custom path"
-      },
-      "customPath": "Using custom path: {{path}}",
-      "error": {
-        "description": "Git Bash is required to run agents on Windows. The agent cannot function without it. Please install Git for Windows from",
-        "recheck": "Recheck Git Bash Installation",
-        "required": "Git Bash path is required on Windows",
-        "title": "Git Bash Required"
-      },
-      "found": {
-        "title": "Git Bash configured"
-      },
-      "notFound": "Git Bash not found. Please install it first.",
-      "pick": {
-        "button": "Select Git Bash Path",
-        "failed": "Failed to set Git Bash path",
-        "invalidPath": "Selected file is not a valid Git Bash executable (bash.exe).",
-        "title": "Select Git Bash executable"
-      },
-      "placeholder": "Select bash.exe path",
-      "success": "Git Bash detected successfully!",
-      "tooltip": "Git Bash is required to run agents on Windows. Install from git-scm.com if not available."
-    },
-    "input": {
-      "placeholder": "Enter your message here, send with {{key}} - @ select path, / select command",
-      "soul_placeholder": "Help me connect to Telegram"
-    },
-    "list": {
-      "error": {
-        "failed": "Failed to list agents."
-      }
-    },
-    "reorder": {
-      "error": {
-        "failed": "Failed to reorder agents"
-      }
-    },
-    "server": {
-      "error": {
-        "not_running": "The API server is enabled but not running properly."
-      }
-    },
-    "session": {
-      "accessible_paths": {
-        "add": "Add directory",
-        "default_hint": "A default workspace will be created automatically if not specified.",
-        "duplicate": "This directory is already included.",
-        "empty": "Select at least one directory that the agent can access.",
-        "error": {
-          "at_least_one": "Please select at least one accessible directory."
-        },
-        "label": "Accessible directories",
-        "select_failed": "Failed to select directory."
-      },
-      "add": {
-        "title": "Add a session"
-      },
-      "allowed_tools": {
-        "empty": "No tools available for this agent.",
-        "helper": "Pre-approved tools run without manual approval. Unselected tools require approval before use.",
-        "label": "Pre-approved tools",
-        "placeholder": "Select pre-approved tools"
-      },
-      "create": {
-        "error": {
-          "failed": "Failed to add a session"
-        }
-      },
-      "delete": {
-        "content": "Are you sure to delete this session?",
-        "error": {
-          "failed": "Failed to delete the session",
-          "last": "At least one session must be kept"
-        },
-        "title": "Delete session"
-      },
-      "edit": {
-        "title": "Edit session"
-      },
-      "get": {
-        "error": {
-          "failed": "Failed to get the session",
-          "null_id": "Session ID is null"
-        }
-      },
-      "label_one": "Session",
-      "label_other": "Sessions",
-      "reorder": {
-        "error": {
-          "failed": "Failed to reorder sessions"
-        }
-      },
-      "update": {
-        "error": {
-          "failed": "Failed to update the session"
-        }
-      }
-    },
-    "settings": {
-      "advance": {
-        "envVars": {
-          "description": "Set custom environment variables for the agent runtime.",
-          "helper": "Enter custom environment variables (one per line, format: KEY=value)",
-          "label": "Environment Variables"
-        },
-        "maxTurns": {
-          "description": "Define how many request/response cycles the agent may complete automatically.",
-          "helper": "Higher values enable longer autonomous runs; lower values keep sessions short.",
-          "label": "Conversation turn limit"
-        },
-        "permissionMode": {
-          "description": "Control how the agent handles actions that require approval.",
-          "label": "Permission mode",
-          "options": {
-            "acceptEdits": "Accept edits automatically",
-            "bypassPermissions": "Bypass permission checks",
-            "default": "Default (ask before continuing)",
-            "plan": "Planning mode (requires plan approval)"
-          },
-          "placeholder": "Choose a permission behavior"
-        },
-        "title": "Advanced Settings"
-      },
-      "essential": "Essential Settings",
-      "permissionMode": {
-        "tab": "Permission Mode",
-        "title": "Permission Mode"
-      },
-      "plugins": {
-        "available": {
-          "title": "Available Plugins"
-        },
-        "confirm": {
-          "uninstall": "Are you sure you want to uninstall this plugin?"
-        },
-        "empty": {
-          "available": "No plugins found matching your filters. Try adjusting your search or category filters."
-        },
-        "error": {
-          "install": "Failed to install plugin",
-          "load": "Failed to load plugins",
-          "load_more": "Failed to load more plugins",
-          "uninstall": "Failed to uninstall plugin"
-        },
-        "filter": {
-          "all": "All Categories"
-        },
-        "install": {
-          "button": "Install",
-          "title": "Install Plugins"
-        },
-        "installed": {
-          "empty": "No skills installed yet. Browse available skills to get started.",
-          "title": "Installed Skills"
-        },
-        "installing": "Installing...",
-        "plugin_upload": {
-          "all_failed": "All {{failed}} components failed to install",
-          "error": "Installation failed",
-          "format_hint": "Supports skill packages (.claude-plugin/plugin.json)",
-          "hint": "Drag and drop skill ZIP here, or click to select",
-          "invalid_format": "Please upload a ZIP file",
-          "partial_success": "Installed {{installed}} components, {{failed}} failed",
-          "select_folder": "Select Folder",
-          "select_folder_title": "Select Plugin Folder",
-          "success": "Plugin \"{{name}}\" installed successfully ({{count}} components)",
-          "success_multi": "Installed {{count}} components from {{packages}} packages",
-          "uploading": "Uploading and installing..."
-        },
-        "results": "{{count}} plugin(s) found",
-        "search": {
-          "placeholder": "Search plugins..."
-        },
-        "standalone_plugins": "Standalone Plugins",
-        "success": {
-          "install": "Plugin installed successfully",
-          "uninstall": "Plugin uninstalled successfully",
-          "uninstall_package": "Package \"{{name}}\" uninstalled successfully"
-        },
-        "tab": "Plugins",
-        "type": {
-          "agent": "Agent",
-          "agents": "Agents",
-          "all": "All",
-          "command": "Command",
-          "commands": "Commands",
-          "skills": "Skills"
-        },
-        "uninstall": "Uninstall",
-        "uninstall_package": "Uninstall Package",
-        "uninstall_package_confirm": "Are you sure you want to uninstall the entire \"{{name}}\" package? This will remove {{count}} component(s).",
-        "uninstalling": "Uninstalling..."
-      },
-      "prompt": "Prompt Settings",
-      "skills": {
-        "builtin": "Built-in",
-        "noFilterResults": "No matching skills",
-        "noSkills": "No skills installed. Install skills from Settings > Skills.",
-        "searchPlaceholder": "Search skills...",
-        "tab": "Skills",
-        "title": "Installed Skills"
-      },
-      "soulMode": {
-        "description": "When enabled, the agent uses a custom system prompt from workspace soul files, injects autonomous task management tools, and disables interactive tools not suited for autonomous operation.",
-        "disabledBadge": "Disabled by Autonomous Mode",
-        "disabledTooltip": "This tool is automatically disabled when Autonomous Mode is active",
-        "title": "Autonomous Mode"
-      },
-      "tooling": {
-        "permissionMode": {
-          "acceptEdits": {
-            "description": "Can read and edit files freely. Asks before running commands.",
-            "title": "Auto-edit Mode"
-          },
-          "bypassPermissions": {
-            "description": "Can do everything without asking. Use with caution.",
-            "title": "Full Auto Mode",
-            "warning": "Use with caution — all tools will run without asking for approval."
-          },
-          "confirmChange": {
-            "description": "Switching modes updates the automatically approved tools.",
-            "title": "Change permission mode?"
-          },
-          "default": {
-            "description": "Can read files freely. Asks before editing or running commands.",
-            "title": "Normal Mode"
-          },
-          "helper": "Choose how the agent handles tool approvals.",
-          "placeholder": "Select permission mode",
-          "plan": {
-            "description": "Can only read files and make plans. Cannot edit files or run commands.",
-            "title": "Plan Mode"
-          },
-          "title": "Permission mode"
-        },
-        "preapproved": {
-          "autoBadge": "Added by mode",
-          "autoDescription": "This tool is auto-approved by the current permission mode.",
-          "autoDisabledTooltip": "Auto-approved by \"{{mode}}\" and cannot be disabled.",
-          "empty": "No tools match your filters.",
-          "requiresApproval": "Requires approval when disabled",
-          "search": "Search tools",
-          "title": "Pre-approved Tools",
-          "toggle": "Toggle {{name}}"
-        }
-      },
-      "tools": {
-        "approved": "approved",
-        "caution": "Pre-approved tools bypass human review. Enable only trusted tools.",
-        "description": "Choose which tools can run without manual approval.",
-        "requiresPermission": "Requires permission when not pre-approved.",
-        "tab": "Pre-approved tools",
-        "title": "Pre-approved tools",
-        "toggle": "{{defaultValue}}"
-      }
-    },
-    "sidebar_title": "Agents",
-    "todo": {
-      "panel": {
-        "title": "{{completed}}/{{total}} tasks completed"
-      },
-      "status": {
-        "completed": "Completed",
-        "in_progress": "In Progress",
-        "pending": "Pending"
-      }
-    },
-    "toolPermission": {
-      "aria": {
-        "allowAllRequest": "Always allow this tool",
-        "allowRequest": "Allow tool request",
-        "denyRequest": "Deny tool request",
-        "hideDetails": "Hide tool details",
-        "runWithOptions": "Run with additional options",
-        "showDetails": "Show tool details"
-      },
-      "button": {
-        "allowAll": "Always Allow",
-        "cancel": "Cancel",
-        "run": "Run"
-      },
-      "confirmation": "Are you sure you want to run this Claude tool?",
-      "defaultDenyMessage": "User denied permission for this tool.",
-      "defaultDescription": "Executes code or system actions in your environment. Make sure the command looks safe before running it.",
-      "error": {
-        "sendFailed": "Failed to send your decision. Please try again."
-      },
-      "executing": "Executing...",
-      "expired": "Expired",
-      "inputPreview": "Tool input preview",
-      "pending": "Waiting for approval",
-      "permissionExpired": "Permission request expired. Waiting for new instructions...",
-      "requiresElevatedPermissions": "This tool requires elevated permissions.",
-      "suggestion": {
-        "permissionUpdateMultiple": "Approving may update multiple session permissions if you chose to always allow this tool.",
-        "permissionUpdateSingle": "Approving may update your session permissions if you chose to always allow this tool."
-      },
-      "toast": {
-        "denied": "Tool request was denied.",
-        "timeout": "Tool request timed out before receiving approval."
-      },
-      "toolPendingFallback": "Tool",
-      "waiting": "Waiting for tool permission decision..."
-    },
-    "tools": {
-      "builtin": {
-        "Bash": {
-          "description": "Executes shell commands in your environment"
-        },
-        "Edit": {
-          "description": "Makes targeted edits to specific files"
-        },
-        "Glob": {
-          "description": "Finds files based on pattern matching"
-        },
-        "Grep": {
-          "description": "Searches for patterns in file contents"
-        },
-        "MultiEdit": {
-          "description": "Performs multiple edits on a single file atomically"
-        },
-        "NotebookEdit": {
-          "description": "Modifies Jupyter notebook cells"
-        },
-        "NotebookRead": {
-          "description": "Reads and displays Jupyter notebook contents"
-        },
-        "Read": {
-          "description": "Reads the contents of files"
-        },
-        "Task": {
-          "description": "Runs a sub-agent to handle complex, multi-step tasks"
-        },
-        "TodoWrite": {
-          "description": "Creates and manages structured task lists"
-        },
-        "ToolSearch": {
-          "description": "Discovers deferred tools from large libraries"
-        },
-        "WebFetch": {
-          "description": "Fetches content from a specified URL"
-        },
-        "Write": {
-          "description": "Creates or overwrites files"
-        }
-      }
-    },
-    "type": {
-      "label": "Agent Type",
-      "unknown": "Unknown Type"
-    },
-    "update": {
-      "error": {
-        "failed": "Failed to update the agent"
-      }
-    },
-    "warning": {
-      "enable_and_start": "Enable & Start",
-      "enable_server": "Enable API Server to use agents.",
-      "enable_server_description": "The API server must be enabled for agents to work. You can enable it directly or configure it in settings.",
-      "server_not_running": "API Server is enabled but not running. Please check the server configuration.",
-      "server_not_running_description": "The API server needs to be running for agents to work. You can start it directly or check the settings."
-    }
+    "sidebar_title": "Agents"
   },
   "assistants": {
     "abbr": "Assistants",
@@ -899,11 +242,6 @@
       "topic": {
         "title": "New Topic"
       }
-    },
-    "alerts": {
-      "create_agent": "Create an agent to get started",
-      "create_session": "Create a session",
-      "select_agent": "Select an agent"
     },
     "artifacts": {
       "button": {
@@ -1228,9 +566,6 @@
         "tip": "Default value is 1, the smaller the value, the less variety in the answers, the easier to understand, the larger the value, the larger the range of the AI's vocabulary, the more diverse"
       }
     },
-    "suggestions": {
-      "title": "Suggested Questions"
-    },
     "thinking": "Thinking ({{seconds}} seconds)",
     "topics": {
       "auto_rename": "Auto Rename",
@@ -1342,45 +677,10 @@
       },
       "title": "Topics",
       "unpin": "Unpin Topic"
-    },
-    "translate": "Translate"
+    }
   },
   "code": {
-    "auto_update_to_latest": "Automatically update to latest version",
-    "bun_required_message": "Bun environment is required to run CLI tools",
-    "cli_tool": "CLI Tool",
-    "cli_tool_placeholder": "Select the CLI tool to use",
-    "custom_path": "Custom path",
-    "custom_path_error": "Failed to set custom terminal path",
-    "custom_path_required": "Custom path required for this terminal",
-    "custom_path_set": "Custom terminal path set successfully",
-    "description": "Quickly launch multiple code CLI tools to improve development efficiency",
-    "env_vars_help": "Enter custom environment variables (one per line, format: KEY=value)",
-    "environment_variables": "Environment Variables",
-    "folder_placeholder": "Select working directory",
-    "installError": "Failed to install dependencies",
-    "installSuccess": "Dependencies installed successfully",
-    "install_bun": "Install Bun",
-    "installing_bun": "Installing...",
-    "launch": {
-      "bun_required": "Please install Bun environment first before launching CLI tools",
-      "error": "Launch failed, please try again",
-      "label": "Launch",
-      "success": "Launch successful",
-      "validation_error": "Please complete all required fields: CLI tool, model, and working directory"
-    },
-    "launching": "Launching...",
-    "model": "Model",
-    "model_placeholder": "Select the model to use",
-    "model_required": "Please select a model",
-    "select_folder": "Select Folder",
-    "set_custom_path": "Set custom terminal path",
-    "supported_providers": "Supported Providers",
-    "terminal": "Terminal",
-    "terminal_placeholder": "Select terminal application",
-    "title": "Code Tools",
-    "update_options": "Update Options",
-    "working_directory": "Working Directory"
+    "title": "Code Tools"
   },
   "code_block": {
     "collapse": "Collapse",
@@ -1741,14 +1041,6 @@
     "title": "Files",
     "type": "Type"
   },
-  "gpustack": {
-    "keep_alive_time": {
-      "description": "The time in minutes to keep the connection alive, default is 5 minutes.",
-      "placeholder": "Minutes",
-      "title": "Keep Alive Time"
-    },
-    "title": "GPUStack"
-  },
   "history": {
     "continue_chat": "Continue Chatting",
     "error": {
@@ -1818,15 +1110,10 @@
     "title": "Import External Conversations"
   },
   "knowledge": {
-    "drag_file": "Drag file here",
     "error": {
       "model_invalid": "No model selected"
     },
-    "file_hint": "Support {{file_types}}",
-    "search_placeholder": "Enter text to search",
-    "subtitle_file": "subtitle file",
-    "title": "Knowledge Base",
-    "videos_file": "video file"
+    "title": "Knowledge Base"
   },
   "languages": {
     "arabic": "Arabic",
@@ -1850,14 +1137,6 @@
     "unknown": "unknown",
     "urdu": "Urdu",
     "vietnamese": "Vietnamese"
-  },
-  "lmstudio": {
-    "keep_alive_time": {
-      "description": "The time in minutes to keep the connection alive, default is 5 minutes.",
-      "placeholder": "Minutes",
-      "title": "Keep Alive Time"
-    },
-    "title": "LM Studio"
   },
   "message": {
     "agents": {
@@ -2310,14 +1589,6 @@
     },
     "tip": "If the response is successful, then only messages exceeding 30 seconds will trigger a reminder"
   },
-  "ollama": {
-    "keep_alive_time": {
-      "description": "The time in minutes to keep the connection alive, default is 5 minutes.",
-      "placeholder": "Minutes",
-      "title": "Keep Alive Time"
-    },
-    "title": "Ollama"
-  },
   "onboarding": {
     "select_model": {
       "change_later": "You can change this anytime in settings",
@@ -2526,10 +1797,6 @@
         "title": "Official Website"
       }
     },
-    "advanced": {
-      "auto_switch_to_topics": "Auto switch to topic",
-      "title": "Advanced Settings"
-    },
     "assistant": {
       "icon": {
         "type": {
@@ -2542,10 +1809,6 @@
       "label": "Default Assistant",
       "model_params": "Model Parameters",
       "title": "Default Assistant"
-    },
-    "channels": {
-      "description": "Connect agents to messaging platforms like Telegram, Feishu, Discord, and more.",
-      "title": "Channels"
     },
     "data": {
       "app_data": {
@@ -2574,19 +1837,6 @@
         "select_success": "Data directory changed, the app will restart to apply changes",
         "select_title": "Change App Data Directory",
         "stop_quit_app_reason": "The app is currently migrating data and cannot be exited"
-      },
-      "app_knowledge": {
-        "button": {
-          "delete": "Delete File"
-        },
-        "label": "Knowledge Base Files",
-        "remove_all": "Remove Knowledge Base Files",
-        "remove_all_confirm": "Deleting knowledge base files will reduce the storage space occupied, but will not delete the knowledge base vector data, after deletion, the source file will no longer be able to be opened. Continue?",
-        "remove_all_success": "Files removed successfully"
-      },
-      "app_logs": {
-        "button": "Open Logs",
-        "label": "App Logs"
       },
       "backup": {
         "skip_file_data_help": "Skip backing up data files such as pictures and knowledge bases during backup, and only back up chat records and settings. Reduce space occupancy and speed up the backup speed.",
@@ -2625,30 +1875,6 @@
       },
       "hour_interval_one": "{{count}} hour",
       "hour_interval_other": "{{count}} hours",
-      "import_settings": {
-        "button": "Import Json File",
-        "chatgpt": "Import from ChatGPT",
-        "title": "Import Outside Application Data"
-      },
-      "joplin": {
-        "check": {
-          "button": "Check",
-          "empty_token": "Please enter Joplin Authorization Token",
-          "empty_url": "Please enter Joplin Clipper Service URL",
-          "fail": "Joplin connection verification failed",
-          "success": "Joplin connection verification successful"
-        },
-        "export_reasoning": {
-          "help": "When enabled, the exported content will include the reasoning chain (thought process) generated by the assistant.",
-          "title": "Include Reasoning Chain in Export"
-        },
-        "help": "In Joplin options, enable the web clipper (no browser extension needed), confirm the port, and copy the auth token here.",
-        "title": "Joplin Configuration",
-        "token": "Joplin Authorization Token",
-        "token_placeholder": "Joplin Authorization Token",
-        "url": "Joplin Web Clipper Service URL",
-        "url_placeholder": "http://127.0.0.1:41184/"
-      },
       "limit": {
         "appDataDiskQuota": "Disk Space Warning",
         "appDataDiskQuotaDescription": "Data directory space is almost full, please clear disk space, otherwise data will be lost"
@@ -2768,28 +1994,6 @@
       },
       "minute_interval_one": "{{count}} minute",
       "minute_interval_other": "{{count}} minutes",
-      "notion": {
-        "api_key": "Notion API Key",
-        "api_key_placeholder": "Enter Notion API Key",
-        "check": {
-          "button": "Check",
-          "empty_api_key": "API key is not configured",
-          "empty_database_id": "Database ID is not configured",
-          "error": "Connection error, please check network configuration and API key and Database ID",
-          "fail": "Connection failed, please check network and API key and Database ID",
-          "success": "Connection successful"
-        },
-        "database_id": "Notion Database ID",
-        "database_id_placeholder": "Enter Notion Database ID",
-        "export_reasoning": {
-          "help": "When enabled, exported content will include reasoning chain (thought process).",
-          "title": "Include Reasoning Chain in Export"
-        },
-        "help": "Notion Configuration Documentation",
-        "page_name_key": "Page Title Field Name",
-        "page_name_key_placeholder": "Enter page title field name, default is Name",
-        "title": "Notion Settings"
-      },
       "obsidian": {
         "default_vault": "Default Obsidian Vault",
         "default_vault_export_failed": "Export failed",
@@ -2800,28 +2004,6 @@
         "title": "Obsidian Configuration"
       },
       "obsolete_cache_cleanup_failed": "Old test data could not be cleared. Close the other app windows and restart.",
-      "siyuan": {
-        "api_url": "Siyuan Note API URL",
-        "api_url_placeholder": "e.g.: http://127.0.0.1:6806",
-        "box_id": "Siyuan Note Box ID",
-        "box_id_placeholder": "Please enter Siyuan Note Box ID",
-        "check": {
-          "button": "Check",
-          "empty_config": "Please fill in the API address and token",
-          "error": "Connection error, please check network connection",
-          "fail": "Connection failed, please check API address and token",
-          "success": "Connection successful",
-          "title": "Connection Check"
-        },
-        "root_path": "Siyuan Note Root Path",
-        "root_path_placeholder": "e.g.: /lich13studio",
-        "title": "Siyuan Note Configuration",
-        "token": {
-          "help": "Get Siyuan Note Token",
-          "label": "Siyuan Note Token"
-        },
-        "token_placeholder": "Please enter Siyuan Note Token"
-      },
       "title": "Data Settings",
       "webdav": {
         "autoSync": {
@@ -2911,27 +2093,7 @@
           "help": "When enabled, WebDAV requests will use the User-Agent Zotero/8.0 for providers that require the client app to be Zotero 8 or above.",
           "title": "Impersonate Zotero 8+"
         }
-      },
-      "yuque": {
-        "check": {
-          "button": "Check",
-          "empty_repo_url": "Please enter the knowledge base URL first",
-          "empty_token": "Please enter the Yuque Token first",
-          "fail": "Yuque connection verification failed",
-          "success": "Yuque connection verified successfully"
-        },
-        "help": "Get Yuque Token",
-        "repo_url": "Yuque URL",
-        "repo_url_placeholder": "https://www.yuque.com/username/xxx",
-        "title": "Yuque Configuration",
-        "token": "Yuque Token",
-        "token_placeholder": "Please enter the Yuque Token"
       }
-    },
-    "developer": {
-      "enable_developer_mode": "Enable Developer Mode",
-      "help": "After enabling developer mode, you can use the trace feature to view the data flow during model invocation.",
-      "title": "Developer Mode"
     },
     "display": {
       "assistant": {
@@ -3040,16 +2202,6 @@
       },
       "view_webdav_settings": "View WebDAV settings"
     },
-    "groq": {
-      "title": "Groq Settings"
-    },
-    "hardware_acceleration": {
-      "confirm": {
-        "content": "Disabling hardware acceleration requires restarting the app to take effect. Do you want to restart now?",
-        "title": "Restart Required"
-      },
-      "title": "Disable Hardware Acceleration"
-    },
     "input": {
       "auto_translate_with_space": "Quickly translate with 3 spaces",
       "clear": {
@@ -3120,61 +2272,6 @@
       "show_message_outline": "Show message outline",
       "title": "Message Settings",
       "use_serif_font": "Use serif font"
-    },
-    "miniapps": {
-      "cache_change_notice": "Changes will take effect when the number of open mini apps reaches the set value",
-      "cache_description": "Set the maximum number of active mini apps to keep in memory",
-      "cache_settings": "Cache Settings",
-      "cache_title": "Mini App Cache Limit",
-      "custom": {
-        "conflicting_ids": "Conflicting IDs with default apps: {{ids}}",
-        "duplicate_ids": "Duplicate IDs found: {{ids}}",
-        "edit_description": "Edit custom mini app configuration here. Each app should include id, name, url, and logo fields.",
-        "edit_title": "Edit Custom Mini App",
-        "id": "ID",
-        "id_error": "ID is required.",
-        "id_placeholder": "Enter ID",
-        "logo": "Logo",
-        "logo_file": "Upload Logo File",
-        "logo_upload_button": "Upload",
-        "logo_upload_error": "Failed to upload logo.",
-        "logo_upload_label": "Upload Logo",
-        "logo_upload_success": "Logo uploaded successfully.",
-        "logo_url": "Logo URL",
-        "logo_url_label": "Logo URL",
-        "logo_url_placeholder": "Enter logo URL",
-        "name": "Name",
-        "name_error": "Name is required.",
-        "name_placeholder": "Enter name",
-        "placeholder": "Enter custom mini app configuration (JSON format)",
-        "remove_error": "Failed to remove custom mini app.",
-        "remove_success": "Custom mini app removed successfully.",
-        "save": "Save",
-        "save_error": "Failed to save custom mini app.",
-        "save_success": "Custom mini app saved successfully.",
-        "title": "Custom",
-        "url": "URL",
-        "url_error": "URL is required.",
-        "url_placeholder": "Enter URL"
-      },
-      "disabled": "Hidden Mini Apps",
-      "display_title": "Mini App Display Settings",
-      "empty": "Drag mini apps from the left to hide them",
-      "open_link_external": {
-        "title": "Open new-window links in browser"
-      },
-      "region": {
-        "auto": "Auto detect",
-        "cn": "China",
-        "description": "Filtering unsupported mini-programs based on the region",
-        "global": "Global",
-        "title": "Mini Program filter"
-      },
-      "reset_tooltip": "Reset to default",
-      "sidebar_description": "Show active mini apps in the sidebar",
-      "sidebar_title": "Sidebar Active Mini Apps Display",
-      "title": "Mini Apps Settings",
-      "visible": "Visible Mini Apps"
     },
     "model": "Default Model",
     "modelSelection": {
@@ -3271,7 +2368,6 @@
       "label": "More Settings",
       "warn": "Risk Warning"
     },
-    "no_provider_selected": "Provider not selected",
     "notification": {
       "assistant": "Assistant Message",
       "backup": "Backup Message",
@@ -3311,10 +2407,6 @@
         "title": "Verbosity"
       }
     },
-    "privacy": {
-      "enable_privacy_mode": "Anonymous reporting of errors and statistics",
-      "title": "Privacy Settings"
-    },
     "provider": {
       "add": {
         "name": {
@@ -3323,28 +2415,6 @@
         },
         "title": "Add Provider",
         "type": "Provider Type"
-      },
-      "anthropic": {
-        "apikey": "API key",
-        "auth_failed": "Anthropic authentication failed",
-        "auth_method": "Authentication method",
-        "auth_success": "Anthropic OAuth authentication successful",
-        "authenticated": "Verified",
-        "authenticating": "Authenticating",
-        "cancel": "Cancel",
-        "code_error": "Invalid authorization code, please try again",
-        "code_placeholder": "Please enter the authorization code displayed in your browser",
-        "code_required": "Authorization code cannot be empty",
-        "description": "OAuth authentication",
-        "description_detail": "You need to subscribe to Claude Pro or a higher version to use this authentication method",
-        "enter_auth_code": "Authorization code",
-        "logout": "Log out",
-        "logout_failed": "Logout failed, please try again",
-        "logout_success": "Successfully logged out of Anthropic",
-        "oauth": "Web OAuth",
-        "oauth_disabled_warning": "Anthropic has temporarily suspended the use of Claude via OAuth. This authentication method is currently unavailable. Please use an API key for now.",
-        "start_auth": "Start authorization",
-        "submit_code": "Complete login"
       },
       "anthropic_api_host": "Anthropic API Host",
       "anthropic_api_host_preview": "Anthropic preview: {{url}}",
@@ -3413,40 +2483,7 @@
         "tip": "Use commas to separate multiple keys"
       },
       "api_version": "API Version",
-      "aws-bedrock": {
-        "access_key_id": "AWS Access Key ID",
-        "access_key_id_help": "Your AWS Access Key ID for accessing AWS Bedrock services",
-        "api_key": "Bedrock API Key",
-        "api_key_help": "Your AWS Bedrock API Key for authentication",
-        "auth_type": "Authentication Type",
-        "auth_type_api_key": "Bedrock API Key",
-        "auth_type_help": "Choose between IAM credentials or Bedrock API Key authentication",
-        "auth_type_iam": "IAM Credentials",
-        "description": "AWS Bedrock is Amazon's fully managed foundation model service that supports various advanced large language models",
-        "region": "AWS Region",
-        "region_help": "Your AWS service region, e.g., us-east-1",
-        "secret_access_key": "AWS Secret Access Key",
-        "secret_access_key_help": "Your AWS Secret Access Key, please keep it secure",
-        "title": "AWS Bedrock Configuration"
-      },
-      "azure": {
-        "apiversion": {
-          "tip": "The API version of Azure OpenAI, if you want to use Response API, please enter the v1 version"
-        }
-      },
       "balance": "Balance",
-      "basic_auth": {
-        "label": "HTTP authentication",
-        "password": {
-          "label": "Password",
-          "tip": "Enter your password"
-        },
-        "tip": "Applicable to instances deployed remotely (see the documentation). Currently, only the Basic scheme (RFC 7617) is supported.",
-        "user_name": {
-          "label": "Username",
-          "tip": "Left empty to disable"
-        }
-      },
       "bills": "Fee Bills",
       "charge": "Balance Recharge",
       "copilot": {
@@ -3489,12 +2526,6 @@
         "content": "Are you sure you want to delete this provider?",
         "title": "Delete Provider"
       },
-      "dmxapi": {
-        "platform_enterprise": "ssvip.DMXAPI.com (Enterprise)",
-        "platform_international": "www.DMXAPI.com (International)",
-        "platform_official": "www.DMXAPI.cn (CNY)",
-        "select_platform": "Select the platform"
-      },
       "docs_check": "Check",
       "docs_more_details": "for more details",
       "empty": "Add a provider, then select a model to get started.",
@@ -3522,79 +2553,11 @@
         "placeholder": "Enter Markdown content...",
         "title": "Model Notes"
       },
-      "oauth": {
-        "balance": "Balance",
-        "button": "Login with {{provider}}",
-        "cherryIn": {
-          "description": "Login to CherryIN using OAuth 2.0",
-          "logged_in": "Logged in via OAuth",
-          "login_button": "Login with OAuth",
-          "logout_button": "Logout",
-          "title": "OAuth Login"
-        },
-        "connect": "Connect {{provider}}",
-        "description": "This service is provided by <website>{{provider}}</website>",
-        "error": "Authentication failed",
-        "logged_in": "Logged in",
-        "logout": "Logout",
-        "logout_confirm": "Are you sure you want to logout?",
-        "logout_success": "Successfully logged out",
-        "logout_warning": "Logged out locally, but server token revocation may have failed",
-        "official_website": "Official Website",
-        "provided_by": "Provided by",
-        "provided_by_suffix": "",
-        "requests": "Requests",
-        "topup": "Top Up",
-        "usage_title": "Usage"
-      },
-      "openai": {
-        "alert": "OpenAI Provider no longer support the old calling methods. If using a third-party API, please create a new service provider."
-      },
       "remove_duplicate_keys": "Remove Duplicate Keys",
       "remove_invalid_keys": "Remove Invalid Keys",
       "search": "Search Providers...",
       "search_placeholder": "Search model id or name",
-      "title": "Model Provider",
-      "vertex_ai": {
-        "api_host_help": "The API host for Vertex AI, not recommended to fill in, generally applicable to reverse proxy",
-        "documentation": "View official documentation for more configuration details:",
-        "learn_more": "Learn More",
-        "location": "Location",
-        "location_help": "Vertex AI service location, e.g., us-central1",
-        "project_id": "Project ID",
-        "project_id_help": "Your Google Cloud project ID",
-        "project_id_placeholder": "your-google-cloud-project-id",
-        "service_account": {
-          "auth_success": "Service Account authenticated successfully",
-          "client_email": "Client Email",
-          "client_email_help": "The client_email field from the JSON key file downloaded from Google Cloud Console",
-          "client_email_placeholder": "Enter Service Account client email",
-          "description": "Use Service Account for authentication, suitable for environments where ADC is not available",
-          "incomplete_config": "Please complete Service Account configuration first",
-          "private_key": "Private Key",
-          "private_key_help": "The private_key field from the JSON key file downloaded from Google Cloud Console",
-          "private_key_placeholder": "Enter Service Account private key",
-          "title": "Service Account Configuration"
-        }
-      }
-    },
-    "proxy": {
-      "address": "Proxy Address",
-      "bypass": "Bypass Rules",
-      "mode": {
-        "custom": "Custom Proxy",
-        "none": "No Proxy",
-        "system": "System Proxy",
-        "title": "Proxy Mode"
-      },
-      "tip": "Supports wildcard matching (*.test.com, 192.168.0.0/16)"
-    },
-    "quickAssistant": {
-      "click_tray_to_show": "Click the tray icon to start",
-      "enable_quick_assistant": "Enable Quick Assistant",
-      "read_clipboard_at_startup": "Read clipboard at startup",
-      "title": "Quick Assistant",
-      "use_shortcut_to_show": "Right-click the tray icon or use shortcuts to start"
+      "title": "Model Provider"
     },
     "quickPanel": {
       "back": "Back",
@@ -3621,81 +2584,6 @@
       "titleLabel": "Title",
       "titlePlaceholder": "Please enter phrase title"
     },
-    "scheduledTasks": {
-      "description": "Manage scheduled tasks across all agents. Tasks run automatically on the configured schedule.",
-      "noAgents": "Scheduled tasks require agents with Soul Mode or Bypass Permissions enabled. Update an agent's settings to get started.",
-      "noAgentsTip": "Tip: You can also ask your agent to create scheduled tasks via chat.",
-      "noTasks": "No scheduled tasks. Click \"+ Add\" to create one for an agent.",
-      "selectTask": "Select a task to view details",
-      "title": "Scheduled Tasks"
-    },
-    "shortcuts": {
-      "action": "Action",
-      "actions": "operation",
-      "clear_shortcut": "Clear Shortcut",
-      "clear_topic": "Clear Messages",
-      "copy_last_message": "Copy Last Message",
-      "edit_last_user_message": "Edit Last User Message",
-      "enabled": "Enable",
-      "exit_fullscreen": "Exit Fullscreen",
-      "label": "Key",
-      "mini_window": "Quick Assistant",
-      "new_topic": "New Topic",
-      "press_shortcut": "Press Shortcut",
-      "rename_topic": "Rename Topic",
-      "reset_defaults": "Reset Defaults",
-      "reset_defaults_confirm": "Are you sure you want to reset all shortcuts?",
-      "reset_to_default": "Reset to Default",
-      "search_message": "Search Message",
-      "search_message_in_chat": "Search Message in Current Chat",
-      "select_model": "Select Model",
-      "selection_assistant_select_text": "Selection Assistant: Select Text",
-      "selection_assistant_toggle": "Toggle Selection Assistant",
-      "show_app": "Show/Hide App",
-      "show_settings": "Open Settings",
-      "title": "Keyboard Shortcuts",
-      "toggle_new_context": "Clear Context",
-      "toggle_show_assistants": "Toggle Assistants",
-      "toggle_show_topics": "Toggle Topics",
-      "zoom_in": "Zoom In",
-      "zoom_out": "Zoom Out",
-      "zoom_reset": "Reset Zoom"
-    },
-    "skills": {
-      "author": "Author",
-      "batchUninstallSuccess": "{{count}} skills uninstalled",
-      "builtin": "Built-in",
-      "confirmBatchUninstall": "Are you sure you want to uninstall {{count}} selected skills?",
-      "confirmUninstall": "Are you sure you want to uninstall this skill?",
-      "directory": "Directory",
-      "dropHint": "Or drag & drop a ZIP file or folder here",
-      "emptyDesc": "Install skills from ZIP, directory, or search online registries to extend agent capabilities.",
-      "emptyTip": "Tip: You can also ask an agent to install skills for you.",
-      "emptyTitle": "No skill selected",
-      "filterPlaceholder": "Filter skills...",
-      "install": "Install",
-      "installFailed": "Failed to install skill: {{name}}",
-      "installFromDirectory": "Install from directory",
-      "installFromZip": "Install from ZIP file",
-      "installSuccess": "Skill installed: {{name}}",
-      "installed": "Installed",
-      "invalidFormat": "Only ZIP files and directories are supported",
-      "localInstall": "Local Install",
-      "multiSelect": "Multi-select",
-      "noFilterResults": "No matching skills",
-      "noInstalled": "No skills installed",
-      "noResults": "No skills found",
-      "noSkillFile": "No SKILL.md found",
-      "searchPlaceholder": "Discover more skills...",
-      "searchRegistryTitle": "Search skill registries online",
-      "searchTitle": "Search Skills",
-      "selectFile": "Select a file to view",
-      "title": "Skills",
-      "uninstall": "Uninstall",
-      "uninstallSuccess": "Skill uninstalled: {{name}}",
-      "viewSource": "View Source",
-      "zip": "ZIP"
-    },
     "theme": {
       "color_primary": "Primary Color",
       "dark": "Dark",
@@ -3711,53 +2599,6 @@
       }
     },
     "title": "Settings",
-    "tool": {
-      "ocr": {
-        "common": {
-          "langs": "Supported languages"
-        },
-        "error": {
-          "not_system": "System OCR only supports Windows and MacOS"
-        },
-        "image": {
-          "error": {
-            "provider_not_found": "The provider does not exist"
-          },
-          "system": {
-            "no_need_configure": "MacOS requires no configuration"
-          },
-          "title": "Image"
-        },
-        "image_provider": "OCR service provider",
-        "paddleocr": {
-          "aistudio_access_token": "Access token of AI Studio Community",
-          "api_url": "API URL",
-          "api_url_label": "Obtain Access Token and API URL"
-        },
-        "system": {
-          "win": {
-            "langs_tooltip": "Dependent on Windows to provide services, you need to download language packs in the system to support the relevant languages."
-          }
-        },
-        "tesseract": {
-          "langs_tooltip": "Read the documentation to learn which custom languages are supported"
-        },
-        "title": "OCR service"
-      },
-      "preprocess": {
-        "paddleocr": {
-          "aistudio_access_token": "Access token of AI Studio Community",
-          "api_url": "API URL",
-          "api_url_label": "Obtain Access Token and API URL",
-          "paddleocr_url_label": "PaddleOCR Official Website"
-        },
-        "provider": "Document Processing Provider",
-        "provider_placeholder": "Choose a document processing provider",
-        "title": "Document Processing",
-        "tooltip": "In Settings -> Tools, set a document processing service provider. Document processing can effectively improve the retrieval performance of complex format documents and scanned documents."
-      },
-      "title": "Other Settings"
-    },
     "topic": {
       "pin_to_top": "Pin Topics to Top",
       "position": {
@@ -3774,13 +2615,6 @@
       "onclose": "Minimize to Tray on Close",
       "show": "Show Tray Icon",
       "title": "Tray"
-    },
-    "use_system_title_bar": {
-      "confirm": {
-        "content": "Changing the title bar style requires restarting the app to take effect. Do you want to restart now?",
-        "title": "Restart Required"
-      },
-      "title": "Use System Title Bar (Linux)"
     },
     "zoom": {
       "reset": "Reset",
@@ -3803,9 +2637,6 @@
     "translate": "Translate"
   },
   "translate": {
-    "error": {
-      "not_configured": "Translation model is not configured"
-    },
     "title": "Translation"
   },
   "tray": {

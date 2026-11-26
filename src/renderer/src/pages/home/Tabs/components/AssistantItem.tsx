@@ -8,6 +8,7 @@ import AssistantSettingsPopup from '@renderer/pages/settings/AssistantSettings'
 import { EVENT_NAMES, EventEmitter } from '@renderer/services/EventService'
 import type { Assistant, AssistantsSortType } from '@renderer/types'
 import { cn, uuid } from '@renderer/utils'
+import { loadTinyPinyin } from '@renderer/utils/pinyin'
 import { hasTopicPendingRequests } from '@renderer/utils/queue'
 import type { MenuProps } from 'antd'
 import { Dropdown } from 'antd'
@@ -29,7 +30,6 @@ import {
 import type { FC, PropsWithChildren } from 'react'
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import * as tinyPinyin from 'tiny-pinyin'
 
 import AssistantTagsPopup from './AssistantTagsPopup'
 
@@ -81,11 +81,11 @@ const AssistantItem: FC<AssistantItemProps> = ({
 
   // Local sort functions
   const localSortByPinyinAsc = useCallback(() => {
-    updateAssistants(sortAssistantsByPinyin(assistants, true))
+    void sortAssistantsByPinyin(assistants, true).then(updateAssistants)
   }, [assistants, updateAssistants])
 
   const localSortByPinyinDesc = useCallback(() => {
-    updateAssistants(sortAssistantsByPinyin(assistants, false))
+    void sortAssistantsByPinyin(assistants, false).then(updateAssistants)
   }, [assistants, updateAssistants])
 
   // Use external sort functions if provided, otherwise use local ones
@@ -183,7 +183,8 @@ const AssistantItem: FC<AssistantItemProps> = ({
 }
 
 // 提取排序相关的工具函数
-const sortAssistantsByPinyin = (assistants: Assistant[], isAscending: boolean) => {
+const sortAssistantsByPinyin = async (assistants: Assistant[], isAscending: boolean) => {
+  const tinyPinyin = await loadTinyPinyin()
   return [...assistants].sort((a, b) => {
     const pinyinA = tinyPinyin.convertToPinyin(a.name, '', true)
     const pinyinB = tinyPinyin.convertToPinyin(b.name, '', true)

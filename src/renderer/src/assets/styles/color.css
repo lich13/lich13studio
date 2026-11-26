@@ -61,7 +61,7 @@
   --chat-background: transparent;
   --chat-background-user: rgba(255, 255, 255, 0.08);
   --chat-background-assistant: transparent;
-  --chat-text-user: var(--color-black);
+  --chat-text-user: var(--color-text);
 
   --list-item-border-radius: 10px;
 

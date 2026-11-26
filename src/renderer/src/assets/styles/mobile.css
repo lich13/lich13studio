@@ -599,6 +599,9 @@ html[data-runtime='android'][data-keyboard='open'] .mobile-navigation {
   html[data-runtime='android'] .inputbar {
     padding: 2px 8px 4px !important;
   }
+  html[data-runtime='android'] [data-testid='quick-panel'] {
+    padding: 0 12px;
+  }
   html[data-runtime='android'] .inputbar-container {
     padding-top: 4px;
     border-radius: 12px;

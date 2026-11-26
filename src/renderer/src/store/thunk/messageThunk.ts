@@ -497,11 +497,13 @@ const dispatchMultiModelResponses = async (
     throw new Error(`Topic ${topicId} not found in DB.`)
   }
 
-  const queue = getTopicQueue(topicId)
-  for (const task of tasksToQueue) {
-    void queue.add(async () => {
-      await fetchAndProcessAssistantResponseImpl(dispatch, getState, topicId, task.assistantConfig, task.messageStub)
-    })
+  if (tasksToQueue.length > 0) {
+    const queue = getTopicQueue(topicId)
+    for (const task of tasksToQueue) {
+      void queue.add(async () => {
+        await fetchAndProcessAssistantResponseImpl(dispatch, getState, topicId, task.assistantConfig, task.messageStub)
+      })
+    }
   }
 }
 
@@ -717,10 +719,8 @@ export const sendMessage =
       dispatch(upsertManyBlocks(userMessageBlocks))
     }
     dispatch(newMessagesActions.addMessage({ topicId, message: userMessage }))
-    dispatch(updateTopicUpdatedAt({ topicId }))
 
     try {
-      const queue = getTopicQueue(topicId)
       const mentionedModels = userMessage.mentions
 
       if (mentionedModels && mentionedModels.length > 0) {
@@ -739,7 +739,7 @@ export const sendMessage =
           })
         )
 
-        void queue.add(async () => {
+        void getTopicQueue(topicId).add(async () => {
           await fetchAndProcessAssistantResponseImpl(dispatch, getState, topicId, assistant, assistantMessage)
         })
       }
@@ -976,15 +976,23 @@ export const resendMessageThunk =
         logger.error('[resendMessageThunk] Error updating database:', dbError as Error)
       }
 
-      const queue = getTopicQueue(topicId)
-      for (const resetMsg of resetDataList) {
-        const assistantConfigForThisRegen = {
-          ...assistant,
-          ...(resetMsg.model ? { model: resetMsg.model } : {})
+      if (resetDataList.length > 0) {
+        const queue = getTopicQueue(topicId)
+        for (const resetMsg of resetDataList) {
+          const assistantConfigForThisRegen = {
+            ...assistant,
+            ...(resetMsg.model ? { model: resetMsg.model } : {})
+          }
+          void queue.add(async () => {
+            await fetchAndProcessAssistantResponseImpl(
+              dispatch,
+              getState,
+              topicId,
+              assistantConfigForThisRegen,
+              resetMsg
+            )
+          })
         }
-        void queue.add(async () => {
-          await fetchAndProcessAssistantResponseImpl(dispatch, getState, topicId, assistantConfigForThisRegen, resetMsg)
-        })
       }
     } catch (error) {
       logger.error(`[resendMessageThunk] Error resending user message ${userMessageToResend.id}:`, error as Error)
@@ -1107,12 +1115,11 @@ export const regenerateAssistantResponseThunk =
       await purgeDetachedAttachments(attachmentsToDelete)
 
       // 8. Add fetch/process call to the queue
-      const queue = getTopicQueue(topicId)
       const assistantConfigForRegen = {
         ...assistant,
         ...(resetAssistantMsg.model ? { model: resetAssistantMsg.model } : {})
       }
-      void queue.add(async () => {
+      void getTopicQueue(topicId).add(async () => {
         await fetchAndProcessAssistantResponseImpl(
           dispatch,
           getState,
@@ -1298,8 +1305,7 @@ export const appendAssistantResponseThunk =
         ...assistant,
         model: newModel
       }
-      const queue = getTopicQueue(topicId)
-      void queue.add(async () => {
+      void getTopicQueue(topicId).add(async () => {
         await fetchAndProcessAssistantResponseImpl(
           dispatch,
           getState,

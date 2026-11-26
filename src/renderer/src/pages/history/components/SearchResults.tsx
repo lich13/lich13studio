@@ -1,3 +1,4 @@
+import { loggerService } from '@logger'
 import { LoadingIcon } from '@renderer/components/Icons'
 import db from '@renderer/databases'
 import useScrollPosition from '@renderer/hooks/useScrollPosition'
@@ -18,6 +19,7 @@ import { useSelector } from 'react-redux'
 import styled from 'styled-components'
 
 const { Text, Title } = Typography
+const logger = loggerService.withContext('SearchResults')
 
 export type SearchResult = {
   blockId: string
@@ -221,9 +223,15 @@ export async function scanHistoryMatches({
   storeTopicsMap: ReadonlyMap<string, Topic>
   isCancelled: () => boolean
 }): Promise<{ terms: string[]; candidates: SearchMatchCandidate[] } | null> {
+  if (isCancelled()) {
+    return null
+  }
   const terms = splitKeywordsToTerms(keywords.trim())
   if (terms.length === 0) {
     return { terms: [], candidates: [] }
+  }
+  if (storeTopicsMap.size === 0) {
+    return { terms, candidates: [] }
   }
 
   const lowerTerms = terms.map((term) => term.toLowerCase())
@@ -388,10 +396,52 @@ const SearchResults: FC<Props> = ({ keywords, onMessageClick, onTopicClick, ...p
 
   // FIXME: db 中没有 topic.name 等信息，只能从 store 获取
   const storeTopicsMap = useSelector(selectTopicsMap)
+  const storeTopicsMapRef = useRef(storeTopicsMap)
+  storeTopicsMapRef.current = storeTopicsMap
+  const topicMembershipKey = useMemo(
+    () => (storeTopicsMap.size === 0 ? '' : JSON.stringify(Array.from(storeTopicsMap.keys()).sort())),
+    [storeTopicsMap]
+  )
 
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
   const [searchStats, setSearchStats] = useState({ count: 0, time: 0 })
   const [isLoading, setIsLoading] = useState(false)
+
+  const liveSearchResults = useMemo(() => {
+    if (searchResults.length === 0) {
+      return searchResults
+    }
+    let changed = false
+    const next: SearchResult[] = []
+    for (const item of searchResults) {
+      const liveTopic = storeTopicsMap.get(item.message.topicId) ?? storeTopicsMap.get(item.topic.id)
+      if (!liveTopic) {
+        changed = true
+        continue
+      }
+      if (liveTopic !== item.topic) {
+        changed = true
+        next.push({ ...item, topic: liveTopic })
+      } else {
+        next.push(item)
+      }
+    }
+    return changed ? next : searchResults
+  }, [searchResults, storeTopicsMap])
+
+  const liveMatchCount = useMemo(() => {
+    const { candidates } = matchedCandidates
+    if (candidates.length === 0) {
+      return searchStats.count
+    }
+    let count = 0
+    for (const candidate of candidates) {
+      if (storeTopicsMap.has(candidate.message.topicId) || storeTopicsMap.has(candidate.topic.id)) {
+        count += 1
+      }
+    }
+    return count
+  }, [matchedCandidates, searchStats.count, storeTopicsMap])
 
   useEffect(() => {
     const seq = ++searchSeqRef.current
@@ -420,7 +470,7 @@ const SearchResults: FC<Props> = ({ keywords, onMessageClick, onTopicClick, ...p
           database: db,
           keywords: trimmedKeywords,
           matchMode,
-          storeTopicsMap,
+          storeTopicsMap: storeTopicsMapRef.current,
           isCancelled
         })
         if (!scanned || isCancelled()) {
@@ -462,7 +512,8 @@ const SearchResults: FC<Props> = ({ keywords, onMessageClick, onTopicClick, ...p
         })
         setSearchTerms(scanned.terms)
         setIsLoading(false)
-      })().catch(() => {
+      })().catch((error) => {
+        logger.warn('History search failed:', error as Error)
         if (seq === searchSeqRef.current) {
           setIsLoading(false)
         }
@@ -474,7 +525,7 @@ const SearchResults: FC<Props> = ({ keywords, onMessageClick, onTopicClick, ...p
       searchSeqRef.current += 1
       hydrateSeqRef.current += 1
     }
-  }, [keywords, matchMode, storeTopicsMap])
+  }, [keywords, matchMode, topicMembershipKey])
 
   const handleSortOrderChange = (nextOrder: ResultSortOrder) => {
     setSortOrder(nextOrder)
@@ -496,7 +547,9 @@ const SearchResults: FC<Props> = ({ keywords, onMessageClick, onTopicClick, ...p
           setSearchResults(results)
         }
       })
-      .catch(() => {})
+      .catch((error) => {
+        logger.warn('Failed to re-sort search results:', error as Error)
+      })
   }
 
   const highlightRegex = useMemo(
@@ -559,10 +612,10 @@ const SearchResults: FC<Props> = ({ keywords, onMessageClick, onTopicClick, ...p
             ]}
           />
         </SearchToolbar>
-        {searchResults.length > 0 && (
+        {liveSearchResults.length > 0 && (
           <SearchStats>
             {t('history.search.results_stats', {
-              count: searchStats.count,
+              count: liveMatchCount,
               time: searchStats.time.toFixed(3)
             })}
           </SearchStats>
@@ -570,7 +623,7 @@ const SearchResults: FC<Props> = ({ keywords, onMessageClick, onTopicClick, ...p
         <List
           itemLayout="vertical"
           rowKey={(item) => item.blockId}
-          dataSource={searchResults}
+          dataSource={liveSearchResults}
           pagination={{
             pageSize: 10,
             hideOnSinglePage: true

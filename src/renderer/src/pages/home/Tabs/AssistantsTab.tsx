@@ -7,11 +7,11 @@ import { useTags } from '@renderer/hooks/useTags'
 import type { RootState } from '@renderer/store'
 import { useAppSelector } from '@renderer/store'
 import type { Assistant, AssistantsSortType } from '@renderer/types'
+import { loadTinyPinyin } from '@renderer/utils/pinyin'
 import type { FC } from 'react'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
-import * as tinyPinyin from 'tiny-pinyin'
 
 import AssistantAddButton from './components/AssistantAddButton'
 import { AssistantList } from './components/AssistantList'
@@ -45,12 +45,14 @@ const AssistantsTab: FC<AssistantsTabProps> = (props) => {
   // Sorting
   const sortByPinyin = useCallback(
     (isAscending: boolean) => {
-      const sorted = [...assistants].sort((a, b) => {
-        const pinyinA = tinyPinyin.convertToPinyin(a.name, '', true)
-        const pinyinB = tinyPinyin.convertToPinyin(b.name, '', true)
-        return isAscending ? pinyinA.localeCompare(pinyinB) : pinyinB.localeCompare(pinyinA)
+      void loadTinyPinyin().then((tinyPinyin) => {
+        const sorted = [...assistants].sort((a, b) => {
+          const pinyinA = tinyPinyin.convertToPinyin(a.name, '', true)
+          const pinyinB = tinyPinyin.convertToPinyin(b.name, '', true)
+          return isAscending ? pinyinA.localeCompare(pinyinB) : pinyinB.localeCompare(pinyinA)
+        })
+        updateAssistants(sorted)
       })
-      updateAssistants(sorted)
     },
     [assistants, updateAssistants]
   )

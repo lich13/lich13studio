@@ -251,6 +251,9 @@
 
 .markdown sup {
   top: -0.5em;
+}
+
+.markdown sup:has(> span.link) {
   border-radius: 50%;
   background-color: var(--color-reference);
   color: var(--color-reference-text);
@@ -310,7 +313,7 @@
 .footnotes li {
   font-size: 0.9em;
   margin-bottom: 0.5em;
-  color: var(--color-text-light);
+  color: var(--color-text-2);
 }
 
 .footnotes li p {

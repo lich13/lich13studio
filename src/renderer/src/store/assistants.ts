@@ -5,7 +5,6 @@ import i18n from '@renderer/i18n'
 import type { Assistant, AssistantPreset, AssistantSettings, Model, Topic } from '@renderer/types'
 import isEmpty from 'lodash/isEmpty'
 import uniqBy from 'lodash/uniqBy'
-import { v4 as uuid } from 'uuid'
 
 import type { RootState } from '.'
 
@@ -29,7 +28,7 @@ export const DEFAULT_ASSISTANT_SETTINGS = {
 
 export function getDefaultTopic(assistantId: string): Topic {
   return {
-    id: uuid(),
+    id: crypto.randomUUID(),
     assistantId,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),

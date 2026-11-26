@@ -1,6 +1,6 @@
 import { loggerService } from '@logger'
 import { db } from '@renderer/databases'
-import { EMPTY_MODEL, getDefaultTopic } from '@renderer/services/AssistantService'
+import { getDefaultTopic } from '@renderer/services/AssistantService'
 import { useAppDispatch, useAppSelector } from '@renderer/store'
 import {
   addAssistant,
@@ -24,7 +24,6 @@ import { assistantModelSelection, selectionModelReference } from '@shared/modelP
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { useModel } from './useModel'
 import { TopicManager } from './useTopic'
 
 export function useAssistants() {
@@ -89,17 +88,10 @@ export function useAssistant(id: string) {
   const logger = loggerService.withContext('useAssistant')
   const assistant = useAppSelector((state) => state.assistants.assistants.find((a) => a.id === id) as Assistant)
   const dispatch = useAppDispatch()
-  const { defaultModel } = useDefaultModel()
   const llm = useAppSelector((state) => state.llm)
-
-  const savedModel = assistant?.model ?? assistant?.defaultModel ?? defaultModel ?? EMPTY_MODEL
-  const currentModel = useModel(savedModel.id, savedModel.provider)
   const model = useMemo(
-    () =>
-      assistant?.modelSelection
-        ? selectionModelReference(assistantModelSelection(assistant, llm), llm)
-        : (currentModel ?? savedModel),
-    [assistant, llm, currentModel, savedModel]
+    () => selectionModelReference(assistantModelSelection(assistant ?? {}, llm), llm),
+    [assistant, llm]
   )
 
   const normalizedTopics = useMemo(

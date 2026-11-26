@@ -63,7 +63,12 @@ describe('decryptPortableBackup', () => {
     expect(mocks.invoke).toHaveBeenCalledTimes(1)
     expect(mocks.invoke).toHaveBeenCalledWith('export_portable_backup_archive', {
       fileName: 'lich13studio.20261125.lich13backup',
-      state: expect.objectContaining({ version: 5, includeCredentials: true }),
+      payload: JSON.stringify({
+        version: 5,
+        includeCredentials: true,
+        localStorage: { 'persist:cherry-studio': '{}' },
+        indexedDB: {}
+      }),
       includeFiles: true,
       password: 'fixture-password'
     })

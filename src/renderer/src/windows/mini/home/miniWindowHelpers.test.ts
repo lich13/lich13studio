@@ -43,6 +43,7 @@ vi.mock('@renderer/config/models/vision', () => ({
 import {
   buildMiniWindowUserMessage,
   captureMiniWindowScreenshot,
+  finalizeMiniWindowErrorBlocks,
   getMiniWindowChatModels,
   getMiniWindowMessageWithBlock,
   getMiniWindowPersistedTopic,
@@ -432,5 +433,73 @@ describe('mini window helpers', () => {
 
     expect(sortMiniCaptureWindows(windows).map((windowInfo) => windowInfo.id)).toEqual([2, 1, 3])
     expect(windows.map((windowInfo) => windowInfo.id)).toEqual([3, 2, 1])
+  })
+
+  it('flushes buffered streaming tail text and thinking duration before persisting PAUSED/ERROR status', () => {
+    const blocks = new Map<string, any>([
+      [
+        'thinking-1',
+        {
+          id: 'thinking-1',
+          messageId: 'msg-1',
+          type: MessageBlockType.THINKING,
+          content: 'initial thought',
+          status: 'streaming',
+          thinking_millsec: 120
+        }
+      ],
+      [
+        'text-1',
+        {
+          id: 'text-1',
+          messageId: 'msg-1',
+          type: MessageBlockType.MAIN_TEXT,
+          content: 'first chunk',
+          status: 'streaming'
+        }
+      ]
+    ])
+    const pendingRedux = new Map<string, Record<string, unknown>>([
+      ['thinking-1', { content: 'initial thought + final thought tail', thinking_millsec: 480 }],
+      ['text-1', { content: 'first chunk + unpersisted tail text' }]
+    ])
+    const persistedCalls: Array<{ id: string; changes: Record<string, unknown> }> = []
+
+    finalizeMiniWindowErrorBlocks({
+      thinkingBlockId: 'thinking-1',
+      blockId: 'text-1',
+      isAborted: true,
+      cancelBlockThrottle: (id) => {
+        const queued = pendingRedux.get(id)
+        if (queued) {
+          pendingRedux.delete(id)
+          blocks.set(id, { ...blocks.get(id), ...queued })
+        }
+      },
+      readLatestBlock: (id) => blocks.get(id),
+      resolveThinkingDuration: (reported) => reported ?? 500,
+      applyBlockChanges: (id, changes) => {
+        blocks.set(id, { ...blocks.get(id), ...changes })
+        persistedCalls.push({ id, changes: changes as Record<string, unknown> })
+      }
+    })
+
+    expect(persistedCalls).toEqual([
+      {
+        id: 'thinking-1',
+        changes: {
+          status: 'paused',
+          content: 'initial thought + final thought tail',
+          thinking_millsec: 480
+        }
+      },
+      {
+        id: 'text-1',
+        changes: {
+          status: 'paused',
+          content: 'first chunk + unpersisted tail text'
+        }
+      }
+    ])
   })
 })

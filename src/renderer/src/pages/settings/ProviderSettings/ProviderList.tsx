@@ -74,24 +74,33 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
   }, [currentPlatform])
 
   useEffect(() => {
+    let cancelled = false
     const loadAllLogos = async () => {
-      const logos: Record<string, string> = {}
-      for (const provider of providers) {
-        if (provider.id) {
-          try {
-            const logoData = await ImageStorage.get(`provider-${provider.id}`)
-            if (logoData) {
-              logos[provider.id] = logoData
+      const entries = await Promise.all(
+        providers
+          .filter((provider) => Boolean(provider.id))
+          .map(async (provider) => {
+            try {
+              const logoData = await ImageStorage.get(`provider-${provider.id}`)
+              return logoData ? ([provider.id, logoData] as const) : null
+            } catch (error) {
+              logger.error(`Failed to load logo for provider ${provider.id}`, error as Error)
+              return null
             }
-          } catch (error) {
-            logger.error(`Failed to load logo for provider ${provider.id}`, error as Error)
-          }
-        }
+          })
+      )
+      if (cancelled) return
+      const logos: Record<string, string> = {}
+      for (const entry of entries) {
+        if (entry) logos[entry[0]] = entry[1]
       }
       setProviderLogos(logos)
     }
 
     void loadAllLogos()
+    return () => {
+      cancelled = true
+    }
   }, [providers])
 
   useEffect(() => {
